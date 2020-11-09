@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>confirmation</title>
+</head>
+<body>
+
+  <label for="template">Template for order confirmation:</label>
+  <!-- <textarea name="template" class="template" placeholder="VARAUSVAHVISTUS VARAUKSEN TIEDOT" rows="10">
+    VALUE
+  </textarea> -->
+  <div name="template" class="template">
+  </div>
+
+  <label for="source">Text that needs to be converted:</label>
+  <textarea name="source" class="source" placeholder="NEW ORDER!" rows="30" cols="30"></textarea>
+
+  <label for="output">Converted text:</label>
+  <textarea name="output" class="output" rows="30" cols="30"></textarea>
+
+<script>
+  const template = document.querySelector('.template')
+  const source = document.querySelector('.source')
+  const output = document.querySelector('.output')
+
+  let sourceText = source.value
+
+  source.addEventListener('change', () => {
+    sourceText = source.value
+  })
+  
+  console.log(source.value)
+
+  const services = [
+    {
+      name: "Paku ja kuski",
+      price: 30,
+    },
+    {
+      name: "Paku ja kuski kantoapuna",
+      price: 60,
+    },
+    {
+      name: "Paku ja kaksi muuttomiestä",
+      price: 90,
+    },
+    {
+      name: "Paku ja mies",
+      price: 40,
+    },
+    {
+      name: "Paku ja kaksi miestä",
+      price: 70,
+    }
+  ]
+
+  function getStartingTime(str) {
+    const originalDate = new Date(/(?<=Date end time: \w+, )\w+ \d+(th|rd|st)? \w+/
+      .exec(str)[0]
+      .replace(/th|rd|st/, ''))
+    const date = originalDate
+      .toLocaleDateString()
+      .replace(/\./g, '-')
+    const time = /\d+:\d+/.exec(str)[0]
+    const timeNumber = /\d+/.exec(time)[0]
+
+    return { date, originalDate, time, timeNumber }
+  }
+
+  function getDuration(str) {
+    const re = /\d+(\.\d+)?(?=\sh.)/
+
+    return re.exec(str)[0]
+  }
+
+  function getFees(str) {
+    const date = getStartingTime(str).originalDate
+
+    const dayOFWeek = date.getDay()
+    const weekEndFee = dayOFWeek === 6 || dayOFWeek === 7 ? 15 : false
+
+    const dayOfMonth = date.getDate()
+    const endOfMonth = [ new Date(date.getFullYear(), date.getMonth()+1, 0).getDate(), 1 ]
+    let endOfMonthFee = endOfMonth.includes(dayOfMonth) ? 15 : false
+
+    weekEndFee ? endOfMonthFee = false : null
+
+    const time = getStartingTime(str).timeNumber
+    const morningFee = time < 8 ? 20 : false
+    const nightFee = time > 20 ? 20 : false
+
+    return [ 
+      { value: weekEndFee, name: 'VIIKONLOPPULISÄ' }, 
+      { value: endOfMonthFee, name: 'KUUNVAIHDELISÄ' }, 
+      { value: morningFee, name: 'AAMULISÄ' }, 
+      { value: nightFee, name: 'YÖLISÄ' } 
+    ]
+  }
+
+  function getService(str) {
+    const re = /(?<=PRICE: )\d+/
+    
+    let price = str.match(re)[0]
+    getFees(str)
+      .filter(fee => fee.value !== false)
+      .forEach(fee => price = price - fee.value)
+
+    if (getPaymentType(str).name === 'Lasku') price = price - getPaymentType(str).fee
+
+    console.log("PRICE:", price)
+    const duration = getDuration(str)
+    console.log("DURATION:", duration)
+
+    const service = services.filter(service => service.price === price / duration)
+
+    return service[0]
+  }
+
+  function getPaymentType(str) {
+    const re = /(?<=Payment Type: )[A-Öa-ö]+/
+    const paymentType = { name: re.exec(str)[0] }
+    paymentType.fee = paymentType.name === "Lasku" ? 14 : false
+    paymentType.fee ? paymentType.comment = `(Laskulisä ${paymentType.fee}€)` : null
+
+    return paymentType
+  }
+
+  function getAdress(str, course) {
+    const city = new RegExp(`(?<=${course}: )[A-Öa-ö]+`).exec(str)
+      ? new RegExp(`(?<=${course}: )[A-Öa-ö]+`).exec(str)[0]
+      : ''
+    const reg = new RegExp(`(?<=${course}: ${city} / ).*(?=,*)`).exec(str)
+    const adress = reg ? `${reg[0]},` : ''
+
+    return { adress, city }
+  }
+
+  function getName(str) {
+    const re = /(?<=Name: )([A-Öa-ö]+ *)+/
+
+    return re.exec(str)[0]
+  }
+
+  function getEmail(str) {
+    const re = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
+
+    return re.exec(str)[0]
+  }
+
+  function getPhone(str) {
+    const re = /(?<=Phone: )[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*/
+
+    return re.exec(str)[0].replace(/\n/, '')
+  }
+
+  function getComment(str) {
+    const re = /(?<=Comment: )(.*\s*)*/
+    const comment = re.exec(str) ? `\n${re.exec(str)[0]}\n` : ''
+
+    return comment
+  }
+  
+  function printFee(fee) {
+    return `\n${fee.name}\nKyllä, ${fee.value}€`
+  }
+
+  source.addEventListener('change', () => {
+    if (sourceText.length > 0) { 
+      console.log(sourceText)
+      console.log('Starting time:', getStartingTime(sourceText))
+      console.log('Duration:', getDuration(sourceText))
+      console.log("FEES:", getFees(sourceText))
+      console.log('Service:', getService(sourceText))
+      console.log('Payment type:', getPaymentType(sourceText))
+      console.log('Starting Adress:', getAdress(sourceText, 'Frome'))
+      console.log('Destination Adress:', getAdress(sourceText, 'To'))
+      console.log('Name:', getName(sourceText))
+      console.log('Email:', getEmail(sourceText))
+      console.log('Phonenumber', getPhone(sourceText))
+      console.log('Comment:', getComment(sourceText))
+
+      const templateText = `VARAUSVAHVISTUS
+VARAUKSEN TIEDOT
+${getStartingTime(sourceText).date}
+ALKAMISAIKA
+Klo ${getStartingTime(sourceText).time} (+/-15min)
+ARVIOITU KESTO
+${getDuration(sourceText)}h (${getService(sourceText).price}€/h, ${getService(sourceText).name})
+MAKSUTAPA
+${getPaymentType(sourceText).name} ${getPaymentType(sourceText).fee ? getPaymentType(sourceText).comment : ''}${
+    getFees(sourceText)
+    .filter(fee => fee.value !== false)
+    .map(fee => printFee(fee))
+  }
+AUTON TOIMITUS
+${getAdress(sourceText, 'Frome').adress} ${getAdress(sourceText, 'Frome').city}${getAdress(sourceText, 'To').adress ? '\nMÄÄRÄNPÄÄ\n' : ''}${getAdress(sourceText, 'To').adress} ${getAdress(sourceText, 'To').city}
+NIMI
+${getName(sourceText)}
+SÄHKÖPOSTI
+${getEmail(sourceText)}
+PUHELIN
+${getPhone(sourceText)}
+${getComment(sourceText) ? 'LISÄTIETOJA' : ''}${getComment(sourceText)}
+KIITOS VARAUKSESTANNE!`
+
+      output.value = templateText
+  }
+  })
+
+  // template.value = templateText
+  // template.innerText = templateText
+
+</script>
+</body>
+</html>
