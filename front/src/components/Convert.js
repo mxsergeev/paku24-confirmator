@@ -1,88 +1,189 @@
 import React, { useState, useRef } from 'react'
 import * as regexFunc from '../utils/regexFunctions'
-// import Notification from './Notification'
-import Toast from 'light-toast';
+import Toast from 'light-toast'
+import sendConfirmationEmail from '../services/emailAPI'
+import addEventToCalendar from '../services/calendarAPI'
+import TextareaAutosize from '@material-ui/core/TextareaAutosize'
+import '../styles/convert.css'
+import InputModal from './InputModal'
 
-export default function Convert({ text, setText }) {
-  const [format, setFormat] = useState('')
-  // const [notificationMsg, setNotificationMsg] = useState(null)
-  const textAreaRef = useRef(null)
-  
-  function copyToClipboard(e) {
-    textAreaRef.current.select()
-    document.execCommand('copy')
-    e.target.focus()
-  }
+import TransformButton from './buttons/TransformButton'
+import CopyButton from './buttons/CopyButton'
+import CheckboxGroup from './CheckboxGroup'
+import SendSMSButton from './buttons/SendSMSButton'
+import SendEmailButton from './buttons/SendEmailButton'
+import AddToCalendarButton from './buttons/AddToCalendarButton'
 
-  // function setNotification(errMsg, isError = true) {
-  //   setNotificationMsg({ error: isError, message: errMsg })
-  //   setTimeout(() => setNotificationMsg(null), 3000)
-  // }
-
-  function makeConvertion(str) {
-    let converted
-    try {
-      converted = 
+function makeConvertion(order, str) {
+  let converted
+  try {
+    converted = 
 `VARAUSVAHVISTUS
 VARAUKSEN TIEDOT
-${regexFunc.getStartingTime(str).date}
+${order.date}
 ALKAMISAIKA
-Klo ${regexFunc.getStartingTime(str).time} (+/-15min)
+Klo ${order.time} (+/-15min)
 ARVIOITU KESTO
-${regexFunc.getDuration(str)}h (${regexFunc.getService(str).price}€/h, ${regexFunc.getService(str).name})
+${order.duration}h (${order.servicePrice}€/h, ${order.serviceName})
 MAKSUTAPA
-${regexFunc.getPaymentType(str).name} ${regexFunc.getPaymentType(str).fee ? regexFunc.getPaymentType(str).comment : ''}${
-  regexFunc.getFees(str)
-  .filter(fee => fee.value !== false)
-  .map(fee => regexFunc.printFee(fee))
-}
-AUTON TOIMITUS
-${regexFunc.getAdress(str, 'Frome').adress} ${regexFunc.getAdress(str, 'Frome').city}${regexFunc.getAdress(str, 'To').adress ? '\nMÄÄRÄNPÄÄ\n' : ''}${regexFunc.getAdress(str, 'To').adress} ${regexFunc.getAdress(str, 'To').city}
+${order.paymentType}${order.fees?.string}
+LÄHTÖPAIKKA
+${order.adress}${order.destination.length > 1 ? '\nMÄÄRÄNPÄÄ\n' : ''}${order.destination}
 NIMI
-${regexFunc.getName(str)}
+${order.name}
 SÄHKÖPOSTI
-${regexFunc.getEmail(str)}
+${order.email}
 PUHELIN
-${regexFunc.getPhone(str)}
-${regexFunc.getComment(str) ? 'LISÄTIETOJA' : ''}${regexFunc.getComment(str)}
+${order.phone}
+${order.comment ? 'LISÄTIETOJA' : ''}${order.comment}
 KIITOS VARAUKSESTANNE!`
-      // setNotification('Succesefully formatted!', false)
-      Toast.info('Succesefully formatted!', 500)
+  Toast.info('Succesefully formatted!', 500)
+} catch (err) {
+  console.log(err)
+  Toast.fail(err.message, 1000)
+}
+  return (
+  converted
+  )
+}
+
+export default function Convert() {
+  const [text, setText] = useState('')
+  const [formattedConfirmation, setFormattedConfirmation] = useState('')
+  const [order, setOrder] = useState()
+  const [email, setEmail] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [options, setOptions] = useState({ distance: 'insideCapital', hsy: false })
+  const textAreaRef = useRef(null)
+
+  function handleOptionsChange(e) {
+    if (e.target.name && e.target.name === 'hsy') {
+      return setOptions({ ...options, hsy: e.target.checked })
+    }
+    setOptions({ ...options, distance: e.target.value })
+  }
+
+  function handleEmailSending() {
+    if (email && formattedConfirmation) {
+      return sendConfirmationEmail(formattedConfirmation, options, email)
+        .then((res) => Toast.info(res, 500))
+        .catch((err) => Toast.fail(err.response.data.error))
+    }
+    Toast.fail('No confirmation found or recipients defined.', 1000)
+  }
+
+  function handleAddingToCalendar() {
+    let entry
+    try {
+      entry = regexFunc.getEventForCalendar(formattedConfirmation)
+      if (entry) {
+        addEventToCalendar(entry, order, options)
+          .then((res) => Toast.info(res, 500))
+          .catch((err) => Toast.fail(err.response.data.error))
+      }
     } catch (err) {
-      console.error(err)
-      // setNotification(err.message)
       Toast.fail(err.message, 1000)
     }
-    return (
-      converted
-    )
   }
+
+  function handleFormatting() {
+    let orderInfo
+    try {
+      orderInfo = {
+        date: regexFunc.getStartingTime(text).date,
+        originalDate: regexFunc.getStartingTime(text).originalDate,
+        time: regexFunc.getStartingTime(text).time,
+        duration: regexFunc.getDuration(text), 
+        serviceName: regexFunc.getService(text).name,
+        servicePrice: regexFunc.getService(text).price,
+        paymentType: regexFunc.getPaymentType(text).name,
+        fees: regexFunc.printFee(text),
+        adress: regexFunc.getAdress(text, 'Frome').adress + " " + regexFunc.getAdress(text, 'Frome').city,
+        destination: regexFunc.getAdress(text, 'To').adress + " " + regexFunc.getAdress(text, 'To').city,
+        name: regexFunc.getName(text),
+        email: regexFunc.getEmail(text),
+        phone: regexFunc.getPhone(text),
+        comment: regexFunc.getComment(text)
+      }
+      setEmail(orderInfo.email)
+      setPhoneNumber(orderInfo.phone)
+      setOrder(orderInfo)
+      setFormattedConfirmation(makeConvertion(orderInfo))
+    } catch (err) {
+      console.log(err)
+      Toast.fail(err.message, 1000)
+    }
+
+    console.log(orderInfo)
+
+  }
+
+  function handelEmailChange(e) {
+    setEmail(e.target.value)
+  }
+
+  function handlePhoneNumberChange(e) {
+    setPhoneNumber(e.target.value)
+  }
+  
   return (
-    <>
-    {/* <Notification notification={notificationMsg} /> */}
-    <textarea rows="40" cols="40" onChange={(e) => { setText(e.target.value) }}></textarea>
-    <button onClick={() => {
-      // console.log('Starting time:', regexFunc.getStartingTime(text))
-      // console.log('Duration:', regexFunc.getDuration(text))
-      // console.log("FEES:", regexFunc.getFees(text))
-      // console.log('Service:', regexFunc.getService(text))
-      // console.log('Payment type:', regexFunc.getPaymentType(text))
-      // console.log('Starting Adress:', regexFunc.getAdress(text, 'Frome'))
-      // console.log('Destination Adress:', regexFunc.getAdress(text, 'To'))
-      // console.log('Name:', regexFunc.getName(text))
-      // console.log('Email:', regexFunc.getEmail(text))
-      // console.log('Phonenumber', regexFunc.getPhone(text))
-      // console.log('Comment:', regexFunc.getComment(text))
-      setFormat(makeConvertion(text))
-    }}>
-      Format
-    </button>
-    <textarea rows="40" cols="40" ref={textAreaRef} value={format} onChange={(e) => { setFormat(e.target.value) }}></textarea>
-    <button onClick={(e) => {
-      copyToClipboard(e)
-      // setNotification('Copied!', false)
-      Toast.info('Copied!', 500)
-    }}>Copy</button>
-    </>
+    <div className="flex-container">
+      <TextareaAutosize 
+        className="textarea-1 flex-item"
+        rowsMin={5} 
+        cols={40} 
+        placeholder="Order info here."
+        onChange={(e) => { setText(e.target.value) }} 
+      />
+
+      <TextareaAutosize
+        className="textarea-2 flex-item"
+        rowsMin={5} 
+        cols={40}
+        ref={textAreaRef} 
+        value={formattedConfirmation} 
+        placeholder="Formatted confirmation will be outputted here."
+        onChange={(e) => { setFormattedConfirmation(e.target.value) }}
+      />
+
+      <TransformButton 
+        handleClick={handleFormatting}
+      />
+
+      <CopyButton
+        inputRef={textAreaRef}
+      />
+
+      <CheckboxGroup handleChange={handleOptionsChange} options={options} />
+
+      <div className="send-button-container">
+        <div className='small-button-container'>
+          <InputModal
+            handleChange={handelEmailChange}
+            label={"Email"}
+            value={email}
+          />
+          <SendEmailButton 
+            handleClick={handleEmailSending}
+          />
+        </div>
+
+        <div className='small-button-container'>
+          <InputModal
+            handleChange={handlePhoneNumberChange}
+            label={"SMS"}
+            value={phoneNumber}
+          />
+          <SendSMSButton 
+            phoneNumber={phoneNumber}
+            msgBody={formattedConfirmation}
+          />
+        </div>
+        <AddToCalendarButton
+          handleClick={handleAddingToCalendar}
+        />
+        {/* {JSON.stringify(order)} */}
+      </div>
+    </div>
   )
 }
