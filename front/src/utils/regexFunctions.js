@@ -1,19 +1,23 @@
 /* eslint-disable no-control-regex */
 /* eslint-disable no-useless-escape */
-import { services } from './servicesData'
-
-console.log(services)
+import services from './services.json'
 
 function cannotFind(str) {
   return `Cannot find ${str}. Invalid format.`
 }
 
+export function getEventForCalendar(formattedStr) {
+  const ev = /(?<=LÄHTÖPAIKKA\n)(.*\s*)*(?=\n\nKIITOS VARAUKSESTANNE!)/.exec(formattedStr)
+
+  return ev[0]
+}
+
 export function getStartingTime(str) {
-  const dateRegex = /(?<=Date end time: \w+, )\w+ \d+(th|rd|st)? \w+/.exec(str)
+  const dateRegex = /(?<=Date end time: \w+, )\w+ \d+(th|rd|st|nd)? \w+/.exec(str)
 
   if (!dateRegex) throw new Error(cannotFind('date'))
 
-  const originalDate = new Date(dateRegex[0].replace(/th|rd|st/, ''))
+  const originalDate = new Date(dateRegex[0].replace(/th|rd|st|nd/, '') + 'Z')
   const date = originalDate
     .toLocaleDateString()
     .replace(/\./g, '-')
@@ -36,7 +40,7 @@ export function getFees(str) {
   const date = getStartingTime(str).originalDate
 
   const dayOFWeek = date.getDay()
-  const weekEndFee = dayOFWeek === 6 || dayOFWeek === 7 ? 15 : false
+  const weekEndFee = dayOFWeek === 6 || dayOFWeek === 7 || dayOFWeek === 0 ? 15 : false
 
   const dayOfMonth = date.getDate()
   const endOfMonth = [ new Date(date.getFullYear(), date.getMonth()+1, 0).getDate(), 1 ]
@@ -48,11 +52,15 @@ export function getFees(str) {
   const morningFee = time < 8 ? 20 : false
   const nightFee = time > 20 ? 20 : false
 
+  const paymentType = getPaymentType(str)
+  const paymentFee = paymentType === "Lasku" ? 14 : false
+
   return [ 
     { value: weekEndFee, name: 'VIIKONLOPPULISÄ' }, 
     { value: endOfMonthFee, name: 'KUUNVAIHDELISÄ' }, 
     { value: morningFee, name: 'AAMULISÄ' }, 
-    { value: nightFee, name: 'YÖLISÄ' } 
+    { value: nightFee, name: 'YÖLISÄ' },
+    { value: paymentFee, name: 'LASKULISÄ' }, 
   ]
 }
 
@@ -62,15 +70,12 @@ export function getService(str) {
   if (!price) throw new Error(cannotFind('price'))
   
   price = price[0]
+
   getFees(str)
-    .filter(fee => fee.value !== false)
+    .filter(fee => fee.value)
     .forEach(fee => price = price - fee.value)
 
-  if (getPaymentType(str).name === 'Lasku') price = price - getPaymentType(str).fee
-
-  console.log("PRICE:", price)
   const duration = getDuration(str)
-  console.log("DURATION:", duration)
 
   const service = services.filter(service => service.price === price / duration)
 
@@ -84,19 +89,15 @@ export function getPaymentType(str) {
 
   if (!paymentType) throw new Error(cannotFind('payment type'))
 
-  paymentType = { name: paymentType[0] }
-  paymentType.fee = paymentType.name === "Lasku" ? 14 : false
-  paymentType.fee ? paymentType.comment = `(Laskulisä ${paymentType.fee}€)` : paymentType.comment = null
-
-  return paymentType
+  return paymentType[0]
 }
 
 export function getAdress(str, course) {
-  const city = new RegExp(`(?<=${course}: )[A-Öa-ö]+`).exec(str)
-    ? new RegExp(`(?<=${course}: )[A-Öa-ö]+`).exec(str)[0]
-    : ''
-  const reg = new RegExp(`(?<=${course}: ${city} / ).*(?=,*)`).exec(str)
-  const adress = reg ? `${reg[0]},` : ''
+  let city = new RegExp(`(?<=${course}: )[A-Öa-ö]+`).exec(str)
+  city = city ? city[0] : ''
+
+  let adress = new RegExp(`(?<=${course}: ${city} / ).*(?=,*)`).exec(str)
+  adress = adress ? `${adress[0]},` : ''
 
   if (course === 'Frome' && !adress) throw new Error(cannotFind('adress'))
 
@@ -128,12 +129,27 @@ export function getPhone(str) {
 }
 
 export function getComment(str) {
-  const re = /(?<=Comment: )(.*\s*)*/
-  const comment = re.exec(str) ? `\n${re.exec(str)[0]}\n` : ''
+  let comment = /(?<=Comment: )(.*\s*)*/.exec(str)
+  comment = comment ? `\n${comment[0]}\n` : ''
+
+  const re = /\n\n\-\-\nTämä viesti lähetettiin sivustolta Paku24\.fi \(https:\/\/paku24\.fi\)/
+  const footer = re.exec(comment)
+
+  if (footer) {
+    comment = comment.replace(re, '')
+  }
 
   return comment
 }
 
-export function printFee(fee) {
-  return `\n${fee.name}\nKyllä, ${fee.value}€`
+export function printFee(str) {
+  const activeFees = getFees(str).filter(fee => fee.value)
+
+  const arrayOfFees = activeFees.map(fee => fee.name)
+  
+  const feesInText = activeFees
+    .map(fee => `\n${fee.name}\n${fee.value}€`)
+    .reduce((acc, cur) => acc + cur, '')
+
+  return { array: arrayOfFees, string: feesInText }
 }
