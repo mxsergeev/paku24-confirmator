@@ -96,7 +96,7 @@ export default function Convert() {
         duration: regexFunc.getDuration(text), 
         serviceName: regexFunc.getService(text).name,
         servicePrice: regexFunc.getService(text).price,
-        paymentType: regexFunc.getPaymentType(text).name,
+        paymentType: regexFunc.getPaymentType(text),
         fees: regexFunc.printFee(text),
         adress: regexFunc.getAdress(text, 'Frome').adress + " " + regexFunc.getAdress(text, 'Frome').city,
         destination: regexFunc.getAdress(text, 'To').adress + " " + regexFunc.getAdress(text, 'To').city,
