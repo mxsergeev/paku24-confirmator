@@ -1,26 +1,29 @@
 const loginRouter = require('express').Router()
 const { PASSWORD } = require('../utils/config')
 
+const requests = new Map()
+
 function checkPass(req, res, next) {
   const { pass } = req.body
-  req.locals.isCorrect = pass === PASSWORD
+  req.isCorrect = pass === PASSWORD
   return next()
 }
 
-const requests = []
-
 function controlRequestFlow(req, res, next) {
-  const { ip } = req
-  const { isCorrect } = req.locals
+  const { isCorrect, ip } = req
 
-  const exists = requests.some((request) => request.ip === ip)
+  requests.forEach((reqData, reqIp) => {
+    if (reqData.expires < Date.now()) requests.delete(reqIp)
+  })
 
-  if (!exists) requests.push({ ip, attempts: 0 })
+  const expireDate = () => Date.now() + 30 * 1000
 
-  const currentReqIndex = requests.findIndex((request) => request.ip === ip)
-  const currentRequest = requests[currentReqIndex]
+  if (!requests.has(ip)) requests.set(ip, { attempts: 0, expires: expireDate() })
+
+  const currentRequest = requests.get(ip)
 
   currentRequest.attempts += 1
+  currentRequest.expires = expireDate()
 
   if (currentRequest.attempts > 3 && !isCorrect) {
     const throttleTime = 10000
@@ -42,7 +45,7 @@ function controlRequestFlow(req, res, next) {
 loginRouter.post('/', checkPass, controlRequestFlow, (req, res) => {
   console.log(requests)
 
-  const { isCorrect } = req.locals
+  const { isCorrect } = req
   return res.status(200).send({ isCorrect })
 })
 
