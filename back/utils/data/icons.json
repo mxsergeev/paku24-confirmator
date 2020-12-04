@@ -1,0 +1,24 @@
+{
+  "payment": {
+    "Maksukortti": "💳",
+    "Käteinen": "🎁",
+    "Lasku": "📜"
+  },
+  "service": {
+    "Paku ja kuski": "🚚",
+    "Paku ja kuski kantoapuna": "🚛",
+    "Paku ja kaksi muuttomiestä": "🚛🚛",
+    "Paku ja mies": "🛒",
+    "Paku ja kaksi miestä": "🛒🛒"
+  },
+  "fees": {
+    "VIIKONLOPPULISÄ": "🎉",
+    "KUUNVAIHDELISÄ": "🎉",
+    "AAMULISÄ": "🌞",
+    "YÖLISÄ": "🌚"
+  },
+  "misc": {
+    "outsideCapital": "🚧"
+  }
+
+}
