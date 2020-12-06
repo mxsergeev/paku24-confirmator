@@ -6,6 +6,7 @@ import addEventToCalendar from '../services/calendarAPI'
 import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 import '../styles/convert.css'
 import InputModal from './InputModal'
+import EditModal from './EditModal'
 
 import TransformButton from './buttons/TransformButton'
 import CopyButton from './buttons/CopyButton'
@@ -50,7 +51,23 @@ KIITOS VARAUKSESTANNE!`
 export default function Convert() {
   const [text, setText] = useState('')
   const [formattedConfirmation, setFormattedConfirmation] = useState('')
-  const [order, setOrder] = useState()
+  const [order, setOrder] = useState({
+    dateISO: new Date().toISOString().split('T')[0],
+    originalDate: new Date(),
+    date: '',
+    time: `${new Date().toTimeString().split(':')[0]}:${new Date().toTimeString().split(':')[1]}`,
+    duration: 1, 
+    serviceName: '',
+    servicePrice: '',
+    paymentType: 'Maksukortti',
+    fees: '',
+    adress: '',
+    destination: '',
+    name: '',
+    email: '',
+    phone: '',
+    comment: ''
+  })
   const [email, setEmail] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [options, setOptions] = useState({ distance: 'insideCapital', hsy: false })
@@ -90,8 +107,9 @@ export default function Convert() {
     let orderInfo
     try {
       orderInfo = {
-        date: regexFunc.getStartingTime(text).date,
+        dateISO: regexFunc.getStartingTime(text).dateISO,
         originalDate: regexFunc.getStartingTime(text).originalDate,
+        date: regexFunc.getStartingTime(text).date,
         time: regexFunc.getStartingTime(text).time,
         duration: regexFunc.getDuration(text), 
         serviceName: regexFunc.getService(text).name,
@@ -116,6 +134,20 @@ export default function Convert() {
 
     console.log(orderInfo)
 
+  }
+
+  function handleOrderChange(e) {
+    if (e.target.name === 'dateISO') {
+      const ISOdate = e.target.value
+      return setOrder(
+        { ...order, 
+          [e.target.name]: ISOdate,
+          originalDate: new Date(ISOdate),
+          date: regexFunc.toConfirmationDateFormat(ISOdate)
+        }
+      )
+    }
+    setOrder({...order, [e.target.name]: e.target.value })
   }
 
   function handelEmailChange(e) {
@@ -145,6 +177,8 @@ export default function Convert() {
         placeholder="Formatted confirmation will be outputted here."
         onChange={(e) => { setFormattedConfirmation(e.target.value) }}
       />
+
+      <EditModal handleChange={handleOrderChange} order={order} />
 
       <TransformButton 
         handleClick={handleFormatting}
@@ -182,7 +216,9 @@ export default function Convert() {
         <AddToCalendarButton
           handleClick={handleAddingToCalendar}
         />
-        {/* {JSON.stringify(order)} */}
+      </div>
+      <div style={{ width: 500, display: 'flex', flexFlow: 'column wrap' }}>
+        <p>{JSON.stringify(order)}</p>
       </div>
     </div>
   )

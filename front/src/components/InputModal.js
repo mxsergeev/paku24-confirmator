@@ -37,15 +37,16 @@ export default function InputModal(props) {
         open={modalOpen}
         onClose={handleModalClose}
       >
-      <div style={modalStyle}>
-        <TextField 
-          label={label} 
-          variant="outlined" 
-          onChange={handleChange} 
-          value={value} 
-          autoFocus
-        />
-      </div>
+        <div style={modalStyle}>
+          <TextField 
+            label={label} 
+            variant="outlined" 
+            onChange={handleChange} 
+            value={value} 
+            type={label === 'Email' ? label : ''}
+            autoFocus
+          />
+        </div>
       </Modal>
     </>
   )
