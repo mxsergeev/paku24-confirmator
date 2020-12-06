@@ -21,15 +21,15 @@ export function getStartingTime(str) {
 
   if (!dateRegex) throw new Error(cannotFind('date'))
 
-  const originalDate = new Date(dateRegex[0].replace(/th|rd|st|nd/, '') + 'Z')
-  const dateISO = originalDate.toISOString().split('T')[0]
-  const date = originalDate.toLocaleDateString().replace(/\.|\//g, '-')
+  const original = new Date(dateRegex[0].replace(/th|rd|st|nd/, '') + 'Z')
+  const ISODate = original.toISOString().split('T')[0]
+  const confirmationFormat = original.toLocaleDateString().replace(/\.|\//g, '-')
 
   const time = /\d+:\d+/.exec(str)[0]
   const timeNumber = /\d+/.exec(time)[0]
 
 
-  return { date, originalDate, dateISO, time, timeNumber }
+  return { confirmationFormat, original, ISODate, time, timeNumber }
 }
 
 export function getDuration(str) {
@@ -41,7 +41,7 @@ export function getDuration(str) {
 }
 
 export function getFees(str) {
-  const date = getStartingTime(str).originalDate
+  const date = getStartingTime(str).original
 
   const dayOFWeek = date.getDay()
   const weekEndFee = dayOFWeek === 6 || dayOFWeek === 7 || dayOFWeek === 0 ? 15 : false

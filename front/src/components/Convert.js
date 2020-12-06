@@ -21,7 +21,7 @@ function makeConvertion(order, str) {
     converted = 
 `VARAUSVAHVISTUS
 VARAUKSEN TIEDOT
-${order.date}
+${order.date.confirmationFormat}
 ALKAMISAIKA
 Klo ${order.time} (+/-15min)
 ARVIOITU KESTO
@@ -52,9 +52,11 @@ export default function Convert() {
   const [text, setText] = useState('')
   const [formattedConfirmation, setFormattedConfirmation] = useState('')
   const [order, setOrder] = useState({
-    dateISO: new Date().toISOString().split('T')[0],
-    originalDate: new Date(),
-    date: '',
+    date: {
+      original: new Date(),
+      ISODate: new Date().toISOString().split('T')[0],
+      confirmationFormat: '',
+    },
     time: `${new Date().toTimeString().split(':')[0]}:${new Date().toTimeString().split(':')[1]}`,
     duration: 1, 
     serviceName: '',
@@ -107,9 +109,11 @@ export default function Convert() {
     let orderInfo
     try {
       orderInfo = {
-        dateISO: regexFunc.getStartingTime(text).dateISO,
-        originalDate: regexFunc.getStartingTime(text).originalDate,
-        date: regexFunc.getStartingTime(text).date,
+        date: {
+          original: regexFunc.getStartingTime(text).original,
+          ISODate: regexFunc.getStartingTime(text).ISODate,
+          confirmationFormat: regexFunc.getStartingTime(text).confirmationFormat,
+        },
         time: regexFunc.getStartingTime(text).time,
         duration: regexFunc.getDuration(text), 
         serviceName: regexFunc.getService(text).name,
@@ -137,13 +141,15 @@ export default function Convert() {
   }
 
   function handleOrderChange(e) {
-    if (e.target.name === 'dateISO') {
-      const ISOdate = e.target.value
+    if (e.target.name === 'ISODate') {
+      const ISODate = e.target.value
       return setOrder(
         { ...order, 
-          [e.target.name]: ISOdate,
-          originalDate: new Date(ISOdate),
-          date: regexFunc.toConfirmationDateFormat(ISOdate)
+          date: {
+            [e.target.name]: ISODate,
+            original: new Date(ISODate),
+            confirmationFormat: regexFunc.toConfirmationDateFormat(ISODate)
+          }
         }
       )
     }

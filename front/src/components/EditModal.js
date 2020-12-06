@@ -42,8 +42,8 @@ export default function EditModal(props) {
       >
         <div style={modalStyle}>
           <TextField 
-            name="dateISO"
-            value={order?.dateISO || new Date().toISOString().split('T')[0]}
+            name="ISODate"
+            value={order.date.ISODate || new Date().toISOString().split('T')[0]}
             onChange={handleChange}
             type="date"
           />
