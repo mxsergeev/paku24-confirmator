@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react'
-import * as regexFunc from '../utils/regexFunctions'
 import Toast from 'light-toast'
 import sendConfirmationEmail from '../services/emailAPI'
 import addEventToCalendar from '../services/calendarAPI'
@@ -7,6 +6,8 @@ import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 import '../styles/convert.css'
 import InputModal from './InputModal'
 import EditModal from './EditModal'
+import * as regexFunc from '../utils/regexFunctions'
+import * as regexHelpers from '../utils/helpers/regexHelpers'
 
 import TransformButton from './buttons/TransformButton'
 import CopyButton from './buttons/CopyButton'
@@ -14,6 +15,7 @@ import CheckboxGroup from './CheckboxGroup'
 import SendSMSButton from './buttons/SendSMSButton'
 import SendEmailButton from './buttons/SendEmailButton'
 import AddToCalendarButton from './buttons/AddToCalendarButton'
+import ValidationErrorsDisplay from './ValidationErrorsDisplay'
 
 function makeConvertion(order, str) {
   let converted
@@ -27,9 +29,9 @@ Klo ${order.time} (+/-15min)
 ARVIOITU KESTO
 ${order.duration}h (${order.servicePrice}€/h, ${order.serviceName})
 MAKSUTAPA
-${order.paymentType}${order.fees?.string}
+${order.paymentType}${order?.fees?.string}
 LÄHTÖPAIKKA
-${order.adress}${order.destination.length > 1 ? '\nMÄÄRÄNPÄÄ\n' : ''}${order.destination}
+${order.address}${order.destination.length > 1 ? '\nMÄÄRÄNPÄÄ\n' : ''}${order.destination}
 NIMI
 ${order.name}
 SÄHKÖPOSTI
@@ -55,7 +57,7 @@ export default function Convert() {
     date: {
       original: new Date(),
       ISODate: new Date().toISOString().split('T')[0],
-      confirmationFormat: '',
+      confirmationFormat: regexHelpers.toConfirmationDateFormat(new Date()),
     },
     time: `${new Date().toTimeString().split(':')[0]}:${new Date().toTimeString().split(':')[1]}`,
     duration: 1, 
@@ -63,17 +65,33 @@ export default function Convert() {
     servicePrice: '',
     paymentType: 'Maksukortti',
     fees: '',
-    adress: '',
+    address: '',
     destination: '',
     name: '',
     email: '',
     phone: '',
-    comment: ''
+    comment: '',
   })
   const [email, setEmail] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [options, setOptions] = useState({ distance: 'insideCapital', hsy: false })
+  // const [errors, setErrors] = useState(null)
   const textAreaRef = useRef(null)
+
+  // useEffect(() => {
+  //   setErrors([{
+  //     phone: {
+  //       error: !validator.isMobilePhone(order.phone, ['fi-FI']), 
+  //       message: 'Phonenumber is missing or is in incorrect form.'
+  //     },
+  //     email: {
+  //       error: true, 
+  //       message: 'Email is missing or is in incorrect form.'
+  //     }
+  //   }])
+  // }, [order])
+  
+  // console.log(errors)
 
   function handleOptionsChange(e) {
     if (e.target.name && e.target.name === 'hsy') {
@@ -119,9 +137,9 @@ export default function Convert() {
         serviceName: regexFunc.getService(text).name,
         servicePrice: regexFunc.getService(text).price,
         paymentType: regexFunc.getPaymentType(text),
-        fees: regexFunc.printFee(text),
-        adress: regexFunc.getAdress(text, 'Frome').adress + " " + regexFunc.getAdress(text, 'Frome').city,
-        destination: regexFunc.getAdress(text, 'To').adress + " " + regexFunc.getAdress(text, 'To').city,
+        fees: regexHelpers.printFees(regexFunc.getFees(text)),
+        address: regexFunc.getAddress(text, 'Frome').address + " " + regexFunc.getAddress(text, 'Frome').city,
+        destination: regexFunc.getAddress(text, 'To').address + " " + regexFunc.getAddress(text, 'To').city,
         name: regexFunc.getName(text),
         email: regexFunc.getEmail(text),
         phone: regexFunc.getPhone(text),
@@ -135,9 +153,14 @@ export default function Convert() {
       console.log(err)
       Toast.fail(err.message, 1000)
     }
-
     console.log(orderInfo)
+  }
 
+  function handleEditorFormatting(data) {
+    setEmail(data.email)
+    setPhoneNumber(data.phone)
+    setOrder(data)
+    setFormattedConfirmation(makeConvertion(data))
   }
 
   function handleOrderChange(e) {
@@ -148,7 +171,7 @@ export default function Convert() {
           date: {
             [e.target.name]: ISODate,
             original: new Date(ISODate),
-            confirmationFormat: regexFunc.toConfirmationDateFormat(ISODate)
+            confirmationFormat: regexHelpers.toConfirmationDateFormat(ISODate)
           }
         }
       )
@@ -184,10 +207,14 @@ export default function Convert() {
         onChange={(e) => { setFormattedConfirmation(e.target.value) }}
       />
 
-      <EditModal handleChange={handleOrderChange} order={order} />
+      <EditModal 
+        handleChange={handleOrderChange} 
+        handleEditorFormatting={handleEditorFormatting} 
+        order={order} 
+      />
 
       <TransformButton 
-        handleClick={handleFormatting}
+        handleClick={() => handleFormatting()}
       />
 
       <CopyButton
@@ -195,6 +222,8 @@ export default function Convert() {
       />
 
       <CheckboxGroup handleChange={handleOptionsChange} options={options} />
+
+      <ValidationErrorsDisplay order={order} />
 
       <div className="send-button-container">
         <div className='small-button-container'>
