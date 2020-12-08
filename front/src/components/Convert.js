@@ -29,7 +29,7 @@ Klo ${order.time} (+/-15min)
 ARVIOITU KESTO
 ${order.duration}h (${order.servicePrice}€/h, ${order.serviceName})
 MAKSUTAPA
-${order.paymentType}${order?.fees?.string}
+${order.paymentType}${order.fees?.string}
 LÄHTÖPAIKKA
 ${order.address}${order.destination.length > 1 ? '\nMÄÄRÄNPÄÄ\n' : ''}${order.destination}
 NIMI
@@ -75,23 +75,7 @@ export default function Convert() {
   const [email, setEmail] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [options, setOptions] = useState({ distance: 'insideCapital', hsy: false })
-  // const [errors, setErrors] = useState(null)
   const textAreaRef = useRef(null)
-
-  // useEffect(() => {
-  //   setErrors([{
-  //     phone: {
-  //       error: !validator.isMobilePhone(order.phone, ['fi-FI']), 
-  //       message: 'Phonenumber is missing or is in incorrect form.'
-  //     },
-  //     email: {
-  //       error: true, 
-  //       message: 'Email is missing or is in incorrect form.'
-  //     }
-  //   }])
-  // }, [order])
-  
-  // console.log(errors)
 
   function handleOptionsChange(e) {
     if (e.target.name && e.target.name === 'hsy') {
