@@ -149,7 +149,6 @@ export default function Convert({ custom }) {
       console.log(err)
       Toast.fail(err.message, 1000)
     }
-    console.log(orderInfo)
   }
 
   function calcAndPrintFees() {

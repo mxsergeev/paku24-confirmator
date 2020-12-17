@@ -62,7 +62,7 @@ export default function ValidationErrorsDisplay(props) {
   return (
     <>
       {
-        error && confirmation ?     
+        confirmation ?     
         <div style={border} className="flex-100-space-between">
           <div style={displayStyle}>
             <ErrorOutlineIcon />
