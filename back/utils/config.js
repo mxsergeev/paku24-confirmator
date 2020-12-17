@@ -2,14 +2,14 @@ require('dotenv').config()
 
 const {
   PORT,
-  EMAIL,
-  EMAIL_PASSWORD,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
   PASSWORD,
 } = process.env
 
 module.exports = {
   PORT,
-  EMAIL,
-  EMAIL_PASSWORD,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
   PASSWORD,
 }
