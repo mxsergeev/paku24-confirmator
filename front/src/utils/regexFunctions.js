@@ -106,7 +106,7 @@ export function getPhone(str) {
 
 export function getComment(str) {
   let comment = /(?<=Comment: )(.*\s*)*/.exec(str)
-  comment = comment ? `\n${comment[0]}\n` : ''
+  comment = comment ? comment[0] : ''
 
   const re = /\n\n\-\-\nTämä viesti lähetettiin sivustolta Paku24\.fi \(https:\/\/paku24\.fi\)/
   const footer = re.exec(comment)

@@ -5,7 +5,7 @@ function checkPass() {
   return axios
     .post('/api/login', { pass })
     .then(res => {
-      if (res.data.correct === true) storePass(pass)
+      if (res.data.isCorrect) storePass(pass)
       return res.data
     })
 }

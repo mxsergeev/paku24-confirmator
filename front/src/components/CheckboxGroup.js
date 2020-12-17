@@ -18,19 +18,29 @@ export default function CheckboxGroup(props) {
     >
       <FormLabel component="legend">Pick one:</FormLabel>
       <RadioGroup name="gender1" value={options.distance} onChange={handleChange}>
-        <FormControlLabel value="insideCapital" control={<Radio />} label="🏙 Inside capital" />
-        <FormControlLabel value="outsideCapital" control={<Radio />} label="🏞 Outside capital" />
-        <FormControlLabel value="fromCapitalToOutside" control={<Radio />} label="🏙->🏞 From capital" />
-        <FormControlLabel value="fromOutsideToCapital" control={<Radio />} label="🏞->🏙 To capital" />
+        <FormControlLabel name="distance" value="insideCapital" control={<Radio color="default"/>} label="🏙 Inside capital" />
+        <FormControlLabel name="distance" value="outsideCapital" control={<Radio color="default"/>} label="🏞 Outside capital" />
+        <FormControlLabel name="distance" value="fromCapitalToOutside" control={<Radio color="default"/>} label="🏙->🏞 From capital" />
+        <FormControlLabel name="distance" value="fromOutsideToCapital" control={<Radio color="default"/>} label="🏞->🏙 To capital" />
       </RadioGroup>
     </FormControl>
-    <FormControlLabel
-      className='checkbox-hsy flex-item'
-      control={<Checkbox checked={options.hsy} onChange={handleChange} />}
-      name="hsy"
-      label="♻ HSY"
-      labelPlacement="start"
-    />
+    <FormControl className="basic-flex" size="small">
+      <FormControlLabel
+        size="small"
+        className='flex-item'
+        control={<Checkbox checked={options.hsy} onChange={handleChange} color="primary" />}
+        name="hsy"
+        label="♻ HSY"
+        labelPlacement="start"
+      />
+      <FormControlLabel
+        className='flex-item'
+        control={<Checkbox checked={options.XL} onChange={handleChange} color="primary" />}
+        name="XL"
+        label="XL"
+        labelPlacement="start"
+      />
+    </FormControl>
     </div>
   )
 }

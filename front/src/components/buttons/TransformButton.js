@@ -7,7 +7,7 @@ export default function TransformButton({ handleClick }) {
 
   return (
     <Button
-      className="button-transform flex-item" 
+      className="button-one-third flex-item" 
       variant="text" 
       size="small" 
       onClick={handleClick}>

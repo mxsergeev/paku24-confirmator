@@ -1,5 +1,6 @@
-/* * {
+* {
   box-sizing: border-box;
+  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
 }
 
 .flex-container {
@@ -20,11 +21,8 @@
   flex: 10 0 100%;
   margin-bottom: 10px;
 }
-.button-transform {
-  flex: 5 0 50%
-}
-.button-copy {
-  flex: 5 0 50%
+.button-one-third {
+  flex: 1 0 32%
 }
 .checkbox-container {
   flex: 1 0 100%;
@@ -33,9 +31,6 @@
 }
 .checkbox-distance {
   flex: 3 0 51%;
-}
-.checkbox-hsy {
-  flex: 1 0 35%;
 }
 
 .send-button-container {
@@ -65,11 +60,25 @@ a {
 }
 .sms-icon {
   margin-bottom: -7px
-} */
+}
+.basic-flex {
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: center;
+}
+.flex-100-space-between {
+  flex: 1 0 100%;
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: space-between;
+}
+.time-duration {
+  flex: 1 0 45%
+}
 
 /* Auto prefixed CSS: */
 
-* {
+/* * {
   -webkit-box-sizing: border-box;
           box-sizing: border-box;
 }
@@ -180,4 +189,4 @@ a {
 }
 .sms-icon {
   margin-bottom: -7px
-}
+} */

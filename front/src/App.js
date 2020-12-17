@@ -4,7 +4,7 @@ import Convert from './components/Convert'
 import loginService from './services/login'
 import { ErrorBoundary } from 'react-error-boundary'
 import loginServiсe from './services/login'
-import Logo from './components/Logo'
+import Header from './components/Header'
 import './styles/container.css'
 
 function ErrorFallback({ error }) {
@@ -18,12 +18,13 @@ function ErrorFallback({ error }) {
  
 function App() {
   const [logged, setLogged] = useState(false)
+  const [custom, setCustom] = useState(false)
 
   const tryToLogin = useCallback(() => {
     loginService
       .checkPass()
-      .then((res) => {
-        const { isCorrect, message, throttleTime } = res
+      .then((data) => {
+        const { isCorrect, message, throttleTime } = data
         console.log(isCorrect)
 
         if (message) {
@@ -53,13 +54,17 @@ function App() {
     }
 
   }, [logged, tryToLogin])
+
+  function handleCustomChange(e) {
+    setCustom(e.target.checked)
+  }
   
   return (
     <div className="container">
-      <Logo />
+      <Header custom={custom} handleChange={handleCustomChange} logged={logged}/>
 
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        {logged ? <Convert /> : null}
+        {logged ? <Convert custom={custom} /> : null}
       </ErrorBoundary>
     
     </div>

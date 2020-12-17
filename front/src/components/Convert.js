@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import Toast from 'light-toast'
 import sendConfirmationEmail from '../services/emailAPI'
 import addEventToCalendar from '../services/calendarAPI'
@@ -8,6 +8,8 @@ import InputModal from './InputModal'
 import EditModal from './EditModal'
 import * as regexFunc from '../utils/regexFunctions'
 import * as regexHelpers from '../utils/helpers/regexHelpers'
+import * as calculations from '../utils/helpers/calculations'
+import services from '../utils/services.json'
 
 import TransformButton from './buttons/TransformButton'
 import CopyButton from './buttons/CopyButton'
@@ -16,6 +18,7 @@ import SendSMSButton from './buttons/SendSMSButton'
 import SendEmailButton from './buttons/SendEmailButton'
 import AddToCalendarButton from './buttons/AddToCalendarButton'
 import ValidationErrorsDisplay from './ValidationErrorsDisplay'
+import Editor from './Editor'
 
 function makeConvertion(order, str) {
   let converted
@@ -29,16 +32,16 @@ Klo ${order.time} (+/-15min)
 ARVIOITU KESTO
 ${order.duration}h (${order.servicePrice}€/h, ${order.serviceName})
 MAKSUTAPA
-${order.paymentType}${order.fees?.string}
+${order.paymentType}${order.fees.string}
 LÄHTÖPAIKKA
-${order.address}${order.destination.length > 1 ? '\nMÄÄRÄNPÄÄ\n' : ''}${order.destination}
+${order.address}${order.destination.length > 1 ? `\nMÄÄRÄNPÄÄ\n${order.destination}` : ''}
 NIMI
 ${order.name}
 SÄHKÖPOSTI
 ${order.email}
 PUHELIN
 ${order.phone}
-${order.comment ? 'LISÄTIETOJA' : ''}${order.comment}
+${order.comment ? `LISÄTIETOJA\n${order.comment}\n` : ''}
 KIITOS VARAUKSESTANNE!`
   Toast.info('Succesefully formatted!', 500)
 } catch (err) {
@@ -50,10 +53,11 @@ KIITOS VARAUKSESTANNE!`
   )
 }
 
-export default function Convert() {
+export default function Convert({ custom }) {
   const [text, setText] = useState('')
+  const [customText, setCustomText] = useState('')
   const [formattedConfirmation, setFormattedConfirmation] = useState('')
-  const [order, setOrder] = useState({
+  const [defaultOrder] = useState({
     date: {
       original: new Date(),
       ISODate: new Date().toISOString().split('T')[0],
@@ -61,10 +65,13 @@ export default function Convert() {
     },
     time: `${new Date().toTimeString().split(':')[0]}:${new Date().toTimeString().split(':')[1]}`,
     duration: 1, 
-    serviceName: '',
-    servicePrice: '',
+    serviceName: services[0].name,
+    servicePrice: services[0].price,
     paymentType: 'Maksukortti',
-    fees: '',
+    fees: {
+      array: [],
+      string: '',
+    },
     address: '',
     destination: '',
     name: '',
@@ -72,21 +79,29 @@ export default function Convert() {
     phone: '',
     comment: '',
   })
-  const [email, setEmail] = useState('')
-  const [phoneNumber, setPhoneNumber] = useState('')
-  const [options, setOptions] = useState({ distance: 'insideCapital', hsy: false })
+  const [order, setOrder] = useState(defaultOrder)
+  const [options, setOptions] = useState({ 
+    distance: 'insideCapital', 
+    hsy: order.servicePrice === 40 || order.servicePrice === 70,
+    XL: false,
+  })
+  const [error, setError] = useState(false)
   const textAreaRef = useRef(null)
 
+  useEffect(() => {
+    setOrder(defaultOrder)
+    setFormattedConfirmation('')
+  }, [custom, defaultOrder])
+
+  const handleSetError = useCallback((bool) => setError(bool), [])
+
   function handleOptionsChange(e) {
-    if (e.target.name && e.target.name === 'hsy') {
-      return setOptions({ ...options, hsy: e.target.checked })
-    }
-    setOptions({ ...options, distance: e.target.value })
+    setOptions({ ...options, [e.target.name]: e.target.value || e.target.checked })
   }
 
   function handleEmailSending() {
-    if (email && formattedConfirmation) {
-      return sendConfirmationEmail(formattedConfirmation, options, email)
+    if (order.email && formattedConfirmation) {
+      return sendConfirmationEmail(formattedConfirmation, options, order.email)
         .then((res) => Toast.info(res, 500))
         .catch((err) => Toast.fail(err.response.data.error))
     }
@@ -129,10 +144,7 @@ export default function Convert() {
         phone: regexFunc.getPhone(text),
         comment: regexFunc.getComment(text)
       }
-      setEmail(orderInfo.email)
-      setPhoneNumber(orderInfo.phone)
-      setOrder(orderInfo)
-      setFormattedConfirmation(makeConvertion(orderInfo))
+      setDataToStates(orderInfo)
     } catch (err) {
       console.log(err)
       Toast.fail(err.message, 1000)
@@ -140,9 +152,24 @@ export default function Convert() {
     console.log(orderInfo)
   }
 
-  function handleEditorFormatting(data) {
-    setEmail(data.email)
-    setPhoneNumber(data.phone)
+  function calcAndPrintFees() {
+    return regexHelpers.printFees(
+      calculations.calculateFees(
+        order.date.original, 
+        order.time, 
+        order.paymentType
+      )
+    )
+  }
+
+  function handleEditorFormatting() {
+    const fees = calcAndPrintFees()
+    const editedOrder = {...order, fees }
+    setDataToStates(editedOrder)
+  }
+
+  function setDataToStates(data) {
+    setOptions({...options, hsy: data.servicePrice === 40 || data.servicePrice === 70})
     setOrder(data)
     setFormattedConfirmation(makeConvertion(data))
   }
@@ -160,15 +187,24 @@ export default function Convert() {
         }
       )
     }
+    if (e.target.name === 'serviceName') {
+      const serviceName = e.target.value
+      return setOrder(
+        { ...order,
+          [e.target.name]: serviceName,
+          servicePrice: services.find(service => service.name === serviceName).price
+        }
+      )
+    }
     setOrder({...order, [e.target.name]: e.target.value })
   }
 
-  function handelEmailChange(e) {
-    setEmail(e.target.value)
+  function handleTextChange(e) {
+    setText(e.target.value)
   }
 
-  function handlePhoneNumberChange(e) {
-    setPhoneNumber(e.target.value)
+  function handleCustomTextChange(e) {
+    setCustomText(e.target.value)
   }
   
   return (
@@ -176,10 +212,21 @@ export default function Convert() {
       <TextareaAutosize 
         className="textarea-1 flex-item"
         rowsMin={5} 
-        cols={40} 
+        cols={40}
+        value={custom ? customText : text} 
         placeholder="Order info here."
-        onChange={(e) => { setText(e.target.value) }} 
+        onChange={custom ? handleCustomTextChange : handleTextChange} 
       />
+
+      { 
+        custom ? 
+          <Editor 
+            order={order} 
+            handleChange={handleOrderChange} 
+            handleClick={handleEditorFormatting}
+          /> 
+        : null 
+      }
 
       <TextareaAutosize
         className="textarea-2 flex-item"
@@ -188,55 +235,67 @@ export default function Convert() {
         ref={textAreaRef} 
         value={formattedConfirmation} 
         placeholder="Formatted confirmation will be outputted here."
-        onChange={(e) => { setFormattedConfirmation(e.target.value) }}
+        onChange={(e) => setFormattedConfirmation(e.target.value)}
       />
+      <div className="flex-100-space-between">
+        { 
+          custom ? null : 
+            <EditModal 
+              handleChange={handleOrderChange} 
+              handleFormatting={handleEditorFormatting} 
+              order={order} 
+            />
+        }
 
-      <EditModal 
-        handleChange={handleOrderChange} 
-        handleEditorFormatting={handleEditorFormatting} 
-        order={order} 
-      />
+        {
+          custom ? null :
+            <TransformButton handleClick={handleFormatting} />
+        }
 
-      <TransformButton 
-        handleClick={() => handleFormatting()}
-      />
-
-      <CopyButton
-        inputRef={textAreaRef}
-      />
+        <CopyButton
+          inputRef={textAreaRef}
+        />
+      </div>
 
       <CheckboxGroup handleChange={handleOptionsChange} options={options} />
 
-      <ValidationErrorsDisplay order={order} />
+      <ValidationErrorsDisplay error={error} order={order} custom={custom} confirmation={formattedConfirmation} handleSetError={handleSetError}/>
 
       <div className="send-button-container">
         <div className='small-button-container'>
           <InputModal
-            handleChange={handelEmailChange}
+            handleChange={handleOrderChange}
             label={"Email"}
-            value={email}
+            name={"email"}
+            value={order.email}
           />
           <SendEmailButton 
+            err={error}
+            disabled={ order.email && formattedConfirmation ? false : true }
             handleClick={handleEmailSending}
           />
         </div>
 
         <div className='small-button-container'>
           <InputModal
-            handleChange={handlePhoneNumberChange}
+            handleChange={handleOrderChange}
             label={"SMS"}
-            value={phoneNumber}
+            name={"phone"}
+            value={order.phone}
           />
-          <SendSMSButton 
-            phoneNumber={phoneNumber}
+          <SendSMSButton
+            err={error} 
+            disabled={ order.phone && formattedConfirmation ? false : true }
+            phoneNumber={order.phone}
             msgBody={formattedConfirmation}
           />
         </div>
         <AddToCalendarButton
           handleClick={handleAddingToCalendar}
+          err={error}
         />
       </div>
-      <div style={{ width: 500, display: 'flex', flexFlow: 'column wrap' }}>
+      <div style={{ maxWidth: 900, display: 'flex', flexFlow: 'column wrap' }}>
         <p>{JSON.stringify(order)}</p>
       </div>
     </div>

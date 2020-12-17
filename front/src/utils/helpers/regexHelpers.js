@@ -15,7 +15,5 @@ export function printFees(fees) {
     .map(fee => `\n${fee.name}\n${fee.value}€`)
     .reduce((acc, cur) => acc + cur, '')
 
-  console.log({ array: arrayOfFeeNames, string: feesInText })
-
   return { array: arrayOfFeeNames, string: feesInText }
 }

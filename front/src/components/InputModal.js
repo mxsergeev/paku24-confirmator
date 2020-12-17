@@ -5,7 +5,7 @@ import TextField from '@material-ui/core/TextField'
 
 export default function InputModal(props) {
   // value === phoneNumber || email
-  const { value, label, handleChange } = props
+  const { value, label, name, handleChange } = props
 
   const modalStyle = {
     position: 'absolute',
@@ -39,7 +39,8 @@ export default function InputModal(props) {
       >
         <div style={modalStyle}>
           <TextField 
-            label={label} 
+            label={label}
+            name={name} 
             variant="outlined" 
             onChange={handleChange} 
             value={value} 

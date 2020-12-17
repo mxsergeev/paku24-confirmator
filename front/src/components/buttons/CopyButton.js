@@ -17,7 +17,7 @@ export default function CopyButton({ inputRef }) {
 
   return (
     <Button 
-      className="button-copy flex-item"
+      className="button-one-third flex-item"
       variant="text" 
       size="small" 
       onClick={handleCopying}>

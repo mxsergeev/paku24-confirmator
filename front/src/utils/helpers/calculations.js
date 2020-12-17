@@ -1,6 +1,5 @@
 export function calculateFees(date, time, paymentType) {
   const timeInNumberType = time.split(':')[0] * 1
-  console.log(date, timeInNumberType, paymentType)
 
   const dayOFWeek = date.getDay()
   const weekEndFee = dayOFWeek === 6 || dayOFWeek === 7 || dayOFWeek === 0 ? 15 : false
