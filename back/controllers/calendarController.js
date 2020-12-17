@@ -31,7 +31,7 @@ calendarRouter.post('/', (req, res, next) => {
 
   const event = {
     title: icons + entry,
-    date: order.originalDate,
+    date: order.date.original,
     color: makeColor(order, options),
   }
 
