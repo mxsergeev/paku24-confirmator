@@ -1,6 +1,6 @@
 const emailRouter = require('express').Router()
 
-const sendMail = require('./mailer')
+const sendMail = require('../utils/email/awsSES')
 const termsData = require('../utils/data/terms.json')
 
 function makeTerms(options) {
