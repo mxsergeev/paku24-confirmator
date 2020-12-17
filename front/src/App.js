@@ -25,7 +25,6 @@ function App() {
       .checkPass()
       .then((data) => {
         const { isCorrect, message, throttleTime } = data
-        console.log(isCorrect)
 
         if (message) {
           Toast.fail(`${message} Try again after ${throttleTime / 1000} seconds.`, throttleTime-400)

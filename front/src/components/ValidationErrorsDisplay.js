@@ -5,14 +5,13 @@ import Checkbox from '@material-ui/core/Checkbox'
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline'
 
 export default function ValidationErrorsDisplay(props) {
-  const { error, order, handleSetError, confirmation, custom } = props
+  const { order, handleSetError, confirmation, custom } = props
 
   const [errors, setErrors] = useState([])
   const [ignore, setIgnore] = useState(false)
   const [showSwitch, setShowSwitch] = useState(false)
 
   useEffect(() => {
-    console.log('Rerender')
     if (!ignore) {
       const errs = [
         {

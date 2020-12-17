@@ -294,9 +294,6 @@ export default function Convert({ custom }) {
           err={error}
         />
       </div>
-      <div style={{ maxWidth: 900, display: 'flex', flexFlow: 'column wrap' }}>
-        <p>{JSON.stringify(order)}</p>
-      </div>
     </div>
   )
 }
