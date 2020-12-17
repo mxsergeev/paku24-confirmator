@@ -8,6 +8,8 @@ const loginRouter = require('./controllers/loginController')
 
 const app = express()
 
+app.use(express.static('build'))
+
 app.use(morgan('dev'))
 app.use(cors())
 app.use(express.json())
