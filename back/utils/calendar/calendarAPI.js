@@ -12,7 +12,7 @@ const TOKEN_PATH = 'token.json'
 
 function addEventToCalendar({ title, date, color }) {
   const dateRaw = new Date(date)
-  const nextDay = new Date(dateRaw.getFullYear(), dateRaw.getMonth(), dateRaw.getDate() + 2)
+  const nextDay = new Date(dateRaw.getFullYear(), dateRaw.getMonth(), dateRaw.getDate() + 1)
     .toISOString()
 
   const event = {

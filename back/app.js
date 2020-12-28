@@ -10,6 +10,8 @@ const app = express()
 
 app.use(express.static('build'))
 
+app.set('trust proxy', '127.0.0.1')
+
 app.use(morgan('dev'))
 app.use(cors())
 app.use(express.json())
