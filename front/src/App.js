@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { Switch, Route, Link, useHistory, useLocation, useRouteMatch } from "react-router-dom"
 import Toast from 'light-toast'
 import Convert from './components/Convert'
 import loginService from './services/login'
@@ -54,8 +55,22 @@ function App() {
 
   }, [logged, tryToLogin])
 
+  let history = useHistory()
+  let location = useLocation()
+  const match = useRouteMatch('/custom')
+  console.log('match in app', match)
+
+  useEffect(() => {
+    if (match) return setCustom(true) 
+    return setCustom(false)
+  }, [location.pathname, match])
+
   function handleCustomChange(e) {
-    setCustom(e.target.checked)
+    const checked = e.target.checked
+    setCustom(checked)
+
+    if (checked) return history.push('/custom')
+    return history.push('/')
   }
   
   return (
@@ -63,7 +78,16 @@ function App() {
       <Header custom={custom} handleChange={handleCustomChange} logged={logged}/>
 
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        {logged ? <Convert custom={custom} /> : null}
+        {/* <Switch> */}
+          {/* <Route exact path='/'> */}
+            {logged ? <Convert custom={custom} /> : null}
+          {/* </Route>  */}
+          {/* <Route>
+            <div>
+              No matching route found. Return to <Link to='/'>main page</Link>
+            </div>
+          </Route> */}
+        {/* </Switch> */}
       </ErrorBoundary>
     
     </div>

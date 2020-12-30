@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import { Switch, Route, Link, Redirect } from "react-router-dom"
 import Toast from 'light-toast'
 import sendConfirmationEmail from '../services/emailAPI'
 import addEventToCalendar from '../services/calendarAPI'
@@ -34,12 +35,10 @@ ${order.duration}h (${order.servicePrice}€/h, ${order.serviceName})
 MAKSUTAPA
 ${order.paymentType}${order.fees.string}
 LÄHTÖPAIKKA
-${order.address}${order.destination.length > 1 ? `\nMÄÄRÄNPÄÄ\n${order.destination}` : ''}
-NIMI
+${order.address}
+${order.destination.length > 1 ? `MÄÄRÄNPÄÄ\n${order.destination}\n` : ''}NIMI
 ${order.name}
-SÄHKÖPOSTI
-${order.email}
-PUHELIN
+${order.email ? `SÄHKÖPOSTI\n${order.email}\n` : ''}PUHELIN
 ${order.phone}
 ${order.comment ? `LISÄTIETOJA\n${order.comment}\n` : ''}
 KIITOS VARAUKSESTANNE!`
@@ -57,7 +56,7 @@ export default function Convert({ custom }) {
   const [text, setText] = useState('')
   const [customText, setCustomText] = useState('')
   const [formattedConfirmation, setFormattedConfirmation] = useState('')
-  const [defaultOrder] = useState({
+  const defaultOrder = useMemo(() => ({
     date: {
       original: new Date(),
       ISODate: new Date().toISOString().split('T')[0],
@@ -78,20 +77,24 @@ export default function Convert({ custom }) {
     email: '',
     phone: '',
     comment: '',
-  })
+  }), [])
   const [order, setOrder] = useState(defaultOrder)
-  const [options, setOptions] = useState({ 
+
+  const defaultOptions = useMemo(() => ({ 
     distance: 'insideCapital', 
     hsy: order.servicePrice === 40 || order.servicePrice === 70,
     XL: false,
-  })
+  }), [order.servicePrice])
+  const [options, setOptions] = useState(defaultOptions)
+
   const [error, setError] = useState(false)
   const textAreaRef = useRef(null)
 
   useEffect(() => {
     setOrder(defaultOrder)
+    setOptions(defaultOptions)
     setFormattedConfirmation('')
-  }, [custom, defaultOrder])
+  }, [custom, defaultOrder, defaultOptions])
 
   const handleSetError = useCallback((bool) => setError(bool), [])
 
@@ -217,15 +220,13 @@ export default function Convert({ custom }) {
         onChange={custom ? handleCustomTextChange : handleTextChange} 
       />
 
-      { 
-        custom ? 
-          <Editor 
-            order={order} 
-            handleChange={handleOrderChange} 
-            handleClick={handleEditorFormatting}
-          /> 
-        : null 
-      }
+      <Route path="/custom">
+        <Editor 
+          order={order} 
+          handleChange={handleOrderChange} 
+          handleClick={handleEditorFormatting}
+        /> 
+      </Route>
 
       <TextareaAutosize
         className="textarea-2 flex-item"
@@ -237,19 +238,15 @@ export default function Convert({ custom }) {
         onChange={(e) => setFormattedConfirmation(e.target.value)}
       />
       <div className="flex-100-space-between">
-        { 
-          custom ? null : 
-            <EditModal 
-              handleChange={handleOrderChange} 
-              handleFormatting={handleEditorFormatting} 
-              order={order} 
-            />
-        }
 
-        {
-          custom ? null :
-            <TransformButton handleClick={handleFormatting} />
-        }
+        <Route exact path={['/', '/edit/:slug*']}>
+          <EditModal 
+            handleChange={handleOrderChange} 
+            handleFormatting={handleEditorFormatting} 
+            order={order} 
+          />
+          <TransformButton handleClick={handleFormatting} />
+        </Route>
 
         <CopyButton
           inputRef={textAreaRef}
@@ -294,6 +291,9 @@ export default function Convert({ custom }) {
           err={error}
         />
       </div>
+      
+      <Redirect to='/' />
     </div>
+
   )
 }

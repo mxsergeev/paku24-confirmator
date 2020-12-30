@@ -12,7 +12,7 @@ export default function SendSMSButton({ phoneNumber, msgBody, err, disabled }) {
       variant="contained" 
       size="small"
     > 
-      <a className="" href={`sms://${phoneNumber}/?body=${encodeURI(msgBody)}`}>
+      <a className="sms" href={`sms://${phoneNumber}/?body=${encodeURI(msgBody)}`}>
         Send <TextsmsIcon className="sms-icon"/>             
       </a>
     </Button>

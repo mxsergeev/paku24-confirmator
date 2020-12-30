@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from "react-router-dom"
 import logo from '../assets/paku24-logo.png'
 import '../styles/logo.css'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
@@ -17,7 +18,6 @@ export default function Header({ custom, handleChange, logged }) {
           <>
             <FormControlLabel
               style={{ margin: 0, alignSelf: 'center' }}
-              // className='switch'
               control={
                 <Switch
                   checked={custom}
@@ -26,7 +26,6 @@ export default function Header({ custom, handleChange, logged }) {
                 />
               }
             />
-            {/* <span>Custom</span> */}
           </>
         ) : null
       }
