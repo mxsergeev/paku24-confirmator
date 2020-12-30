@@ -1,7 +1,6 @@
 import axios from 'axios'
 
-function checkPass() {
-  const pass = askPass()
+function checkPass(pass) {
   return axios
     .post('/api/login', { pass })
     .then(res => {
@@ -10,9 +9,9 @@ function checkPass() {
     })
 }
 
-function askPass() {
-  return prompt('Enter password:')
-}
+// function askPass() {
+//   return prompt('Enter password:')
+// }
 
 function storePass(pass) {
   return localStorage.setItem('pass', pass)

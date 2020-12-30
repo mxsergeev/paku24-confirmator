@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { Switch, Route, Link, useHistory, useLocation, useRouteMatch } from "react-router-dom"
-import Toast from 'light-toast'
+import React, { useState, useEffect } from 'react'
+import { Switch, Route, useHistory, useLocation, useRouteMatch, Redirect } from "react-router-dom"
 import Convert from './components/Convert'
-import loginService from './services/login'
 import { ErrorBoundary } from 'react-error-boundary'
 import loginServiсe from './services/login'
 import Header from './components/Header'
+import Login from './components/Login'
 import './styles/container.css'
 
 function ErrorFallback({ error }) {
@@ -18,47 +17,28 @@ function ErrorFallback({ error }) {
 }
  
 function App() {
-  const [logged, setLogged] = useState(false)
-  const [custom, setCustom] = useState(false)
-
-  const tryToLogin = useCallback(() => {
-    loginService
-      .checkPass()
-      .then((data) => {
-        const { isCorrect, message, throttleTime } = data
-
-        if (message) {
-          Toast.fail(`${message} Try again after ${throttleTime / 1000} seconds.`, throttleTime-400)
-          setTimeout(() => {
-            tryToLogin()
-          }, throttleTime)
-          return 
-        }
-        if (!isCorrect) {
-          tryToLogin()
-        }
-  
-        setLogged(isCorrect)
-      })
-      .catch(err => console.log(err))
-  }, [])
+  let history = useHistory()
+  let location = useLocation()
 
   useEffect(() => {
     const storedPass = loginServiсe.getStoredPass()
     if (storedPass) {
-      return setLogged(true)
+      console.log('You are already logged in.')
+      history.replace('/')
+      setIsLogged(true)
+    } else {
+      history.replace('/login')
     }
+  }, [history])
 
-    if (!logged) {
-      tryToLogin()
-    }
+  const [isLogged, setIsLogged] = useState(false)
+  const [custom, setCustom] = useState(false)
 
-  }, [logged, tryToLogin])
+  function handleIsLoggedChange(boolean) {
+    setIsLogged(boolean)
+  }
 
-  let history = useHistory()
-  let location = useLocation()
   const match = useRouteMatch('/custom')
-  console.log('match in app', match)
 
   useEffect(() => {
     if (match) return setCustom(true) 
@@ -75,19 +55,30 @@ function App() {
   
   return (
     <div className="container">
-      <Header custom={custom} handleChange={handleCustomChange} logged={logged}/>
+      <Header custom={custom} handleChange={handleCustomChange} logged={isLogged}/>
 
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        {/* <Switch> */}
-          {/* <Route exact path='/'> */}
-            {logged ? <Convert custom={custom} /> : null}
-          {/* </Route>  */}
-          {/* <Route>
-            <div>
-              No matching route found. Return to <Link to='/'>main page</Link>
-            </div>
-          </Route> */}
-        {/* </Switch> */}
+
+        {/* {isLogged ? <Convert custom={custom} /> : <Redirect to='/login' />} */}
+        
+        <Switch>
+
+          {/* {isLogged ? <Redirect to='/' /> : <Redirect to='/login' />} */}
+
+          <Route path='/login'>
+            <Login 
+              isLogged={isLogged}
+              handleIsLoggedChange={handleIsLoggedChange}
+            />
+          </Route>
+
+          <Route exact path='/:slug*'>
+            <Convert custom={custom} />
+          </Route>
+          
+
+        </Switch>
+
       </ErrorBoundary>
     
     </div>
