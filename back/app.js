@@ -15,6 +15,7 @@ app.set('trust proxy', '127.0.0.1')
 app.use(morgan('dev'))
 app.use(cors())
 app.use(express.json())
+
 app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 app.use('/api/login', loginRouter)

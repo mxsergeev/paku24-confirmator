@@ -5,6 +5,7 @@ const {
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,
   PASSWORD,
+  DOMAIN_NAME,
 } = process.env
 
 module.exports = {
@@ -12,4 +13,5 @@ module.exports = {
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,
   PASSWORD,
+  DOMAIN_NAME,
 }
