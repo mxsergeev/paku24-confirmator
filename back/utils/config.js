@@ -6,6 +6,7 @@ const {
   AWS_SECRET_ACCESS_KEY,
   PASSWORD,
   DOMAIN_NAME,
+  MONGODB_URI,
 } = process.env
 
 module.exports = {
@@ -14,4 +15,5 @@ module.exports = {
   AWS_SECRET_ACCESS_KEY,
   PASSWORD,
   DOMAIN_NAME,
+  MONGODB_URI,
 }
