@@ -1,16 +1,30 @@
+/* eslint-disable no-underscore-dangle */
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcrypt')
 const loginRouter = require('express').Router()
-const { PASSWORD } = require('../utils/config')
+const User = require('../models/user')
+
+const { SECRET } = require('../utils/config')
 
 const requests = new Map()
 
-function checkPass(req, res, next) {
-  const { pass } = req.body
-  req.isCorrect = pass === PASSWORD
+async function checkUser(req, res, next) {
+  const { username, password } = req.body
+
+  const user = await User.findOne({ username }).lean()
+
+  const passwordCorrect = user === null
+    ? false
+    : await bcrypt.compare(password, user.passwordHash)
+
+  req.user = user
+  req.passwordCorrect = passwordCorrect
+
   return next()
 }
 
 function controlRequestFlow(req, res, next) {
-  const { isCorrect, ip } = req
+  const { passwordCorrect, ip } = req
 
   requests.forEach((reqData, reqIp) => {
     if (reqData.expires < Date.now()) requests.delete(reqIp)
@@ -25,7 +39,7 @@ function controlRequestFlow(req, res, next) {
   currentRequest.attempts += 1
   currentRequest.expires = expireDate()
 
-  if (currentRequest.attempts > 3 && !isCorrect) {
+  if (currentRequest.attempts > 3 && !passwordCorrect) {
     const throttleTime = 10000
     setTimeout(() => {
       currentRequest.attempts = 0
@@ -34,7 +48,7 @@ function controlRequestFlow(req, res, next) {
     return res.send({ message: 'Too many failed attempts.', throttleTime })
   }
 
-  if (isCorrect) {
+  if (passwordCorrect) {
     currentRequest.attempts = 0
     return next()
   }
@@ -42,11 +56,35 @@ function controlRequestFlow(req, res, next) {
   return next()
 }
 
-loginRouter.post('/', checkPass, controlRequestFlow, (req, res) => {
-  console.log(requests)
+async function generateJWT(req, res, next) {
+  const { user } = req
+  const userForToken = {
+    username: user.username,
+    id: user._id,
+  }
 
-  const { isCorrect } = req
-  return res.status(200).send({ isCorrect })
-})
+  req.token = jwt.sign(userForToken, SECRET)
+
+  return next()
+}
+
+loginRouter.post('/',
+  checkUser,
+  controlRequestFlow,
+  generateJWT,
+  async (req, res) => {
+    const { user, passwordCorrect, token } = req
+
+    console.log(requests)
+    if (!(user && passwordCorrect)) {
+      return res.status(401).send({ error: 'invalid username or password' })
+    }
+
+    return res.status(200).send({
+      token,
+      username: user.username,
+      name: user.name,
+    })
+  })
 
 module.exports = loginRouter
