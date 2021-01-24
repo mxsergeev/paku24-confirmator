@@ -5,13 +5,17 @@ import * as calculations from './helpers/calculations.js'
 import * as helpers from './helpers/regexHelpers.js'
 
 export function getEventForCalendar(formattedStr) {
-  const ev = /(?<=LÄHTÖPAIKKA\n)(.*\s*)*(?=\n\nKIITOS VARAUKSESTANNE!)/.exec(formattedStr)
+  const ev = /(?<=LÄHTÖPAIKKA\n)(.*\s*)*(?=\n\nKIITOS VARAUKSESTANNE!)/.exec(
+    formattedStr
+  )
 
   return ev[0]
 }
 
 export function getStartingTime(str) {
-  const dateRegex = /(?<=Date end time: \w+, )\w+ \d+(th|rd|st|nd)? \w+/.exec(str)
+  const dateRegex = /(?<=Date end time: \w+, )\w+ \d+(th|rd|st|nd)? \w+/.exec(
+    str
+  )
 
   if (!dateRegex) throw new Error(helpers.cannotFind('date'))
 
@@ -27,7 +31,7 @@ export function getStartingTime(str) {
 export function getDuration(str) {
   const duration = /\d+(\.\d+)?(?=\sh.)/.exec(str)
 
-  if(!duration) throw new Error(helpers.cannotFind('duration'))
+  if (!duration) throw new Error(helpers.cannotFind('duration'))
 
   return duration[0]
 }
@@ -44,18 +48,21 @@ export function getService(str) {
   let price = /(?<=PRICE: )\d+/.exec(str)
 
   if (!price) throw new Error(helpers.cannotFind('price'))
-  
+
   price = price[0]
 
   getFees(str)
-    .filter(fee => fee.value)
-    .forEach(fee => price = price - fee.value)
+    .filter((fee) => fee.value)
+    .forEach((fee) => (price = price - fee.value))
 
   const duration = getDuration(str)
 
-  const service = services.filter(service => service.price === price / duration)
+  const service = services.filter(
+    (service) => service.price === price / duration
+  )
 
-  if (service.length === 0) throw new Error('Cannot recognize service. Invalid price or duration.')
+  if (service.length === 0)
+    throw new Error('Cannot recognize service. Invalid price or duration.')
 
   return service[0]
 }
@@ -75,7 +82,8 @@ export function getAddress(str, course) {
   let address = new RegExp(`(?<=${course}: ${city} / ).*(?=,*)`).exec(str)
   address = address ? `${address[0]},` : ''
 
-  if (course === 'Frome' && !address) throw new Error(helpers.cannotFind('address'))
+  if (course === 'Frome' && !address)
+    throw new Error(helpers.cannotFind('address'))
 
   return { address, city }
 }
@@ -89,7 +97,9 @@ export function getName(str) {
 }
 
 export function getEmail(str) {
-  const email = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/.exec(str)
+  const email = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/.exec(
+    str
+  )
 
   if (!email) throw new Error(helpers.cannotFind('email'))
 
@@ -97,7 +107,9 @@ export function getEmail(str) {
 }
 
 export function getPhone(str) {
-  const phone = /(?<=Phone: )[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*/.exec(str)
+  const phone = /(?<=Phone: )[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*/.exec(
+    str
+  )
 
   if (!phone) throw new Error(helpers.cannotFind('phone'))
 

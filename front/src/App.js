@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Switch, Route, useHistory, useLocation, useRouteMatch, Redirect } from "react-router-dom"
+import {
+  Switch,
+  Route,
+  useHistory,
+  useLocation,
+  useRouteMatch,
+  Redirect,
+} from 'react-router-dom'
 import Convert from './components/Convert'
 import { ErrorBoundary } from 'react-error-boundary'
 import loginServiсe from './services/login'
@@ -11,11 +18,11 @@ function ErrorFallback({ error }) {
   return (
     <div role="alert">
       <p>Something went wrong:</p>
-      <pre style={{color: 'red'}}>{error.message}</pre>
+      <pre style={{ color: 'red' }}>{error.message}</pre>
     </div>
   )
 }
- 
+
 function App() {
   let history = useHistory()
   let location = useLocation()
@@ -41,7 +48,7 @@ function App() {
   const match = useRouteMatch('/custom')
 
   useEffect(() => {
-    if (match) return setCustom(true) 
+    if (match) return setCustom(true)
     return setCustom(false)
   }, [location.pathname, match])
 
@@ -52,37 +59,35 @@ function App() {
     if (checked) return history.push('/custom')
     return history.push('/')
   }
-  
+
   return (
     <div className="container">
-      <Header custom={custom} handleChange={handleCustomChange} logged={isLogged}/>
+      <Header
+        custom={custom}
+        handleChange={handleCustomChange}
+        logged={isLogged}
+      />
 
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-
         {/* {isLogged ? <Convert custom={custom} /> : <Redirect to='/login' />} */}
-        
-        <Switch>
 
+        <Switch>
           {/* {isLogged ? <Redirect to='/' /> : <Redirect to='/login' />} */}
 
-          <Route path='/login'>
-            <Login 
+          <Route path="/login">
+            <Login
               isLogged={isLogged}
               handleIsLoggedChange={handleIsLoggedChange}
             />
           </Route>
 
-          <Route exact path='/:slug*'>
+          <Route exact path="/:slug*">
             <Convert custom={custom} />
           </Route>
-          
-
         </Switch>
-
       </ErrorBoundary>
-    
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

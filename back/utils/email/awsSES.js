@@ -6,7 +6,8 @@ AWS.config.update({ region: 'eu-north-1' })
 
 function sendMail(email, subject, text, sourceEmail = 'varaukset@paku24.fi') {
   const params = {
-    Destination: { /* required */
+    Destination: {
+      /* required */
       // CcAddresses: [
       //   /* more items */
       // ],
@@ -15,8 +16,10 @@ function sendMail(email, subject, text, sourceEmail = 'varaukset@paku24.fi') {
         /* more items */
       ],
     },
-    Message: { /* required */
-      Body: { /* required */
+    Message: {
+      /* required */
+      Body: {
+        /* required */
         Html: {
           Charset: 'UTF-8',
           Data: text,
@@ -31,24 +34,24 @@ function sendMail(email, subject, text, sourceEmail = 'varaukset@paku24.fi') {
         Data: subject,
       },
     },
-    Source: sourceEmail, /* required */
+    Source: sourceEmail /* required */,
     // ReplyToAddresses: [
     //   'EMAIL_ADDRESS',
     //   /* more items */
     // ],
   }
 
-  const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' }).sendEmail(params).promise()
+  const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' })
+    .sendEmail(params)
+    .promise()
 
-  sendPromise.then(
-    (data) => {
+  sendPromise
+    .then((data) => {
       console.log(data)
-    },
-  ).catch(
-    (err) => {
+    })
+    .catch((err) => {
       console.error(err, err.stack)
-    },
-  )
+    })
 }
 
 module.exports = sendMail

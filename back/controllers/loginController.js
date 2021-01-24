@@ -13,9 +13,8 @@ async function checkUser(req, res, next) {
 
   const user = await User.findOne({ username }).lean()
 
-  const passwordCorrect = user === null
-    ? false
-    : await bcrypt.compare(password, user.passwordHash)
+  const passwordCorrect =
+    user === null ? false : await bcrypt.compare(password, user.passwordHash)
 
   req.user = user
   req.passwordCorrect = passwordCorrect
@@ -32,7 +31,8 @@ function controlRequestFlow(req, res, next) {
 
   const expireDate = () => Date.now() + 30 * 1000
 
-  if (!requests.has(ip)) requests.set(ip, { attempts: 0, expires: expireDate() })
+  if (!requests.has(ip))
+    requests.set(ip, { attempts: 0, expires: expireDate() })
 
   const currentRequest = requests.get(ip)
 
@@ -68,7 +68,8 @@ async function generateJWT(req, res, next) {
   return next()
 }
 
-loginRouter.post('/',
+loginRouter.post(
+  '/',
   checkUser,
   controlRequestFlow,
   generateJWT,
@@ -85,6 +86,7 @@ loginRouter.post('/',
       username: user.username,
       name: user.name,
     })
-  })
+  }
+)
 
 module.exports = loginRouter

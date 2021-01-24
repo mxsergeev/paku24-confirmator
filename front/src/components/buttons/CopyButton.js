@@ -16,12 +16,13 @@ export default function CopyButton({ inputRef }) {
   }
 
   return (
-    <Button 
+    <Button
       className="button-one-third flex-item"
-      variant="text" 
-      size="small" 
-      onClick={handleCopying}>
-        Copy <FileCopyIcon />
+      variant="text"
+      size="small"
+      onClick={handleCopying}
+    >
+      Copy <FileCopyIcon />
     </Button>
   )
 }
