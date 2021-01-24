@@ -12,39 +12,47 @@ const TOKEN_PATH = 'token.json'
 
 function addEventToCalendar({ title, date, color }) {
   const dateRaw = new Date(date)
-  const nextDay = new Date(dateRaw.getFullYear(), dateRaw.getMonth(), dateRaw.getDate() + 1)
-    .toISOString()
+  const nextDay = new Date(
+    dateRaw.getFullYear(),
+    dateRaw.getMonth(),
+    dateRaw.getDate() + 1
+  ).toISOString()
 
   const event = {
-    'summary': title,
-    'colorId': color,
-    'start': {
-      'date': date.split('T')[0],
-      'timeZone': 'Europe/Helsinki',
+    summary: title,
+    colorId: color,
+    start: {
+      date: date.split('T')[0],
+      timeZone: 'Europe/Helsinki',
     },
-    'end': {
-      'date': nextDay.split('T')[0],
-      'timeZone': 'Europe/Helsinki',
+    end: {
+      date: nextDay.split('T')[0],
+      timeZone: 'Europe/Helsinki',
     },
-    'reminders': {
-      'useDefault': false,
+    reminders: {
+      useDefault: false,
     },
   }
   console.log('EVENT from API file:\n', event)
 
   function addEvent(auth) {
     const calendar = google.calendar({ version: 'v3', auth })
-    calendar.events.insert({
-      auth,
-      calendarId: 'primary',
-      resource: event,
-    }, (err, ev) => {
-      if (err) {
-        console.log(`There was an error contacting the Calendar service: ${err}`)
-        return
+    calendar.events.insert(
+      {
+        auth,
+        calendarId: 'primary',
+        resource: event,
+      },
+      (err, ev) => {
+        if (err) {
+          console.log(
+            `There was an error contacting the Calendar service: ${err}`
+          )
+          return
+        }
+        console.log('Event created: %s', ev.data.summary)
       }
-      console.log('Event created: %s', ev.data.summary)
-    })
+    )
   }
 
   // Load client secrets from a local file.
@@ -66,7 +74,9 @@ function addEventToCalendar({ title, date, color }) {
 function authorize(credentials, callback) {
   const { client_secret, client_id, redirect_uris } = credentials.installed
   const oAuth2Client = new google.auth.OAuth2(
-    client_id, client_secret, redirect_uris[0],
+    client_id,
+    client_secret,
+    redirect_uris[0]
   )
 
   // Check if we have previously stored a token.

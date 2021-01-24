@@ -7,12 +7,12 @@ export function toConfirmationDateFormat(date) {
 }
 
 export function printFees(fees) {
-  const activeFees = fees.filter(fee => fee.value)
+  const activeFees = fees.filter((fee) => fee.value)
 
-  const arrayOfFeeNames = activeFees.map(fee => fee.name)
-  
+  const arrayOfFeeNames = activeFees.map((fee) => fee.name)
+
   const feesInText = activeFees
-    .map(fee => `\n${fee.name}\n${fee.value}€`)
+    .map((fee) => `\n${fee.name}\n${fee.value}€`)
     .reduce((acc, cur) => acc + cur, '')
 
   return { array: arrayOfFeeNames, string: feesInText }
