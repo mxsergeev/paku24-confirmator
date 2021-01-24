@@ -292,7 +292,7 @@ export default function Convert({ custom }) {
         />
       </div>
       
-      <Redirect to='/' />
+      {/* <Redirect to='/' /> */}
     </div>
 
   )

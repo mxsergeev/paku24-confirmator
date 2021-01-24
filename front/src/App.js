@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Switch, Route, useHistory, useLocation, useRouteMatch, Redirect } from "react-router-dom"
+import { Switch, Route, useHistory, useLocation, useRouteMatch } from "react-router-dom"
 import Convert from './components/Convert'
 import { ErrorBoundary } from 'react-error-boundary'
 import loginServiсe from './services/login'
@@ -24,7 +24,7 @@ function App() {
     const storedPass = loginServiсe.getStoredPass()
     if (storedPass) {
       console.log('You are already logged in.')
-      history.replace('/')
+      // history.replace('/')
       setIsLogged(true)
     } else {
       history.replace('/login')
@@ -65,16 +65,16 @@ function App() {
 
           {/* {isLogged ? <Redirect to='/' /> : <Redirect to='/login' />} */}
 
-          <Route path='/login'>
+          {/* <Route path='/login'>
             <Login 
               isLogged={isLogged}
               handleIsLoggedChange={handleIsLoggedChange}
             />
-          </Route>
+          </Route> */}
 
-          <Route exact path='/:slug*'>
+          {/* <Route exact path='/:slug*'> */}
             <Convert custom={custom} />
-          </Route>
+          {/* </Route> */}
           
 
         </Switch>

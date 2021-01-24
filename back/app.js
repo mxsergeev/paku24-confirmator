@@ -1,4 +1,5 @@
 const express = require('express')
+const path = require('path')
 const cors = require('cors')
 const morgan = require('morgan')
 
@@ -8,7 +9,7 @@ const loginRouter = require('./controllers/loginController')
 
 const app = express()
 
-app.use(express.static('build'))
+app.use(express.static(path.join(__dirname, 'build')))
 
 app.set('trust proxy', '127.0.0.1')
 
@@ -19,9 +20,8 @@ app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 app.use('/api/login', loginRouter)
 
-app.get('/', (req, res) => {
-  console.log('hello')
-  res.send('Hello world!')
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname+'/build/index.html'))
 })
 
 const unknownEndpoint = (req, res) => {
