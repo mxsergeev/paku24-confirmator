@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt')
 const loginRouter = require('express').Router()
 const User = require('../models/user')
 
-const { SECRET } = require('../utils/config')
+const { JWT_SECRET } = require('../utils/config')
 
 const requests = new Map()
 
@@ -63,7 +63,7 @@ async function generateJWT(req, res, next) {
     id: user._id,
   }
 
-  req.token = jwt.sign(userForToken, SECRET)
+  req.token = jwt.sign(userForToken, JWT_SECRET)
 
   return next()
 }

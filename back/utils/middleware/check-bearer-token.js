@@ -1,9 +1,8 @@
-// const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken')
+const { JWT_SECRET } = require('../config')
 
 function getTokenFrom(req) {
   const authorization = req.get('authorization')
-  console.log('authorization')
-  console.log(authorization)
 
   if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
     return authorization.substring(7)
@@ -13,6 +12,10 @@ function getTokenFrom(req) {
 }
 
 module.exports = function checkBearerToken(req, res, next) {
-  getTokenFrom(req)
-  next()
+  const token = getTokenFrom(req)
+  if (!token || !jwt.verify(token, JWT_SECRET)?.id) {
+    return res.status(401).send({ error: 'Token missing or invalid.' })
+  }
+
+  return next()
 }

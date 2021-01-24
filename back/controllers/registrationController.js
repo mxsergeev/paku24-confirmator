@@ -4,7 +4,9 @@ const crypto = require('crypto')
 const bcrypt = require('bcrypt')
 const passwordGenerator = require('generate-password')
 const {
-  uniqueNamesGenerator, colors, animals,
+  uniqueNamesGenerator,
+  colors,
+  animals,
 } = require('unique-names-generator')
 
 const User = require('../models/user')
@@ -12,9 +14,7 @@ const sendMail = require('../utils/email/awsSES')
 const { DOMAIN_NAME } = require('../utils/config')
 
 registrationRouter.post('/request-access', async (req, res) => {
-  const {
-    name, email, purpose,
-  } = req.body
+  const { name, email, purpose } = req.body
 
   const requestToken = crypto
     .createHash('sha256')
@@ -30,7 +30,9 @@ registrationRouter.post('/request-access', async (req, res) => {
 
   await user.save()
 
-  const url = `${DOMAIN_NAME}/api/registration/grant-access/?token=${encodeURIComponent(requestToken)}`
+  const url = `${DOMAIN_NAME}/api/registration/grant-access/?token=${encodeURIComponent(
+    requestToken
+  )}`
 
   const text = `<!DOCTYPE html>
   <html>
@@ -48,8 +50,17 @@ registrationRouter.post('/request-access', async (req, res) => {
   </body>
   </html>`
 
-  sendMail('themaximsergeev@gmail.com', 'Request for access', text, 'maxim81388@gmail.com')
-  return res.status(200).send({ message: 'Your request has been successfully sent.', token: requestToken, url })
+  sendMail(
+    'themaximsergeev@gmail.com',
+    'Request for access',
+    text,
+    'maxim81388@gmail.com'
+  )
+  return res.status(200).send({
+    message: 'Your request has been successfully sent.',
+    token: requestToken,
+    url,
+  })
 })
 
 registrationRouter.get('/grant-access', async (req, res) => {
@@ -64,7 +75,9 @@ registrationRouter.get('/grant-access', async (req, res) => {
     })
     const saltRounds = 10
     const passwordHash = await bcrypt.hash(generatedPassword, saltRounds)
-    const randomUsername = uniqueNamesGenerator({ dictionaries: [colors, animals] })
+    const randomUsername = uniqueNamesGenerator({
+      dictionaries: [colors, animals],
+    })
 
     await matchedUser
       .updateOne({
@@ -89,7 +102,12 @@ registrationRouter.get('/grant-access', async (req, res) => {
     </body>
     </html>`
 
-    sendMail(matchedUser.email, 'Request for access approved', text, 'maxim81388@gmail.com')
+    sendMail(
+      matchedUser.email,
+      'Request for access approved',
+      text,
+      'maxim81388@gmail.com'
+    )
 
     return res.status(200).send({ message: 'Access granted successfully.' })
   }
