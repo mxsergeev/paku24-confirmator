@@ -1,4 +1,4 @@
-import React, { useState } from 'react' 
+import React, { useState } from 'react'
 import { useHistory, useRouteMatch, Route } from 'react-router-dom'
 import Modal from '@material-ui/core/Modal'
 import Button from '@material-ui/core/Button'
@@ -9,10 +9,10 @@ export default function InputModal(props) {
   const { value, label, name, handleChange } = props
   const [, setModalOpen] = useState(false)
 
-  let history = useHistory()
+  const history = useHistory()
 
   // this operation gets called two times per render. Fix this!
-  let customOrderEditor = useRouteMatch('/custom')?.url
+  const customOrderEditor = useRouteMatch('/custom')?.url
 
   console.log('match', customOrderEditor)
 
@@ -20,14 +20,16 @@ export default function InputModal(props) {
 
   const handleModalOpen = () => {
     setModalOpen(true)
-    history.push(customOrderEditor ? `${customOrderEditor}/${slug}` : `/edit/${slug}`)
+    history.push(
+      customOrderEditor ? `${customOrderEditor}/${slug}` : `/edit/${slug}`
+    )
   }
-  
+
   const handleModalClose = () => {
     setModalOpen(false)
     history.goBack()
   }
-  
+
   const modalStyle = {
     position: 'absolute',
     maxWidth: 500,
@@ -36,26 +38,29 @@ export default function InputModal(props) {
     backgroundColor: 'white',
     left: '50%',
     top: '50%',
-    transform: 'translate(-50%, -50%)'
+    transform: 'translate(-50%, -50%)',
   }
 
   return (
     <>
-      <Button className="button-info" variant="outlined" onClick={handleModalOpen}>
-        {label} to: {value}
+      <Button
+        className="button-info"
+        variant="outlined"
+        onClick={handleModalOpen}
+      >
+        {label}
+        to:
+        {value}
       </Button>
       <Route path={[`${customOrderEditor}/${slug}`, `/edit/${slug}`]}>
-        <Modal
-          open={true}
-          onClose={handleModalClose}
-        >
+        <Modal open onClose={handleModalClose}>
           <div style={modalStyle}>
-            <TextField 
+            <TextField
               label={label}
-              name={name} 
-              variant="outlined" 
-              onChange={handleChange} 
-              value={value} 
+              name={name}
+              variant="outlined"
+              onChange={handleChange}
+              value={value}
               type={label === 'Email' ? label : ''}
               autoFocus
             />

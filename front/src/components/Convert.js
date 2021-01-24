@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
-import { Switch, Route, Link, Redirect } from "react-router-dom"
+import { Route } from 'react-router-dom'
 import Toast from 'light-toast'
+import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 import sendConfirmationEmail from '../services/emailAPI'
 import addEventToCalendar from '../services/calendarAPI'
-import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 import '../styles/convert.css'
 import InputModal from './InputModal'
 import EditModal from './EditModal'
@@ -21,11 +21,10 @@ import AddToCalendarButton from './buttons/AddToCalendarButton'
 import ValidationErrorsDisplay from './ValidationErrorsDisplay'
 import Editor from './Editor'
 
-function makeConvertion(order, str) {
+function makeConvertion(order) {
   let converted
   try {
-    converted = 
-`VARAUSVAHVISTUS
+    converted = `VARAUSVAHVISTUS
 VARAUKSEN TIEDOT
 ${order.date.confirmationFormat}
 ALKAMISAIKA
@@ -42,49 +41,55 @@ ${order.email ? `SÄHKÖPOSTI\n${order.email}\n` : ''}PUHELIN
 ${order.phone}
 ${order.comment ? `LISÄTIETOJA\n${order.comment}\n` : ''}
 KIITOS VARAUKSESTANNE!`
-  Toast.info('Succesefully formatted!', 500)
-} catch (err) {
-  console.log(err)
-  Toast.fail(err.message, 1000)
-}
-  return (
-  converted
-  )
+    Toast.info('Succesefully formatted!', 500)
+  } catch (err) {
+    console.log(err)
+    Toast.fail(err.message, 1000)
+  }
+  return converted
 }
 
 export default function Convert({ custom }) {
   const [text, setText] = useState('')
   const [customText, setCustomText] = useState('')
   const [formattedConfirmation, setFormattedConfirmation] = useState('')
-  const defaultOrder = useMemo(() => ({
-    date: {
-      original: new Date(),
-      ISODate: new Date().toISOString().split('T')[0],
-      confirmationFormat: regexHelpers.toConfirmationDateFormat(new Date()),
-    },
-    time: `${new Date().toTimeString().split(':')[0]}:${new Date().toTimeString().split(':')[1]}`,
-    duration: 1, 
-    serviceName: services[0].name,
-    servicePrice: services[0].price,
-    paymentType: 'Maksukortti',
-    fees: {
-      array: [],
-      string: '',
-    },
-    address: '',
-    destination: '',
-    name: '',
-    email: '',
-    phone: '',
-    comment: '',
-  }), [])
+  const defaultOrder = useMemo(
+    () => ({
+      date: {
+        original: new Date(),
+        ISODate: new Date().toISOString().split('T')[0],
+        confirmationFormat: regexHelpers.toConfirmationDateFormat(new Date()),
+      },
+      time: `${new Date().toTimeString().split(':')[0]}:${
+        new Date().toTimeString().split(':')[1]
+      }`,
+      duration: 1,
+      serviceName: services[0].name,
+      servicePrice: services[0].price,
+      paymentType: 'Maksukortti',
+      fees: {
+        array: [],
+        string: '',
+      },
+      address: '',
+      destination: '',
+      name: '',
+      email: '',
+      phone: '',
+      comment: '',
+    }),
+    []
+  )
   const [order, setOrder] = useState(defaultOrder)
 
-  const defaultOptions = useMemo(() => ({ 
-    distance: 'insideCapital', 
-    hsy: order.servicePrice === 40 || order.servicePrice === 70,
-    XL: false,
-  }), [order.servicePrice])
+  const defaultOptions = useMemo(
+    () => ({
+      distance: 'insideCapital',
+      hsy: order.servicePrice === 40 || order.servicePrice === 70,
+      XL: false,
+    }),
+    [order.servicePrice]
+  )
   const [options, setOptions] = useState(defaultOptions)
 
   const [error, setError] = useState(false)
@@ -99,7 +104,10 @@ export default function Convert({ custom }) {
   const handleSetError = useCallback((bool) => setError(bool), [])
 
   function handleOptionsChange(e) {
-    setOptions({ ...options, [e.target.name]: e.target.value || e.target.checked })
+    setOptions({
+      ...options,
+      [e.target.name]: e.target.value || e.target.checked,
+    })
   }
 
   function handleEmailSending() {
@@ -108,7 +116,7 @@ export default function Convert({ custom }) {
         .then((res) => Toast.info(res, 500))
         .catch((err) => Toast.fail(err.response.data.error))
     }
-    Toast.fail('No confirmation found or recipients defined.', 1000)
+    return Toast.fail('No confirmation found or recipients defined.', 1000)
   }
 
   function handleAddingToCalendar() {
@@ -125,6 +133,15 @@ export default function Convert({ custom }) {
     }
   }
 
+  function setDataToStates(data) {
+    setOptions({
+      ...options,
+      hsy: data.servicePrice === 40 || data.servicePrice === 70,
+    })
+    setOrder(data)
+    setFormattedConfirmation(makeConvertion(data))
+  }
+
   function handleFormatting() {
     let orderInfo
     try {
@@ -132,20 +149,25 @@ export default function Convert({ custom }) {
         date: {
           original: regexFunc.getStartingTime(text).original,
           ISODate: regexFunc.getStartingTime(text).ISODate,
-          confirmationFormat: regexFunc.getStartingTime(text).confirmationFormat,
+          confirmationFormat: regexFunc.getStartingTime(text)
+            .confirmationFormat,
         },
         time: regexFunc.getStartingTime(text).time,
-        duration: regexFunc.getDuration(text), 
+        duration: regexFunc.getDuration(text),
         serviceName: regexFunc.getService(text).name,
         servicePrice: regexFunc.getService(text).price,
         paymentType: regexFunc.getPaymentType(text),
         fees: regexHelpers.printFees(regexFunc.getFees(text)),
-        address: regexFunc.getAddress(text, 'Frome').address + " " + regexFunc.getAddress(text, 'Frome').city,
-        destination: regexFunc.getAddress(text, 'To').address + " " + regexFunc.getAddress(text, 'To').city,
+        address: `${regexFunc.getAddress(text, 'Frome').address} ${
+          regexFunc.getAddress(text, 'Frome').city
+        }`,
+        destination: `${regexFunc.getAddress(text, 'To').address} ${
+          regexFunc.getAddress(text, 'To').city
+        }`,
         name: regexFunc.getName(text),
         email: regexFunc.getEmail(text),
         phone: regexFunc.getPhone(text),
-        comment: regexFunc.getComment(text)
+        comment: regexFunc.getComment(text),
       }
       setDataToStates(orderInfo)
     } catch (err) {
@@ -157,8 +179,8 @@ export default function Convert({ custom }) {
   function calcAndPrintFees() {
     return regexHelpers.printFees(
       calculations.calculateFees(
-        order.date.original, 
-        order.time, 
+        order.date.original,
+        order.time,
         order.paymentType
       )
     )
@@ -166,39 +188,32 @@ export default function Convert({ custom }) {
 
   function handleEditorFormatting() {
     const fees = calcAndPrintFees()
-    const editedOrder = {...order, fees }
+    const editedOrder = { ...order, fees }
     setDataToStates(editedOrder)
-  }
-
-  function setDataToStates(data) {
-    setOptions({...options, hsy: data.servicePrice === 40 || data.servicePrice === 70})
-    setOrder(data)
-    setFormattedConfirmation(makeConvertion(data))
   }
 
   function handleOrderChange(e) {
     if (e.target.name === 'ISODate') {
       const ISODate = e.target.value
-      return setOrder(
-        { ...order, 
-          date: {
-            [e.target.name]: ISODate,
-            original: new Date(ISODate),
-            confirmationFormat: regexHelpers.toConfirmationDateFormat(ISODate)
-          }
-        }
-      )
+      return setOrder({
+        ...order,
+        date: {
+          [e.target.name]: ISODate,
+          original: new Date(ISODate),
+          confirmationFormat: regexHelpers.toConfirmationDateFormat(ISODate),
+        },
+      })
     }
     if (e.target.name === 'serviceName') {
       const serviceName = e.target.value
-      return setOrder(
-        { ...order,
-          [e.target.name]: serviceName,
-          servicePrice: services.find(service => service.name === serviceName).price
-        }
-      )
+      return setOrder({
+        ...order,
+        [e.target.name]: serviceName,
+        servicePrice: services.find((service) => service.name === serviceName)
+          .price,
+      })
     }
-    setOrder({...order, [e.target.name]: e.target.value })
+    return setOrder({ ...order, [e.target.name]: e.target.value })
   }
 
   function handleTextChange(e) {
@@ -208,92 +223,91 @@ export default function Convert({ custom }) {
   function handleCustomTextChange(e) {
     setCustomText(e.target.value)
   }
-  
+
   return (
     <div className="flex-container">
-      <TextareaAutosize 
+      <TextareaAutosize
         className="textarea-1 flex-item"
-        rowsMin={5} 
+        rowsMin={5}
         cols={40}
-        value={custom ? customText : text} 
+        value={custom ? customText : text}
         placeholder="Order info here."
-        onChange={custom ? handleCustomTextChange : handleTextChange} 
+        onChange={custom ? handleCustomTextChange : handleTextChange}
       />
 
       <Route path="/custom">
-        <Editor 
-          order={order} 
-          handleChange={handleOrderChange} 
+        <Editor
+          order={order}
+          handleChange={handleOrderChange}
           handleClick={handleEditorFormatting}
-        /> 
+        />
       </Route>
 
       <TextareaAutosize
         className="textarea-2 flex-item"
-        rowsMin={5} 
+        rowsMin={5}
         cols={40}
-        ref={textAreaRef} 
-        value={formattedConfirmation} 
+        ref={textAreaRef}
+        value={formattedConfirmation}
         placeholder="Formatted confirmation will be outputted here."
         onChange={(e) => setFormattedConfirmation(e.target.value)}
       />
       <div className="flex-100-space-between">
-
         <Route exact path={['/', '/edit/:slug*']}>
-          <EditModal 
-            handleChange={handleOrderChange} 
-            handleFormatting={handleEditorFormatting} 
-            order={order} 
+          <EditModal
+            handleChange={handleOrderChange}
+            handleFormatting={handleEditorFormatting}
+            order={order}
           />
           <TransformButton handleClick={handleFormatting} />
         </Route>
 
-        <CopyButton
-          inputRef={textAreaRef}
-        />
+        <CopyButton inputRef={textAreaRef} />
       </div>
 
       <CheckboxGroup handleChange={handleOptionsChange} options={options} />
 
-      <ValidationErrorsDisplay error={error} order={order} custom={custom} confirmation={formattedConfirmation} handleSetError={handleSetError}/>
+      <ValidationErrorsDisplay
+        error={error}
+        order={order}
+        custom={custom}
+        confirmation={formattedConfirmation}
+        handleSetError={handleSetError}
+      />
 
       <div className="send-button-container">
-        <div className='small-button-container'>
+        <div className="small-button-container">
           <InputModal
             handleChange={handleOrderChange}
-            label={"Email"}
-            name={"email"}
+            label="Email"
+            name="email"
             value={order.email}
           />
-          <SendEmailButton 
+          <SendEmailButton
             err={error}
-            disabled={ order.email && formattedConfirmation ? false : true }
+            disabled={!(order.email && formattedConfirmation)}
             handleClick={handleEmailSending}
           />
         </div>
 
-        <div className='small-button-container'>
+        <div className="small-button-container">
           <InputModal
             handleChange={handleOrderChange}
-            label={"SMS"}
-            name={"phone"}
+            label="SMS"
+            name="phone"
             value={order.phone}
           />
           <SendSMSButton
-            err={error} 
-            disabled={ order.phone && formattedConfirmation ? false : true }
+            err={error}
+            disabled={!(order.phone && formattedConfirmation)}
             phoneNumber={order.phone}
             msgBody={formattedConfirmation}
           />
         </div>
-        <AddToCalendarButton
-          handleClick={handleAddingToCalendar}
-          err={error}
-        />
+        <AddToCalendarButton handleClick={handleAddingToCalendar} err={error} />
       </div>
-      
+
       {/* <Redirect to='/' /> */}
     </div>
-
   )
 }

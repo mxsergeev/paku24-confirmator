@@ -18,7 +18,8 @@ function controlRequestFlow(req, res, next) {
 
   const expireDate = () => Date.now() + 30 * 1000
 
-  if (!requests.has(ip)) requests.set(ip, { attempts: 0, expires: expireDate() })
+  if (!requests.has(ip))
+    requests.set(ip, { attempts: 0, expires: expireDate() })
 
   const currentRequest = requests.get(ip)
 

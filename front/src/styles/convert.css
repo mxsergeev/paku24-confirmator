@@ -1,6 +1,6 @@
 * {
   box-sizing: border-box;
-  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
 }
 
 .flex-container {
@@ -22,7 +22,7 @@
   margin-bottom: 10px;
 }
 .button-one-third {
-  flex: 1 0 32%
+  flex: 1 0 32%;
 }
 .checkbox-container {
   flex: 1 0 100%;
@@ -41,8 +41,8 @@
 .small-button-container {
   flex: 1 0 100%;
   display: flex;
-  flex-flow: row wrap;  
-  margin-bottom: 10px
+  flex-flow: row wrap;
+  margin-bottom: 10px;
 }
 .button-email {
   flex: 1 5;
@@ -59,7 +59,7 @@
   margin: -15px;
 }
 .sms-icon {
-  margin-bottom: -7px
+  margin-bottom: -7px;
 }
 .basic-flex {
   display: flex;
@@ -73,7 +73,7 @@
   justify-content: space-between;
 }
 .time-duration {
-  flex: 1 0 45%
+  flex: 1 0 45%;
 }
 
 /* Auto prefixed CSS: */
