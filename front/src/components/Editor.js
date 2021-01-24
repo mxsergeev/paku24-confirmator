@@ -7,7 +7,7 @@ import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 
 export default function Editor({ order, handleChange, handleClick }) {
   const margin = {
-    marginTop: 5
+    marginTop: 5,
   }
   const marginLeftRight = {
     marginLeft: 5,
@@ -19,7 +19,7 @@ export default function Editor({ order, handleChange, handleClick }) {
       <TextField
         fullWidth
         style={marginLeftRight}
-        className="flex-item" 
+        className="flex-item"
         name="ISODate"
         value={order?.date?.ISODate}
         onChange={handleChange}
@@ -28,17 +28,17 @@ export default function Editor({ order, handleChange, handleClick }) {
       <div className="flex-100-space-between flex-item" style={marginLeftRight}>
         <TextField
           className="time-duration"
-          style={{...marginLeftRight, paddingRight: 10 }}
+          style={{ ...marginLeftRight, paddingRight: 10 }}
           name="time"
-          value={order?.time}          
+          value={order?.time}
           onChange={handleChange}
-          inputProps={{ step: "900" }}
+          inputProps={{ step: '900' }}
           type="time"
         />
 
-        <NativeSelect 
+        <NativeSelect
           className="time-duration"
-          style={{...marginLeftRight, paddingLeft: 10 }}
+          style={{ ...marginLeftRight, paddingLeft: 10 }}
           name="duration"
           value={order?.duration}
           onChange={handleChange}
@@ -74,7 +74,11 @@ export default function Editor({ order, handleChange, handleClick }) {
         onChange={handleChange}
       >
         {services.map((service, index) => {
-          return <option key={index} value={service.name}>{service.name}</option>
+          return (
+            <option key={index} value={service.name}>
+              {service.name}
+            </option>
+          )
         })}
       </NativeSelect>
 
@@ -99,21 +103,21 @@ export default function Editor({ order, handleChange, handleClick }) {
         name="address"
         value={order?.address}
         onChange={handleChange}
-        label='Address' 
-        variant="outlined" 
+        label="Address"
+        variant="outlined"
         size="small"
       />
-      
+
       <TextField
         fullWidth
         multiline
         style={margin}
-        className="flex-item" 
+        className="flex-item"
         name="destination"
         value={order?.destination}
         onChange={handleChange}
-        label='Destination' 
-        variant="outlined" 
+        label="Destination"
+        variant="outlined"
         size="small"
       />
 
@@ -121,25 +125,12 @@ export default function Editor({ order, handleChange, handleClick }) {
         fullWidth
         required
         style={margin}
-        className="flex-item" 
+        className="flex-item"
         name="name"
         value={order?.name}
         onChange={handleChange}
-        label='Name' 
-        variant="outlined" 
-        size="small"
-      />
-
-      <TextField
-        fullWidth
-        style={margin}
-        className="flex-item" 
-        name="email"
-        value={order?.email}
-        onChange={handleChange}
-        type={"email"}
-        label='Email' 
-        variant="outlined" 
+        label="Name"
+        variant="outlined"
         size="small"
       />
 
@@ -147,30 +138,40 @@ export default function Editor({ order, handleChange, handleClick }) {
         fullWidth
         style={margin}
         className="flex-item"
-        required={true} 
+        name="email"
+        value={order?.email}
+        onChange={handleChange}
+        type={'email'}
+        label="Email"
+        variant="outlined"
+        size="small"
+      />
+
+      <TextField
+        fullWidth
+        style={margin}
+        className="flex-item"
+        required={true}
         name="phone"
         value={order?.phone}
         onChange={handleChange}
-        label='Phonenumber' 
+        label="Phonenumber"
         variant="outlined"
-        size="small" 
+        size="small"
       />
-      
+
       <TextareaAutosize
         style={margin}
         className="flex-item textarea-2"
-        rowsMin={3} 
+        rowsMin={3}
         cols={27}
         name="comment"
-        value={order?.comment} 
+        value={order?.comment}
         placeholder="Additional information."
-        onChange={handleChange} 
+        onChange={handleChange}
       />
 
-      <TransformButton
-        className="flex-item" 
-        handleClick={handleClick}
-      />      
+      <TransformButton className="flex-item" handleClick={handleClick} />
     </div>
   )
 }

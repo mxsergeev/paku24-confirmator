@@ -5,9 +5,7 @@ const colors = require('../utils/data/colors.json')
 
 function makeIcons(order, options) {
   const distanceIcon = iconsData.misc[options.distance] || ''
-  const feeIcons = order
-    .fees
-    .array
+  const feeIcons = order.fees.array
     .map((fee) => {
       if (fee === 'LASKULISÄ') return ''
 

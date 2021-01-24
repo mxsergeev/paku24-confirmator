@@ -4,16 +4,18 @@ import '../../styles/convert.css'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 
 export default function SendSMSButton({ phoneNumber, msgBody, err, disabled }) {
-
   return (
     <Button
       disabled={err || disabled}
-      className="button-phone flex-item" 
-      variant="contained" 
+      className="button-phone flex-item"
+      variant="contained"
       size="small"
-    > 
-      <a className="sms" href={`sms://${phoneNumber}/?body=${encodeURI(msgBody)}`}>
-        Send <TextsmsIcon className="sms-icon"/>             
+    >
+      <a
+        className="sms"
+        href={`sms://${phoneNumber}/?body=${encodeURI(msgBody)}`}
+      >
+        Send <TextsmsIcon className="sms-icon" />
       </a>
     </Button>
   )

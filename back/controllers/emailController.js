@@ -4,7 +4,10 @@ const sendMail = require('../utils/email/awsSES')
 const termsData = require('../utils/data/terms.json')
 
 function makeTerms(options) {
-  if (options.hsy) return `${termsData[options.distance] + termsData.hsy}\n${termsData.defaultTerms}`
+  if (options.hsy)
+    return `${termsData[options.distance] + termsData.hsy}\n${
+      termsData.defaultTerms
+    }`
 
   return `${termsData[options.distance]}\n${termsData.defaultTerms}`
 }

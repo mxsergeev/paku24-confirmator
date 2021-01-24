@@ -1,12 +1,10 @@
 import axios from 'axios'
 
 function checkPass(pass) {
-  return axios
-    .post('/api/login', { pass })
-    .then(res => {
-      if (res.data.isCorrect) storePass(pass)
-      return res.data
-    })
+  return axios.post('/api/login', { pass }).then((res) => {
+    if (res.data.isCorrect) storePass(pass)
+    return res.data
+  })
 }
 
 // function askPass() {

@@ -1,0 +1,14 @@
+{
+  "extends": ["airbnb", "prettier"],
+  "plugins": ["prettier"],
+  "parserOptions": {
+    "ecmaVersion": 2020
+  },
+  "rules": {
+    "prettier/prettier": ["error"],
+    "no-console": ["off"],
+    "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
+    "react/prop-types": ["off"],
+    "react/jsx-one-expression-per-line": ["warn", { "allow": "literal" }]
+  }
+}

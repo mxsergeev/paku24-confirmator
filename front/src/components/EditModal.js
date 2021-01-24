@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react' 
+import React, { useState, useEffect } from 'react'
 import { useHistory, useLocation, Route } from 'react-router-dom'
 import Modal from '@material-ui/core/Modal'
 import Button from '@material-ui/core/Button'
@@ -13,7 +13,7 @@ export default function EditModal(props) {
   let location = useLocation()
 
   useEffect(() => {
-    if (location.pathname === '/edit') return setModalOpen(true) 
+    if (location.pathname === '/edit') return setModalOpen(true)
     return setModalOpen(false)
   }, [location.pathname])
 
@@ -25,9 +25,8 @@ export default function EditModal(props) {
     backgroundColor: 'white',
     left: '50%',
     top: '50%',
-    transform: 'translate(-50%, -50%)'
+    transform: 'translate(-50%, -50%)',
   }
-
 
   const handleModalOpen = () => {
     setModalOpen(true)
@@ -41,26 +40,25 @@ export default function EditModal(props) {
 
   return (
     <>
-      <Button className="button-one-third" variant="outlined" onClick={handleModalOpen}>
+      <Button
+        className="button-one-third"
+        variant="outlined"
+        onClick={handleModalOpen}
+      >
         Edit
       </Button>
 
-      <Route path='/edit'>
-        <Modal
-          open={modalOpen}
-          onClose={handleModalClose}
-        >
+      <Route path="/edit">
+        <Modal open={modalOpen} onClose={handleModalClose}>
           <div style={modalStyle}>
-
-            <Editor 
-              order={order} 
-              handleChange={handleChange} 
+            <Editor
+              order={order}
+              handleChange={handleChange}
               handleClick={() => {
                 handleFormatting()
                 handleModalClose()
               }}
             />
-
           </div>
         </Modal>
       </Route>
