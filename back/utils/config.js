@@ -7,7 +7,7 @@ const {
   PASSWORD,
   DOMAIN_NAME,
   MONGODB_URI,
-  JWT_SECRET,
+  ACCESS_TOKEN_SECRET,
 } = process.env
 
 module.exports = {
@@ -17,5 +17,5 @@ module.exports = {
   PASSWORD,
   DOMAIN_NAME,
   MONGODB_URI,
-  JWT_SECRET,
+  ACCESS_TOKEN_SECRET,
 }

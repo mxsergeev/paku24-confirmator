@@ -1,17 +1,20 @@
 const express = require('express')
 const cors = require('cors')
+const cookieParser = require('cookie-parser')
 const helmet = require('helmet')
 const morgan = require('morgan')
 const mongoose = require('mongoose')
 
 const config = require('./utils/config')
 const logger = require('./utils/logger')
-const checkBearerToken = require('./utils/middleware/check-bearer-token')
+const authenticateToken = require('./utils/middleware/authenticateToken')
 
 const calendarRouter = require('./controllers/calendarController')
 const emailRouter = require('./controllers/emailController')
 const loginRouter = require('./controllers/loginController')
 const registrationRouter = require('./controllers/registrationController')
+const testRouter = require('./controllers/testController')
+const tokenRouter = require('./controllers/tokenController')
 
 mongoose
   .connect(config.MONGODB_URI, {
@@ -36,17 +39,19 @@ app.use(express.static('build'))
 app.use(morgan('dev'))
 app.use(cors())
 app.use(express.json())
+app.use(cookieParser())
 
+app.use('/api/token', tokenRouter)
 app.use('/api/login', loginRouter)
 app.use('/api/registration', registrationRouter)
 
-app.use(checkBearerToken)
+app.use(authenticateToken)
 
+app.use('/api/test', testRouter)
 app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 
 app.get('/', (req, res) => {
-  console.log('hello')
   res.send('Hello world!')
 })
 
@@ -68,8 +73,13 @@ const errorHandler = (err, req, res, next) => {
     })
   }
   if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({
+    return res.status(403).json({
       error: 'invalid token',
+    })
+  }
+  if (err.name === 'TokenExpiredError') {
+    return res.status(403).send({
+      error: 'token expired',
     })
   }
 
