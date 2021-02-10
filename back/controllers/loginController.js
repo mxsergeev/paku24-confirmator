@@ -1,19 +1,16 @@
 const loginRouter = require('express').Router()
-const loginMiddleware = require('../utils/middleware/login')
+const authMw = require('../utils/middleware/authentication')
 
 loginRouter.post(
   '/',
-  loginMiddleware.checkUser,
-  loginMiddleware.controlRequestFlow,
-  loginMiddleware.generateAccessToken,
-  loginMiddleware.generateRefreshToken,
-  loginMiddleware.setTokenCookies,
+  authMw.checkUser,
+  authMw.controlRequestFlow,
+  authMw.invalidAuth,
+  authMw.generateAccessToken,
+  authMw.generateRefreshToken,
+  authMw.setTokenCookies,
   (req, res) => {
-    const { user, passwordCorrect } = req
-
-    if (!(user && passwordCorrect)) {
-      return res.status(401).send({ error: 'invalid username or password' })
-    }
+    const { user } = req
 
     return res.status(200).send({
       username: user.username,

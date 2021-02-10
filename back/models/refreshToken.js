@@ -2,6 +2,9 @@ const mongoose = require('mongoose')
 
 const refreshTokenSchema = new mongoose.Schema({
   token: String,
+  accessor: String,
+  tokenNumber: Number,
+  issuedAt: String,
   expires: String,
   user: {
     username: String,

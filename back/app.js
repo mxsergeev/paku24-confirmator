@@ -7,7 +7,7 @@ const mongoose = require('mongoose')
 
 const config = require('./utils/config')
 const logger = require('./utils/logger')
-const authenticateToken = require('./utils/middleware/authenticateToken')
+const { authenticateAccessToken } = require('./utils/middleware/authentication')
 
 const calendarRouter = require('./controllers/calendarController')
 const emailRouter = require('./controllers/emailController')
@@ -45,7 +45,7 @@ app.use('/api/token', tokenRouter)
 app.use('/api/login', loginRouter)
 app.use('/api/registration', registrationRouter)
 
-app.use(authenticateToken)
+app.use(authenticateAccessToken)
 
 app.use('/api/test', testRouter)
 app.use('/api/calendar', calendarRouter)
@@ -72,7 +72,12 @@ const errorHandler = (err, req, res, next) => {
       error: err.message,
     })
   }
-  if (err.name === 'JsonWebTokenError') {
+  if (err.name === 'TokenMissingError') {
+    return res.status(403).send({
+      error: 'token missing',
+    })
+  }
+  if (err.name === 'JsonWebTokenError' || err.name === 'RefreshTokenError') {
     return res.status(403).json({
       error: 'invalid token',
     })
