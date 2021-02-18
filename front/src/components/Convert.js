@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
-import { Route, Redirect } from 'react-router-dom'
+import { Route } from 'react-router-dom'
 import Toast from 'light-toast'
 import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 import sendConfirmationEmail from '../services/emailAPI'
@@ -307,7 +307,7 @@ export default function Convert({ custom }) {
         <AddToCalendarButton handleClick={handleAddingToCalendar} err={error} />
       </div>
 
-      <Redirect to="/" />
+      {/* <Redirect to='/' /> */}
     </div>
   )
 }
