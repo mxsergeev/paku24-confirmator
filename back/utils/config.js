@@ -10,6 +10,7 @@ const {
   REFRESH_TOKEN_SECRET,
   AT_EXPIRES_IN,
   RT_EXPIRES_IN,
+  RT_REFRESH_AFTER_SEC,
 } = process.env
 
 module.exports = {
@@ -22,4 +23,5 @@ module.exports = {
   REFRESH_TOKEN_SECRET,
   AT_EXPIRES_IN,
   RT_EXPIRES_IN,
+  RT_REFRESH_AFTER_SEC,
 }

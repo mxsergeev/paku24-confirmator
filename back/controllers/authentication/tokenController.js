@@ -1,11 +1,11 @@
 const tokenRouter = require('express').Router()
 const {
   authenticateRefreshToken,
-  updateOrDeleteRefreshToken,
+  updateOrDeleteOldToken,
   generateAccessToken,
   generateRefreshToken,
   setTokenCookies,
-} = require('../utils/middleware/authentication')
+} = require('../../utils/middleware/authentication')
 
 tokenRouter.post(
   '/',
@@ -19,13 +19,16 @@ tokenRouter.post(
 )
 
 tokenRouter.post(
-  '/is-up-to-date',
+  '/is-new',
   authenticateRefreshToken,
-  updateOrDeleteRefreshToken,
+  updateOrDeleteOldToken,
   generateAccessToken,
   setTokenCookies,
   (req, res) => {
-    res.status(200).send({ message: 'token updated' })
+    if (req.refreshTokenIsNew) {
+      return res.status(200).send({ message: 'refresh token up to date' })
+    }
+    return res.status(200).send({ message: 'token updated' })
   }
 )
 

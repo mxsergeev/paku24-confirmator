@@ -9,9 +9,9 @@ const {
   animals,
 } = require('unique-names-generator')
 
-const User = require('../models/user')
-const sendMail = require('../utils/email/awsSES')
-const { DOMAIN_NAME } = require('../utils/config')
+const User = require('../../models/user')
+const sendMail = require('../../utils/email/awsSES')
+const { DOMAIN_NAME } = require('../../utils/config')
 
 registrationRouter.post('/request-access', async (req, res) => {
   const { name, email, purpose } = req.body

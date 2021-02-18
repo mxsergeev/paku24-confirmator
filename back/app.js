@@ -12,10 +12,11 @@ const { authenticateAccessToken } = require('./utils/middleware/authentication')
 
 const calendarRouter = require('./controllers/calendarController')
 const emailRouter = require('./controllers/emailController')
-const loginRouter = require('./controllers/loginController')
-const registrationRouter = require('./controllers/registrationController')
+const loginRouter = require('./controllers/authentication/loginController')
+const logoutRouter = require('./controllers/authentication/logoutController')
+const registrationRouter = require('./controllers/authentication/registrationController')
+const tokenRouter = require('./controllers/authentication/tokenController')
 const testRouter = require('./controllers/testController')
-const tokenRouter = require('./controllers/tokenController')
 
 mongoose
   .connect(config.MONGODB_URI, {
@@ -44,6 +45,7 @@ app.use(cookieParser())
 
 app.use('/api/token', tokenRouter)
 app.use('/api/login', loginRouter)
+app.use('/api/logout', logoutRouter)
 app.use('/api/registration', registrationRouter)
 
 app.use(authenticateAccessToken)

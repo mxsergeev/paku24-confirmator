@@ -4,7 +4,7 @@
  * @param {string} [message=undefined] - An optional error message.
  */
 
-module.exports = function ErrorWithCusomName(name, message = undefined) {
+module.exports = function newErrorWithCustomName(name, message = undefined) {
   const error = new Error(message)
   error.name = name
 

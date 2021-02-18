@@ -6,7 +6,8 @@ const bcrypt = require('bcrypt')
 const ms = require('ms')
 const User = require('../../models/user')
 const RefreshToken = require('../../models/refreshToken')
-const newErrorWithCustomName = require('../newErrorWithCustomName')
+const newErrorWithCustomName = require('../helpers/newErrorWithCustomName')
+const logout = require('../helpers/logout')
 
 const randomBytes = util.promisify(crypto.randomBytes)
 
@@ -14,6 +15,7 @@ const {
   ACCESS_TOKEN_SECRET,
   AT_EXPIRES_IN,
   RT_EXPIRES_IN,
+  RT_REFRESH_AFTER_SEC,
 } = require('../config')
 
 const requests = new Map()
@@ -64,9 +66,8 @@ function controlRequestFlow(req, res, next) {
       currentRequest.attempts = 0
     }, throttleTime)
 
-    return res
-      .status(429)
-      .send({ message: 'Too many failed attempts.', throttleTime })
+    const err = newErrorWithCustomName('TooManyRequestsError')
+    return next(err)
   }
 
   if (passwordCorrect) {
@@ -87,7 +88,8 @@ function invalidAuth(req, res, next) {
   const { user, passwordCorrect } = req
 
   if (!(user && passwordCorrect)) {
-    return res.status(401).send({ error: 'invalid username or password' })
+    const err = newErrorWithCustomName('InvalidUserError')
+    return next(err)
   }
 
   return next()
@@ -98,6 +100,8 @@ function invalidAuth(req, res, next) {
  */
 
 function generateAccessToken(req, res, next) {
+  if (req.refreshTokenIsNew) return next()
+
   const { user } = req
   const userForToken = {
     username: user.username,
@@ -112,23 +116,29 @@ function generateAccessToken(req, res, next) {
 }
 
 /**
+ * Generates opaque refresh token, saves it to DB and adds it to the request object.
+ * If user needs refresh token because of logging in, firstly we delete his previous token from DB.
  * @param {Object} req
  * @param {Object} req.user
- * @param {string} req.accessorToken
- * @param {Number} req.tokenNumber
+ * @param {string} req.user.username
+ * @param {string} req.user._id
+ * @param {Object} [req.refreshTokenInDB]
  * @prop {string} req.refreshToken
  */
 
 async function generateRefreshToken(req, res, next) {
+  const { user, refreshTokenInDB = undefined } = req
+
+  if (!refreshTokenInDB) await RefreshToken.deleteMany({ 'user._id': user._id })
+
   const buf = await randomBytes(32)
   const token = buf.toString('hex')
-  const { user, accessorToken, tokenNumber } = req
   const now = Date.now()
 
   const refreshToken = new RefreshToken({
     token,
-    accessor: accessorToken || undefined,
-    tokenNumber: tokenNumber + 1 || 0,
+    ancestor: refreshTokenInDB?.token || undefined,
+    tokenNumber: refreshTokenInDB?.tokenNumber + 1 || 0,
     issuedAt: now,
     expires: now + ms(RT_EXPIRES_IN),
     user: {
@@ -171,8 +181,6 @@ function authenticateAccessToken(req, res, next) {
  * @param {string} req.cookies.refreshToken
  * @prop {Object} req.refreshTokenInDB
  * @prop {Object} req.user
- * @prop {string} req.accessorToken
- * @prop {Number} req.tokenNumber
  */
 
 async function authenticateRefreshToken(req, res, next) {
@@ -186,22 +194,42 @@ async function authenticateRefreshToken(req, res, next) {
     token: refreshTokenFromCookie,
   }).exec()
   if (!refreshTokenInDB) {
+    /**
+     * If client's token was not found in DB,
+     * but there is a descendant token -
+     * that's a clear indication of that his refresh token was stolen.
+     * We will delete the descendant token and clear cookies
+     * so that the thief can no longer use them.
+     */
+    const descendantToken = await RefreshToken.findOne({
+      ancestor: refreshTokenFromCookie,
+    })
+    if (descendantToken) {
+      await logout(req, res, descendantToken.token)
+      const err = newErrorWithCustomName('TokenTheftError')
+      return next(err)
+    }
+
     const err = newErrorWithCustomName('RefreshTokenError')
     return next(err)
   }
 
   const isExpired = refreshTokenInDB && refreshTokenInDB.expires < Date.now()
   if (isExpired) {
-    // logout()
-    await refreshTokenInDB.remove()
+    await logout(req, res)
     const err = newErrorWithCustomName('TokenExpiredError')
+    return next(err)
+  }
+
+  const issuedRecently =
+    Date.now() - refreshTokenInDB.issuedAt < ms(RT_REFRESH_AFTER_SEC)
+  if (issuedRecently) {
+    const err = newErrorWithCustomName('TooManyRequestsError')
     return next(err)
   }
 
   req.refreshTokenInDB = refreshTokenInDB
   req.user = refreshTokenInDB.user
-  req.accessorToken = refreshTokenInDB.token
-  req.tokenNumber = refreshTokenInDB.tokenNumber
 
   return next()
 }
@@ -212,20 +240,27 @@ async function authenticateRefreshToken(req, res, next) {
  * @prop {string} req.refreshToken
  */
 
-async function updateOrDeleteRefreshToken(req, res, next) {
-  const potentiallyAccessorToken = req.refreshTokenInDB
-  const newToken = await RefreshToken.findOne({
-    accessor: potentiallyAccessorToken.token,
+async function updateOrDeleteOldToken(req, res, next) {
+  const potentiallyAncestorToken = req.refreshTokenInDB
+  const descendantToken = await RefreshToken.findOne({
+    ancestor: potentiallyAncestorToken.token,
   })
 
-  // Client has an accessor token
-  if (newToken) {
-    req.refreshToken = newToken.token
+  /**
+   * Client has an ancestor token
+   * Client should send another request to this endpoint to check
+   * if he received new token this time.
+   */
+
+  if (descendantToken) {
+    req.refreshToken = descendantToken.token
     return next()
   }
 
-  await RefreshToken.deleteOne({ token: potentiallyAccessorToken.accessor })
-  return res.status(200).send({ message: 'refresh token up to date' })
+  // Client has new token
+  await RefreshToken.deleteOne({ token: potentiallyAncestorToken.ancestor })
+  req.refreshTokenIsNew = true
+  return next()
 }
 
 /**
@@ -235,17 +270,15 @@ async function updateOrDeleteRefreshToken(req, res, next) {
  */
 
 function setTokenCookies(req, res, next) {
-  const secure = process.env.NODE_ENV === 'production'
-  const httpOnly = true
+  if (req.refreshTokenIsNew) return next()
 
-  res.cookie('accessToken', req.accessToken, {
-    httpOnly,
-    secure,
-  })
-  res.cookie('refreshToken', req.refreshToken, {
-    httpOnly,
-    secure,
-  })
+  const options = {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+  }
+
+  res.cookie('accessToken', req.accessToken, options)
+  res.cookie('refreshToken', req.refreshToken, options)
 
   return next()
 }
@@ -258,6 +291,6 @@ module.exports = {
   generateRefreshToken,
   authenticateAccessToken,
   authenticateRefreshToken,
-  updateOrDeleteRefreshToken,
+  updateOrDeleteOldToken,
   setTokenCookies,
 }

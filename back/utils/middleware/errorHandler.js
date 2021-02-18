@@ -1,30 +1,49 @@
 const logger = require('../logger')
 
-const errorHandler = (err, req, res, next) => {
-  if (err.name === 'CastError') {
-    return res.status(400).send({
-      error: 'malformatted id',
-    })
+function errorHandler(err, req, res, next) {
+  const errorsPass = {
+    TokenTheftError: {
+      status: 403,
+      message: 'token theft',
+    },
+    TooManyRequestsError: {
+      status: 429,
+      message: 'too many requests',
+    },
+    InvalidUserError: {
+      status: 400,
+      message: 'invalid username or password',
+    },
+    CastError: {
+      status: 400,
+      message: 'malformatted id',
+    },
+    ValidationError: {
+      status: 400,
+      message: err.message,
+    },
+    TokenMissingError: {
+      status: 403,
+      message: 'token missing',
+    },
+    JsonWebTokenError: {
+      status: 403,
+      message: 'invalid token',
+    },
+    RefreshTokenError: {
+      status: 403,
+      message: 'invalid token',
+    },
+    TokenExpiredError: {
+      status: 403,
+      message: 'token expired',
+    },
   }
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({
-      error: err.message,
-    })
-  }
-  if (err.name === 'TokenMissingError') {
-    return res.status(403).send({
-      error: 'token missing',
-    })
-  }
-  if (err.name === 'JsonWebTokenError' || err.name === 'RefreshTokenError') {
-    return res.status(403).json({
-      error: 'invalid token',
-    })
-  }
-  if (err.name === 'TokenExpiredError') {
-    return res.status(403).send({
-      error: 'token expired',
-    })
+
+  const error = errorsPass[err.name]
+
+  if (error) {
+    return res.status(error.status).send({ error: error.message })
   }
 
   logger.error(err.message)
