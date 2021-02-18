@@ -28,11 +28,11 @@ function errorHandler(err, req, res, next) {
     },
     JsonWebTokenError: {
       status: 403,
-      message: 'invalid token',
+      message: 'invalid access token',
     },
     RefreshTokenError: {
       status: 403,
-      message: 'invalid token',
+      message: 'invalid refresh token',
     },
     TokenExpiredError: {
       status: 403,

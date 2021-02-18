@@ -163,9 +163,14 @@ async function generateRefreshToken(req, res, next) {
 
 function authenticateAccessToken(req, res, next) {
   const { accessToken } = req.cookies
-  if (!accessToken) {
+  if (!accessToken || accessToken === 'undefined') {
     const err = newErrorWithCustomName('TokenMissingError')
     return next(err)
+  }
+
+  if (req.path === '/is-new') {
+    req.accessToken = accessToken
+    return next()
   }
 
   return jwt.verify(accessToken, ACCESS_TOKEN_SECRET, (err, user) => {
@@ -185,7 +190,7 @@ function authenticateAccessToken(req, res, next) {
 
 async function authenticateRefreshToken(req, res, next) {
   const refreshTokenFromCookie = req.cookies.refreshToken
-  if (!refreshTokenFromCookie) {
+  if (!refreshTokenFromCookie || refreshTokenFromCookie === 'undefined') {
     const err = newErrorWithCustomName('TokenMissingError')
     return next(err)
   }
@@ -223,7 +228,7 @@ async function authenticateRefreshToken(req, res, next) {
 
   const issuedRecently =
     Date.now() - refreshTokenInDB.issuedAt < ms(RT_REFRESH_AFTER_SEC)
-  if (issuedRecently) {
+  if (issuedRecently && req.path !== '/is-new') {
     const err = newErrorWithCustomName('TooManyRequestsError')
     return next(err)
   }
