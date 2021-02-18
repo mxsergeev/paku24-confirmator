@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useHistory, useLocation, Route } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useHistory, Route } from 'react-router-dom'
 import Modal from '@material-ui/core/Modal'
 import Button from '@material-ui/core/Button'
 import Editor from './Editor'
@@ -7,15 +7,9 @@ import Editor from './Editor'
 export default function EditModal(props) {
   const { order, handleFormatting, handleChange } = props
 
-  const [modalOpen, setModalOpen] = useState(false)
+  const [, setModalOpen] = useState(false)
 
-  let history = useHistory()
-  let location = useLocation()
-
-  useEffect(() => {
-    if (location.pathname === '/edit') return setModalOpen(true)
-    return setModalOpen(false)
-  }, [location.pathname])
+  const history = useHistory()
 
   const modalStyle = {
     position: 'absolute',
@@ -35,7 +29,7 @@ export default function EditModal(props) {
 
   const handleModalClose = () => {
     setModalOpen(false)
-    history.push('/')
+    history.goBack()
   }
 
   return (
@@ -48,8 +42,8 @@ export default function EditModal(props) {
         Edit
       </Button>
 
-      <Route path="/edit">
-        <Modal open={modalOpen} onClose={handleModalClose}>
+      <Route exact path="/edit">
+        <Modal open onClose={handleModalClose}>
           <div style={modalStyle}>
             <Editor
               order={order}
