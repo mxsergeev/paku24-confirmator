@@ -9,7 +9,7 @@ import InputModal from './InputModal'
 import EditModal from './EditModal'
 import * as regexFunc from '../utils/regexFunctions'
 import * as regexHelpers from '../utils/helpers/regexHelpers'
-import * as calculations from '../utils/helpers/calculations'
+import calculateFees from '../utils/helpers/calculateFees'
 import services from '../utils/services.json'
 
 import TransformButton from './buttons/TransformButton'
@@ -178,11 +178,7 @@ export default function Convert({ custom }) {
 
   function calcAndPrintFees() {
     return regexHelpers.printFees(
-      calculations.calculateFees(
-        order.date.original,
-        order.time,
-        order.paymentType
-      )
+      calculateFees(order.date.original, order.time, order.paymentType)
     )
   }
 

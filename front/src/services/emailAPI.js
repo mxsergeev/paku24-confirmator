@@ -1,4 +1,5 @@
 import axios from 'axios'
+
 const baseUrl = '/api/email'
 
 export default function sendConfirmationEmail(confirmation, options, email) {

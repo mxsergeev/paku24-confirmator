@@ -4,11 +4,15 @@
   "parserOptions": {
     "ecmaVersion": 2020
   },
+  "env": {
+    "browser": true
+  },
   "rules": {
     "prettier/prettier": ["error"],
     "no-console": ["off"],
     "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
     "react/prop-types": ["off"],
-    "react/jsx-one-expression-per-line": ["warn", { "allow": "literal" }]
+    "react/jsx-one-expression-per-line": ["off"],
+    "react/jsx-wrap-multilines": ["off"]
   }
 }

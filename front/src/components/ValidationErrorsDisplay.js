@@ -15,6 +15,7 @@ export default function ValidationErrorsDisplay(props) {
     if (!ignore) {
       const errs = [
         {
+          id: 1,
           type: 'date',
           error: validator.isBefore(
             order.date.ISODate,
@@ -25,6 +26,7 @@ export default function ValidationErrorsDisplay(props) {
           }`,
         },
         {
+          id: 2,
           type: 'address',
           error: validator.isEmpty(order.address),
           message: `missing or is in incorrect format. Value: ${
@@ -32,6 +34,7 @@ export default function ValidationErrorsDisplay(props) {
           }`,
         },
         {
+          id: 3,
           type: 'phone',
           error: !validator.isMobilePhone(order.phone, [
             'fi-FI',
@@ -43,6 +46,7 @@ export default function ValidationErrorsDisplay(props) {
           }`,
         },
         {
+          id: 4,
           type: 'email',
           error: custom ? false : !validator.isEmail(order.email),
           message: `missing or is in incorrect format. Value: ${
@@ -86,13 +90,13 @@ export default function ValidationErrorsDisplay(props) {
         <div style={border} className="flex-100-space-between">
           <div style={displayStyle}>
             <ErrorOutlineIcon />
-            {errors.map((err, index) => {
+            {errors.map((err) => {
               if (err.error) {
                 return (
                   <>
-                    <div key={index}>
+                    <div key={err.id}>
                       <span
-                        key={100 + index}
+                        key={err.id}
                         style={ignore ? ignoreStyle : errStyle}
                       >
                         {err.type}{' '}

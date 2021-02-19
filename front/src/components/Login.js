@@ -1,56 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
-import loginServiсe from '../services/login'
-import Toast from 'light-toast'
-import FormGroup from '@material-ui/core/FormGroup'
-import { Route, Redirect, useHistory } from 'react-router-dom'
 
-// function usePasswordFromLocalStorage() {
-//   useEffect(() => {
-//     const storedPass = loginServiсe.getStoredPass()
-//     if (storedPass) {
-//       <Redirect to='/' />
-//       return handleIsLoggedChange(true)
-//     }
-//   }, [])
-// }
-
-export default function Login({ handleIsLoggedChange, isLogged }) {
-  const [password, setPassword] = useState('')
-  const [isButtonDisabled, setIsButtonDisabled] = useState(false)
-  const [inputError, setInputError] = useState(false)
-
-  const history = useHistory()
-
-  const tryToLogin = useCallback(
-    (pass) => {
-      loginServiсe
-        .checkPass(pass)
-        .then((data) => {
-          const { isCorrect, message, throttleTime } = data
-
-          if (message) {
-            Toast.fail(
-              `${message} Try again after ${throttleTime / 1000} seconds.`,
-              throttleTime - 400
-            )
-            setIsButtonDisabled(true)
-            setTimeout(() => {
-              setIsButtonDisabled(false)
-            }, throttleTime)
-          }
-          if (!isCorrect) {
-            return setInputError(true)
-          }
-
-          handleIsLoggedChange(isCorrect)
-          history.replace('/')
-        })
-        .catch((err) => console.log(err))
-    },
-    [handleIsLoggedChange, history]
-  )
+export default function Login() {
+  const [, setPassword] = useState('')
+  const [isButtonDisabled] = useState(false)
+  const [inputError] = useState(false)
 
   const flexStyle = {
     display: 'flex',
@@ -73,7 +28,7 @@ export default function Login({ handleIsLoggedChange, isLogged }) {
             error={inputError}
             helperText={inputError ? 'Incorrect password.' : null}
             type="password"
-            required={true}
+            required
             name="password"
             onChange={(e) => setPassword(e.target.value)}
             label="Password"
@@ -88,7 +43,6 @@ export default function Login({ handleIsLoggedChange, isLogged }) {
             size="small"
             onClick={(e) => {
               e.preventDefault()
-              tryToLogin(password)
             }}
           >
             Login

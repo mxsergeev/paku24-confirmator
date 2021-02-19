@@ -8,7 +8,7 @@ import {
 } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import Convert from './components/Convert'
-import loginServiсe from './services/login'
+// import loginServiсe from './services/login'
 import Header from './components/Header'
 import Login from './components/Login'
 import './styles/container.css'
@@ -25,17 +25,6 @@ function ErrorFallback({ error }) {
 function App() {
   const history = useHistory()
   const location = useLocation()
-
-  useEffect(() => {
-    const storedPass = loginServiсe.getStoredPass()
-    if (storedPass) {
-      console.log('You are already logged in.')
-      // history.replace('/')
-      setIsLogged(true)
-    } else {
-      history.replace('/login')
-    }
-  }, [history])
 
   const [isLogged, setIsLogged] = useState(false)
   const [custom, setCustom] = useState(false)
@@ -68,21 +57,17 @@ function App() {
       />
 
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        {/* {isLogged ? <Convert custom={custom} /> : <Redirect to='/login' />} */}
-
         <Switch>
-          {/* {isLogged ? <Redirect to='/' /> : <Redirect to='/login' />} */}
-
-          {/* <Route path='/login'>
-            <Login 
+          <Route path="/login">
+            <Login
               isLogged={isLogged}
               handleIsLoggedChange={handleIsLoggedChange}
             />
-          </Route> */}
+          </Route>
 
-          {/* <Route exact path='/:slug*'> */}
-          <Convert custom={custom} />
-          {/* </Route> */}
+          <Route exact path="/*">
+            <Convert custom={custom} />
+          </Route>
         </Switch>
       </ErrorBoundary>
     </div>

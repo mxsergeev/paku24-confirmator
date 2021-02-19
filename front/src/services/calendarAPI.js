@@ -1,4 +1,5 @@
 import axios from 'axios'
+
 const baseUrl = '/api/calendar'
 
 export default function addEventToCalendar(entry, order, options) {

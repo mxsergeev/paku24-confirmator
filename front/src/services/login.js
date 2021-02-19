@@ -1,5 +1,9 @@
 import axios from 'axios'
 
+function storePass(pass) {
+  return localStorage.setItem('pass', pass)
+}
+
 function checkPass(pass) {
   return axios.post('/api/login', { pass }).then((res) => {
     if (res.data.isCorrect) storePass(pass)
@@ -10,10 +14,6 @@ function checkPass(pass) {
 // function askPass() {
 //   return prompt('Enter password:')
 // }
-
-function storePass(pass) {
-  return localStorage.setItem('pass', pass)
-}
 
 function getStoredPass() {
   return localStorage.getItem('pass')

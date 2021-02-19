@@ -1,4 +1,4 @@
-export function calculateFees(date, time, paymentType) {
+export default function calculateFees(date, time, paymentType) {
   const timeInNumberType = time.split(':')[0] * 1
 
   const dayOFWeek = date.getDay()
