@@ -100,7 +100,7 @@ function invalidAuth(req, res, next) {
  */
 
 function generateAccessToken(req, res, next) {
-  if (req.refreshTokenIsNew) return next()
+  if (req.refreshTokenIsNew || req.accessToken) return next()
 
   const { user } = req
   const userForToken = {
@@ -168,13 +168,12 @@ function authenticateAccessToken(req, res, next) {
     return next(err)
   }
 
-  if (req.path === '/is-new') {
-    req.accessToken = accessToken
-    return next()
-  }
-
   return jwt.verify(accessToken, ACCESS_TOKEN_SECRET, (err, user) => {
     if (err) return next(err)
+
+    // Skip generation of new access token if the one that client has is valid
+    if (req.path === '/is-new') req.accessToken = accessToken
+
     req.user = user
     return next()
   })

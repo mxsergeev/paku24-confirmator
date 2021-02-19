@@ -1,5 +1,6 @@
 const tokenRouter = require('express').Router()
 const {
+  authenticateAccessToken,
   authenticateRefreshToken,
   updateOrDeleteOldToken,
   generateAccessToken,
@@ -22,6 +23,7 @@ tokenRouter.post(
   '/is-new',
   authenticateRefreshToken,
   updateOrDeleteOldToken,
+  authenticateAccessToken,
   generateAccessToken,
   setTokenCookies,
   (req, res) => {
