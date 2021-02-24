@@ -29,7 +29,7 @@ export default function EditModal(props) {
 
   const handleModalClose = () => {
     setModalOpen(false)
-    history.goBack()
+    history.push('/')
   }
 
   return (

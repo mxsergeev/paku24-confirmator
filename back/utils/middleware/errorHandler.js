@@ -36,7 +36,11 @@ function errorHandler(err, req, res, next) {
     },
     TokenExpiredError: {
       status: 403,
-      message: 'token expired',
+      message: 'access token expired',
+    },
+    RefreshTokenExpiredError: {
+      status: 403,
+      message: 'refresh token expired',
     },
   }
 

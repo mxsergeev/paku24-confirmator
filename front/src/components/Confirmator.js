@@ -4,7 +4,7 @@ import Toast from 'light-toast'
 import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 import sendConfirmationEmail from '../services/emailAPI'
 import addEventToCalendar from '../services/calendarAPI'
-import '../styles/convert.css'
+import '../styles/confirmator.css'
 import InputModal from './InputModal'
 import EditModal from './EditModal'
 import * as regexFunc from '../utils/regexFunctions'
@@ -49,7 +49,7 @@ KIITOS VARAUKSESTANNE!`
   return converted
 }
 
-export default function Convert({ custom }) {
+export default function Confirmator({ custom }) {
   const [text, setText] = useState('')
   const [customText, setCustomText] = useState('')
   const [formattedConfirmation, setFormattedConfirmation] = useState('')
@@ -112,7 +112,11 @@ export default function Convert({ custom }) {
 
   function handleEmailSending() {
     if (order.email && formattedConfirmation) {
-      return sendConfirmationEmail(formattedConfirmation, options, order.email)
+      return sendConfirmationEmail({
+        confirmation: formattedConfirmation,
+        options,
+        email: order.email,
+      })
         .then((res) => Toast.info(res, 500))
         .catch((err) => Toast.fail(err.response.data.error))
     }
@@ -200,16 +204,33 @@ export default function Convert({ custom }) {
         },
       })
     }
-    if (e.target.name === 'serviceName') {
-      const serviceName = e.target.value
-      return setOrder({
-        ...order,
-        [e.target.name]: serviceName,
-        servicePrice: services.find((service) => service.name === serviceName)
-          .price,
-      })
-    }
-    return setOrder({ ...order, [e.target.name]: e.target.value })
+    // if (e.target.name === 'serviceName') {
+    //   console.log(e.target.name)
+    //   const serviceName = e.target.value
+    //   console.log(serviceName)
+    //   console.log(order)
+    //   const servicePrice = services.find(
+    //     (service) => service.name === serviceName
+    //   ).price
+    //   return setOrder({
+    //     ...order,
+    //     serviceName,
+    //     servicePrice,
+    //   })
+    // }
+    const serviceName = e.target.value
+    const service = services.find((s) => s.name === serviceName)
+    console.log('service', service)
+    console.log(order)
+    // WHY I CANT CHANGE SERVICE PRICE???????????????
+    setOrder({
+      ...order,
+      servicePrice: service.price,
+    })
+    return setOrder({
+      ...order,
+      [e.target.name]: e.target.value,
+    })
   }
 
   function handleTextChange(e) {

@@ -58,7 +58,7 @@ app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname+'/build/index.html'))
+  res.sendFile(path.join(__dirname + '/build/index.html'))
 })
 
 const unknownEndpoint = (req, res) => {

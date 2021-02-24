@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Switch,
-  Route,
-  useHistory,
-  useLocation,
-  useRouteMatch,
-} from 'react-router-dom'
+import { Route, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
-import Convert from './components/Convert'
-// import loginServiсe from './services/login'
+import Confirmator from './components/Confirmator'
 import Header from './components/Header'
 import Login from './components/Login'
+import loginServiсe from './services/login'
+import tokenService from './services/tokens'
 import './styles/container.css'
 
 function ErrorFallback({ error }) {
@@ -22,53 +17,97 @@ function ErrorFallback({ error }) {
   )
 }
 
-function App() {
-  const history = useHistory()
-  const location = useLocation()
+function LoadingUntillAuthenticated({ user, component }) {
+  const loading = user === 'Loading'
+  const needsToLogin = user === null
 
-  const [isLogged, setIsLogged] = useState(false)
-  const [custom, setCustom] = useState(false)
+  return (
+    <>
+      {loading && <p>Loading...</p>}
+      {needsToLogin && <Redirect to="/login" />}
+      {!loading && !needsToLogin && component}
+    </>
+  )
+}
 
-  function handleIsLoggedChange(boolean) {
-    setIsLogged(boolean)
+function AuthenticateUser({ user, setUser, children }) {
+  const [refreshAccessTokenAfterMS, setRefreshAccessTokenAfterMS] = useState(
+    null
+  )
+
+  async function refreshTokens(delay) {
+    console.log('Refreshing tokens.')
+    await tokenService.refreshTokens()
+    setTimeout(() => refreshTokens(delay), delay)
   }
 
-  const match = useRouteMatch('/custom')
+  useEffect(async () => {
+    try {
+      const {
+        user: userFromToken,
+        refreshAccessTokenAfter,
+      } = await loginServiсe.loginWithTokens()
 
-  useEffect(() => {
-    if (match) return setCustom(true)
-    return setCustom(false)
-  }, [location.pathname, match])
+      setRefreshAccessTokenAfterMS(refreshAccessTokenAfter)
+
+      return setUser(userFromToken)
+    } catch (err) {
+      console.log(err.response?.data || err)
+      return setUser(null)
+    }
+  }, [])
+
+  useEffect(async () => {
+    if (refreshAccessTokenAfterMS) {
+      setTimeout(
+        () => refreshTokens(refreshAccessTokenAfterMS),
+        refreshAccessTokenAfterMS
+      )
+    }
+  }, [refreshAccessTokenAfterMS])
+
+  return (
+    <>
+      <LoadingUntillAuthenticated user={user} component={children} />
+
+      <Route path="/login">
+        {user === null ? (
+          <Login
+            setUser={setUser}
+            setRefreshAccessTokenAfterMS={setRefreshAccessTokenAfterMS}
+          />
+        ) : (
+          <Redirect to="/" />
+        )}
+      </Route>
+    </>
+  )
+}
+
+function App() {
+  const [user, setUser] = useState('Loading')
+  const [custom, setCustom] = useState(false)
+
+  const history = useHistory()
 
   function handleCustomChange(e) {
     const { checked } = e.target
     setCustom(checked)
 
-    if (checked) return history.push('/custom')
-    return history.push('/')
+    return checked ? history.push('/custom') : history.push('/')
   }
 
   return (
     <div className="container">
-      <Header
-        custom={custom}
-        handleChange={handleCustomChange}
-        logged={isLogged}
-      />
-
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <Switch>
-          <Route path="/login">
-            <Login
-              isLogged={isLogged}
-              handleIsLoggedChange={handleIsLoggedChange}
-            />
-          </Route>
-
-          <Route exact path="/*">
-            <Convert custom={custom} />
-          </Route>
-        </Switch>
+        <Header
+          isLogged={user !== null && user !== 'Loading'}
+          custom={custom}
+          handleChange={handleCustomChange}
+        />
+        <AuthenticateUser user={user} setUser={setUser}>
+          <Confirmator custom={custom} />
+        </AuthenticateUser>
       </ErrorBoundary>
     </div>
   )

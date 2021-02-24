@@ -1,27 +1,27 @@
 import axios from 'axios'
+import tokenService from './tokens'
 
-function storePass(pass) {
-  return localStorage.setItem('pass', pass)
+const baseUrl = '/api/login'
+
+async function loginWithCredentials(credentials) {
+  return axios.post(baseUrl, credentials).then((res) => res.data)
 }
 
-function checkPass(pass) {
-  return axios.post('/api/login', { pass }).then((res) => {
-    if (res.data.isCorrect) storePass(pass)
-    return res.data
-  })
+async function loginWithAccessToken() {
+  const response = await axios.post(`${baseUrl}/token`)
+  return response.data
 }
 
-// function askPass() {
-//   return prompt('Enter password:')
-// }
-
-function getStoredPass() {
-  return localStorage.getItem('pass')
+async function loginWithTokens() {
+  try {
+    return await loginWithAccessToken()
+  } catch (err) {
+    if (err.response.data.error === 'access token expired') {
+      await tokenService.refreshTokens()
+      return loginWithAccessToken()
+    }
+    throw err
+  }
 }
 
-const loginServiсe = {
-  checkPass,
-  getStoredPass,
-}
-
-export default loginServiсe
+export default { loginWithCredentials, loginWithTokens }

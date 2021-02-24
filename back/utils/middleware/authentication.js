@@ -226,7 +226,7 @@ async function authenticateRefreshToken(req, res, next) {
   const isExpired = refreshTokenInDB && refreshTokenInDB.expires < Date.now()
   if (isExpired) {
     await logout(req, res)
-    const err = newErrorWithCustomName('TokenExpiredError')
+    const err = newErrorWithCustomName('RefreshTokenExpiredError')
     return next(err)
   }
 

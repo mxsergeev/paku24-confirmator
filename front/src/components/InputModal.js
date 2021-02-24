@@ -14,7 +14,7 @@ export default function InputModal(props) {
   // this operation gets called two times per render. Fix this!
   const customOrderEditor = useRouteMatch('/custom')?.url
 
-  console.log('match', customOrderEditor)
+  // console.log('match', customOrderEditor)
 
   const slug = label.toLowerCase()
 
@@ -27,7 +27,7 @@ export default function InputModal(props) {
 
   const handleModalClose = () => {
     setModalOpen(false)
-    history.goBack()
+    history.push(customOrderEditor ? `${customOrderEditor}` : '/')
   }
 
   const modalStyle = {

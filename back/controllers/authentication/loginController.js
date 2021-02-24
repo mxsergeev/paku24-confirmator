@@ -1,4 +1,7 @@
+const ms = require('ms')
 const loginRouter = require('express').Router()
+const { AT_EXPIRES_IN } = require('../../utils/config')
+
 const {
   checkUser,
   controlRequestFlow,
@@ -6,7 +9,20 @@ const {
   generateAccessToken,
   generateRefreshToken,
   setTokenCookies,
+  authenticateAccessToken,
 } = require('../../utils/middleware/authentication')
+
+function sendUserAndRefreshTokenAfterMS(req, res) {
+  const { user } = req
+
+  return res.status(200).send({
+    user: {
+      username: user.username,
+      name: user.name,
+    },
+    refreshAccessTokenAfter: ms(AT_EXPIRES_IN) - 2000,
+  })
+}
 
 loginRouter.post(
   '/',
@@ -16,14 +32,13 @@ loginRouter.post(
   generateAccessToken,
   generateRefreshToken,
   setTokenCookies,
-  (req, res) => {
-    const { user } = req
+  sendUserAndRefreshTokenAfterMS
+)
 
-    return res.status(200).send({
-      username: user.username,
-      name: user.name,
-    })
-  }
+loginRouter.post(
+  '/token',
+  authenticateAccessToken,
+  sendUserAndRefreshTokenAfterMS
 )
 
 module.exports = loginRouter

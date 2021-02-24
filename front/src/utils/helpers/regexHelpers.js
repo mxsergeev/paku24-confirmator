@@ -2,7 +2,8 @@ export function cannotFind(str) {
   return `Cannot find ${str}. Invalid format.`
 }
 
-export function toConfirmationDateFormat(date) {
+export function toConfirmationDateFormat(d) {
+  const date = new Date(d)
   let dd = date.getDate()
   let mm = date.getMonth() + 1
   const yyyy = date.getFullYear()
