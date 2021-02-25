@@ -93,17 +93,12 @@ export default function ValidationErrorsDisplay(props) {
             {errors.map((err) => {
               if (err.error) {
                 return (
-                  <>
-                    <div key={err.id}>
-                      <span
-                        key={err.id}
-                        style={ignore ? ignoreStyle : errStyle}
-                      >
-                        {err.type}{' '}
-                      </span>
-                      {err.message}
-                    </div>
-                  </>
+                  <div key={err.id}>
+                    <span style={ignore ? ignoreStyle : errStyle}>
+                      {err.type}{' '}
+                    </span>
+                    {err.message}
+                  </div>
                 )
               }
               return null

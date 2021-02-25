@@ -99,7 +99,7 @@ export default function Confirmator({ custom }) {
     setOrder(defaultOrder)
     setOptions(defaultOptions)
     setFormattedConfirmation('')
-  }, [custom, defaultOrder, defaultOptions])
+  }, [custom])
 
   const handleSetError = useCallback((bool) => setError(bool), [])
 
@@ -204,29 +204,17 @@ export default function Confirmator({ custom }) {
         },
       })
     }
-    // if (e.target.name === 'serviceName') {
-    //   console.log(e.target.name)
-    //   const serviceName = e.target.value
-    //   console.log(serviceName)
-    //   console.log(order)
-    //   const servicePrice = services.find(
-    //     (service) => service.name === serviceName
-    //   ).price
-    //   return setOrder({
-    //     ...order,
-    //     serviceName,
-    //     servicePrice,
-    //   })
-    // }
-    const serviceName = e.target.value
-    const service = services.find((s) => s.name === serviceName)
-    console.log('service', service)
-    console.log(order)
-    // WHY I CANT CHANGE SERVICE PRICE???????????????
-    setOrder({
-      ...order,
-      servicePrice: service.price,
-    })
+    if (e.target.name === 'serviceName') {
+      const serviceName = e.target.value
+      const servicePrice = services.find(
+        (service) => service.name === serviceName
+      ).price
+      return setOrder({
+        ...order,
+        serviceName,
+        servicePrice,
+      })
+    }
     return setOrder({
       ...order,
       [e.target.name]: e.target.value,
