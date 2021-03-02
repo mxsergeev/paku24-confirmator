@@ -10,58 +10,75 @@ const SCOPES = ['https://www.googleapis.com/auth/calendar']
 // time.
 const TOKEN_PATH = 'token.json'
 
-function addEventToCalendar({ title, date, color }) {
-  const dateRaw = new Date(date)
-  const nextDay = new Date(
-    dateRaw.getFullYear(),
-    dateRaw.getMonth(),
-    dateRaw.getDate() + 1
-  ).toISOString()
+/**
+ * @param {Object} event
+ * @param {string} event.title
+ * @param {Date} event.date
+ * @param {string} event.duration
+ * @param {string} event.color
+ */
 
-  const event = {
-    summary: title,
-    colorId: color,
-    start: {
-      date: date.split('T')[0],
-      timeZone: 'Europe/Helsinki',
-    },
-    end: {
-      date: nextDay.split('T')[0],
-      timeZone: 'Europe/Helsinki',
-    },
-    reminders: {
-      useDefault: false,
-    },
-  }
-  console.log('EVENT from API file:\n', event)
+function addEventToCalendar({ title, date, duration, color }) {
+  return new Promise((resolve, reject) => {
+    const dateRaw = new Date(date)
 
-  function addEvent(auth) {
-    const calendar = google.calendar({ version: 'v3', auth })
-    calendar.events.insert(
-      {
-        auth,
-        calendarId: 'primary',
-        resource: event,
-      },
-      (err, ev) => {
-        if (err) {
-          console.log(
-            `There was an error contacting the Calendar service: ${err}`
-          )
-          return
-        }
-        console.log('Event created: %s', ev.data.summary)
-      }
+    const hours = Math.floor(Number(duration))
+    let minutes = (Number(duration) % 1) * 60
+    if (!minutes) minutes = 0
+
+    const endDate = new Date(
+      dateRaw.getFullYear(),
+      dateRaw.getMonth(),
+      dateRaw.getDate(),
+      dateRaw.getHours() + hours,
+      dateRaw.getMinutes() + minutes
     )
-  }
 
-  // Load client secrets from a local file.
-  // This function is exported thus credentials have to be alocated keeping that in mind.
-  // This function gets called from file ./controllers/calendarController
-  fs.readFile('./utils/calendar/credentials.json', (err, content) => {
-    if (err) return console.log('Error loading client secret file:', err)
-    // Authorize a client with credentials, then call the Google Calendar API.
-    authorize(JSON.parse(content), addEvent)
+    const event = {
+      summary: title,
+      colorId: color,
+      start: {
+        dateTime: dateRaw.toISOString(),
+        timeZone: 'Europe/Helsinki',
+      },
+      end: {
+        dateTime: endDate.toISOString(),
+        timeZone: 'Europe/Helsinki',
+      },
+      reminders: {
+        useDefault: false,
+      },
+    }
+
+    function addEvent(auth) {
+      const calendar = google.calendar({ version: 'v3', auth })
+      calendar.events.insert(
+        {
+          auth,
+          calendarId: 'primary',
+          resource: event,
+        },
+        (err, ev) => {
+          if (err) {
+            console.log(
+              `There was an error contacting the Calendar service: ${err}`
+            )
+            reject(err)
+          }
+          console.log('Event created: %s', ev.data)
+          resolve(ev)
+        }
+      )
+    }
+
+    // Load client secrets from a local file.
+    // This function is exported thus credentials have to be allocated keeping that in mind.
+    // This function gets called from file ./controllers/calendarController
+    fs.readFile('./utils/calendar/credentials.json', (err, content) => {
+      if (err) return console.log('Error loading client secret file:', err)
+      // Authorize a client with credentials, then call the Google Calendar API.
+      authorize(JSON.parse(content), addEvent)
+    })
   })
 }
 
