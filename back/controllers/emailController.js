@@ -18,7 +18,12 @@ emailRouter.post('/', (req, res, next) => {
   const terms = makeTerms(options)
 
   try {
-    sendMail(email, subject, `${confirmation}\n\n${terms}`)
+    sendMail({
+      email,
+      subject,
+      body: `VARAUSVAHVISTUS\n${confirmation}\n\nKIITOS VARAUKSESTANNE!\n\n${terms}`,
+      confirmation: true,
+    })
   } catch (err) {
     res.send({ error: err.message })
     next(err)

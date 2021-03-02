@@ -8,6 +8,8 @@
     "prettier/prettier": ["error", {
      "endOfLine":"auto"
    }],
-    "no-console": ["warn"]
+    "no-console": ["warn"],
+    "allowShortCircuit": true, 
+    "allowTernary": true 
   }
 }
