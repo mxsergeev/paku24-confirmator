@@ -4,12 +4,11 @@ import services from './services.json'
 import calculateFees from './helpers/calculateFees'
 import * as helpers from './helpers/regexHelpers'
 
-export function getEventForCalendar(formattedStr) {
-  const ev = /(?<=LÄHTÖPAIKKA\n)(.*\s*)*(?=\n\nKIITOS VARAUKSESTANNE!)/.exec(
-    formattedStr
-  )
+export async function getEventForCalendar(formattedStr, address) {
+  const startingIndex = formattedStr.indexOf(address)
+  const event = formattedStr.slice(startingIndex)
 
-  return ev[0]
+  return event
 }
 
 export function getStartingTime(str) {
