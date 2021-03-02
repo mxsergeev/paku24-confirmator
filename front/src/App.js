@@ -5,7 +5,7 @@ import Confirmator from './components/Confirmator'
 import Header from './components/Header'
 import Login from './components/Login'
 import loginServiсe from './services/login'
-import tokenService from './services/tokens'
+import logoutService from './services/logout'
 import './styles/container.css'
 
 function ErrorFallback({ error }) {
@@ -17,38 +17,30 @@ function ErrorFallback({ error }) {
   )
 }
 
-function LoadingUntillAuthenticated({ user, component }) {
-  const loading = user === 'Loading'
-  const needsToLogin = user === null
-
+function LoadingUntillDone({
+  loading,
+  redirectComponent = null,
+  targetComponent,
+}) {
   return (
     <>
       {loading && <p>Loading...</p>}
-      {needsToLogin && <Redirect to="/login" />}
-      {!loading && !needsToLogin && component}
+      {redirectComponent}
+      {!loading && !redirectComponent && targetComponent}
     </>
   )
 }
 
 function AuthenticateUser({ user, setUser, children }) {
-  const [refreshAccessTokenAfterMS, setRefreshAccessTokenAfterMS] = useState(
-    null
-  )
-
-  async function refreshTokens(delay) {
-    console.log('Refreshing tokens.')
-    await tokenService.refreshTokens()
-    setTimeout(() => refreshTokens(delay), delay)
+  const history = useHistory()
+  let currentLocation
+  if (user === null || user === 'Loading') {
+    currentLocation = history.location.pathname
   }
 
   useEffect(async () => {
     try {
-      const {
-        user: userFromToken,
-        refreshAccessTokenAfter,
-      } = await loginServiсe.loginWithTokens()
-
-      setRefreshAccessTokenAfterMS(refreshAccessTokenAfter)
+      const { user: userFromToken } = await loginServiсe.loginWithAccessToken()
 
       return setUser(userFromToken)
     } catch (err) {
@@ -57,28 +49,24 @@ function AuthenticateUser({ user, setUser, children }) {
     }
   }, [])
 
-  useEffect(async () => {
-    if (refreshAccessTokenAfterMS) {
-      setTimeout(
-        () => refreshTokens(refreshAccessTokenAfterMS),
-        refreshAccessTokenAfterMS
-      )
-    }
-  }, [refreshAccessTokenAfterMS])
+  const loading = user === 'Loading'
+  const mustRedirect = user === null
+  const redirectToLoginPage = mustRedirect && (
+    <Redirect
+      to={{ pathname: '/login', state: { referrer: currentLocation } }}
+    />
+  )
 
   return (
     <>
-      <LoadingUntillAuthenticated user={user} component={children} />
+      <LoadingUntillDone
+        loading={loading}
+        targetComponent={children}
+        redirectComponent={redirectToLoginPage}
+      />
 
       <Route path="/login">
-        {user === null ? (
-          <Login
-            setUser={setUser}
-            setRefreshAccessTokenAfterMS={setRefreshAccessTokenAfterMS}
-          />
-        ) : (
-          <Redirect to="/" />
-        )}
+        {user === null ? <Login setUser={setUser} /> : <Redirect to="/" />}
       </Route>
     </>
   )
@@ -103,10 +91,17 @@ function App() {
         <Header
           isLogged={user !== null && user !== 'Loading'}
           custom={custom}
+          setCustom={setCustom}
           handleChange={handleCustomChange}
         />
         <AuthenticateUser user={user} setUser={setUser}>
           <Confirmator custom={custom} />
+          <button
+            type="button"
+            onClick={() => logoutService.logout().then(() => setUser(null))}
+          >
+            Logout
+          </button>
         </AuthenticateUser>
       </ErrorBoundary>
     </div>

@@ -1,27 +1,14 @@
-import axios from 'axios'
-import tokenService from './tokens'
+import axiosInstance from './interceptor'
 
 const baseUrl = '/api/login'
 
 async function loginWithCredentials(credentials) {
-  return axios.post(baseUrl, credentials).then((res) => res.data)
+  return axiosInstance.post(baseUrl, credentials).then((res) => res.data)
 }
 
 async function loginWithAccessToken() {
-  const response = await axios.post(`${baseUrl}/token`)
+  const response = await axiosInstance.post(`${baseUrl}/token`)
   return response.data
 }
 
-async function loginWithTokens() {
-  try {
-    return await loginWithAccessToken()
-  } catch (err) {
-    if (err.response.data.error === 'access token expired') {
-      await tokenService.refreshTokens()
-      return loginWithAccessToken()
-    }
-    throw err
-  }
-}
-
-export default { loginWithCredentials, loginWithTokens }
+export default { loginWithCredentials, loginWithAccessToken }
