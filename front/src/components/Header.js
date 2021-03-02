@@ -1,11 +1,17 @@
-import React from 'react'
-import { Link, Route } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { Link, Route, useRouteMatch } from 'react-router-dom'
 import '../styles/logo.css'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
 import Switch from '@material-ui/core/Switch'
 import logo from '../assets/paku24-logo.png'
 
-export default function Header({ isLogged, custom, handleChange }) {
+export default function Header({ isLogged, custom, setCustom, handleChange }) {
+  const customOrderMatch = useRouteMatch('/custom')?.url
+  useEffect(() => {
+    // eslint-disable-next-line no-unused-expressions
+    customOrderMatch && setCustom(true)
+  }, [customOrderMatch])
+
   return (
     <div className="logo">
       <div>

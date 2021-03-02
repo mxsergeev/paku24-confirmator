@@ -4,7 +4,7 @@ import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 import loginServiсe from '../services/login'
 
-export default function Login({ setUser, setRefreshAccessTokenAfterMS }) {
+export default function Login({ setUser }) {
   const flexStyle = {
     display: 'flex',
     flexFlow: 'row wrap',
@@ -17,39 +17,29 @@ export default function Login({ setUser, setRefreshAccessTokenAfterMS }) {
     backgroundColor: 'lightgrey',
   }
 
+  const history = useHistory()
+  const referrer = history?.location.state.referrer
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isButtonDisabled, setIsButtonDisabled] = useState(false)
-  const [inputError] = useState(false)
-
-  const history = useHistory()
+  const [inputError, setInputError] = useState(false)
 
   async function handleLogin(event) {
     event.preventDefault()
-    console.log(
-      'logging in with\n',
-      `USERNAME: ${username}`,
-      '\n',
-      `PASSWORD: ${password}`
-    )
 
     try {
-      const {
-        user,
-        refreshAccessTokenAfter,
-      } = await loginServiсe.loginWithCredentials({
+      const { user } = await loginServiсe.loginWithCredentials({
         username,
         password,
       })
-      console.log('logged in\n', user)
 
-      setRefreshAccessTokenAfterMS(refreshAccessTokenAfter)
+      history.push(referrer || '/')
       setUser(user)
-      history.push('/')
     } catch (err) {
+      setInputError(true)
       setIsButtonDisabled(true)
       setTimeout(() => setIsButtonDisabled(false), 2000)
-      console.log(err.response.data.error)
+      console.log(err.response?.data || err)
     }
   }
 
@@ -60,7 +50,6 @@ export default function Login({ setUser, setRefreshAccessTokenAfterMS }) {
         <form onSubmit={handleLogin}>
           <TextField
             error={inputError}
-            helperText={inputError ? 'Incorrect username.' : null}
             required
             name="username"
             value={username}
@@ -71,7 +60,6 @@ export default function Login({ setUser, setRefreshAccessTokenAfterMS }) {
           />
           <TextField
             error={inputError}
-            helperText={inputError ? 'Incorrect password.' : null}
             type="password"
             required
             value={password}
