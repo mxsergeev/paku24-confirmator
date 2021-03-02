@@ -161,9 +161,7 @@ async function generateRefreshToken(req, res, next) {
  */
 
 function authenticateAccessToken(req, res, next) {
-  // Access token is Base64 encoded.
-  const { at } = req.cookies
-  const accessToken = Buffer.from(at, 'base64').toString()
+  const { at: accessToken } = req.cookies
 
   if (!accessToken || accessToken === 'undefined') {
     const err = newErrorWithCustomName('TokenMissingError')
@@ -190,9 +188,7 @@ function authenticateAccessToken(req, res, next) {
  */
 
 async function authenticateRefreshToken(req, res, next) {
-  // Refresh token is Base64 encoded.
-  const { rt } = req.cookies
-  const refreshTokenFromCookie = Buffer.from(rt, 'base64').toString()
+  const { rt: refreshTokenFromCookie } = req.cookies
 
   if (!refreshTokenFromCookie || refreshTokenFromCookie === 'undefined') {
     const err = newErrorWithCustomName('TokenMissingError')
@@ -286,12 +282,8 @@ function setTokenCookies(req, res, next) {
     httpOnly: true,
   }
 
-  // Base64 encoding
-  const atBase64 = Buffer.from(req.accessToken).toString('base64')
-  const rtBase64 = Buffer.from(req.refreshToken).toString('base64')
-
-  res.cookie('at', atBase64, options)
-  res.cookie('rt', rtBase64, options)
+  res.cookie('at', req.accessToken, options)
+  res.cookie('rt', req.refreshToken, options)
 
   return next()
 }
