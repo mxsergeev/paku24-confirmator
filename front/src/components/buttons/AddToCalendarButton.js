@@ -2,7 +2,7 @@ import React from 'react'
 import Button from '@material-ui/core/Button'
 import EventIcon from '@material-ui/icons/Event'
 
-export default function SendEmailButton({ handleClick, err }) {
+export default function AddToCalendarButton({ handleClick, err }) {
   return (
     <Button
       disabled={err}

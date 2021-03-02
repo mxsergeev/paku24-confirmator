@@ -24,8 +24,7 @@ import Editor from './Editor'
 function makeConvertion(order) {
   let converted
   try {
-    converted = `VARAUSVAHVISTUS
-VARAUKSEN TIEDOT
+    converted = `VARAUKSEN TIEDOT
 ${order.date.confirmationFormat}
 ALKAMISAIKA
 Klo ${order.time} (+/-15min)
@@ -39,8 +38,7 @@ ${order.destination.length > 1 ? `MÄÄRÄNPÄÄ\n${order.destination}\n` : ''}N
 ${order.name}
 ${order.email ? `SÄHKÖPOSTI\n${order.email}\n` : ''}PUHELIN
 ${order.phone}
-${order.comment ? `LISÄTIETOJA\n${order.comment}\n` : ''}
-KIITOS VARAUKSESTANNE!`
+${order.comment ? `LISÄTIETOJA\n${order.comment}\n` : ''}`
     Toast.info('Succesefully formatted!', 500)
   } catch (err) {
     console.log(err)
@@ -123,17 +121,18 @@ export default function Confirmator({ custom }) {
     return Toast.fail('No confirmation found or recipients defined.', 1000)
   }
 
-  function handleAddingToCalendar() {
-    let entry
+  async function handleAddingToCalendar() {
     try {
-      entry = regexFunc.getEventForCalendar(formattedConfirmation)
+      const entry = await regexFunc.getEventForCalendar(
+        formattedConfirmation,
+        order.address
+      )
       if (entry) {
-        addEventToCalendar(entry, order, options)
-          .then((res) => Toast.info(res, 500))
-          .catch((err) => Toast.fail(err.response.data.error))
+        const response = await addEventToCalendar(entry, order, options)
+        Toast.info(`${response.message}\n${response.createdEvent}`, 3000)
       }
     } catch (err) {
-      Toast.fail(err.message, 1000)
+      Toast.fail(err.response?.data.error, 2000)
     }
   }
 
@@ -193,18 +192,29 @@ export default function Confirmator({ custom }) {
   }
 
   function handleOrderChange(e) {
-    if (e.target.name === 'ISODate') {
+    const { name } = e.target
+    if (name === 'ISODate') {
       const ISODate = e.target.value
       return setOrder({
         ...order,
         date: {
           [e.target.name]: ISODate,
-          original: new Date(ISODate),
+          original: new Date(`${ISODate} ${order.time}`),
           confirmationFormat: regexHelpers.toConfirmationDateFormat(ISODate),
         },
       })
     }
-    if (e.target.name === 'serviceName') {
+    if (name === 'time') {
+      return setOrder({
+        ...order,
+        date: {
+          ...order.date,
+          original: new Date(`${order.date.ISODate} ${e.target.value}`),
+        },
+        [name]: e.target.value,
+      })
+    }
+    if (name === 'serviceName') {
       const serviceName = e.target.value
       const servicePrice = services.find(
         (service) => service.name === serviceName
@@ -217,7 +227,7 @@ export default function Confirmator({ custom }) {
     }
     return setOrder({
       ...order,
-      [e.target.name]: e.target.value,
+      [name]: e.target.value,
     })
   }
 
@@ -283,6 +293,7 @@ export default function Confirmator({ custom }) {
       <div className="send-button-container">
         <div className="small-button-container">
           <InputModal
+            custom={custom}
             handleChange={handleOrderChange}
             label="Email"
             name="email"
@@ -297,6 +308,7 @@ export default function Confirmator({ custom }) {
 
         <div className="small-button-container">
           <InputModal
+            custom={custom}
             handleChange={handleOrderChange}
             label="SMS"
             name="phone"
@@ -311,8 +323,6 @@ export default function Confirmator({ custom }) {
         </div>
         <AddToCalendarButton handleClick={handleAddingToCalendar} err={error} />
       </div>
-
-      {/* <Redirect to='/' /> */}
     </div>
   )
 }
