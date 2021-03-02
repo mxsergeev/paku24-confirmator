@@ -10,16 +10,15 @@ const RefreshToken = require('../../models/refreshToken')
  */
 
 async function logout(req, res, token = undefined) {
-  const { refreshToken } = req.cookies
+  const { rt: refreshToken } = req.cookies
+
   await RefreshToken.deleteOne({ token: token || refreshToken })
 
   const options = {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
   }
-  return res
-    .clearCookie('accessToken', options)
-    .clearCookie('refreshToken', options)
+  return res.clearCookie('at', options).clearCookie('rt', options)
 }
 
 module.exports = logout
