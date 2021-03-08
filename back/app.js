@@ -13,6 +13,7 @@ const { authenticateAccessToken } = require('./utils/middleware/authentication')
 
 const calendarRouter = require('./controllers/calendarController')
 const emailRouter = require('./controllers/emailController')
+const smsRouter = require('./controllers/smsController')
 const loginRouter = require('./controllers/authentication/loginController')
 const logoutRouter = require('./controllers/authentication/logoutController')
 const registrationRouter = require('./controllers/authentication/registrationController')
@@ -44,6 +45,7 @@ app.use(express.static('build'))
 app.use(morgan('dev'))
 app.use(cors())
 app.use(express.json())
+
 app.use(cookieParser())
 
 app.use('/api/token', tokenRouter)
@@ -54,6 +56,7 @@ app.use('/api/registration', registrationRouter)
 app.use(authenticateAccessToken)
 
 app.use('/api/test', testRouter)
+app.use('/api/sms', smsRouter)
 app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 
