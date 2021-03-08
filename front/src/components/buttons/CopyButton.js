@@ -1,17 +1,16 @@
 import React from 'react'
 import Button from '@material-ui/core/Button'
-import '../../styles/convert.css'
 import FileCopyIcon from '@material-ui/icons/FileCopy'
 import Toast from 'light-toast'
 
 export default function CopyButton({ inputRef }) {
-  function copyToClipboard(e) {
+  function copyToClipboard() {
     inputRef.current.select()
     document.execCommand('copy')
   }
 
-  function handleCopying(e) {
-    copyToClipboard(e)
+  function handleCopying() {
+    copyToClipboard()
     Toast.info('Copied!', 500)
   }
 

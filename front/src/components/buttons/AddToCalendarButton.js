@@ -1,12 +1,11 @@
 import React from 'react'
 import Button from '@material-ui/core/Button'
-import '../../styles/convert.css'
 import EventIcon from '@material-ui/icons/Event'
 
-export default function SendEmailButton({ handleClick, err }) {
+export default function AddToCalendarButton({ handleClick, disabled }) {
   return (
     <Button
-      disabled={err}
+      disabled={disabled}
       className="button-email flex-item"
       variant="contained"
       size="small"

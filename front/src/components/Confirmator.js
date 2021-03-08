@@ -1,15 +1,18 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
-import { Route, Redirect } from 'react-router-dom'
+import React, { useState, useRef, useMemo, useEffect, useReducer } from 'react'
+import { Route } from 'react-router-dom'
 import Toast from 'light-toast'
 import TextareaAutosize from '@material-ui/core/TextareaAutosize'
-import sendConfirmationEmail from '../services/emailAPI'
-import addEventToCalendar from '../services/calendarAPI'
-import '../styles/convert.css'
+
+import '../styles/confirmator.css'
 import InputModal from './InputModal'
 import EditModal from './EditModal'
+import Editor from './Editor'
+
+import sendConfirmationEmail from '../services/emailAPI'
+import addEventToCalendar from '../services/calendarAPI'
 import * as regexFunc from '../utils/regexFunctions'
 import * as regexHelpers from '../utils/helpers/regexHelpers'
-import * as calculations from '../utils/helpers/calculations'
+import calculateFees from '../utils/helpers/calculateFees'
 import services from '../utils/services.json'
 
 import TransformButton from './buttons/TransformButton'
@@ -19,13 +22,11 @@ import SendSMSButton from './buttons/SendSMSButton'
 import SendEmailButton from './buttons/SendEmailButton'
 import AddToCalendarButton from './buttons/AddToCalendarButton'
 import ValidationErrorsDisplay from './ValidationErrorsDisplay'
-import Editor from './Editor'
 
 function makeConvertion(order) {
   let converted
   try {
-    converted = `VARAUSVAHVISTUS
-VARAUKSEN TIEDOT
+    converted = `VARAUKSEN TIEDOT
 ${order.date.confirmationFormat}
 ALKAMISAIKA
 Klo ${order.time} (+/-15min)
@@ -39,8 +40,7 @@ ${order.destination.length > 1 ? `MÄÄRÄNPÄÄ\n${order.destination}\n` : ''}N
 ${order.name}
 ${order.email ? `SÄHKÖPOSTI\n${order.email}\n` : ''}PUHELIN
 ${order.phone}
-${order.comment ? `LISÄTIETOJA\n${order.comment}\n` : ''}
-KIITOS VARAUKSESTANNE!`
+${order.comment ? `LISÄTIETOJA\n${order.comment}\n` : ''}`
     Toast.info('Succesefully formatted!', 500)
   } catch (err) {
     console.log(err)
@@ -49,7 +49,7 @@ KIITOS VARAUKSESTANNE!`
   return converted
 }
 
-export default function Convert({ custom }) {
+export default function Confirmator({ custom }) {
   const [text, setText] = useState('')
   const [customText, setCustomText] = useState('')
   const [formattedConfirmation, setFormattedConfirmation] = useState('')
@@ -82,6 +82,68 @@ export default function Convert({ custom }) {
   )
   const [order, setOrder] = useState(defaultOrder)
 
+  const CHANGE_ACTIONS_STATUS_EMAIL = 'CHANGE_ACTIONS_STATUS_EMAIL'
+  const CHANGE_ACTIONS_STATUS_SMS = 'CHANGE_ACTIONS_STATUS_SMS'
+  const CHANGE_ACTIONS_STATUS_CALENDAR = 'CHANGE_ACTIONS_STATUS_CALENDAR'
+  const CHANGE_ACTIONS_STATUS_ERROR = 'CHANGE_ACTIONS_STATUS_ERROR'
+  const CHANGE_ACTIONS_STATUS_RESET = 'CHANGE_ACTIONS_STATUS_RESET'
+
+  const initialOrderActionsStatus = {
+    email: {
+      status: null,
+      disable: false,
+    },
+    sms: {
+      status: null,
+      disable: false,
+    },
+    calendar: {
+      status: null,
+      disable: false,
+    },
+    error: false,
+  }
+
+  function initOrderActionsStatus(initialStatus) {
+    return initialStatus
+  }
+
+  function reducer(state, action) {
+    switch (action.type) {
+      case 'CHANGE_ACTIONS_STATUS_EMAIL':
+        return { ...state, email: action.payload }
+      case 'CHANGE_ACTIONS_STATUS_SMS':
+        return { ...state, sms: action.payload }
+      case 'CHANGE_ACTIONS_STATUS_CALENDAR':
+        return { ...state, calendar: action.payload }
+      case 'CHANGE_ACTIONS_STATUS_ERROR':
+        return { ...state, error: action.payload }
+      case 'CHANGE_ACTIONS_STATUS_RESET':
+        return initOrderActionsStatus(initialOrderActionsStatus)
+      default:
+        throw new Error()
+    }
+  }
+
+  const [orderActionsStatus, dispatchOrderActionsStatus] = useReducer(
+    reducer,
+    initialOrderActionsStatus,
+    initOrderActionsStatus
+  )
+
+  function changeEmailStatus(status, disable) {
+    dispatchOrderActionsStatus({
+      type: CHANGE_ACTIONS_STATUS_EMAIL,
+      payload: { status, disable },
+    })
+  }
+  function changeCalendarStatus(status, disable) {
+    dispatchOrderActionsStatus({
+      type: CHANGE_ACTIONS_STATUS_CALENDAR,
+      payload: { status, disable },
+    })
+  }
+
   const defaultOptions = useMemo(
     () => ({
       distance: 'insideCapital',
@@ -92,16 +154,14 @@ export default function Convert({ custom }) {
   )
   const [options, setOptions] = useState(defaultOptions)
 
-  const [error, setError] = useState(false)
   const textAreaRef = useRef(null)
 
   useEffect(() => {
     setOrder(defaultOrder)
     setOptions(defaultOptions)
     setFormattedConfirmation('')
-  }, [custom, defaultOrder, defaultOptions])
-
-  const handleSetError = useCallback((bool) => setError(bool), [])
+    dispatchOrderActionsStatus({ type: CHANGE_ACTIONS_STATUS_RESET })
+  }, [custom])
 
   function handleOptionsChange(e) {
     setOptions({
@@ -112,24 +172,39 @@ export default function Convert({ custom }) {
 
   function handleEmailSending() {
     if (order.email && formattedConfirmation) {
-      return sendConfirmationEmail(formattedConfirmation, options, order.email)
-        .then((res) => Toast.info(res, 500))
-        .catch((err) => Toast.fail(err.response.data.error))
+      changeEmailStatus('Waiting', true)
+      return sendConfirmationEmail({
+        confirmation: formattedConfirmation,
+        options,
+        email: order.email,
+      })
+        .then((res) => {
+          changeEmailStatus('Done', true)
+          Toast.info(res, 500)
+        })
+        .catch((err) => {
+          changeEmailStatus('Error', false)
+          Toast.fail(err.response.data.error)
+        })
     }
     return Toast.fail('No confirmation found or recipients defined.', 1000)
   }
 
-  function handleAddingToCalendar() {
-    let entry
+  async function handleAddingToCalendar() {
     try {
-      entry = regexFunc.getEventForCalendar(formattedConfirmation)
+      const entry = await regexFunc.getEventForCalendar(
+        formattedConfirmation,
+        order.address
+      )
       if (entry) {
-        addEventToCalendar(entry, order, options)
-          .then((res) => Toast.info(res, 500))
-          .catch((err) => Toast.fail(err.response.data.error))
+        changeCalendarStatus('Waiting', true)
+        const response = await addEventToCalendar(entry, order, options)
+        changeCalendarStatus('Done', true)
+        Toast.info(`${response.message}\n${response.createdEvent}`, 3000)
       }
     } catch (err) {
-      Toast.fail(err.message, 1000)
+      changeCalendarStatus('Error', false)
+      Toast.fail(err.response?.data.error, 2000)
     }
   }
 
@@ -178,11 +253,7 @@ export default function Convert({ custom }) {
 
   function calcAndPrintFees() {
     return regexHelpers.printFees(
-      calculations.calculateFees(
-        order.date.original,
-        order.time,
-        order.paymentType
-      )
+      calculateFees(order.date.original, order.time, order.paymentType)
     )
   }
 
@@ -193,27 +264,43 @@ export default function Convert({ custom }) {
   }
 
   function handleOrderChange(e) {
-    if (e.target.name === 'ISODate') {
+    const { name } = e.target
+    if (name === 'ISODate') {
       const ISODate = e.target.value
       return setOrder({
         ...order,
         date: {
           [e.target.name]: ISODate,
-          original: new Date(ISODate),
+          original: new Date(`${ISODate} ${order.time}`),
           confirmationFormat: regexHelpers.toConfirmationDateFormat(ISODate),
         },
       })
     }
-    if (e.target.name === 'serviceName') {
-      const serviceName = e.target.value
+    if (name === 'time') {
       return setOrder({
         ...order,
-        [e.target.name]: serviceName,
-        servicePrice: services.find((service) => service.name === serviceName)
-          .price,
+        date: {
+          ...order.date,
+          original: new Date(`${order.date.ISODate} ${e.target.value}`),
+        },
+        [name]: e.target.value,
       })
     }
-    return setOrder({ ...order, [e.target.name]: e.target.value })
+    if (name === 'serviceName') {
+      const serviceName = e.target.value
+      const servicePrice = services.find(
+        (service) => service.name === serviceName
+      ).price
+      return setOrder({
+        ...order,
+        serviceName,
+        servicePrice,
+      })
+    }
+    return setOrder({
+      ...order,
+      [name]: e.target.value,
+    })
   }
 
   function handleTextChange(e) {
@@ -268,46 +355,66 @@ export default function Convert({ custom }) {
       <CheckboxGroup handleChange={handleOptionsChange} options={options} />
 
       <ValidationErrorsDisplay
-        error={error}
         order={order}
         custom={custom}
         confirmation={formattedConfirmation}
-        handleSetError={handleSetError}
+        dispatchOrderActionsStatus_error={(err) =>
+          dispatchOrderActionsStatus({
+            type: CHANGE_ACTIONS_STATUS_ERROR,
+            payload: err,
+          })
+        }
       />
 
       <div className="send-button-container">
         <div className="small-button-container">
           <InputModal
+            custom={custom}
             handleChange={handleOrderChange}
             label="Email"
             name="email"
             value={order.email}
           />
           <SendEmailButton
-            err={error}
-            disabled={!(order.email && formattedConfirmation)}
+            disabled={
+              !(order.email && formattedConfirmation) ||
+              orderActionsStatus.email.disable ||
+              orderActionsStatus.error
+            }
             handleClick={handleEmailSending}
           />
+          <span>{orderActionsStatus.email.status}</span>
         </div>
-
         <div className="small-button-container">
           <InputModal
+            custom={custom}
             handleChange={handleOrderChange}
             label="SMS"
             name="phone"
             value={order.phone}
           />
           <SendSMSButton
-            err={error}
-            disabled={!(order.phone && formattedConfirmation)}
+            disabled={
+              !(order.phone && formattedConfirmation) ||
+              orderActionsStatus.sms.disable ||
+              orderActionsStatus.error
+            }
             phoneNumber={order.phone}
             msgBody={formattedConfirmation}
           />
         </div>
-        <AddToCalendarButton handleClick={handleAddingToCalendar} err={error} />
+        <div className="small-button-container">
+          <AddToCalendarButton
+            handleClick={handleAddingToCalendar}
+            disabled={
+              !formattedConfirmation ||
+              orderActionsStatus.calendar.disable ||
+              orderActionsStatus.error
+            }
+          />
+          <span>{orderActionsStatus.calendar.status}</span>
+        </div>
       </div>
-
-      <Redirect to="/" />
     </div>
   )
 }

@@ -1,17 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Switch,
-  Route,
-  useHistory,
-  useLocation,
-  useRouteMatch,
-  Redirect,
-} from 'react-router-dom'
-import Convert from './components/Convert'
+import { Route, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
-import loginServiсe from './services/login'
+import Confirmator from './components/Confirmator'
 import Header from './components/Header'
 import Login from './components/Login'
+import loginServiсe from './services/login'
+import logoutService from './services/logout'
 import './styles/container.css'
 
 function ErrorFallback({ error }) {
@@ -23,68 +17,92 @@ function ErrorFallback({ error }) {
   )
 }
 
-function App() {
-  let history = useHistory()
-  let location = useLocation()
+function LoadingUntillDone({
+  loading,
+  redirectComponent = null,
+  targetComponent,
+}) {
+  return (
+    <>
+      {loading && <p>Loading...</p>}
+      {redirectComponent}
+      {!loading && !redirectComponent && targetComponent}
+    </>
+  )
+}
 
-  useEffect(() => {
-    const storedPass = loginServiсe.getStoredPass()
-    if (storedPass) {
-      console.log('You are already logged in.')
-      history.replace('/')
-      setIsLogged(true)
-    } else {
-      history.replace('/login')
-    }
-  }, [history])
-
-  const [isLogged, setIsLogged] = useState(false)
-  const [custom, setCustom] = useState(false)
-
-  function handleIsLoggedChange(boolean) {
-    setIsLogged(boolean)
+function AuthenticateUser({ user, setUser, children }) {
+  const history = useHistory()
+  let currentLocation
+  if (user === null || user === 'Loading') {
+    currentLocation = history.location.pathname
   }
 
-  const match = useRouteMatch('/custom')
+  useEffect(async () => {
+    try {
+      const { user: userFromToken } = await loginServiсe.loginWithAccessToken()
 
-  useEffect(() => {
-    if (match) return setCustom(true)
-    return setCustom(false)
-  }, [location.pathname, match])
+      return setUser(userFromToken)
+    } catch (err) {
+      console.log(err.response?.data || err)
+      return setUser(null)
+    }
+  }, [])
+
+  const loading = user === 'Loading'
+  const mustRedirect = user === null
+  const redirectToLoginPage = mustRedirect && (
+    <Redirect
+      to={{ pathname: '/login', state: { referrer: currentLocation } }}
+    />
+  )
+
+  return (
+    <>
+      <LoadingUntillDone
+        loading={loading}
+        targetComponent={children}
+        redirectComponent={redirectToLoginPage}
+      />
+
+      <Route path="/login">
+        {user === null ? <Login setUser={setUser} /> : <Redirect to="/" />}
+      </Route>
+    </>
+  )
+}
+
+function App() {
+  const [user, setUser] = useState('Loading')
+  const [custom, setCustom] = useState(false)
+
+  const history = useHistory()
 
   function handleCustomChange(e) {
-    const checked = e.target.checked
+    const { checked } = e.target
     setCustom(checked)
 
-    if (checked) return history.push('/custom')
-    return history.push('/')
+    return checked ? history.push('/custom') : history.push('/')
   }
 
   return (
     <div className="container">
-      <Header
-        custom={custom}
-        handleChange={handleCustomChange}
-        logged={isLogged}
-      />
-
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        {/* {isLogged ? <Convert custom={custom} /> : <Redirect to='/login' />} */}
-
-        <Switch>
-          {/* {isLogged ? <Redirect to='/' /> : <Redirect to='/login' />} */}
-
-          <Route path="/login">
-            <Login
-              isLogged={isLogged}
-              handleIsLoggedChange={handleIsLoggedChange}
-            />
-          </Route>
-
-          <Route exact path="/:slug*">
-            <Convert custom={custom} />
-          </Route>
-        </Switch>
+        <Header
+          isLogged={user !== null && user !== 'Loading'}
+          custom={custom}
+          setCustom={setCustom}
+          handleChange={handleCustomChange}
+        />
+        <AuthenticateUser user={user} setUser={setUser}>
+          <Confirmator custom={custom} />
+          <button
+            type="button"
+            onClick={() => logoutService.logout().then(() => setUser(null))}
+          >
+            Logout
+          </button>
+        </AuthenticateUser>
       </ErrorBoundary>
     </div>
   )

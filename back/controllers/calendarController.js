@@ -30,17 +30,18 @@ calendarRouter.post('/', (req, res, next) => {
   const event = {
     title: icons + entry,
     date: order.date.original,
+    duration: order.duration,
     color: makeColor(order, options),
   }
 
-  console.log('event:', event)
-
-  try {
-    addEventToCalendar(event)
-    res.status(200).send('Event added to calendar.')
-  } catch (err) {
-    next(err)
-  }
+  addEventToCalendar(event)
+    .then((ev) =>
+      res.status(200).send({
+        message: 'Event added to calendar.',
+        createdEvent: ev.data.summary,
+      })
+    )
+    .catch((err) => next(err))
 })
 
 module.exports = calendarRouter

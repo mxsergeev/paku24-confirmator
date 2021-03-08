@@ -18,13 +18,22 @@ emailRouter.post('/', (req, res, next) => {
   const terms = makeTerms(options)
 
   try {
-    sendMail(email, subject, `${confirmation}\n\n${terms}`)
+    sendMail({
+      email,
+      subject,
+      body: `VARAUSVAHVISTUS\n${confirmation}\n\nKIITOS VARAUKSESTANNE!\n\n${terms}`,
+      confirmation: true,
+    })
   } catch (err) {
     res.send({ error: err.message })
     next(err)
   }
 
   res.status(200).send('Email sent successfully')
+})
+
+emailRouter.get('/', (req, res) => {
+  return res.status(200).send({ message: 'Test' })
 })
 
 module.exports = emailRouter

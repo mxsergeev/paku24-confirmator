@@ -4,8 +4,14 @@ const AWS = require('aws-sdk')
 
 AWS.config.update({ region: 'eu-north-1' })
 
-function sendMail(email, subject, text) {
-  const params = {
+function sendMail({
+  email,
+  subject,
+  body,
+  confirmation,
+  sourceEmail = 'varaukset@paku24.fi',
+}) {
+  let params = {
     Destination: {
       /* required */
       // CcAddresses: [
@@ -20,26 +26,27 @@ function sendMail(email, subject, text) {
       /* required */
       Body: {
         /* required */
-        // Html: {
-        //   Charset: 'UTF-8',
-        //   Data: 'HTML_FORMAT_BODY',
-        // },
-        Text: {
-          Charset: 'UTF-8',
-          Data: text,
-        },
       },
       Subject: {
         Charset: 'UTF-8',
         Data: subject,
       },
     },
-    Source: 'varaukset@paku24.fi' /* required */,
+    Source: sourceEmail /* required */,
     // ReplyToAddresses: [
     //   'EMAIL_ADDRESS',
     //   /* more items */
     // ],
   }
+
+  const opt = {
+    Charset: 'UTF-8',
+    Data: body,
+  }
+
+  confirmation
+    ? (params.Message.Body.Text = opt)
+    : (params.Message.Body.Html = opt)
 
   const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' })
     .sendEmail(params)

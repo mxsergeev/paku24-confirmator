@@ -1,15 +1,14 @@
 /* eslint-disable no-control-regex */
 /* eslint-disable no-useless-escape */
 import services from './services.json'
-import * as calculations from './helpers/calculations.js'
-import * as helpers from './helpers/regexHelpers.js'
+import calculateFees from './helpers/calculateFees'
+import * as helpers from './helpers/regexHelpers'
 
-export function getEventForCalendar(formattedStr) {
-  const ev = /(?<=LÄHTÖPAIKKA\n)(.*\s*)*(?=\n\nKIITOS VARAUKSESTANNE!)/.exec(
-    formattedStr
-  )
+export async function getEventForCalendar(formattedStr, address) {
+  const startingIndex = formattedStr.indexOf(address)
+  const event = formattedStr.slice(startingIndex)
 
-  return ev[0]
+  return event
 }
 
 export function getStartingTime(str) {
@@ -19,7 +18,7 @@ export function getStartingTime(str) {
 
   if (!dateRegex) throw new Error(helpers.cannotFind('date'))
 
-  const original = new Date(dateRegex[0].replace(/th|rd|st|nd/, '') + 'Z')
+  const original = new Date(`${dateRegex[0].replace(/th|rd|st|nd/, '')}Z`)
   const ISODate = original.toISOString().split('T')[0]
   const confirmationFormat = helpers.toConfirmationDateFormat(original)
 
@@ -36,43 +35,46 @@ export function getDuration(str) {
   return duration[0]
 }
 
+export function getPaymentType(str) {
+  const paymentType = /(?<=Payment Type: )[A-Öa-ö]+/.exec(str)
+
+  if (!paymentType) throw new Error(helpers.cannotFind('payment type'))
+
+  return paymentType[0]
+}
+
 export function getFees(str) {
   const date = getStartingTime(str).original
-  const time = getStartingTime(str).time
+  const { time } = getStartingTime(str)
   const paymentType = getPaymentType(str)
 
-  return calculations.calculateFees(date, time, paymentType)
+  return calculateFees(date, time, paymentType)
 }
 
 export function getService(str) {
   let price = /(?<=PRICE: )\d+/.exec(str)
 
-  if (!price) throw new Error(helpers.cannotFind('price'))
+  if (!price) {
+    throw new Error(helpers.cannotFind('price'))
+  }
 
-  price = price[0]
+  ;[price] = price
 
   getFees(str)
     .filter((fee) => fee.value)
-    .forEach((fee) => (price = price - fee.value))
+    .forEach((fee) => {
+      price -= fee.value
+      return price
+    })
 
   const duration = getDuration(str)
 
-  const service = services.filter(
-    (service) => service.price === price / duration
-  )
+  const service = services.filter((s) => s.price === price / duration)
 
   if (service.length === 0)
     throw new Error('Cannot recognize service. Invalid price or duration.')
 
   return service[0]
-}
-
-export function getPaymentType(str) {
-  let paymentType = /(?<=Payment Type: )[A-Öa-ö]+/.exec(str)
-
-  if (!paymentType) throw new Error(helpers.cannotFind('payment type'))
-
-  return paymentType[0]
 }
 
 export function getAddress(str, course) {

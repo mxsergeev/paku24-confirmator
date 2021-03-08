@@ -1,6 +1,12 @@
-import axios from 'axios'
+import axiosInstance from './interceptor'
+
 const baseUrl = '/api/calendar'
 
-export default function addEventToCalendar(entry, order, options) {
-  return axios.post(baseUrl, { entry, order, options }).then((res) => res.data)
+export default async function addEventToCalendar(entry, order, options) {
+  const response = await axiosInstance.post(baseUrl, {
+    entry,
+    order,
+    options,
+  })
+  return response.data
 }
