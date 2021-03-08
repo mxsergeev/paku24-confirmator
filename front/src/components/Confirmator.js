@@ -1,12 +1,15 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useRef, useMemo, useEffect, useReducer } from 'react'
 import { Route } from 'react-router-dom'
 import Toast from 'light-toast'
 import TextareaAutosize from '@material-ui/core/TextareaAutosize'
-import sendConfirmationEmail from '../services/emailAPI'
-import addEventToCalendar from '../services/calendarAPI'
+
 import '../styles/confirmator.css'
 import InputModal from './InputModal'
 import EditModal from './EditModal'
+import Editor from './Editor'
+
+import sendConfirmationEmail from '../services/emailAPI'
+import addEventToCalendar from '../services/calendarAPI'
 import * as regexFunc from '../utils/regexFunctions'
 import * as regexHelpers from '../utils/helpers/regexHelpers'
 import calculateFees from '../utils/helpers/calculateFees'
@@ -19,7 +22,6 @@ import SendSMSButton from './buttons/SendSMSButton'
 import SendEmailButton from './buttons/SendEmailButton'
 import AddToCalendarButton from './buttons/AddToCalendarButton'
 import ValidationErrorsDisplay from './ValidationErrorsDisplay'
-import Editor from './Editor'
 
 function makeConvertion(order) {
   let converted
@@ -80,6 +82,68 @@ export default function Confirmator({ custom }) {
   )
   const [order, setOrder] = useState(defaultOrder)
 
+  const CHANGE_ACTIONS_STATUS_EMAIL = 'CHANGE_ACTIONS_STATUS_EMAIL'
+  const CHANGE_ACTIONS_STATUS_SMS = 'CHANGE_ACTIONS_STATUS_SMS'
+  const CHANGE_ACTIONS_STATUS_CALENDAR = 'CHANGE_ACTIONS_STATUS_CALENDAR'
+  const CHANGE_ACTIONS_STATUS_ERROR = 'CHANGE_ACTIONS_STATUS_ERROR'
+  const CHANGE_ACTIONS_STATUS_RESET = 'CHANGE_ACTIONS_STATUS_RESET'
+
+  const initialOrderActionsStatus = {
+    email: {
+      status: null,
+      disable: false,
+    },
+    sms: {
+      status: null,
+      disable: false,
+    },
+    calendar: {
+      status: null,
+      disable: false,
+    },
+    error: false,
+  }
+
+  function initOrderActionsStatus(initialStatus) {
+    return initialStatus
+  }
+
+  function reducer(state, action) {
+    switch (action.type) {
+      case 'CHANGE_ACTIONS_STATUS_EMAIL':
+        return { ...state, email: action.payload }
+      case 'CHANGE_ACTIONS_STATUS_SMS':
+        return { ...state, sms: action.payload }
+      case 'CHANGE_ACTIONS_STATUS_CALENDAR':
+        return { ...state, calendar: action.payload }
+      case 'CHANGE_ACTIONS_STATUS_ERROR':
+        return { ...state, error: action.payload }
+      case 'CHANGE_ACTIONS_STATUS_RESET':
+        return initOrderActionsStatus(initialOrderActionsStatus)
+      default:
+        throw new Error()
+    }
+  }
+
+  const [orderActionsStatus, dispatchOrderActionsStatus] = useReducer(
+    reducer,
+    initialOrderActionsStatus,
+    initOrderActionsStatus
+  )
+
+  function changeEmailStatus(status, disable) {
+    dispatchOrderActionsStatus({
+      type: CHANGE_ACTIONS_STATUS_EMAIL,
+      payload: { status, disable },
+    })
+  }
+  function changeCalendarStatus(status, disable) {
+    dispatchOrderActionsStatus({
+      type: CHANGE_ACTIONS_STATUS_CALENDAR,
+      payload: { status, disable },
+    })
+  }
+
   const defaultOptions = useMemo(
     () => ({
       distance: 'insideCapital',
@@ -90,16 +154,14 @@ export default function Confirmator({ custom }) {
   )
   const [options, setOptions] = useState(defaultOptions)
 
-  const [error, setError] = useState(false)
   const textAreaRef = useRef(null)
 
   useEffect(() => {
     setOrder(defaultOrder)
     setOptions(defaultOptions)
     setFormattedConfirmation('')
+    dispatchOrderActionsStatus({ type: CHANGE_ACTIONS_STATUS_RESET })
   }, [custom])
-
-  const handleSetError = useCallback((bool) => setError(bool), [])
 
   function handleOptionsChange(e) {
     setOptions({
@@ -110,13 +172,20 @@ export default function Confirmator({ custom }) {
 
   function handleEmailSending() {
     if (order.email && formattedConfirmation) {
+      changeEmailStatus('Waiting', true)
       return sendConfirmationEmail({
         confirmation: formattedConfirmation,
         options,
         email: order.email,
       })
-        .then((res) => Toast.info(res, 500))
-        .catch((err) => Toast.fail(err.response.data.error))
+        .then((res) => {
+          changeEmailStatus('Done', true)
+          Toast.info(res, 500)
+        })
+        .catch((err) => {
+          changeEmailStatus('Error', false)
+          Toast.fail(err.response.data.error)
+        })
     }
     return Toast.fail('No confirmation found or recipients defined.', 1000)
   }
@@ -128,10 +197,13 @@ export default function Confirmator({ custom }) {
         order.address
       )
       if (entry) {
+        changeCalendarStatus('Waiting', true)
         const response = await addEventToCalendar(entry, order, options)
+        changeCalendarStatus('Done', true)
         Toast.info(`${response.message}\n${response.createdEvent}`, 3000)
       }
     } catch (err) {
+      changeCalendarStatus('Error', false)
       Toast.fail(err.response?.data.error, 2000)
     }
   }
@@ -283,11 +355,15 @@ export default function Confirmator({ custom }) {
       <CheckboxGroup handleChange={handleOptionsChange} options={options} />
 
       <ValidationErrorsDisplay
-        error={error}
         order={order}
         custom={custom}
         confirmation={formattedConfirmation}
-        handleSetError={handleSetError}
+        dispatchOrderActionsStatus_error={(err) =>
+          dispatchOrderActionsStatus({
+            type: CHANGE_ACTIONS_STATUS_ERROR,
+            payload: err,
+          })
+        }
       />
 
       <div className="send-button-container">
@@ -300,12 +376,15 @@ export default function Confirmator({ custom }) {
             value={order.email}
           />
           <SendEmailButton
-            err={error}
-            disabled={!(order.email && formattedConfirmation)}
+            disabled={
+              !(order.email && formattedConfirmation) ||
+              orderActionsStatus.email.disable ||
+              orderActionsStatus.error
+            }
             handleClick={handleEmailSending}
           />
+          <span>{orderActionsStatus.email.status}</span>
         </div>
-
         <div className="small-button-container">
           <InputModal
             custom={custom}
@@ -315,13 +394,26 @@ export default function Confirmator({ custom }) {
             value={order.phone}
           />
           <SendSMSButton
-            err={error}
-            disabled={!(order.phone && formattedConfirmation)}
+            disabled={
+              !(order.phone && formattedConfirmation) ||
+              orderActionsStatus.sms.disable ||
+              orderActionsStatus.error
+            }
             phoneNumber={order.phone}
             msgBody={formattedConfirmation}
           />
         </div>
-        <AddToCalendarButton handleClick={handleAddingToCalendar} err={error} />
+        <div className="small-button-container">
+          <AddToCalendarButton
+            handleClick={handleAddingToCalendar}
+            disabled={
+              !formattedConfirmation ||
+              orderActionsStatus.calendar.disable ||
+              orderActionsStatus.error
+            }
+          />
+          <span>{orderActionsStatus.calendar.status}</span>
+        </div>
       </div>
     </div>
   )

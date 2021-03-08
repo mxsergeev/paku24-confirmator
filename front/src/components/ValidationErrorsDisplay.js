@@ -5,7 +5,12 @@ import Checkbox from '@material-ui/core/Checkbox'
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline'
 
 export default function ValidationErrorsDisplay(props) {
-  const { order, handleSetError, confirmation, custom } = props
+  const {
+    order,
+    dispatchOrderActionsStatus_error,
+    confirmation,
+    custom,
+  } = props
 
   const [errors, setErrors] = useState([])
   const [ignore, setIgnore] = useState(false)
@@ -56,22 +61,13 @@ export default function ValidationErrorsDisplay(props) {
       ]
       setErrors(errs)
       const areThereSomeErrors = errs.some((error) => error.error)
-      handleSetError(areThereSomeErrors)
+      dispatchOrderActionsStatus_error(areThereSomeErrors)
       setShowSwitch(areThereSomeErrors)
-    } else handleSetError(false)
-  }, [
-    order.date,
-    order.phone,
-    order.address,
-    order.email,
-    ignore,
-    custom,
-    handleSetError,
-  ])
+    } else dispatchOrderActionsStatus_error(false)
+  }, [order.date, order.phone, order.address, order.email, ignore, custom])
 
   function handleIgnore(e) {
     setIgnore(e.target.checked)
-    setShowSwitch(errors.some((error) => error.error))
   }
 
   const errStyle = { color: 'red' }
