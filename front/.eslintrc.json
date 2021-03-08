@@ -10,10 +10,13 @@
   "rules": {
     "prettier/prettier": ["error"],
     "no-console": ["off"],
+    "camelcase": "off",
+    "no-unused-expressions": "off",
     "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
     "react/prop-types": ["off"],
     "react/jsx-one-expression-per-line": ["off"],
     "react/jsx-wrap-multilines": ["off"],
-    "no-unused-vars": ["warn"]
+    "no-unused-vars": ["warn"],
+    "react/jsx-curly-newline": ["off"]
   }
 }

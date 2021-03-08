@@ -9,7 +9,8 @@
      "endOfLine":"auto"
    }],
     "no-console": ["warn"],
-    "allowShortCircuit": true, 
-    "allowTernary": true 
+    "no-unused-vars": ["warn"],
+    "camelcase": "off",
+    "no-unused-expressions": "off",
   }
 }
