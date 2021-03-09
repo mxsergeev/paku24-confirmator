@@ -1,37 +1,57 @@
 import React, { useState } from 'react'
-import { useHistory } from 'react-router-dom'
+import { useHistory, Link } from 'react-router-dom'
 import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 import loginServiсe from '../services/login'
+import Notification from './Notification'
 
 export default function Login({ setUser }) {
-  const flexStyle = {
-    display: 'flex',
-    flexFlow: 'row wrap',
-    justifyContent: 'center',
+  const background = {
+    width: '95%',
+    padding: 20,
+    backgroundColor: 'lightgrey',
+    borderBottom: '4px solid darkgrey',
   }
 
-  const background = {
-    width: '70%',
-    padding: 30,
-    backgroundColor: 'lightgrey',
+  const flexItem = {
+    marginBottom: '7px',
+    backgroundColor: 'white',
+  }
+
+  const formContainer = {
+    color: 'black',
+    fontSize: '1.3rem',
+    letterSpacing: '0.7px',
+    marginTop: '10px',
+    marginBottom: '15px',
+  }
+
+  const flexForm = {
+    paddingBottom: '10px',
+    height: '80%',
+    display: 'flex',
+    flexFlow: 'column wrap',
+    justifyContent: 'space-evenly',
   }
 
   const history = useHistory()
-  const referrer = history?.location.state.referrer
+  const referrer = history?.location.state?.referrer
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isButtonDisabled, setIsButtonDisabled] = useState(false)
   const [inputError, setInputError] = useState(false)
+  const [notification, setNotification] = useState('')
 
   async function handleLogin(event) {
     event.preventDefault()
+    setNotification('Working...')
 
     try {
       const { user } = await loginServiсe.loginWithCredentials({
         username,
         password,
       })
+      setNotification('Done')
 
       history.push(referrer || '/')
       setUser(user)
@@ -39,26 +59,45 @@ export default function Login({ setUser }) {
       setInputError(true)
       setIsButtonDisabled(true)
       setTimeout(() => setIsButtonDisabled(false), 2000)
-      console.log(err.response?.data || err)
+      setNotification(`Error: ${err.response?.data.error}`)
     }
   }
 
   return (
-    <div style={flexStyle}>
-      <div style={background}>
-        <h3>Login!</h3>
-        <form onSubmit={handleLogin}>
+    <div style={{ margin: '30px 5px' }}>
+      <div style={{ ...background, margin: '20px 5px' }}>
+        <div style={formContainer}>
+          LOGIN
+          <span
+            style={{
+              color: 'black',
+              fontSize: '1.0rem',
+              letterSpacing: '0.2px',
+            }}
+          >
+            {' '}
+            or <Link to="/register">request access</Link>
+          </span>
+        </div>
+
+        <Notification notification={notification} />
+
+        <form onSubmit={handleLogin} style={flexForm}>
           <TextField
+            className="flex-item"
+            style={flexItem}
             error={inputError}
             required
             name="username"
             value={username}
             onChange={({ target }) => setUsername(target.value)}
             label="Username"
-            variant="outlined"
+            variant="filled"
             size="small"
           />
           <TextField
+            className="flex-item"
+            style={flexItem}
             error={inputError}
             type="password"
             required
@@ -66,14 +105,16 @@ export default function Login({ setUser }) {
             name="password"
             onChange={({ target }) => setPassword(target.value)}
             label="Password"
-            variant="outlined"
+            variant="filled"
             size="small"
           />
 
           <Button
+            className="flex-item"
+            style={flexItem}
             type="submit"
             disabled={isButtonDisabled}
-            variant="outlined"
+            variant="contained"
             size="small"
           >
             Login
