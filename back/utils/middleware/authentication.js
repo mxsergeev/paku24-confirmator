@@ -96,6 +96,7 @@ function invalidAuth(req, res, next) {
 }
 
 /**
+ * @param {Object} req
  * @param {Object} req.user
  */
 
@@ -104,6 +105,7 @@ function generateAccessToken(req, res, next) {
 
   const { user } = req
   const userForToken = {
+    name: user.name,
     username: user.username,
     id: user._id,
   }

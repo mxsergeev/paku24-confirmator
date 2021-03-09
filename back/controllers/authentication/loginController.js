@@ -12,7 +12,7 @@ const {
   authenticateAccessToken,
 } = require('../../utils/middleware/authentication')
 
-function sendUserAndRefreshTokenAfterMS(req, res) {
+function sendUserInfo(req, res) {
   const { user } = req
 
   return res.status(200).send({
@@ -20,7 +20,6 @@ function sendUserAndRefreshTokenAfterMS(req, res) {
       username: user.username,
       name: user.name,
     },
-    refreshAccessTokenAfter: ms(AT_EXPIRES_IN) - 2000,
   })
 }
 
@@ -32,13 +31,9 @@ loginRouter.post(
   generateAccessToken,
   generateRefreshToken,
   setTokenCookies,
-  sendUserAndRefreshTokenAfterMS
+  sendUserInfo
 )
 
-loginRouter.post(
-  '/token',
-  authenticateAccessToken,
-  sendUserAndRefreshTokenAfterMS
-)
+loginRouter.post('/token', authenticateAccessToken, sendUserInfo)
 
 module.exports = loginRouter
