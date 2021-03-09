@@ -21,7 +21,7 @@ emailRouter.post('/', (req, res, next) => {
     sendMail({
       email,
       subject,
-      body: `VARAUSVAHVISTUS\n${confirmation}\n\nKIITOS VARAUKSESTANNE!\n\n${terms}`,
+      body: `VARAUSVAHVISTUS\n${confirmation}\nKIITOS VARAUKSESTANNE!\n\n${terms}`,
       confirmation: true,
     })
   } catch (err) {
