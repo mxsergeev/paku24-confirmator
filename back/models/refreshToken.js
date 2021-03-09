@@ -7,6 +7,7 @@ const refreshTokenSchema = new mongoose.Schema({
   issuedAt: String,
   expires: String,
   user: {
+    name: String,
     username: String,
     _id: String,
   },
