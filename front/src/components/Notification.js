@@ -1,38 +1,31 @@
 import React from 'react'
+import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined'
 
 const Notification = ({ notification }) => {
-  const notificationStyle = {
-    whiteSpace: 'pre-wrap',
-    opacity: 0.8,
-    width: '50%',
-    padding: 5,
-    margin: 10,
-    marginLeft: 0,
-  }
-  const messageStyle = {
-    color: 'grey',
-    fontSize: '1.1rem',
-    backgroundColor: 'lightblue',
-  }
-  const errorStyle = {
-    color: 'red',
-    fontSize: '1.1rem',
-    backgroundColor: 'lightgrey',
-    border: '2px solid red',
-  }
-
-  if (notification === null) return null
+  let color = 'black'
+  if (notification.toLowerCase().includes('error')) color = 'red'
 
   return (
-    <div
-      style={
-        notification.error
-          ? { ...notificationStyle, ...errorStyle }
-          : { ...notificationStyle, ...messageStyle }
-      }
-    >
-      {notification.message}
-    </div>
+    <>
+      {notification ? (
+        <div
+          style={{
+            backgroundColor: 'white',
+            color,
+            padding: '10px',
+            width: '80%',
+            borderBottom: '3px solid darkgrey',
+            fontSize: 'small',
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: '10px',
+          }}
+        >
+          <InfoOutlinedIcon />
+          <span style={{ marginLeft: '10px' }}>{notification}</span>
+        </div>
+      ) : null}
+    </>
   )
 }
 
