@@ -42,6 +42,14 @@ function errorHandler(err, req, res, next) {
       status: 403,
       message: 'refresh token expired',
     },
+    RequestTokenError: {
+      status: 403,
+      message: 'invalid request token',
+    },
+    AccessAlreadyRequestedError: {
+      status: 403,
+      message: 'access already requested',
+    },
   }
 
   const error = errorsPass[err.name]

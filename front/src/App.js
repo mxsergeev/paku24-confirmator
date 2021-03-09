@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { Route, Redirect, useHistory } from 'react-router-dom'
+import { Route, Switch, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import Confirmator from './components/Confirmator'
 import Header from './components/Header'
 import Login from './components/Login'
+import Register from './components/Register'
 import loginServiсe from './services/login'
-import logoutService from './services/logout'
 import './styles/container.css'
+import Footer from './components/Footer'
 
 function ErrorFallback({ error }) {
   return (
@@ -44,7 +45,6 @@ function AuthenticateUser({ user, setUser, children }) {
 
       return setUser(userFromToken)
     } catch (err) {
-      console.log(err.response?.data || err)
       return setUser(null)
     }
   }, [])
@@ -94,15 +94,17 @@ function App() {
           setCustom={setCustom}
           handleChange={handleCustomChange}
         />
-        <AuthenticateUser user={user} setUser={setUser}>
-          <Confirmator custom={custom} />
-          <button
-            type="button"
-            onClick={() => logoutService.logout().then(() => setUser(null))}
-          >
-            Logout
-          </button>
-        </AuthenticateUser>
+        <Switch>
+          <Route path="/register">
+            <Register />
+          </Route>
+          <Route path="/">
+            <AuthenticateUser user={user} setUser={setUser}>
+              <Confirmator custom={custom} />
+              <Footer user={user} logoutUser={() => setUser(null)} />
+            </AuthenticateUser>
+          </Route>
+        </Switch>
       </ErrorBoundary>
     </div>
   )
