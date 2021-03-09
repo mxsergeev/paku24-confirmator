@@ -67,6 +67,19 @@ export default function CheckboxGroup(props) {
           className="flex-item"
           control={
             <Checkbox
+              checked={options.secondCar}
+              onChange={handleChange}
+              color="primary"
+            />
+          }
+          name="secondCar"
+          label="Second car"
+          labelPlacement="start"
+        />
+        <FormControlLabel
+          className="flex-item"
+          control={
+            <Checkbox
               checked={options.XL}
               onChange={handleChange}
               color="primary"

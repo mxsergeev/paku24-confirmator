@@ -63,9 +63,9 @@ function addEventToCalendar({ title, date, duration, color }) {
             console.log(
               `There was an error contacting the Calendar service: ${err}`
             )
-            reject(err)
+            return reject(err)
           }
-          console.log('Event created: %s', ev.data)
+          console.log('Event created: %s', ev.data?.summary)
           resolve(ev)
         }
       )

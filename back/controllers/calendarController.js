@@ -19,7 +19,7 @@ function makeIcons(order, options) {
 }
 
 function makeColor(order, options) {
-  if (options.car) return colors[options.car]
+  if (options.secondCar) return colors.secondCar[order.serviceName]
   return colors[order.serviceName]
 }
 
