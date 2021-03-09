@@ -1,6 +1,7 @@
 const smsRouter = require('express').Router()
 const axios = require('axios')
 const { SEMYSMS_API_TOKEN } = require('../utils/config')
+const termsData = require('../utils/data/terms.json')
 const logger = require('../utils/logger')
 
 const deviceId = 268248
@@ -53,7 +54,8 @@ function sendSMSWithGateway(phone, msg) {
 }
 
 smsRouter.post('/', (req, res, next) => {
-  const { phone, msg } = req.body
+  const { phone, msg: body } = req.body
+  const msg = `VARAUSVAHVISTUS\n${body}\nKIITOS VARAUKSESTANNE!\n\n${termsData.agreesToTerms}`
 
   return sendSMSWithGateway(phone, msg)
     .then((data) => {

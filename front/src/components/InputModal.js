@@ -6,7 +6,7 @@ import TextField from '@material-ui/core/TextField'
 
 export default function InputModal(props) {
   // value === phoneNumber || email
-  const { value, label, name, custom, handleChange } = props
+  const { value, label, name, custom, handleChange, disabled } = props
   const [, setModalOpen] = useState(false)
 
   const slug = label.toLowerCase()
@@ -36,6 +36,7 @@ export default function InputModal(props) {
   return (
     <>
       <Button
+        disabled={disabled}
         className="button-info"
         variant="outlined"
         onClick={handleModalOpen}

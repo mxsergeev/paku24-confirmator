@@ -10,6 +10,7 @@ import Editor from './Editor'
 
 import sendConfirmationEmail from '../services/emailAPI'
 import addEventToCalendar from '../services/calendarAPI'
+import sendSMS from '../services/smsAPI'
 import * as regexFunc from '../utils/regexFunctions'
 import * as regexHelpers from '../utils/helpers/regexHelpers'
 import calculateFees from '../utils/helpers/calculateFees'
@@ -21,6 +22,7 @@ import CheckboxGroup from './CheckboxGroup'
 import SendSMSButton from './buttons/SendSMSButton'
 import SendEmailButton from './buttons/SendEmailButton'
 import AddToCalendarButton from './buttons/AddToCalendarButton'
+import NewOrderButton from './buttons/NewOrderButton'
 import ValidationErrorsDisplay from './ValidationErrorsDisplay'
 
 function makeConvertion(order) {
@@ -43,7 +45,6 @@ ${order.phone}
 ${order.comment ? `LISÄTIETOJA\n${order.comment}\n` : ''}`
     Toast.info('Succesefully formatted!', 500)
   } catch (err) {
-    console.log(err)
     Toast.fail(err.message, 1000)
   }
   return converted
@@ -143,11 +144,18 @@ export default function Confirmator({ custom }) {
       payload: { status, disable },
     })
   }
+  function changeSMSStatus(status, disable) {
+    dispatchOrderActionsStatus({
+      type: CHANGE_ACTIONS_STATUS_SMS,
+      payload: { status, disable },
+    })
+  }
 
   const defaultOptions = useMemo(
     () => ({
       distance: 'insideCapital',
-      hsy: order.servicePrice === 40 || order.servicePrice === 70,
+      hsy: order.servicePrice === 70,
+      secondCar: false,
       XL: false,
     }),
     [order.servicePrice]
@@ -156,11 +164,16 @@ export default function Confirmator({ custom }) {
 
   const textAreaRef = useRef(null)
 
-  useEffect(() => {
+  function reset() {
+    setText('')
     setOrder(defaultOrder)
     setOptions(defaultOptions)
     setFormattedConfirmation('')
     dispatchOrderActionsStatus({ type: CHANGE_ACTIONS_STATUS_RESET })
+  }
+
+  useEffect(() => {
+    reset()
   }, [custom])
 
   function handleOptionsChange(e) {
@@ -168,6 +181,16 @@ export default function Confirmator({ custom }) {
       ...options,
       [e.target.name]: e.target.value || e.target.checked,
     })
+
+    if (e.target.name === 'XL') {
+      const { checked } = e.target
+
+      const service = services.find((s) => s.name === order.serviceName)
+      const servicePrice = checked ? service.priceXL : service.price
+
+      const editedOrder = { ...order, servicePrice }
+      setOrder(editedOrder)
+    }
   }
 
   function handleEmailSending() {
@@ -190,6 +213,21 @@ export default function Confirmator({ custom }) {
     return Toast.fail('No confirmation found or recipients defined.', 1000)
   }
 
+  async function handleSendingSMS() {
+    try {
+      const msg = formattedConfirmation
+      if (msg) {
+        changeSMSStatus('Waiting', true)
+        const response = await sendSMS({ msg, phone: order.phone })
+        changeSMSStatus('Done', true)
+        Toast.info(`${response.message}`, 3000)
+      }
+    } catch (err) {
+      changeSMSStatus('Error', false)
+      Toast.fail(err.response?.data.error, 2000)
+    }
+  }
+
   async function handleAddingToCalendar() {
     try {
       const entry = await regexFunc.getEventForCalendar(
@@ -209,18 +247,19 @@ export default function Confirmator({ custom }) {
   }
 
   function setDataToStates(data) {
-    setOptions({
-      ...options,
-      hsy: data.servicePrice === 40 || data.servicePrice === 70,
-    })
     setOrder(data)
     setFormattedConfirmation(makeConvertion(data))
   }
 
   function handleFormatting() {
-    let orderInfo
     try {
-      orderInfo = {
+      const serviceName = regexFunc.getService(text).name
+      let servicePrice
+      if (options.XL) {
+        const service = services.find((s) => s.name === serviceName)
+        servicePrice = service.priceXL
+      }
+      const orderInfo = {
         date: {
           original: regexFunc.getStartingTime(text).original,
           ISODate: regexFunc.getStartingTime(text).ISODate,
@@ -229,8 +268,8 @@ export default function Confirmator({ custom }) {
         },
         time: regexFunc.getStartingTime(text).time,
         duration: regexFunc.getDuration(text),
-        serviceName: regexFunc.getService(text).name,
-        servicePrice: regexFunc.getService(text).price,
+        serviceName,
+        servicePrice: servicePrice || regexFunc.getService(text).price,
         paymentType: regexFunc.getPaymentType(text),
         fees: regexHelpers.printFees(regexFunc.getFees(text)),
         address: `${regexFunc.getAddress(text, 'Frome').address} ${
@@ -246,7 +285,6 @@ export default function Confirmator({ custom }) {
       }
       setDataToStates(orderInfo)
     } catch (err) {
-      console.log(err)
       Toast.fail(err.message, 1000)
     }
   }
@@ -288,9 +326,8 @@ export default function Confirmator({ custom }) {
     }
     if (name === 'serviceName') {
       const serviceName = e.target.value
-      const servicePrice = services.find(
-        (service) => service.name === serviceName
-      ).price
+      const service = services.find((s) => s.name === serviceName)
+      const servicePrice = service.price
       return setOrder({
         ...order,
         serviceName,
@@ -369,6 +406,7 @@ export default function Confirmator({ custom }) {
       <div className="send-button-container">
         <div className="small-button-container">
           <InputModal
+            disabled={orderActionsStatus.email.disable}
             custom={custom}
             handleChange={handleOrderChange}
             label="Email"
@@ -387,6 +425,7 @@ export default function Confirmator({ custom }) {
         </div>
         <div className="small-button-container">
           <InputModal
+            disabled={orderActionsStatus.sms.disable}
             custom={custom}
             handleChange={handleOrderChange}
             label="SMS"
@@ -399,9 +438,9 @@ export default function Confirmator({ custom }) {
               orderActionsStatus.sms.disable ||
               orderActionsStatus.error
             }
-            phoneNumber={order.phone}
-            msgBody={formattedConfirmation}
+            handleClick={handleSendingSMS}
           />
+          <span>{orderActionsStatus.sms.status}</span>
         </div>
         <div className="small-button-container">
           <AddToCalendarButton
@@ -415,6 +454,7 @@ export default function Confirmator({ custom }) {
           <span>{orderActionsStatus.calendar.status}</span>
         </div>
       </div>
+      <NewOrderButton handleClick={reset} />
     </div>
   )
 }
