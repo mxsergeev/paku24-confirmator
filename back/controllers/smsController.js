@@ -64,7 +64,9 @@ smsRouter.post('/', (req, res, next) => {
 
   return sendSMSWithGateway(phone, msg)
     .then((data) => {
-      logger.info('SMS send with code:', data.code)
+      logger.info(
+        `SMS to phonenumber ${phone} sent with status code: ${data.code}`
+      )
       return res.status(200).send({ message: 'SMS sent successfully.' })
     })
     .catch((err) => next(err))
