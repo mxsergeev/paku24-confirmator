@@ -19,7 +19,7 @@ export default function AddToCalendarButton({
         <span style={{ color: 'grey' }}>{statusText}</span>
       ) : (
         <>
-          <span>Send</span>
+          <span>Add</span>
           <EventIcon />
         </>
       )}
