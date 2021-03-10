@@ -48,7 +48,7 @@ function sendSMSWithGateway(phone, msg) {
       params: {
         token: SEMYSMS_API_TOKEN,
         device: deviceId,
-        phone: encodeURI(phone),
+        phone,
         msg,
       },
     })
