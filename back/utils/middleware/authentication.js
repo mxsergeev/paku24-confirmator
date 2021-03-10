@@ -177,8 +177,6 @@ function authenticateAccessToken(req, res, next) {
     // Skip generation of new access token if the one that client has is valid
     if (req.path === '/is-new') req.accessToken = accessToken
 
-    console.log(user)
-
     req.user = user
     return next()
   })
