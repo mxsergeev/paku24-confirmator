@@ -2,6 +2,11 @@ const calendarRouter = require('express').Router()
 const addEventToCalendar = require('../utils/calendar/calendarAPI')
 const iconsData = require('../utils/data/icons.json')
 const colors = require('../utils/data/colors.json')
+const {
+  authenticateAccessToken,
+} = require('../utils/middleware/authentication')
+
+calendarRouter.use(authenticateAccessToken)
 
 function makeIcons(order, options) {
   const distanceIcon = iconsData.misc[options.distance] || ''

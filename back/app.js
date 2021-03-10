@@ -9,7 +9,6 @@ const mongoose = require('mongoose')
 const config = require('./utils/config')
 const logger = require('./utils/logger')
 const errorHandler = require('./utils/middleware/errorHandler')
-const { authenticateAccessToken } = require('./utils/middleware/authentication')
 
 const calendarRouter = require('./controllers/calendarController')
 const emailRouter = require('./controllers/emailController')
@@ -52,8 +51,6 @@ app.use('/api/token', tokenRouter)
 app.use('/api/login', loginRouter)
 app.use('/api/logout', logoutRouter)
 app.use('/api/registration', registrationRouter)
-
-app.use(authenticateAccessToken)
 
 app.use('/api/test', testRouter)
 app.use('/api/sms', smsRouter)

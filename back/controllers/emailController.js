@@ -2,6 +2,11 @@ const emailRouter = require('express').Router()
 
 const sendMail = require('../utils/email/awsSES')
 const termsData = require('../utils/data/terms.json')
+const {
+  authenticateAccessToken,
+} = require('../utils/middleware/authentication')
+
+emailRouter.use(authenticateAccessToken)
 
 function makeTerms(options) {
   if (options.hsy)

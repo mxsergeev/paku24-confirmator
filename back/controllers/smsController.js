@@ -3,6 +3,11 @@ const axios = require('axios')
 const { SEMYSMS_API_TOKEN } = require('../utils/config')
 const termsData = require('../utils/data/terms.json')
 const logger = require('../utils/logger')
+const {
+  authenticateAccessToken,
+} = require('../utils/middleware/authentication')
+
+smsRouter.use(authenticateAccessToken)
 
 const deviceId = 268248
 
