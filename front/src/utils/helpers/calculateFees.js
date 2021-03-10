@@ -17,7 +17,11 @@ export default function calculateFees(date, time, paymentType) {
   const morningFee = timeInNumberType < 8 ? 20 : false
   const nightFee = timeInNumberType > 20 ? 20 : false
 
-  const paymentFee = paymentType === 'Lasku' ? 14 : false
+  const paymentFee =
+    paymentType === 'Lasku/Osamaksu' ||
+    paymentType === 'Invoice/Instalment payment'
+      ? 14
+      : false
 
   return [
     { value: weekEndFee, name: 'VIIKONLOPPULISÄ' },

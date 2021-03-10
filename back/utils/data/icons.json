@@ -1,8 +1,11 @@
 {
   "payment": {
     "Maksukortti": "💳",
+    "Bank card": "💳",
     "Käteinen": "🎁",
-    "Lasku": "📜"
+    "Cash": "🎁",
+    "Lasku": "📜",
+    "Invoice/Instalment payment": "📜"
   },
   "service": {
     "Paku ja kuski": "🚚",

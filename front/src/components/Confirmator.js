@@ -1,3 +1,4 @@
+/* eslint-disable prefer-template */
 import React, { useState, useRef, useMemo, useEffect, useReducer } from 'react'
 import { Route } from 'react-router-dom'
 import Toast from 'light-toast'
@@ -38,7 +39,7 @@ MAKSUTAPA
 ${order.paymentType}${order.fees.string}
 LÄHTÖPAIKKA
 ${order.address}
-${order.destination.length > 1 ? `MÄÄRÄNPÄÄ\n${order.destination}\n` : ''}NIMI
+${order.destination.length > 5 ? `MÄÄRÄNPÄÄ\n${order.destination}\n` : ''}NIMI
 ${order.name}
 ${order.email ? `SÄHKÖPOSTI\n${order.email}\n` : ''}PUHELIN
 ${order.phone}
@@ -253,35 +254,43 @@ export default function Confirmator({ custom }) {
 
   function handleFormatting() {
     try {
-      const serviceName = regexFunc.getService(text).name
+      const cleanedText = regexFunc.initialCleanup(text)
+      const serviceName = regexFunc.getService(cleanedText).name
       let servicePrice
       if (options.XL) {
         const service = services.find((s) => s.name === serviceName)
         servicePrice = service.priceXL
       }
+
+      const date = regexFunc.getStartingTime(cleanedText)
+      const beginAddress = regexFunc.getAddress(cleanedText, 'Frome')
+      const endAddress = regexFunc.getAddress(cleanedText, 'To')
+
+      const address = `${beginAddress.address},${
+        beginAddress.postalCode ? ' ' + beginAddress.postalCode : ''
+      } ${beginAddress.city}`
+      const destination = `${endAddress.address || ''},${
+        endAddress.postalCode ? ' ' + endAddress.postalCode : ''
+      } ${endAddress.city || ''}`
+
       const orderInfo = {
         date: {
-          original: regexFunc.getStartingTime(text).original,
-          ISODate: regexFunc.getStartingTime(text).ISODate,
-          confirmationFormat: regexFunc.getStartingTime(text)
-            .confirmationFormat,
+          original: date.original,
+          ISODate: date.ISODate,
+          confirmationFormat: date.confirmationFormat,
         },
-        time: regexFunc.getStartingTime(text).time,
-        duration: regexFunc.getDuration(text),
+        time: regexFunc.getStartingTime(cleanedText).time,
+        duration: regexFunc.getDuration(cleanedText),
         serviceName,
-        servicePrice: servicePrice || regexFunc.getService(text).price,
-        paymentType: regexFunc.getPaymentType(text),
-        fees: regexHelpers.printFees(regexFunc.getFees(text)),
-        address: `${regexFunc.getAddress(text, 'Frome').address} ${
-          regexFunc.getAddress(text, 'Frome').city
-        }`,
-        destination: `${regexFunc.getAddress(text, 'To').address} ${
-          regexFunc.getAddress(text, 'To').city
-        }`,
-        name: regexFunc.getName(text),
-        email: regexFunc.getEmail(text),
-        phone: regexFunc.getPhone(text),
-        comment: regexFunc.getComment(text),
+        servicePrice: servicePrice || regexFunc.getService(cleanedText).price,
+        paymentType: regexFunc.getPaymentType(cleanedText),
+        fees: regexHelpers.printFees(regexFunc.getFees(cleanedText)),
+        address,
+        destination,
+        name: regexFunc.getName(cleanedText),
+        email: regexFunc.getEmail(cleanedText),
+        phone: regexFunc.getPhone(cleanedText),
+        comment: regexFunc.getComment(cleanedText),
       }
       setDataToStates(orderInfo)
     } catch (err) {
