@@ -2,7 +2,11 @@ import React from 'react'
 import Button from '@material-ui/core/Button'
 import EventIcon from '@material-ui/icons/Event'
 
-export default function AddToCalendarButton({ handleClick, disabled }) {
+export default function AddToCalendarButton({
+  handleClick,
+  disabled,
+  statusText,
+}) {
   return (
     <Button
       disabled={disabled}
@@ -11,7 +15,14 @@ export default function AddToCalendarButton({ handleClick, disabled }) {
       size="small"
       onClick={handleClick}
     >
-      Add to calendar <EventIcon />
+      {statusText ? (
+        <span style={{ color: 'grey' }}>{statusText}</span>
+      ) : (
+        <>
+          <span>Send</span>
+          <EventIcon />
+        </>
+      )}
     </Button>
   )
 }

@@ -425,6 +425,7 @@ export default function Confirmator({ custom }) {
             value={order.email}
           />
           <SendEmailButton
+            statusText={orderActionsStatus.email.status}
             disabled={
               !(order.email && formattedConfirmation) ||
               orderActionsStatus.email.disable ||
@@ -432,7 +433,6 @@ export default function Confirmator({ custom }) {
             }
             handleClick={handleEmailSending}
           />
-          <span>{orderActionsStatus.email.status}</span>
         </div>
         <div className="small-button-container">
           <InputModal
@@ -444,6 +444,7 @@ export default function Confirmator({ custom }) {
             value={order.phone}
           />
           <SendSMSButton
+            statusText={orderActionsStatus.sms.status}
             disabled={
               !(order.phone && formattedConfirmation) ||
               orderActionsStatus.sms.disable ||
@@ -451,18 +452,17 @@ export default function Confirmator({ custom }) {
             }
             handleClick={handleSendingSMS}
           />
-          <span>{orderActionsStatus.sms.status}</span>
         </div>
         <div className="small-button-container">
           <AddToCalendarButton
             handleClick={handleAddingToCalendar}
+            statusText={orderActionsStatus.calendar.status}
             disabled={
               !formattedConfirmation ||
               orderActionsStatus.calendar.disable ||
               orderActionsStatus.error
             }
           />
-          <span>{orderActionsStatus.calendar.status}</span>
         </div>
       </div>
       <NewOrderButton handleClick={reset} />

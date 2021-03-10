@@ -2,7 +2,7 @@ import React from 'react'
 import Button from '@material-ui/core/Button'
 import EmailIcon from '@material-ui/icons/Email'
 
-export default function SendEmailButton({ handleClick, disabled }) {
+export default function SendEmailButton({ handleClick, disabled, statusText }) {
   return (
     <Button
       disabled={disabled}
@@ -11,7 +11,14 @@ export default function SendEmailButton({ handleClick, disabled }) {
       size="small"
       onClick={handleClick}
     >
-      Send <EmailIcon />
+      {statusText ? (
+        <span style={{ color: 'grey' }}>{statusText}</span>
+      ) : (
+        <>
+          <span>Send</span>
+          <EmailIcon />
+        </>
+      )}
     </Button>
   )
 }
