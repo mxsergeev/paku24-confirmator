@@ -8,6 +8,7 @@ import Notification from './Notification'
 export default function Login({ setUser }) {
   const background = {
     width: '95%',
+    margin: '0 auto',
     padding: 20,
     backgroundColor: 'lightgrey',
     borderBottom: '4px solid darkgrey',
@@ -65,7 +66,7 @@ export default function Login({ setUser }) {
 
   return (
     <div style={{ margin: '30px 5px' }}>
-      <div style={{ ...background, margin: '20px 5px' }}>
+      <div style={background}>
         <div style={formContainer}>
           LOGIN
           <span

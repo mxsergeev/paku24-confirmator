@@ -9,6 +9,7 @@ export default function Register() {
   const background = {
     width: '95%',
     padding: 20,
+    margin: '0 auto',
     backgroundColor: 'lightgrey',
     borderBottom: '4px solid darkgrey',
   }
@@ -65,7 +66,7 @@ export default function Register() {
 
   return (
     <div style={{ margin: '30px 5px' }}>
-      <div style={{ ...background, margin: '20px 5px' }}>
+      <div style={background}>
         <div style={formContainer}>
           REQUEST ACCESS
           <span
