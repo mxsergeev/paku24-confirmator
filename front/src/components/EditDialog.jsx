@@ -42,16 +42,14 @@ export default function ResponsiveDialog(props) {
           disableScrollLock
         >
           <DialogContent>
-            <div style={{ marginTop: '20px' }}>
-              <Editor
-                order={order}
-                handleChange={handleChange}
-                handleClick={() => {
-                  handleFormatting()
-                  handleClose()
-                }}
-              />
-            </div>
+            <Editor
+              order={order}
+              handleChange={handleChange}
+              handleClick={() => {
+                handleFormatting()
+                handleClose()
+              }}
+            />
           </DialogContent>
           <DialogActions>
             <Button

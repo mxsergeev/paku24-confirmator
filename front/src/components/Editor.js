@@ -15,7 +15,7 @@ export default function Editor({ order, handleChange, handleClick }) {
   }
 
   return (
-    <div className="basic-flex">
+    <div className="basic-flex" style={{ marginTop: '15px' }}>
       <TextField
         fullWidth
         style={marginLeftRight}

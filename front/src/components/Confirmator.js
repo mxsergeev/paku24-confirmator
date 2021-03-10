@@ -359,14 +359,16 @@ export default function Confirmator({ custom }) {
 
   return (
     <div className="flex-container">
-      <TextareaAutosize
-        className="textarea-1 flex-item"
-        rowsMin={5}
-        cols={40}
-        value={custom ? customText : text}
-        placeholder="Order info here."
-        onChange={custom ? handleCustomTextChange : handleTextChange}
-      />
+      <Route exact path={['/', '/edit/:slug*']}>
+        <TextareaAutosize
+          className="textarea-1 flex-item"
+          rowsMin={5}
+          cols={40}
+          value={custom ? customText : text}
+          placeholder="Order info here."
+          onChange={custom ? handleCustomTextChange : handleTextChange}
+        />
+      </Route>
 
       <Route path="/custom">
         <Editor
