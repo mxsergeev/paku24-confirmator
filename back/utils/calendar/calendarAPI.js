@@ -2,6 +2,7 @@
 const fs = require('fs')
 const readline = require('readline')
 const { google } = require('googleapis')
+const logger = require('../logger')
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar']
@@ -60,12 +61,14 @@ function addEventToCalendar({ title, date, duration, color }) {
         },
         (err, ev) => {
           if (err) {
-            console.log(
+            logger.info(
               `There was an error contacting the Calendar service: ${err}`
             )
             return reject(err)
           }
-          console.log('Event created: %s', ev.data)
+          logger.info(
+            `Event created: ${ev.data?.start.dateTime} - ${ev.data?.end.dateTime}\n${ev.data?.summary}`
+          )
           resolve(ev)
         }
       )

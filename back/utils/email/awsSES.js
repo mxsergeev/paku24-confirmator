@@ -1,6 +1,5 @@
 const AWS = require('aws-sdk')
-
-// const { AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } = require('../utils/config')
+const logger = require('../logger')
 
 AWS.config.update({ region: 'eu-north-1' })
 
@@ -54,10 +53,10 @@ function sendMail({
 
   sendPromise
     .then((data) => {
-      console.log(data)
+      logger.info(`Message sent to ${email}`)
     })
     .catch((err) => {
-      console.error(err, err.stack)
+      logger.error(err, err.stack)
     })
 }
 
