@@ -6,7 +6,7 @@ import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 
 import '../styles/confirmator.css'
 import InputModal from './InputModal'
-import EditModal from './EditModal'
+import EditDialog from './EditDialog'
 import Editor from './Editor'
 
 import sendConfirmationEmail from '../services/emailAPI'
@@ -387,7 +387,7 @@ export default function Confirmator({ custom }) {
       />
       <div className="flex-100-space-between">
         <Route exact path={['/', '/edit/:slug*']}>
-          <EditModal
+          <EditDialog
             handleChange={handleOrderChange}
             handleFormatting={handleEditorFormatting}
             order={order}
