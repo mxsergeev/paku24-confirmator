@@ -21,6 +21,7 @@
     "YÖLISÄ": "🌚"
   },
   "misc": {
-    "outsideCapital": "🚧"
+    "outsideCapital": "🚧",
+    "fromOutsideToCapital": "🚧"
   }
 }
