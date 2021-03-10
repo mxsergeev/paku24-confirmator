@@ -37,8 +37,4 @@ emailRouter.post('/', (req, res, next) => {
   res.status(200).send('Email sent successfully')
 })
 
-emailRouter.get('/', (req, res) => {
-  return res.status(200).send({ message: 'Test' })
-})
-
 module.exports = emailRouter
