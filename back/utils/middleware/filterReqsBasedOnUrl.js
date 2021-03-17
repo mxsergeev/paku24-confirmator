@@ -1,7 +1,5 @@
-const newErrorWithCustomName = require('../helpers/newErrorWithCustomName')
-
 function filterReqsBasedOnUrl(req, res, next) {
-  const urls = ['/app', '/manifest.json', '/logo192.png', '/api', '/static']
+  const urls = ['/app', '/api', '/static', '/manifest', '/logo', '/favicon']
 
   if (urls.some((url) => req.path.startsWith(url))) {
     return next()
