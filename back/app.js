@@ -9,6 +9,7 @@ const mongoose = require('mongoose')
 const config = require('./utils/config')
 const logger = require('./utils/logger')
 const errorHandler = require('./utils/middleware/errorHandler')
+const filterReqsBasedOnUrl = require('./utils/middleware/filterReqsBasedOnUrl')
 
 const calendarRouter = require('./controllers/calendarController')
 const emailRouter = require('./controllers/emailController')
@@ -35,17 +36,23 @@ mongoose
 
 const app = express()
 
-app.use(express.static(path.join(__dirname, 'build')))
-
 app.set('trust proxy', '127.0.0.1')
 
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('dev'))
+}
+
 app.use(helmet())
-app.use(express.static('build'))
-app.use(morgan('dev'))
+
 app.use(cors())
 app.use(express.json())
-
 app.use(cookieParser())
+
+app.get('/', (req, res) => {
+  res.redirect('/app')
+})
+
+app.use(filterReqsBasedOnUrl)
 
 app.use('/api/token', tokenRouter)
 app.use('/api/login', loginRouter)
@@ -57,16 +64,17 @@ app.use('/api/sms', smsRouter)
 app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 
-app.get('*', (req, res) => {
+app.use(express.static(path.join(__dirname, 'build')))
+app.get('/app', (req, res) => {
   res.sendFile(path.join(__dirname + '/build/index.html'))
 })
+
+app.use(errorHandler)
 
 const unknownEndpoint = (req, res) => {
   res.status(404).send({ error: 'Unknown endpoint' })
 }
 
 app.use(unknownEndpoint)
-
-app.use(errorHandler)
 
 module.exports = app
