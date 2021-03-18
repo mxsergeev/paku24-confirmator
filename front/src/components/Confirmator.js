@@ -155,11 +155,11 @@ export default function Confirmator({ custom }) {
   const defaultOptions = useMemo(
     () => ({
       distance: 'insideCapital',
-      hsy: order.servicePrice === 70,
+      hsy: false,
       secondCar: false,
       XL: false,
     }),
-    [order.servicePrice]
+    []
   )
   const [options, setOptions] = useState(defaultOptions)
 
@@ -176,6 +176,17 @@ export default function Confirmator({ custom }) {
   useEffect(() => {
     reset()
   }, [custom])
+
+  useEffect(
+    () =>
+      setOptions({
+        ...options,
+        hsy:
+          order.serviceName === 'Paku ja mies' ||
+          order.serviceName === 'Paku ja kaksi miestä',
+      }),
+    [order.serviceName]
+  )
 
   function handleOptionsChange(e) {
     setOptions({
