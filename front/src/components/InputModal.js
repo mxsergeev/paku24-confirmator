@@ -46,7 +46,7 @@ export default function InputModal(props) {
         {value}
       </Button>
       <Route path={[`/custom/${slug}`, `/edit/${slug}`]}>
-        <Modal open onClose={handleModalClose}>
+        <Modal open onClose={handleModalClose} disableScrollLock>
           <div style={modalStyle}>
             <TextField
               label={label}
