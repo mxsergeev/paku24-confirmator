@@ -3,6 +3,7 @@ const loginRouter = require('express').Router()
 const { AT_EXPIRES_IN } = require('../../utils/config')
 
 const {
+  filterRequestsWithExceededAttemptLimit,
   checkUser,
   controlRequestFlow,
   invalidAuth,
@@ -25,6 +26,7 @@ function sendUserInfo(req, res) {
 
 loginRouter.post(
   '/',
+  filterRequestsWithExceededAttemptLimit,
   checkUser,
   controlRequestFlow,
   invalidAuth,

@@ -18,7 +18,27 @@ const {
   RT_REFRESH_AFTER_SEC,
 } = require('../config')
 
+/**
+ * ip, {
+      attempts: [],
+      numberOfAttempts: 0,
+      spamSpeed: 0,
+      expires: expireDate,
+      throttled: false
+    }
+ */
+
 const requests = new Map()
+
+function filterRequestsWithExceededAttemptLimit(req, res, next) {
+  const cr = requests.get(req.ip)
+  if (cr?.throttled) {
+    const TooManyRequestsError = newErrorWithCustomName('TooManyRequestsError')
+    return next(TooManyRequestsError)
+  }
+
+  return next()
+}
 
 /**
  * @param {Object} req
@@ -28,12 +48,14 @@ const requests = new Map()
 async function checkUser(req, res, next) {
   const { username, password } = req.body
 
-  const user = await User.findOne({ username }).lean()
+  const user = await User.findOne({ username })
 
   const passwordCorrect =
     user === null ? false : await bcrypt.compare(password, user.passwordHash)
 
-  req.user = user
+  const userJSON = user?.toJSON()
+
+  req.user = userJSON || null
   req.passwordCorrect = passwordCorrect
 
   return next()
@@ -45,6 +67,11 @@ async function checkUser(req, res, next) {
  */
 
 function controlRequestFlow(req, res, next) {
+  function clearReqAttempts(request) {
+    request.attempts = []
+    request.numberOfAttempts = 0
+    request.throttled = false
+  }
   const { passwordCorrect, ip } = req
 
   requests.forEach((reqData, reqIp) => {
@@ -53,28 +80,54 @@ function controlRequestFlow(req, res, next) {
 
   const expireDate = Date.now() + 30 * 1000
 
-  if (!requests.has(ip)) requests.set(ip, { attempts: 0, expires: expireDate })
+  if (!requests.has(ip)) {
+    requests.set(ip, {
+      attempts: [],
+      numberOfAttempts: 0,
+      spamSpeed: 0,
+      expires: expireDate,
+      throttled: false,
+    })
+  }
 
-  const currentRequest = requests.get(ip)
+  // current request
+  const cr = requests.get(ip)
 
-  currentRequest.attempts += 1
-  currentRequest.expires = expireDate
+  cr.attempts.push(Date.now())
+  cr.expires = expireDate
+  cr.numberOfAttempts = cr.attempts.length
 
-  if (currentRequest.attempts > 3) {
-    const throttleTime = 10000
-    setTimeout(() => {
-      currentRequest.attempts = 0
+  const length = cr.attempts.length
+  const firstAttempt_sec = cr.attempts[0] / 1000
+  const lastAttempt_sec = cr.attempts[length - 1] / 1000
+
+  length > 1
+    ? (cr.spamSpeed = length / (lastAttempt_sec - firstAttempt_sec))
+    : (cr.spamSpeed = 0)
+
+  if (length >= 3) {
+    let throttleTime = 10000
+    cr.throttled = true
+
+    const timeoutID = setTimeout(() => {
+      clearReqAttempts(cr)
     }, throttleTime)
+
+    if (process.env.NODE_ENV === 'test') {
+      clearTimeout(timeoutID)
+      clearReqAttempts(cr)
+    }
 
     const err = newErrorWithCustomName('TooManyRequestsError')
     return next(err)
   }
 
   if (passwordCorrect) {
-    currentRequest.attempts = 0
+    clearReqAttempts(cr)
     return next()
   }
 
+  // if password is wrong and attempt limit was not reached go to next middleware
   return next()
 }
 
@@ -95,6 +148,15 @@ function invalidAuth(req, res, next) {
   return next()
 }
 
+function generateJWT(
+  user,
+  options = {
+    expiresIn: AT_EXPIRES_IN,
+  }
+) {
+  return jwt.sign(user, ACCESS_TOKEN_SECRET, options)
+}
+
 /**
  * @param {Object} req
  * @param {Object} req.user
@@ -110,9 +172,7 @@ function generateAccessToken(req, res, next) {
     id: user._id,
   }
 
-  req.accessToken = jwt.sign(userForToken, ACCESS_TOKEN_SECRET, {
-    expiresIn: AT_EXPIRES_IN,
-  })
+  req.accessToken = generateJWT(userForToken)
 
   return next()
 }
@@ -175,7 +235,10 @@ function authenticateAccessToken(req, res, next) {
     if (err) return next(err)
 
     // Skip generation of new access token if the one that client has is valid
-    if (req.path === '/is-new') req.accessToken = accessToken
+    if (req.path === '/is-new') {
+      req.accessToken = accessToken
+      return next()
+    }
 
     req.user = user
     return next()
@@ -200,7 +263,7 @@ async function authenticateRefreshToken(req, res, next) {
 
   const refreshTokenInDB = await RefreshToken.findOne({
     token: refreshTokenFromCookie,
-  }).exec()
+  }).lean()
   if (!refreshTokenInDB) {
     /**
      * If client's token was not found in DB,
@@ -218,6 +281,8 @@ async function authenticateRefreshToken(req, res, next) {
       return next(err)
     }
 
+    // not tested yet 15.03.2021
+    await logout(req, res)
     const err = newErrorWithCustomName('RefreshTokenError')
     return next(err)
   }
@@ -292,6 +357,7 @@ function setTokenCookies(req, res, next) {
 }
 
 module.exports = {
+  filterRequestsWithExceededAttemptLimit,
   checkUser,
   controlRequestFlow,
   invalidAuth,
@@ -301,4 +367,6 @@ module.exports = {
   authenticateRefreshToken,
   updateOrDeleteOldToken,
   setTokenCookies,
+  requests,
+  generateJWT,
 }
