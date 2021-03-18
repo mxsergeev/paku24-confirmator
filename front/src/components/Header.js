@@ -15,7 +15,7 @@ export default function Header({ isLogged, custom, setCustom, handleChange }) {
   return (
     <div className="logo">
       <div>
-        <Link to={isLogged ? '/' : '/login'}>
+        <Link onClick={() => setCustom(false)} to={isLogged ? '/' : '/login'}>
           <img src={logo} alt="Logo" width="125px" />
         </Link>
         <span className="text">CONFIRMATOR</span>
