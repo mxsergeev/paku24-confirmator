@@ -18,6 +18,7 @@ export default function calculateFees(date, time, paymentType) {
   const nightFee = timeInNumberType > 20 ? 20 : false
 
   const paymentFee =
+    paymentType === 'Lasku' ||
     paymentType === 'Lasku/Osamaksu' ||
     paymentType === 'Invoice/Instalment payment'
       ? 14
