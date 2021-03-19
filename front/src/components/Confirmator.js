@@ -193,16 +193,6 @@ export default function Confirmator({ custom }) {
       ...options,
       [e.target.name]: e.target.value || e.target.checked,
     })
-
-    if (e.target.name === 'XL') {
-      const { checked } = e.target
-
-      const service = services.find((s) => s.name === order.serviceName)
-      const servicePrice = checked ? service.priceXL : service.price
-
-      const editedOrder = { ...order, servicePrice }
-      setOrder(editedOrder)
-    }
   }
 
   function handleEmailSending() {
@@ -267,11 +257,8 @@ export default function Confirmator({ custom }) {
     try {
       const cleanedText = regexFunc.initialCleanup(text)
       const serviceName = regexFunc.getService(cleanedText).name
-      let servicePrice
-      if (options.XL) {
-        const service = services.find((s) => s.name === serviceName)
-        servicePrice = service.priceXL
-      }
+      const service = services.find((s) => s.name === serviceName)
+      const servicePrice = options.XL ? service.priceXL : service.price
 
       const date = regexFunc.getStartingTime(cleanedText)
       const beginAddress = regexFunc.getAddress(cleanedText, 'Frome')
@@ -317,7 +304,9 @@ export default function Confirmator({ custom }) {
 
   function handleEditorFormatting() {
     const fees = calcAndPrintFees()
-    const editedOrder = { ...order, fees }
+    const service = services.find((s) => s.name === order.serviceName)
+    const servicePrice = options.XL ? service.priceXL : service.price
+    const editedOrder = { ...order, servicePrice, fees }
     setDataToStates(editedOrder)
   }
 
@@ -438,9 +427,9 @@ export default function Confirmator({ custom }) {
           <SendEmailButton
             statusText={orderActionsStatus.email.status}
             disabled={
-              !(order.email && formattedConfirmation) ||
+              orderActionsStatus.error ||
               orderActionsStatus.email.disable ||
-              orderActionsStatus.error
+              !(order.email && formattedConfirmation)
             }
             handleClick={handleEmailSending}
           />
@@ -457,9 +446,9 @@ export default function Confirmator({ custom }) {
           <SendSMSButton
             statusText={orderActionsStatus.sms.status}
             disabled={
-              !(order.phone && formattedConfirmation) ||
+              orderActionsStatus.error ||
               orderActionsStatus.sms.disable ||
-              orderActionsStatus.error
+              !(order.phone && formattedConfirmation)
             }
             handleClick={handleSendingSMS}
           />
@@ -469,9 +458,9 @@ export default function Confirmator({ custom }) {
             handleClick={handleAddingToCalendar}
             statusText={orderActionsStatus.calendar.status}
             disabled={
-              !formattedConfirmation ||
+              orderActionsStatus.error ||
               orderActionsStatus.calendar.disable ||
-              orderActionsStatus.error
+              !formattedConfirmation
             }
           />
         </div>
