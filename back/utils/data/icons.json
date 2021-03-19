@@ -23,5 +23,8 @@
   "misc": {
     "outsideCapital": "🚧",
     "fromOutsideToCapital": "🚧"
+  },
+  "size": {
+    "XL": "XL"
   }
 }

@@ -9,6 +9,7 @@ const {
 calendarRouter.use(authenticateAccessToken)
 
 function makeIcons(order, options) {
+  const sizeIcon = options.XL ? iconsData.size.XL : ''
   const distanceIcon = iconsData.misc[options.distance] || ''
   const feeIcons = order.fees.array
     .map((fee) => {
@@ -20,7 +21,7 @@ function makeIcons(order, options) {
   const serviceIcons = iconsData.service[order.serviceName]
   const paymentIcons = iconsData.payment[order.paymentType]
 
-  return `${distanceIcon}${feeIcons}${serviceIcons}${paymentIcons}${order.time}(${order.duration}h)`
+  return `${sizeIcon}${distanceIcon}${feeIcons}${serviceIcons}${paymentIcons}${order.time}(${order.duration}h)`
 }
 
 function makeColor(order, options) {
