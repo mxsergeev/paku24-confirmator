@@ -66,11 +66,10 @@ registrationRouter.post('/request-access', async (req, res, next) => {
       confirmation: false,
       sourceEmail: 'paku24.confirmator@gmail.com',
     })
+
     return res.status(200).send({
       message:
         'Your request has been successfully sent! You will receive email with your credentials when your request has been approved.',
-      token: requestToken,
-      url,
     })
   } catch (err) {
     return next(err)
