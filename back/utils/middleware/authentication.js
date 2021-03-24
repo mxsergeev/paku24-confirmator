@@ -219,7 +219,7 @@ async function generateRefreshToken(req, res, next) {
 /**
  * @param {Object} req
  * @param {Object} req.cookies
- * @param {string} req.cookies.accessToken
+ * @param {string} req.cookies.at
  * @prop {Object} req.user
  */
 
@@ -248,7 +248,7 @@ function authenticateAccessToken(req, res, next) {
 /**
  * @param {Object} req
  * @param {Object} req.cookies
- * @param {string} req.cookies.refreshToken
+ * @param {string} req.cookies.rt
  * @prop {Object} req.refreshTokenInDB
  * @prop {Object} req.user
  */
@@ -311,6 +311,7 @@ async function authenticateRefreshToken(req, res, next) {
  * @param {Object} req
  * @param {Object} req.refreshTokenInDB
  * @prop {string} req.refreshToken
+ * @prop {boolean} req.refreshTokenIsNew
  */
 
 async function updateOrDeleteOldToken(req, res, next) {

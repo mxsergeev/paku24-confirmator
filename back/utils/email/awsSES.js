@@ -47,17 +47,21 @@ function sendMail({
     ? (params.Message.Body.Text = opt)
     : (params.Message.Body.Html = opt)
 
-  const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' })
-    .sendEmail(params)
-    .promise()
+  if (process.env.NODE_ENV !== 'test') {
+    const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' })
+      .sendEmail(params)
+      .promise()
 
-  sendPromise
-    .then((data) => {
-      logger.info(`Message sent to ${email}`)
-    })
-    .catch((err) => {
-      logger.error(err, err.stack)
-    })
+    return sendPromise
+      .then((data) => {
+        logger.info(`Message sent to ${email}`)
+      })
+      .catch((err) => {
+        logger.error(err, err.stack)
+      })
+  }
+
+  return null
 }
 
 module.exports = sendMail
