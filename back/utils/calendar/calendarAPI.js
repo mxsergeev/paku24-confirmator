@@ -3,6 +3,7 @@ const fs = require('fs')
 const readline = require('readline')
 const { google } = require('googleapis')
 const logger = require('../logger')
+const { createEvent } = require('./helpers')
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar']
@@ -12,6 +13,7 @@ const SCOPES = ['https://www.googleapis.com/auth/calendar']
 const TOKEN_PATH = 'token.json'
 
 /**
+ * Adds event to the Google calendar. Before that checks OAuth credentials. Mostly boilerplate from Google Docs example.
  * @param {Object} event
  * @param {string} event.title
  * @param {Date} event.date
@@ -19,37 +21,9 @@ const TOKEN_PATH = 'token.json'
  * @param {string} event.color
  */
 
-function addEventToCalendar({ title, date, duration, color }) {
+function addEventToCalendar(event) {
   return new Promise((resolve, reject) => {
-    const dateRaw = new Date(date)
-
-    const hours = Math.floor(Number(duration))
-    let minutes = (Number(duration) % 1) * 60
-    if (!minutes) minutes = 0
-
-    const endDate = new Date(
-      dateRaw.getFullYear(),
-      dateRaw.getMonth(),
-      dateRaw.getDate(),
-      dateRaw.getHours() + hours,
-      dateRaw.getMinutes() + minutes
-    )
-
-    const event = {
-      summary: title,
-      colorId: color,
-      start: {
-        dateTime: dateRaw.toISOString(),
-        timeZone: 'Europe/Helsinki',
-      },
-      end: {
-        dateTime: endDate.toISOString(),
-        timeZone: 'Europe/Helsinki',
-      },
-      reminders: {
-        useDefault: false,
-      },
-    }
+    const eventObject = createEvent(event)
 
     function addEvent(auth) {
       const calendar = google.calendar({ version: 'v3', auth })
@@ -57,7 +31,7 @@ function addEventToCalendar({ title, date, duration, color }) {
         {
           auth,
           calendarId: 'primary',
-          resource: event,
+          resource: eventObject,
         },
         (err, ev) => {
           if (err) {
