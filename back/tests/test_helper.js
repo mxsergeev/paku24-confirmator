@@ -72,6 +72,39 @@ const mockNext = jest.fn((param) => {
   }
 })
 
+const exampleOrder = {
+  address: 'Raiviosuonmäki 2 E 68',
+  comment: '',
+  date: {
+    ISODate: '2021-04-22',
+    confirmationFormat: '22-04-2021',
+    original: new Date('2021-04-22 17:00'),
+  },
+  destination: '',
+  duration: '2',
+  email: 'themaximsergeev@gmail.com',
+  fees: {
+    array: [],
+    string: '',
+  },
+  name: 'Maxim Sergeev',
+  paymentType: 'Maksukortti',
+  phone: '+358449747442',
+  serviceName: 'Paku ja kuski',
+  servicePrice: 30,
+  time: '17:00',
+}
+
+const exampleOptions = {
+  XL: false,
+  distance: 'insideCapital',
+  hsy: false,
+  secondCar: false,
+}
+
+const exampleEntryPartOfTheConfirmation =
+  'Raiviosuonmäki 2 E 68\nNIMI\nMaxim Sergeev\nSÄHKÖPOSTI\nthemaximsergeev@gmail.com\nPUHELIN\n+358449747442'
+
 module.exports = {
   initialUsers,
   usersInDB,
@@ -81,4 +114,7 @@ module.exports = {
   mockNext,
   res,
   exampleRefreshToken,
+  exampleOrder,
+  exampleOptions,
+  exampleEntryPartOfTheConfirmation,
 }
