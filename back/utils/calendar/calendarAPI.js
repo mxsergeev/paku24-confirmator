@@ -15,10 +15,16 @@ const TOKEN_PATH = 'token.json'
 /**
  * Adds event to the Google calendar. Before that checks OAuth credentials. Mostly boilerplate from Google Docs example.
  * @param {Object} event
- * @param {string} event.title
- * @param {Date} event.date
- * @param {string} event.duration
- * @param {string} event.color
+ * @param {string} event.summary
+ * @param {string} event.colorId
+ * @param {object} event.start
+ * @param {string} event.start.dateTime - ISOString
+ * @param {string} event.start.timeZone
+ * @param {object} event.end
+ * @param {string} event.end.dateTime - ISOString
+ * @param {string} event.end.timeZone
+ * @param {object} event.reminders
+ * @param {boolean} event.reminders.useDefault
  */
 
 function addEventToCalendar(event) {
@@ -46,14 +52,45 @@ function addEventToCalendar(event) {
       )
     }
 
-    // Load client secrets from a local file.
-    // This function is exported thus credentials have to be allocated keeping that in mind.
-    // This function gets called from file ./controllers/calendarController
-    fs.readFile('./utils/calendar/credentials.json', (err, content) => {
-      if (err) return console.log('Error loading client secret file:', err)
-      // Authorize a client with credentials, then call the Google Calendar API.
-      authorize(JSON.parse(content), addEvent)
-    })
+    contactAPI(addEvent)
+  })
+}
+
+function deleteEventFromCalendar(eventId) {
+  return new Promise((resolve, reject) => {
+    function deleteEvent(auth) {
+      const calendar = google.calendar({ version: 'v3', auth })
+      calendar.events.delete(
+        {
+          auth,
+          calendarId: 'primary',
+          eventId,
+        },
+        (err) => {
+          if (err) {
+            logger.info(
+              `There was an error contacting the Calendar service: ${err}`
+            )
+            return reject(err)
+          }
+          logger.info(`Event with id ${eventId} deleted.`)
+          resolve()
+        }
+      )
+    }
+
+    contactAPI(deleteEvent)
+  })
+}
+
+// Load client secrets from a local file.
+// This function is exported thus credentials have to be allocated keeping that in mind.
+// This function gets called from file ./controllers/calendarController
+function contactAPI(callback) {
+  fs.readFile('./utils/calendar/credentials.json', (err, content) => {
+    if (err) return console.log('Error loading client secret file:', err)
+    // Authorize a client with credentials, then call the Google Calendar API.
+    authorize(JSON.parse(content), callback)
   })
 }
 
@@ -137,4 +174,4 @@ function getAccessToken(oAuth2Client, callback) {
 //   })
 // }
 
-module.exports = addEventToCalendar
+module.exports = { addEventToCalendar, deleteEventFromCalendar }
