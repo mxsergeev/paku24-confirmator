@@ -51,7 +51,7 @@ function makeColor(order, options) {
  * @param {string} eventInfo.color
  */
 
-function createEvent({ title, date, duration, color }) {
+function makeEventObject({ title, date, duration, color }) {
   const dateRaw = new Date(date)
 
   const hours = Math.floor(Number(duration))
@@ -85,4 +85,4 @@ function createEvent({ title, date, duration, color }) {
   return event
 }
 
-module.exports = { makeTitle, makeColor, createEvent }
+module.exports = { makeTitle, makeColor, makeEventObject }

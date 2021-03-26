@@ -23,15 +23,13 @@ const TOKEN_PATH = 'token.json'
 
 function addEventToCalendar(event) {
   return new Promise((resolve, reject) => {
-    const eventObject = createEvent(event)
-
     function addEvent(auth) {
       const calendar = google.calendar({ version: 'v3', auth })
       calendar.events.insert(
         {
           auth,
           calendarId: 'primary',
-          resource: eventObject,
+          resource: event,
         },
         (err, ev) => {
           if (err) {

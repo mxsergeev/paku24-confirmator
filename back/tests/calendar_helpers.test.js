@@ -1,7 +1,7 @@
 const {
   makeTitle,
   makeColor,
-  createEvent,
+  makeEventObject,
 } = require('../utils/calendar/helpers')
 const { exampleOrder, exampleOptions } = require('./test_helper')
 const iconsData = require('../utils/data/icons')
@@ -64,17 +64,17 @@ describe('makeColor', () => {
   })
 })
 
-describe('createEvent', () => {
+describe('makeEventObject', () => {
   test('start date time and end date time of event object are correct', () => {
     const title = makeTitle(exampleOrder, exampleOptions)
     const color = makeColor(exampleOrder, exampleOptions)
-    const eventObject = createEvent({
+    const eventObject = makeEventObject({
       title,
       color,
       date: exampleOrder.date.original,
       duration: exampleOrder.duration,
     })
-    const eventObject2 = createEvent({
+    const eventObject2 = makeEventObject({
       title,
       color,
       date: new Date('2021-07-10 23:00'),
