@@ -105,6 +105,37 @@ const exampleOptions = {
 const exampleEntryPartOfTheConfirmation =
   'Raiviosuonmäki 2 E 68\nNIMI\nMaxim Sergeev\nSÄHKÖPOSTI\nthemaximsergeev@gmail.com\nPUHELIN\n+358449747442'
 
+const exampleEvent = {
+  order: {
+    address: 'Raiviosuonmäki 2 E 68',
+    comment: 'Hello!',
+    date: {
+      ISODate: '2021-03-17',
+      confirmationFormat: '17-03-2021',
+      original: '2021-03-17T15:00:00.000Z',
+    },
+    destination: 'Kalkkihiekantie',
+    duration: '5',
+    email: 'themaximsergeev@gmail.com',
+    fees: { array: [], string: '' },
+    name: 'Maxim Sergeev',
+    paymentType: 'Maksukortti',
+    phone: '+358449747442',
+    serviceName: 'Paku ja kaksi muuttomiestä',
+    servicePrice: 90,
+    time: '15:00',
+  },
+  options: {
+    distance: 'insideCapital',
+    hsy: false,
+    XL: false,
+  },
+  entry:
+    'Raiviosuonmäki 2 E 68\nMÄÄRÄNPÄÄ\nSortti-asema\nNIMI\nMaxim Sergeev\nSÄHKÖPOSTI\nthemaximsergeev@gmail.com\nPUHELIN\n+358449747442\nLISÄTIETOJA\nHello!',
+}
+
+const exampleCreatedEvent = `🚛🚛💳15:00(5h)${exampleEvent.entry}`
+
 module.exports = {
   initialUsers,
   usersInDB,
@@ -117,4 +148,6 @@ module.exports = {
   exampleOrder,
   exampleOptions,
   exampleEntryPartOfTheConfirmation,
+  exampleEvent,
+  exampleCreatedEvent
 }
