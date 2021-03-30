@@ -105,6 +105,9 @@ const exampleOptions = {
 const exampleEntryPartOfTheConfirmation =
   'Raiviosuonmäki 2 E 68\nNIMI\nMaxim Sergeev\nSÄHKÖPOSTI\nthemaximsergeev@gmail.com\nPUHELIN\n+358449747442'
 
+const orderDetails =
+  'VARAUKSEN TIEDOT\n10-04-2021\nALKAMISAIKA\nKlo 17:00 (+/-15min)\nARVIOITU KESTO\n2.5h (30€/h, Paku ja kuski)\nMAKSUTAPA\nKäteinen\nVIIKONLOPPULISÄ\n15€\nLÄHTÖPAIKKA\nRaiviosuonmäki 2 E 68, Vantaa\nMÄÄRÄNPÄÄ\nRaiviosuonmäki 5 C 32, Vantaa\nNIMI\nMaxim Sergeev\nSÄHKÖPOSTI\nthemaximsergeev@gmail.com\nPUHELIN\n0449747442\nLISÄTIETOJA\nTesting my app'
+
 const exampleEvent = {
   order: {
     address: 'Raiviosuonmäki 2 E 68',
@@ -149,5 +152,6 @@ module.exports = {
   exampleOptions,
   exampleEntryPartOfTheConfirmation,
   exampleEvent,
-  exampleCreatedEvent
+  exampleCreatedEvent,
+  orderDetails,
 }

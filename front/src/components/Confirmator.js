@@ -199,7 +199,7 @@ export default function Confirmator({ custom }) {
     if (order.email && formattedConfirmation) {
       changeEmailStatus('Waiting', true)
       return sendConfirmationEmail({
-        confirmation: formattedConfirmation,
+        orderDetails: formattedConfirmation,
         options,
         email: order.email,
       })
