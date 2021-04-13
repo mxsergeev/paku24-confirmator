@@ -261,8 +261,8 @@ export default function Confirmator({ custom }) {
       const servicePrice = options.XL ? service.priceXL : service.price
 
       const date = regexFunc.getStartingTime(cleanedText)
-      const beginAddress = regexFunc.getAddress(cleanedText, 'Frome')
-      const endAddress = regexFunc.getAddress(cleanedText, 'To')
+      const beginAddress = regexFunc.getAddress(cleanedText, 'Start location')
+      const endAddress = regexFunc.getAddress(cleanedText, 'End location')
 
       const address = `${beginAddress.address},${
         beginAddress.postalCode ? ' ' + beginAddress.postalCode : ''

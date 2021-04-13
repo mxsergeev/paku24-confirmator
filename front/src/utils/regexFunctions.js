@@ -25,7 +25,7 @@ export async function getEventForCalendar(formattedStr, address) {
 }
 
 export function getStartingTime(str) {
-  const dateRe = /(?<=Date end time: \w+, )\w+ \d+(th|rd|st|nd)? \w+/.exec(str)
+  const dateRe = /(?<=Date and time: \w+, )\w+ \d+(th|rd|st|nd)? \w+/.exec(str)
 
   if (!dateRe) throw new Error(helpers.cannotFind('date'))
 
@@ -81,6 +81,15 @@ export function getFees(str) {
   return calculateFees(date, time, paymentType)
 }
 
+export function getMovingBoxes(str) {
+  const beginIndex = str.indexOf('— Price: ')
+  const endIndex = str.indexOf('— Booking time start')
+  const priceLine = str.slice(beginIndex, endIndex)
+  const re = /\d+/
+  const price = priceLine && priceLine.match(re)[0]
+  return price
+}
+
 export function getService(str) {
   let price = /(?<=PRICE: )\d+/.exec(str)
 
@@ -97,6 +106,11 @@ export function getService(str) {
       return price
     })
 
+  const priceForBoxes = getMovingBoxes(str)
+  console.log(priceForBoxes)
+
+  price -= priceForBoxes
+
   const duration = getDuration(str)
 
   const service = services.filter((s) => s.price === price / duration)
@@ -109,7 +123,7 @@ export function getService(str) {
 
 export function getAddress(str, course) {
   const beginMarker = `${course}: `
-  const endMarker = course === 'Frome' ? 'To' : 'Name'
+  const endMarker = course === 'Start location' ? 'End location' : 'Name'
 
   const beginIndex = str.indexOf(beginMarker) + beginMarker.length
   const endIndex = str.indexOf(endMarker)
@@ -147,7 +161,7 @@ export function getAddress(str, course) {
     address = address.replace(city, '').trim()
   }
 
-  if (course === 'Frome' && !address)
+  if (course === 'Start location' && !address)
     throw new Error(helpers.cannotFind('address'))
 
   return { address, city, postalCode }

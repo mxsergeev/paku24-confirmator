@@ -12,6 +12,9 @@ const baseUrl = '/api/email'
  */
 
 export default async function sendConfirmationEmail(params) {
-  const response = await axiosInstance.post(`${baseUrl}/send-confirmation`, params)
+  const response = await axiosInstance.post(
+    `${baseUrl}/send-confirmation`,
+    params
+  )
   return response.data
 }
