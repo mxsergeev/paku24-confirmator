@@ -205,7 +205,7 @@ export default function Confirmator({ custom }) {
       })
         .then((res) => {
           changeEmailStatus('Done', true)
-          Toast.info(res, 500)
+          Toast.info(res.message, 500)
         })
         .catch((err) => {
           changeEmailStatus('Error', false)
@@ -222,7 +222,7 @@ export default function Confirmator({ custom }) {
         changeSMSStatus('Waiting', true)
         const response = await sendSMS({ msg, phone: order.phone })
         changeSMSStatus('Done', true)
-        Toast.info(`${response.message}`, 3000)
+        Toast.info(`${response.message}`, 500)
       }
     } catch (err) {
       changeSMSStatus('Error', false)
