@@ -1,0 +1,3 @@
+{
+  "template": "<!DOCTYPE html>\n<html>\n<body>\n<h3>New request for access.</h3>\n<p>\n<h4>This person requested permissions to use Paku24-Confirmator.</h4>\nDetails: <br>\n\nName: @name <br>\nEmail: @email <br>\nPurpose: @purpose <br> <br>\n\nTo grant access click the link below: <a href='@url'>@url</a></p>\n</body>\n</html>"
+}

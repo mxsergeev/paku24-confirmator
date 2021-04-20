@@ -13,18 +13,27 @@ const User = require('../../models/user')
 const sendMail = require('../../utils/email/awsSES')
 const { DOMAIN_NAME } = require('../../utils/config')
 const newErrorWithCustomName = require('../../utils/helpers/newErrorWithCustomName')
+const requestAccessMessage = require('../../utils/data/requestAccessMessage.json')
+const accessGrantedMessage = require('../../utils/data/accessGrantedMessage.json')
 
-registrationRouter.post('/request-access', async (req, res, next) => {
-  const { name, email, purpose } = req.body
+async function checkIfUserExists(req, res, next) {
+  const { email } = req.body
 
   try {
     const userInDB = await User.findOne({ email }).exec()
-
     if (userInDB) {
-      const error = newErrorWithCustomName('AccessAlreadyRequestedError')
-      return next(error)
+      throw newErrorWithCustomName('AccessAlreadyRequestedError')
     }
+    return next()
+  } catch (err) {
+    return next(err)
+  }
+}
 
+async function createUser(req, res, next) {
+  const { name, email } = req.body
+
+  try {
     const requestToken = crypto
       .createHash('sha256')
       .update(Date.now().toString() + name)
@@ -38,100 +47,138 @@ registrationRouter.post('/request-access', async (req, res, next) => {
     })
 
     await user.save()
+    req.requestToken = requestToken
 
-    const url = `${DOMAIN_NAME}/api/registration/grant-access/?token=${encodeURIComponent(
-      requestToken
-    )}`
-
-    const text = `<!DOCTYPE html>
-  <html>
-  <body>
-  <h3>New request for access.</h3>
-  <p>
-  <h4>This person requested permissions to use Paku24-Confirmator.</h4>
-  Details: <br>
-  
-  Name: ${name} <br>
-  Email: ${email} <br>
-  Purpose: ${purpose} <br> <br>
-  
-  To grant access click the link below: <a href='${url}'>${url}</a></p>
-  </body>
-  </html>`
-
-    sendMail({
-      email: 'themaximsergeev@gmail.com',
-      subject: 'Request for access',
-      body: text,
-      confirmation: false,
-      sourceEmail: 'paku24.confirmator@gmail.com',
-    })
-
-    return res.status(200).send({
-      message:
-        'Your request has been successfully sent! You will receive email with your credentials when your request has been approved.',
-    })
+    return next()
   } catch (err) {
     return next(err)
   }
-})
+}
 
-registrationRouter.get('/grant-access', async (req, res, next) => {
+function generateMessage(template, variables) {
+  let message = template
+  Object.entries(variables).forEach(([key, value]) => {
+    message = message.replaceAll(`@${key}`, value)
+  })
+
+  return message
+}
+
+registrationRouter.post(
+  '/request-access',
+  checkIfUserExists,
+  createUser,
+  async (req, res, next) => {
+    const { name, email, purpose } = req.body
+    const { requestToken } = req
+    const url = `${DOMAIN_NAME}/api/registration/grant-access/?token=${encodeURIComponent(
+      requestToken
+    )}`
+    const messageBody = generateMessage(requestAccessMessage.template, {
+      name,
+      email,
+      purpose,
+      url,
+    })
+
+    try {
+      await sendMail({
+        email: 'themaximsergeev@gmail.com',
+        subject: 'Request for access',
+        body: messageBody,
+        html: true,
+        sourceEmail: 'paku24.confirmator@gmail.com',
+      })
+      return res.status(200).send({
+        message:
+          'Your request has been successfully sent! You will receive email with your credentials when your request has been approved.',
+      })
+    } catch (err) {
+      return next(err)
+    }
+  }
+)
+
+async function checkUser(req, res, next) {
+  const requestToken = decodeURIComponent(req.query.token)
+
+  const matchedUser = await User.findOne({ requestToken }).exec()
+  req.matchedUser = matchedUser
+
+  if (matchedUser) return next()
+
+  const RequestTokenError = newErrorWithCustomName('RequestTokenError')
+  return next(RequestTokenError)
+}
+
+async function generatePasswordAndUsername(req, res, next) {
   try {
-    const requestToken = decodeURIComponent(req.query.token)
+    const generatedPassword = passwordGenerator.generate({
+      length: 8,
+      numbers: true,
+    })
+    const saltRounds = 10
+    req.passwordHash = await bcrypt.hash(generatedPassword, saltRounds)
+    req.generatedPassword = generatedPassword
+    req.randomUsername = uniqueNamesGenerator({
+      dictionaries: [colors, animals],
+    })
+    return next()
+  } catch (err) {
+    return next(err)
+  }
+}
 
-    const matchedUser = await User.findOne({ requestToken }).exec()
+async function updateUser(req, res, next) {
+  const { matchedUser, randomUsername, passwordHash } = req
 
-    if (matchedUser) {
-      const generatedPassword = passwordGenerator.generate({
-        length: 8,
-        numbers: true,
+  try {
+    await matchedUser
+      .updateOne({
+        username: randomUsername,
+        passwordHash,
+        access: true,
+        $unset: { requestToken: '' },
       })
-      const saltRounds = 10
-      const passwordHash = await bcrypt.hash(generatedPassword, saltRounds)
-      const randomUsername = uniqueNamesGenerator({
-        dictionaries: [colors, animals],
+      .exec()
+    return next()
+  } catch (err) {
+    return next(err)
+  }
+}
+
+registrationRouter.get(
+  '/grant-access',
+  checkUser,
+  generatePasswordAndUsername,
+  updateUser,
+  async (req, res, next) => {
+    const {
+      randomUsername: username,
+      generatedPassword: password,
+      matchedUser,
+    } = req
+    const url = `${DOMAIN_NAME}/app/login`
+    try {
+      const messageBody = generateMessage(accessGrantedMessage.template, {
+        username,
+        password,
+        url,
       })
 
-      await matchedUser
-        .updateOne({
-          username: randomUsername,
-          passwordHash,
-          access: true,
-          $unset: { requestToken: '' },
-        })
-        .exec()
-
-      const text = `<!DOCTYPE html>
-      <html>
-      <body>
-      <h3>Request for access approved.</h3>
-      <p>
-      <h4>You can now login to paku24-confirmator using your autogenerated credentials:</h4>
-      
-      Username: ${randomUsername} <br>
-      Password: ${generatedPassword} <br> <br>
-      
-      <a href='${DOMAIN_NAME}/login'>Login</a></p>
-      </body>
-      </html>`
-
-      sendMail({
+      await sendMail({
         email: matchedUser.email,
         subject: 'Request for access approved',
-        body: text,
-        confirmation: false,
+        body: messageBody,
+        html: true,
         sourceEmail: 'paku24.confirmator@gmail.com',
       })
 
       return res.status(200).send({ message: 'Access granted successfully.' })
+    } catch (err) {
+      return next(err)
     }
-
-    const error = newErrorWithCustomName('RequestTokenError')
-    return next(error)
-  } catch (err) {
-    return next(err)
   }
-})
+)
 
 module.exports = registrationRouter
