@@ -107,7 +107,6 @@ export function getService(str) {
     })
 
   const priceForBoxes = getMovingBoxes(str)
-  console.log(priceForBoxes)
 
   price -= priceForBoxes
 
