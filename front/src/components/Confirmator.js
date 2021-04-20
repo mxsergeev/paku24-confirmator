@@ -8,9 +8,11 @@ import '../styles/confirmator.css'
 import InputModal from './InputModal'
 import EditDialog from './EditDialog'
 import Editor from './Editor'
+import OrderPoolDialog from './OrderPoolDialog'
 
 import sendConfirmationEmail from '../services/emailAPI'
 import addEventToCalendar from '../services/calendarAPI'
+import orderPoolAPI from '../services/orderPoolAPI'
 import sendSMS from '../services/smsAPI'
 import * as regexFunc from '../utils/regexFunctions'
 import * as regexHelpers from '../utils/helpers/regexHelpers'
@@ -52,7 +54,7 @@ ${order.comment ? `LISÄTIETOJA\n${order.comment}\n` : ''}`
 }
 
 export default function Confirmator({ custom }) {
-  const [text, setText] = useState('')
+  const [orderText, setOrderText] = useState({ text: '', id: null })
   const [customText, setCustomText] = useState('')
   const [formattedConfirmation, setFormattedConfirmation] = useState('')
   const defaultOrder = useMemo(
@@ -166,7 +168,7 @@ export default function Confirmator({ custom }) {
   const textAreaRef = useRef(null)
 
   function reset() {
-    setText('')
+    setOrderText({ text: '', id: null })
     setOrder(defaultOrder)
     setOptions(defaultOptions)
     setFormattedConfirmation('')
@@ -239,6 +241,7 @@ export default function Confirmator({ custom }) {
       if (entry) {
         changeCalendarStatus('Waiting', true)
         const response = await addEventToCalendar(entry, order, options)
+        if (orderText.id) await orderPoolAPI.confirm(orderText.id)
         changeCalendarStatus('Done', true)
         Toast.info(`${response.message}\n${response.createdEvent}`, 3000)
       }
@@ -255,7 +258,7 @@ export default function Confirmator({ custom }) {
 
   function handleFormatting() {
     try {
-      const cleanedText = regexFunc.initialCleanup(text)
+      const cleanedText = regexFunc.initialCleanup(orderText.text)
       const serviceName = regexFunc.getService(cleanedText).name
       const service = services.find((s) => s.name === serviceName)
       const servicePrice = options.XL ? service.priceXL : service.price
@@ -350,7 +353,7 @@ export default function Confirmator({ custom }) {
   }
 
   function handleTextChange(e) {
-    setText(e.target.value)
+    setOrderText({ ...orderText, text: e.target.value })
   }
 
   function handleCustomTextChange(e) {
@@ -359,12 +362,12 @@ export default function Confirmator({ custom }) {
 
   return (
     <div className="flex-container">
-      <Route exact path={['/', '/edit/:slug*']}>
+      <Route exact path={['/', '/edit/:slug*', '/order-pool/:slug*']}>
         <TextareaAutosize
           className="textarea-1 flex-item"
           rowsMin={5}
           cols={40}
-          value={custom ? customText : text}
+          value={custom ? customText : orderText.text}
           placeholder="Order info here."
           onChange={custom ? handleCustomTextChange : handleTextChange}
         />
@@ -388,7 +391,7 @@ export default function Confirmator({ custom }) {
         onChange={(e) => setFormattedConfirmation(e.target.value)}
       />
       <div className="flex-100-space-between">
-        <Route exact path={['/', '/edit/:slug*']}>
+        <Route exact path={['/', '/edit/:slug*', '/order-pool/:slug*']}>
           <EditDialog
             handleChange={handleOrderChange}
             handleFormatting={handleEditorFormatting}
@@ -466,6 +469,7 @@ export default function Confirmator({ custom }) {
         </div>
       </div>
       <NewOrderButton handleClick={reset} />
+      <OrderPoolDialog setOrderText={setOrderText} />
     </div>
   )
 }

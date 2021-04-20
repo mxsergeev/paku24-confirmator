@@ -17,6 +17,7 @@ const {
   AT_EXPIRES_IN,
   RT_EXPIRES_IN,
   RT_REFRESH_AFTER_SEC,
+  ORDER_POOL_KEY,
 } = process.env
 
 module.exports = {
@@ -32,4 +33,5 @@ module.exports = {
   AT_EXPIRES_IN,
   RT_EXPIRES_IN,
   RT_REFRESH_AFTER_SEC,
+  ORDER_POOL_KEY,
 }

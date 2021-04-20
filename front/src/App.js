@@ -8,6 +8,7 @@ import Register from './components/Register'
 import loginServiсe from './services/login'
 import './styles/container.css'
 import Footer from './components/Footer'
+import LoadingUntillDone from './components/LoadingUntillDone'
 
 function ErrorFallback({ error }) {
   return (
@@ -15,20 +16,6 @@ function ErrorFallback({ error }) {
       <p>Something went wrong:</p>
       <pre style={{ color: 'red' }}>{error.message}</pre>
     </div>
-  )
-}
-
-function LoadingUntillDone({
-  loading,
-  redirectComponent = null,
-  targetComponent,
-}) {
-  return (
-    <>
-      {loading && <p>Loading...</p>}
-      {redirectComponent}
-      {!loading && !redirectComponent && targetComponent}
-    </>
   )
 }
 

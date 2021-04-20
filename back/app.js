@@ -13,6 +13,7 @@ const filterReqsBasedOnUrl = require('./utils/middleware/filterReqsBasedOnUrl')
 
 const calendarRouter = require('./controllers/calendarController')
 const emailRouter = require('./controllers/emailController')
+const orderPoolRouter = require('./controllers/orderPoolController')
 const smsRouter = require('./controllers/smsController')
 const loginRouter = require('./controllers/authentication/loginController')
 const logoutRouter = require('./controllers/authentication/logoutController')
@@ -63,6 +64,7 @@ app.use('/api/test', testRouter)
 app.use('/api/sms', smsRouter)
 app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
+app.use('/api/order-pool/', orderPoolRouter)
 
 app.use(express.static(path.join(__dirname, 'build')))
 app.get('/app*', (req, res) => {
