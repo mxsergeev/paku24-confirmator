@@ -1,9 +1,12 @@
 const registrationRouter = require('express').Router()
+const ms = require('ms')
 
+const User = require('../../models/user')
 const sendMail = require('../../utils/email/awsSES')
 const { DOMAIN_NAME } = require('../../utils/config')
 const requestAccessMessage = require('../../utils/data/requestAccessMessage.json')
 const accessGrantedMessage = require('../../utils/data/accessGrantedMessage.json')
+const { ACCESS_REQUESTED_EXPIRES_IN_DAYS } = require('../../utils/config')
 
 const {
   checkIfUserExists,
@@ -12,6 +15,18 @@ const {
   generatePasswordAndUsername,
   updateUser,
 } = require('../../utils/middleware/registration')
+
+async function deleteUsersWithExpiredAccessRequest(next) {
+  try {
+    return User.deleteMany({
+      accessRequested: {
+        $lt: Date.now() - ms(ACCESS_REQUESTED_EXPIRES_IN_DAYS),
+      },
+    })
+  } catch (err) {
+    return next(err)
+  }
+}
 
 function generateMessage(template, variables) {
   let message = template
@@ -47,10 +62,11 @@ registrationRouter.post(
         html: true,
         sourceEmail: 'paku24.confirmator@gmail.com',
       })
-      return res.status(200).send({
+      res.status(200).send({
         message:
           'Your request has been successfully sent! You will receive email with your credentials when your request has been approved.',
       })
+      return deleteUsersWithExpiredAccessRequest(req, res, next)
     } catch (err) {
       return next(err)
     }

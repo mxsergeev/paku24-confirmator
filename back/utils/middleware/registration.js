@@ -38,6 +38,7 @@ async function createUser(req, res, next) {
       email,
       requestToken,
       access: false,
+      accessRequested: Date.now(),
     })
 
     await user.save()
@@ -88,7 +89,7 @@ async function updateUser(req, res, next) {
         username: randomUsername,
         passwordHash,
         access: true,
-        $unset: { requestToken: '' },
+        $unset: { requestToken: '', accessRequested: '' },
       })
       .exec()
     return next()

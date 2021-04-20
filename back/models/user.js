@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   email: String,
   requestToken: String,
   access: Boolean,
+  accessRequested: Number,
   // orders: [
   //   {
   //     type: mongoose.Schema.Types.ObjectId,
