@@ -90,7 +90,7 @@ export default function Editor({ order, handleChange, handleClick }) {
       >
         <option value="Maksukortti">Maksukortti</option>
         <option value="Käteinen">Käteinen</option>
-        <option value="Lasku">Lasku</option>
+        <option value="Lasku/Osamaksu">Lasku</option>
       </NativeSelect>
 
       <TextField
