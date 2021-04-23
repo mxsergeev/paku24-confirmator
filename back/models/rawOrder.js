@@ -4,6 +4,7 @@ const rawOrderSchema = new mongoose.Schema({
   text: String,
   date: Number,
   confirmed: Boolean,
+  markedForDeletion: Boolean,
 })
 
 rawOrderSchema.set('toJSON', {

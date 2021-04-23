@@ -37,7 +37,7 @@ mongoose
 
 const app = express()
 
-app.set('trust proxy', '127.0.0.1')
+app.set('trust proxy', 'loopback')
 
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'))
@@ -68,7 +68,7 @@ app.use('/api/order-pool/', orderPoolRouter)
 
 app.use(express.static(path.join(__dirname, 'build')))
 app.get('/app*', (req, res) => {
-  res.sendFile(path.join(__dirname + '/build/index.html'))
+  res.sendFile(path.join(`${__dirname}/build/index.html`))
 })
 
 app.use(errorHandler)
