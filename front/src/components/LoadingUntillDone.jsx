@@ -3,13 +3,13 @@ import React from 'react'
 export default function LoadingUntillDone({
   loading,
   redirectComponent = null,
-  targetComponent,
+  children,
 }) {
   return (
     <>
       {loading && <p>Loading...</p>}
       {redirectComponent}
-      {!loading && !redirectComponent && targetComponent}
+      {!loading && !redirectComponent && children}
     </>
   )
 }

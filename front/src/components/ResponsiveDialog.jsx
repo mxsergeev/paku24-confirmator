@@ -6,7 +6,7 @@ import DialogContent from '@material-ui/core/DialogContent'
 import useMediaQuery from '@material-ui/core/useMediaQuery'
 import { useTheme } from '@material-ui/core/styles'
 
-export default function ResponsiveDialog({ component, handleClose }) {
+export default function ResponsiveDialog({ children, handleClose }) {
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -19,7 +19,7 @@ export default function ResponsiveDialog({ component, handleClose }) {
         aria-labelledby="responsive-dialog-title"
         disableScrollLock
       >
-        <DialogContent>{component}</DialogContent>
+        <DialogContent>{children}</DialogContent>
         <DialogActions>
           <Button
             style={{ backgroundColor: 'white' }}

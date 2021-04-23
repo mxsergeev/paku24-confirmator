@@ -8,7 +8,7 @@ import '../styles/confirmator.css'
 import InputModal from './InputModal'
 import EditDialog from './EditDialog'
 import Editor from './Editor'
-import OrderPoolDialog from './OrderPoolDialog'
+import OrderPoolDialog from './OrderPool/OrderPoolDialog'
 
 import sendConfirmationEmail from '../services/emailAPI'
 import addEventToCalendar from '../services/calendarAPI'

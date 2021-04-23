@@ -48,9 +48,10 @@ function AuthenticateUser({ user, setUser, children }) {
     <>
       <LoadingUntillDone
         loading={loading}
-        targetComponent={children}
         redirectComponent={redirectToLoginPage}
-      />
+      >
+        {children}
+      </LoadingUntillDone>
 
       <Route path="/login">
         {user === null ? <Login setUser={setUser} /> : <Redirect to="/" />}
