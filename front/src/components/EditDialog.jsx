@@ -27,19 +27,16 @@ export default function EditDialog(props) {
         Edit
       </Button>
       <Route exact path="/edit">
-        <ResponsiveDialog
-          component={
-            <Editor
-              order={order}
-              handleChange={handleChange}
-              handleClick={() => {
-                handleFormatting()
-                handleClose()
-              }}
-            />
-          }
-          handleClose={handleClose}
-        />
+        <ResponsiveDialog handleClose={handleClose}>
+          <Editor
+            order={order}
+            handleChange={handleChange}
+            handleClick={() => {
+              handleFormatting()
+              handleClose()
+            }}
+          />
+        </ResponsiveDialog>
       </Route>
     </>
   )
