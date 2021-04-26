@@ -4,7 +4,7 @@ import Button from '@material-ui/core/Button'
 import ResponsiveDialog from '../ResponsiveDialog'
 import OrderPool from './OrderPool'
 
-export default function OrderPoolDialog({ setOrderText }) {
+export default function OrderPoolDialog({ handleExportingToConfirmator }) {
   const history = useHistory()
 
   const handleClickOpen = () => {
@@ -24,9 +24,14 @@ export default function OrderPoolDialog({ setOrderText }) {
       >
         Open Order Pool
       </Button>
-      <Route exact path="/order-pool">
+      <Route path="/order-pool">
         <ResponsiveDialog handleClose={handleClose}>
-          <OrderPool setOrderText={setOrderText} handleClose={handleClose} />
+          <OrderPool
+            handleToConfirmator={(ord) => {
+              handleExportingToConfirmator(ord)
+              handleClose()
+            }}
+          />
         </ResponsiveDialog>
       </Route>
     </>

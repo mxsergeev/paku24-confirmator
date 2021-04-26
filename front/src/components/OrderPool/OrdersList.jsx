@@ -4,7 +4,7 @@ import './styles.css'
 
 export default function OrdersList({
   orders,
-  handleClick,
+  handleExport,
   handleDeletion,
   labelForDeletion,
 }) {
@@ -57,11 +57,16 @@ export default function OrdersList({
               </span>
             )}
             <span
-              className={
+              // className={
+              //   order.confirmed
+              //     ? 'order-status-icon order-status-confirmed '
+              //     : 'order-status-icon order-status-notification'
+              // }
+              className={`order-status-icon ${
                 order.confirmed
-                  ? 'order-status-icon order-status-confirmed '
+                  ? 'order-status-icon order-status-confirmed'
                   : 'order-status-icon order-status-notification'
-              }
+              }`}
             >
               {order.confirmed ? '✔' : '❕'}{' '}
             </span>
@@ -78,7 +83,7 @@ export default function OrdersList({
             <Button
               disabled={order.confirmed}
               style={{ padding: 0, fontSize: '0.8rem' }}
-              onClick={() => handleClick(order)}
+              onClick={() => handleExport(order)}
               variant="text"
               size="small"
             >

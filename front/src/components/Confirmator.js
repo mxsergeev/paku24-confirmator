@@ -166,6 +166,10 @@ export default function Confirmator({ custom }) {
   const [options, setOptions] = useState(defaultOptions)
 
   const textAreaRef = useRef(null)
+  const rawOrderTextAreaRef = useRef(null)
+
+  const scrollToFormattedConfirmation = () =>
+    textAreaRef.current.scrollIntoView(true, { behavior: 'smooth' })
 
   function reset() {
     setOrderText({ text: '', id: null })
@@ -256,9 +260,9 @@ export default function Confirmator({ custom }) {
     setFormattedConfirmation(makeConvertion(data))
   }
 
-  function handleFormatting() {
+  function handleFormatting(ord = null) {
     try {
-      const cleanedText = regexFunc.initialCleanup(orderText.text)
+      const cleanedText = regexFunc.initialCleanup(ord?.text || order.text)
       const serviceName = regexFunc.getService(cleanedText).name
       const service = services.find((s) => s.name === serviceName)
       const servicePrice = options.XL ? service.priceXL : service.price
@@ -364,6 +368,7 @@ export default function Confirmator({ custom }) {
     <div className="flex-container">
       <Route exact path={['/', '/edit/:slug*', '/order-pool/:slug*']}>
         <TextareaAutosize
+          ref={rawOrderTextAreaRef}
           className="textarea-1 flex-item"
           rowsMin={5}
           cols={40}
@@ -469,7 +474,15 @@ export default function Confirmator({ custom }) {
         </div>
       </div>
       <NewOrderButton handleClick={reset} />
-      <OrderPoolDialog setOrderText={setOrderText} />
+      <Route exact path={['/', '/edit', '/edit/*', '/order-pool']}>
+        <OrderPoolDialog
+          handleExportingToConfirmator={(ord) => {
+            setOrderText(ord)
+            handleFormatting(ord)
+            setTimeout(() => scrollToFormattedConfirmation(), 300)
+          }}
+        />
+      </Route>
     </div>
   )
 }

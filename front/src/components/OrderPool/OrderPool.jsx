@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import TextField from '@material-ui/core/TextField'
-import FormControlLabel from '@material-ui/core/FormControlLabel'
-import Checkbox from '@material-ui/core/Checkbox'
 import Button from '@material-ui/core/Button'
 import DeleteIcon from '@material-ui/icons/Delete'
 import RestoreIcon from '@material-ui/icons/Restore'
@@ -9,69 +7,109 @@ import orderPoolAPI from '../../services/orderPoolAPI'
 import LoadingUntillDone from '../LoadingUntillDone'
 import OrdersList from './OrdersList'
 
-export default function OrderPool({ setOrderText, handleClose }) {
+export default function OrderPool({ handleToConfirmator }) {
+  const INBOX = 'inbox'
+  const TRASHCAN = 'trashcan'
+
   const [orders, setOrders] = useState([])
-  const [searchText, setSearchText] = useState('')
-  const [showOnlyNotConfirmed, setShowOnlyNotConfirmed] = useState(false)
-  const [searchResults, setSearchResults] = useState(orders)
-  const [showDeletedOrders, setShowDeletedOrders] = useState(false)
   const [isLoading, setIsloading] = useState(true)
 
+  const [currentTab, setCurrentTab] = useState(INBOX)
+  const [searchOptions, setSearchOptions] = useState({
+    inbox: {
+      searchText: '',
+      showOnlyNotConfirmed: false,
+    },
+    trashcan: {
+      searchText: '',
+      showOnlyNotConfirmed: false,
+    },
+  })
+  const [searchResults, setSearchResults] = useState(orders)
+
+  const numberOfOrders = orders.length
   const numberOfUnconfirmedOrders = orders.filter((order) => !order.confirmed)
     .length
 
-  useEffect(async () => {
-    setIsloading(true)
-    const ordersFromPool = showDeletedOrders
-      ? await orderPoolAPI.getDeleted()
-      : await orderPoolAPI.get()
-    setOrders(ordersFromPool)
-    setSearchResults(ordersFromPool)
-    setIsloading(false)
-  }, [showDeletedOrders])
-
   function filterWithSearchText(values, search) {
     return values.filter((value) =>
-      value.text.toLowerCase().includes(search.toLowerCase().trim())
+      value.text.toLowerCase().includes(search?.toLowerCase().trim())
     )
   }
 
   function filterConfirmed(values, condition) {
     return condition
-      ? values.filter((value) => value.confirmed === false)
+      ? values.filter((value) => value?.confirmed === false)
       : values
   }
 
-  function handleSearchChange(e) {
-    setSearchText(e.target.value)
-
+  function makeSearch(val, bool, searchTarget) {
     const filteredWithConfirmedAndSearch = filterConfirmed(
-      filterWithSearchText(orders, e.target.value),
-      showOnlyNotConfirmed
+      filterWithSearchText(searchTarget, val),
+      bool
     )
 
     const result = filteredWithConfirmedAndSearch
 
-    setSearchResults(result)
+    return result
   }
 
-  function handleOnlyNotConfirmedSearch(e) {
-    const isOnlyNotConfirmed = e.target.checked
-    setShowOnlyNotConfirmed(isOnlyNotConfirmed)
+  useEffect(async () => {
+    setIsloading(true)
+    const ordersFromPool =
+      currentTab === TRASHCAN
+        ? await orderPoolAPI.getDeleted()
+        : await orderPoolAPI.get()
 
-    const filteredWithConfirmedAndSearch = filterConfirmed(
-      filterWithSearchText(orders, searchText),
-      isOnlyNotConfirmed
+    setOrders(ordersFromPool)
+
+    const filteredOrders = makeSearch(
+      searchOptions[currentTab].searchText,
+      searchOptions[currentTab].showOnlyNotConfirmed,
+      ordersFromPool
+    )
+    setSearchResults(filteredOrders)
+    setIsloading(false)
+  }, [currentTab])
+
+  function handleSearchChange(e) {
+    const prevOptsForCurTab = searchOptions[currentTab]
+    setSearchOptions({
+      ...searchOptions,
+      [currentTab]: { ...prevOptsForCurTab, searchText: e.target.value },
+    })
+
+    const filteredOrders = makeSearch(
+      e.target.value,
+      prevOptsForCurTab.showOnlyNotConfirmed,
+      orders
     )
 
-    const result = filteredWithConfirmedAndSearch
+    setSearchResults(filteredOrders)
+  }
 
-    setSearchResults(result)
+  function handleOnlyNotConfirmedSearch(bool) {
+    const prevOptsForCurTab = searchOptions[currentTab]
+    setSearchOptions({
+      ...searchOptions,
+      [currentTab]: { ...prevOptsForCurTab, showOnlyNotConfirmed: bool },
+    })
+
+    const filteredOrders = makeSearch(
+      prevOptsForCurTab.searchText,
+      bool,
+      orders
+    )
+
+    setSearchResults(filteredOrders)
+  }
+
+  function handleTabBarChange(e) {
+    setCurrentTab(e.target.dataset.tabname)
   }
 
   function handleToConfirmatorClick(order) {
-    setOrderText({ text: order.text, id: order.id })
-    handleClose()
+    handleToConfirmator({ text: order.text, id: order.id })
   }
 
   async function handleOrderDeletion(id) {
@@ -86,57 +124,87 @@ export default function OrderPool({ setOrderText, handleClose }) {
     setSearchResults(orders.filter((order) => order.id !== id))
   }
 
+  const inboxClassName = () =>
+    currentTab === INBOX
+      ? 'tab-panel-item tab-panel-item-selected'
+      : 'tab-panel-item'
+
+  const trashcanClassName = () =>
+    currentTab === TRASHCAN
+      ? 'tab-panel-item tab-panel-item-selected'
+      : 'tab-panel-item'
+
   return (
     <>
-      <h3 style={{ marginTop: '4px', marginBottom: '7px' }}>
-        {showDeletedOrders ? 'Trashcan' : 'Inbox'}
-      </h3>
-      <TextField
-        className="flex-item"
-        type="text"
-        name="searchText"
-        placeholder="Search"
-        value={searchText}
-        onChange={handleSearchChange}
-      />
-      <FormControlLabel
-        control={
-          <Checkbox
-            checked={showOnlyNotConfirmed}
-            onChange={handleOnlyNotConfirmedSearch}
-            name="showOnlyNotConfirmed"
-            color="primary"
-          />
-        }
-        label="Unconfirmed"
-      />
-      <span>
-        {searchResults.length}/{orders.length}
-      </span>
-      <Button
-        onClick={() => setShowDeletedOrders(!showDeletedOrders)}
-        variant="text"
-        size="small"
-      >
-        {showDeletedOrders ? 'Inbox' : 'Trashcan'}
-      </Button>
-      {numberOfUnconfirmedOrders > 0 && (
-        <>
-          <span>{numberOfUnconfirmedOrders}</span>
-          <span className="order-status-icon order-status-notification">
-            ❕
-          </span>
-        </>
-      )}
+      <div className="tab-panel">
+        <Button
+          onClick={handleTabBarChange}
+          className="p-0"
+          variant="text"
+          size="small"
+        >
+          <h3 data-tabname={INBOX} className={inboxClassName()}>
+            Inbox
+          </h3>
+        </Button>
+        <Button
+          onClick={handleTabBarChange}
+          className="p-0"
+          variant="text"
+          size="small"
+        >
+          <h3 data-tabname={TRASHCAN} className={trashcanClassName()}>
+            Trashcan
+          </h3>
+        </Button>
+      </div>
+      <div className="filters-tab">
+        <span className="filters-tab-orders-count">
+          {searchResults.length}/{orders.length}
+        </span>
+        <TextField
+          className="flex-item"
+          type="text"
+          name="searchText"
+          placeholder="Search"
+          value={searchOptions[currentTab].searchText}
+          onChange={handleSearchChange}
+        />
+        {numberOfUnconfirmedOrders > 0 && (
+          <Button
+            className="p-0 filters-tab-orders-status-icon"
+            size="small"
+            onClick={() =>
+              handleOnlyNotConfirmedSearch(
+                !searchOptions[currentTab].showOnlyNotConfirmed
+              )
+            }
+          >
+            <span style={{ fontSize: '1rem' }}>
+              {searchOptions[currentTab].showOnlyNotConfirmed
+                ? numberOfOrders
+                : numberOfUnconfirmedOrders}
+            </span>
+            <span
+              className={`order-status-icon order-status-notification ${
+                searchOptions[currentTab].showOnlyNotConfirmed &&
+                'order-status-icon-selected'
+              }`}
+            >
+              {searchOptions[currentTab].showOnlyNotConfirmed ? '✔&❕' : '❕'}
+            </span>
+          </Button>
+        )}
+      </div>
       <LoadingUntillDone loading={isLoading}>
         <OrdersList
           orders={searchResults}
-          handleClick={handleToConfirmatorClick}
+          handleExport={handleToConfirmatorClick}
           labelForDeletion={
-            showDeletedOrders ? <RestoreIcon /> : <DeleteIcon />
+            currentTab === TRASHCAN ? <RestoreIcon /> : <DeleteIcon />
           }
           handleDeletion={
-            showDeletedOrders ? handleRetrieval : handleOrderDeletion
+            currentTab === TRASHCAN ? handleRetrieval : handleOrderDeletion
           }
         />
       </LoadingUntillDone>
