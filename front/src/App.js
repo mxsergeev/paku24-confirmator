@@ -9,6 +9,7 @@ import loginServiсe from './services/login'
 import './styles/container.css'
 import Footer from './components/Footer'
 import LoadingUntillDone from './components/LoadingUntillDone'
+import interceptor from './services/interceptor'
 
 function ErrorFallback({ error }) {
   return (
@@ -63,6 +64,11 @@ function AuthenticateUser({ user, setUser, children }) {
 function App() {
   const [user, setUser] = useState('Loading')
   const [custom, setCustom] = useState(false)
+
+  // Initializing Axios interceptor with ability to logout user
+  useEffect(() => {
+    interceptor.setupInterceptor({ logout: () => setUser(null) })
+  }, [])
 
   const history = useHistory()
 

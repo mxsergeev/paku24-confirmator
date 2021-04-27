@@ -57,9 +57,11 @@ export default function OrderPool({ handleToConfirmator }) {
   useEffect(async () => {
     setIsloading(true)
     const ordersFromPool =
-      currentTab === TRASHCAN
-        ? await orderPoolAPI.getDeleted()
-        : await orderPoolAPI.get()
+      currentTab === INBOX
+        ? await orderPoolAPI.get()
+        : await orderPoolAPI.getDeleted()
+
+    if (!ordersFromPool) return
 
     setOrders(ordersFromPool)
 

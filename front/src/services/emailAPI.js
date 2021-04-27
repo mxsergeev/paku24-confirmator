@@ -1,4 +1,4 @@
-import axiosInstance from './interceptor'
+import interceptor from './interceptor'
 
 const baseUrl = '/api/email'
 /**
@@ -12,7 +12,7 @@ const baseUrl = '/api/email'
  */
 
 export default async function sendConfirmationEmail(params) {
-  const response = await axiosInstance.post(
+  const response = await interceptor.axiosInstance.post(
     `${baseUrl}/send-confirmation`,
     params
   )

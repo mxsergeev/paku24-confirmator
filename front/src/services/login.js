@@ -1,13 +1,15 @@
-import axiosInstance from './interceptor'
+import interceptor from './interceptor'
 
 const baseUrl = '/api/login'
 
 async function loginWithCredentials(credentials) {
-  return axiosInstance.post(baseUrl, credentials).then((res) => res.data)
+  return interceptor.axiosInstance
+    .post(baseUrl, credentials)
+    .then((res) => res.data)
 }
 
 async function loginWithAccessToken() {
-  const response = await axiosInstance.post(`${baseUrl}/token`)
+  const response = await interceptor.axiosInstance.post(`${baseUrl}/token`)
   return response.data
 }
 

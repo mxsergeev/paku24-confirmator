@@ -1,4 +1,4 @@
-import axiosInstance from './interceptor'
+import interceptor from './interceptor'
 
 const baseUrl = '/api/sms'
 /**
@@ -8,6 +8,6 @@ const baseUrl = '/api/sms'
  */
 
 export default async function sendSMS(params) {
-  const response = await axiosInstance.post(baseUrl, params)
+  const response = await interceptor.axiosInstance.post(baseUrl, params)
   return response.data
 }
