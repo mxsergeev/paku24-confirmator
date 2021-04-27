@@ -10,7 +10,6 @@
     "@testing-library/user-event": "^12.1.10",
     "axios": "^0.21.0",
     "dotenv": "^8.2.0",
-    "history": "^5.0.0",
     "light-toast": "^0.3.0",
     "ngrok": "^3.3.0",
     "react": "^17.0.1",

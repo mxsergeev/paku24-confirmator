@@ -11,7 +11,9 @@ function setupInterceptor(externalActions) {
       const originalRequest = error.config
       if (error.response.data.error === 'access token expired') {
         /*
-          isError is true if the token service received an http error objected that was returned from this interceptor. In all other scenarios it does not return anything.
+          isError is true if the token service received an http error objected 
+          that was returned from this interceptor. 
+          In all other scenarios it does not return anything.
           See next if statement.
           (This is badly designed)
         */

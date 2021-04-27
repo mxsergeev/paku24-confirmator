@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useHistory, Link, Route } from 'react-router-dom'
+import { useHistory, Link } from 'react-router-dom'
 import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 import loginServiсe from '../services/login'
@@ -65,65 +65,63 @@ export default function Login({ setUser }) {
   }
 
   return (
-    <Route path="/login">
-      <div style={{ margin: '30px 5px' }}>
-        <div style={background}>
-          <div style={formContainer}>
-            LOGIN
-            <span
-              style={{
-                color: 'black',
-                fontSize: '1.0rem',
-                letterSpacing: '0.2px',
-              }}
-            >
-              {' '}
-              or <Link to="/register">request access</Link>
-            </span>
-          </div>
-
-          <Notification notification={notification} />
-
-          <form onSubmit={handleLogin} style={flexForm}>
-            <TextField
-              className="flex-item"
-              style={flexItem}
-              error={inputError}
-              required
-              name="username"
-              value={username}
-              onChange={({ target }) => setUsername(target.value)}
-              label="Username"
-              variant="filled"
-              size="small"
-            />
-            <TextField
-              className="flex-item"
-              style={flexItem}
-              error={inputError}
-              type="password"
-              required
-              value={password}
-              name="password"
-              onChange={({ target }) => setPassword(target.value)}
-              label="Password"
-              variant="filled"
-              size="small"
-            />
-
-            <Button
-              className="flex-item"
-              style={flexItem}
-              type="submit"
-              disabled={isButtonDisabled}
-              variant="contained"
-              size="small"
-            >
-              Login
-            </Button>
-          </form>
+    <div style={{ margin: '30px 5px' }}>
+      <div style={background}>
+        <div style={formContainer}>
+          LOGIN
+          <span
+            style={{
+              color: 'black',
+              fontSize: '1.0rem',
+              letterSpacing: '0.2px',
+            }}
+          >
+            {' '}
+            or <Link to="/register">request access</Link>
+          </span>
         </div>
+
+        <Notification notification={notification} />
+
+        <form onSubmit={handleLogin} style={flexForm}>
+          <TextField
+            className="flex-item"
+            style={flexItem}
+            error={inputError}
+            required
+            name="username"
+            value={username}
+            onChange={({ target }) => setUsername(target.value)}
+            label="Username"
+            variant="filled"
+            size="small"
+          />
+          <TextField
+            className="flex-item"
+            style={flexItem}
+            error={inputError}
+            type="password"
+            required
+            value={password}
+            name="password"
+            onChange={({ target }) => setPassword(target.value)}
+            label="Password"
+            variant="filled"
+            size="small"
+          />
+
+          <Button
+            className="flex-item"
+            style={flexItem}
+            type="submit"
+            disabled={isButtonDisabled}
+            variant="contained"
+            size="small"
+          >
+            Login
+          </Button>
+        </form>
       </div>
-    </Route>
+    </div>
   )
 }
