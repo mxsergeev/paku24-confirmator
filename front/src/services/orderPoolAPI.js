@@ -28,7 +28,7 @@ async function getDeleted() {
 
 async function confirm(id) {
   return interceptor.axiosInstance
-    .get(`${baseUrl}/confirm/${id}`)
+    .put(`${baseUrl}/confirm/${id}`)
     .then((res) => res?.data)
   // .catch((err) => console.log(err))
 }
