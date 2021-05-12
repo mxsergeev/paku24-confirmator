@@ -1,8 +1,12 @@
 {
   "payment": {
     "Maksukortti": "💳",
+    "Bank card": "💳",
     "Käteinen": "🎁",
-    "Lasku": "📜"
+    "Cash": "🎁",
+    "Lasku": "📜",
+    "Lasku/Osamaksu": "📜",
+    "Invoice/Instalment payment": "📜"
   },
   "service": {
     "Paku ja kuski": "🚚",
@@ -18,6 +22,10 @@
     "YÖLISÄ": "🌚"
   },
   "misc": {
-    "outsideCapital": "🚧"
+    "outsideCapital": "🚧",
+    "fromOutsideToCapital": "🚧"
+  },
+  "size": {
+    "XL": "XL"
   }
 }

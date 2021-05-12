@@ -1,57 +1,63 @@
 const AWS = require('aws-sdk')
-
-// const { AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } = require('../utils/config')
+const logger = require('../logger')
+const { SOURCE_EMAIL } = require('../config')
 
 AWS.config.update({ region: 'eu-north-1' })
 
-function sendMail(email, subject, text) {
+/**
+ * @param {Object} mail
+ * @param {string} mail.email - Destination
+ * @param {string} mail.subject
+ * @param {string} mail.body
+ * @param {boolean} [mail.html=false]
+ * @param {string} [mail.sourceEmail=SOURCE_EMAIL] - Source
+ */
+
+function sendMail({
+  email,
+  subject,
+  body,
+  html = false,
+  sourceEmail = SOURCE_EMAIL,
+}) {
   const params = {
     Destination: {
-      /* required */
-      // CcAddresses: [
-      //   /* more items */
-      // ],
-      ToAddresses: [
-        email,
-        /* more items */
-      ],
+      ToAddresses: [email],
     },
     Message: {
-      /* required */
-      Body: {
-        /* required */
-        // Html: {
-        //   Charset: 'UTF-8',
-        //   Data: 'HTML_FORMAT_BODY',
-        // },
-        Text: {
-          Charset: 'UTF-8',
-          Data: text,
-        },
-      },
+      Body: {},
       Subject: {
         Charset: 'UTF-8',
         Data: subject,
       },
     },
-    Source: 'varaukset@paku24.fi' /* required */,
-    // ReplyToAddresses: [
-    //   'EMAIL_ADDRESS',
-    //   /* more items */
-    // ],
+    Source: sourceEmail,
   }
 
-  const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' })
-    .sendEmail(params)
-    .promise()
+  const messageBody = {
+    Charset: 'UTF-8',
+    Data: body,
+  }
 
-  sendPromise
-    .then((data) => {
-      console.log(data)
-    })
-    .catch((err) => {
-      console.error(err, err.stack)
-    })
+  html
+    ? (params.Message.Body.Html = messageBody)
+    : (params.Message.Body.Text = messageBody)
+
+  if (process.env.NODE_ENV !== 'test') {
+    const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' })
+      .sendEmail(params)
+      .promise()
+
+    return sendPromise
+      .then((data) => {
+        logger.info(`Message sent to ${email}`)
+      })
+      .catch((err) => {
+        logger.error(err, err.stack)
+      })
+  }
+
+  return Promise.resolve()
 }
 
 module.exports = sendMail

@@ -2,6 +2,8 @@
 const fs = require('fs')
 const readline = require('readline')
 const { google } = require('googleapis')
+const logger = require('../logger')
+const { createEvent } = require('./helpers')
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar']
@@ -10,58 +12,85 @@ const SCOPES = ['https://www.googleapis.com/auth/calendar']
 // time.
 const TOKEN_PATH = 'token.json'
 
-function addEventToCalendar({ title, date, color }) {
-  const dateRaw = new Date(date)
-  const nextDay = new Date(
-    dateRaw.getFullYear(),
-    dateRaw.getMonth(),
-    dateRaw.getDate() + 1
-  ).toISOString()
+/**
+ * Adds event to the Google calendar. Before that checks OAuth credentials. Mostly boilerplate from Google Docs example.
+ * @param {Object} event
+ * @param {string} event.summary
+ * @param {string} event.colorId
+ * @param {object} event.start
+ * @param {string} event.start.dateTime - ISOString
+ * @param {string} event.start.timeZone
+ * @param {object} event.end
+ * @param {string} event.end.dateTime - ISOString
+ * @param {string} event.end.timeZone
+ * @param {object} event.reminders
+ * @param {boolean} event.reminders.useDefault
+ */
 
-  const event = {
-    summary: title,
-    colorId: color,
-    start: {
-      date: date.split('T')[0],
-      timeZone: 'Europe/Helsinki',
-    },
-    end: {
-      date: nextDay.split('T')[0],
-      timeZone: 'Europe/Helsinki',
-    },
-    reminders: {
-      useDefault: false,
-    },
-  }
-  console.log('EVENT from API file:\n', event)
-
-  function addEvent(auth) {
-    const calendar = google.calendar({ version: 'v3', auth })
-    calendar.events.insert(
-      {
-        auth,
-        calendarId: 'primary',
-        resource: event,
-      },
-      (err, ev) => {
-        if (err) {
-          console.log(
-            `There was an error contacting the Calendar service: ${err}`
+function addEventToCalendar(event) {
+  return new Promise((resolve, reject) => {
+    function addEvent(auth) {
+      const calendar = google.calendar({ version: 'v3', auth })
+      calendar.events.insert(
+        {
+          auth,
+          calendarId: 'primary',
+          resource: event,
+        },
+        (err, ev) => {
+          if (err) {
+            logger.info(
+              `There was an error contacting the Calendar service: ${err}`
+            )
+            return reject(err)
+          }
+          logger.info(
+            `Event created: ${ev.data?.start.dateTime} - ${ev.data?.end.dateTime}\n${ev.data?.summary}`
           )
-          return
+          resolve(ev)
         }
-        console.log('Event created: %s', ev.data.summary)
-      }
-    )
-  }
+      )
+    }
 
-  // Load client secrets from a local file.
-  // This function is exported thus credentials have to be alocated keeping that in mind.
-  // This function gets called from file ./controllers/calendarController
+    contactAPI(addEvent)
+  })
+}
+
+function deleteEventFromCalendar(eventId) {
+  return new Promise((resolve, reject) => {
+    function deleteEvent(auth) {
+      const calendar = google.calendar({ version: 'v3', auth })
+      calendar.events.delete(
+        {
+          auth,
+          calendarId: 'primary',
+          eventId,
+        },
+        (err) => {
+          if (err) {
+            logger.info(
+              `There was an error contacting the Calendar service: ${err}`
+            )
+            return reject(err)
+          }
+          logger.info(`Event with id ${eventId} deleted.`)
+          resolve()
+        }
+      )
+    }
+
+    contactAPI(deleteEvent)
+  })
+}
+
+// Load client secrets from a local file.
+// This function is exported thus credentials have to be allocated keeping that in mind.
+// This function gets called from file ./controllers/calendarController
+function contactAPI(callback) {
   fs.readFile('./utils/calendar/credentials.json', (err, content) => {
     if (err) return console.log('Error loading client secret file:', err)
     // Authorize a client with credentials, then call the Google Calendar API.
-    authorize(JSON.parse(content), addEvent)
+    authorize(JSON.parse(content), callback)
   })
 }
 
@@ -145,4 +174,4 @@ function getAccessToken(oAuth2Client, callback) {
 //   })
 // }
 
-module.exports = addEventToCalendar
+module.exports = { addEventToCalendar, deleteEventFromCalendar }

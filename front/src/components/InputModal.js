@@ -1,37 +1,25 @@
-import React, { useState, useEffect } from 'react'
-import { useHistory, useLocation, useRouteMatch, Route } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useHistory, Route } from 'react-router-dom'
 import Modal from '@material-ui/core/Modal'
 import Button from '@material-ui/core/Button'
 import TextField from '@material-ui/core/TextField'
 
 export default function InputModal(props) {
   // value === phoneNumber || email
-  const { value, label, name, handleChange } = props
-  const [modalOpen, setModalOpen] = useState(false)
-
-  const history = useHistory()
-  const location = useLocation()
-
-  // this operation gets called two times per render. Fix this!
-  const url = useRouteMatch('/:type')?.url
-
-  console.log('match', url)
+  const { value, label, name, custom, handleChange, disabled } = props
+  const [, setModalOpen] = useState(false)
 
   const slug = label.toLowerCase()
-
-  useEffect(() => {
-    if (location.pathname === `${url}/${slug}`) return setModalOpen(true)
-    return setModalOpen(false)
-  }, [location.pathname, slug, url])
+  const history = useHistory()
 
   const handleModalOpen = () => {
     setModalOpen(true)
-    history.push(url ? `${url}/${slug}` : `/edit/${slug}`)
+    history.push(custom ? `/custom/${slug}` : `/edit/${slug}`)
   }
 
   const handleModalClose = () => {
     setModalOpen(false)
-    history.push(url === '/edit' ? '/' : url)
+    history.push(custom ? `/custom/` : '/')
   }
 
   const modalStyle = {
@@ -48,6 +36,7 @@ export default function InputModal(props) {
   return (
     <>
       <Button
+        disabled={disabled}
         className="button-info"
         variant="outlined"
         onClick={handleModalOpen}
@@ -56,8 +45,8 @@ export default function InputModal(props) {
         to:
         {value}
       </Button>
-      <Route path={[`${url}/${slug}`, `${url}/${slug}`]}>
-        <Modal open={modalOpen} onClose={handleModalClose}>
+      <Route path={[`/custom/${slug}`, `/edit/${slug}`]}>
+        <Modal open onClose={handleModalClose} disableScrollLock>
           <div style={modalStyle}>
             <TextField
               label={label}

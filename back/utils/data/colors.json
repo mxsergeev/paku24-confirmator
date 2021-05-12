@@ -1,8 +1,14 @@
 {
-  "secondCar": "11",
-  "Paku ja kuski": "5",
+  "Paku ja kuski": "1",
   "Paku ja kuski kantoapuna": "7",
   "Paku ja kaksi muuttomiestä": "9",
   "Paku ja mies": "7",
-  "Paku ja kaksi miestä": "9"
+  "Paku ja kaksi miestä": "9",
+  "secondCar": {
+    "Paku ja kuski": "4",
+    "Paku ja kuski kantoapuna": "6",
+    "Paku ja kaksi muuttomiestä": "11",
+    "Paku ja mies": "6",
+    "Paku ja kaksi miestä": "11"
+  }
 }

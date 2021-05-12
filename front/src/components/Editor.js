@@ -1,9 +1,9 @@
 import React from 'react'
 import TextField from '@material-ui/core/TextField'
 import NativeSelect from '@material-ui/core/NativeSelect'
+import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 import services from '../utils/services.json'
 import TransformButton from './buttons/TransformButton'
-import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 
 export default function Editor({ order, handleChange, handleClick }) {
   const margin = {
@@ -15,7 +15,7 @@ export default function Editor({ order, handleChange, handleClick }) {
   }
 
   return (
-    <div className="basic-flex">
+    <div className="basic-flex" style={{ marginTop: '15px' }}>
       <TextField
         fullWidth
         style={marginLeftRight}
@@ -73,13 +73,11 @@ export default function Editor({ order, handleChange, handleClick }) {
         value={order?.serviceName}
         onChange={handleChange}
       >
-        {services.map((service, index) => {
-          return (
-            <option key={index} value={service.name}>
-              {service.name}
-            </option>
-          )
-        })}
+        {services.map((service) => (
+          <option key={service.id} value={service.name}>
+            {service.name}
+          </option>
+        ))}
       </NativeSelect>
 
       <NativeSelect
@@ -92,14 +90,14 @@ export default function Editor({ order, handleChange, handleClick }) {
       >
         <option value="Maksukortti">Maksukortti</option>
         <option value="Käteinen">Käteinen</option>
-        <option value="Lasku">Lasku</option>
+        <option value="Lasku/Osamaksu">Lasku</option>
       </NativeSelect>
 
       <TextField
         fullWidth
         style={margin}
         className="flex-item"
-        required={true}
+        required
         name="address"
         value={order?.address}
         onChange={handleChange}
@@ -141,7 +139,7 @@ export default function Editor({ order, handleChange, handleClick }) {
         name="email"
         value={order?.email}
         onChange={handleChange}
-        type={'email'}
+        type="email"
         label="Email"
         variant="outlined"
         size="small"
@@ -151,7 +149,7 @@ export default function Editor({ order, handleChange, handleClick }) {
         fullWidth
         style={margin}
         className="flex-item"
-        required={true}
+        required
         name="phone"
         value={order?.phone}
         onChange={handleChange}

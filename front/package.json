@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@material-ui/core": "^4.11.0",
+    "@material-ui/core": "^4.11.3",
     "@material-ui/icons": "^4.9.1",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
     "axios": "^0.21.0",
+    "dotenv": "^8.2.0",
     "light-toast": "^0.3.0",
     "ngrok": "^3.3.0",
     "react": "^17.0.1",
@@ -21,7 +22,8 @@
   },
   "scripts": {
     "start": "PORT=3001 react-scripts start",
-    "build": "react-scripts build",
+    "build": "INLINE_RUNTIME_CHUNK=false react-scripts build",
+    "startWin": "setx PORT 3001 && react-scripts start",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "example": "../../ngrok http 3000 -host-header='localhost:3000'"

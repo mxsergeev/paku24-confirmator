@@ -1,22 +1,24 @@
 import React from 'react'
 import Button from '@material-ui/core/Button'
-import '../../styles/convert.css'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 
-export default function SendSMSButton({ phoneNumber, msgBody, err, disabled }) {
+export default function SendSMSButton({ handleClick, disabled, statusText }) {
   return (
     <Button
-      disabled={err || disabled}
+      disabled={disabled}
+      onClick={handleClick}
       className="button-phone flex-item"
       variant="contained"
       size="small"
     >
-      <a
-        className="sms"
-        href={`sms://${phoneNumber}/?body=${encodeURI(msgBody)}`}
-      >
-        Send <TextsmsIcon className="sms-icon" />
-      </a>
+      {statusText ? (
+        <span style={{ color: 'grey' }}>{statusText}</span>
+      ) : (
+        <>
+          <span>Send</span>
+          <TextsmsIcon />
+        </>
+      )}
     </Button>
   )
 }

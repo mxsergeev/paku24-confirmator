@@ -1,22 +1,32 @@
 [
   {
+    "id": 1,
     "name": "Paku ja kuski",
-    "price": 30
+    "price": 30,
+    "priceXL": 40
   },
   {
+    "id": 2,
     "name": "Paku ja kuski kantoapuna",
-    "price": 60
+    "price": 60,
+    "priceXL": 60
   },
   {
+    "id": 3,
     "name": "Paku ja kaksi muuttomiestä",
-    "price": 90
+    "price": 90,
+    "priceXL": 90
   },
   {
+    "id": 4,
     "name": "Paku ja mies",
-    "price": 40
+    "price": 40,
+    "priceXL": 40
   },
   {
+    "id": 5,
     "name": "Paku ja kaksi miestä",
-    "price": 70
+    "price": 70,
+    "priceXL": 70
   }
 ]

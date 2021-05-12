@@ -5,7 +5,12 @@ import Checkbox from '@material-ui/core/Checkbox'
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline'
 
 export default function ValidationErrorsDisplay(props) {
-  const { order, handleSetError, confirmation, custom } = props
+  const {
+    order,
+    dispatchOrderActionsStatus_error,
+    confirmation,
+    custom,
+  } = props
 
   const [errors, setErrors] = useState([])
   const [ignore, setIgnore] = useState(false)
@@ -15,6 +20,7 @@ export default function ValidationErrorsDisplay(props) {
     if (!ignore) {
       const errs = [
         {
+          id: 1,
           type: 'date',
           error: validator.isBefore(
             order.date.ISODate,
@@ -25,6 +31,7 @@ export default function ValidationErrorsDisplay(props) {
           }`,
         },
         {
+          id: 2,
           type: 'address',
           error: validator.isEmpty(order.address),
           message: `missing or is in incorrect format. Value: ${
@@ -32,6 +39,7 @@ export default function ValidationErrorsDisplay(props) {
           }`,
         },
         {
+          id: 3,
           type: 'phone',
           error: !validator.isMobilePhone(order.phone, [
             'fi-FI',
@@ -43,6 +51,7 @@ export default function ValidationErrorsDisplay(props) {
           }`,
         },
         {
+          id: 4,
           type: 'email',
           error: custom ? false : !validator.isEmail(order.email),
           message: `missing or is in incorrect format. Value: ${
@@ -52,22 +61,13 @@ export default function ValidationErrorsDisplay(props) {
       ]
       setErrors(errs)
       const areThereSomeErrors = errs.some((error) => error.error)
-      handleSetError(areThereSomeErrors)
+      dispatchOrderActionsStatus_error(areThereSomeErrors)
       setShowSwitch(areThereSomeErrors)
-    } else handleSetError(false)
-  }, [
-    order.date,
-    order.phone,
-    order.address,
-    order.email,
-    ignore,
-    custom,
-    handleSetError,
-  ])
+    } else dispatchOrderActionsStatus_error(false)
+  }, [order.date, order.phone, order.address, order.email, ignore, custom])
 
   function handleIgnore(e) {
     setIgnore(e.target.checked)
-    setShowSwitch(errors.some((error) => error.error))
   }
 
   const errStyle = { color: 'red' }
@@ -86,20 +86,15 @@ export default function ValidationErrorsDisplay(props) {
         <div style={border} className="flex-100-space-between">
           <div style={displayStyle}>
             <ErrorOutlineIcon />
-            {errors.map((err, index) => {
+            {errors.map((err) => {
               if (err.error) {
                 return (
-                  <>
-                    <div key={index}>
-                      <span
-                        key={100 + index}
-                        style={ignore ? ignoreStyle : errStyle}
-                      >
-                        {err.type}{' '}
-                      </span>
-                      {err.message}
-                    </div>
-                  </>
+                  <div key={err.id}>
+                    <span style={ignore ? ignoreStyle : errStyle}>
+                      {err.type}{' '}
+                    </span>
+                    {err.message}
+                  </div>
                 )
               }
               return null

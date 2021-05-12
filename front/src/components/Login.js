@@ -1,95 +1,122 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useState } from 'react'
+import { useHistory, Link } from 'react-router-dom'
 import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 import loginServiсe from '../services/login'
-import Toast from 'light-toast'
-import FormGroup from '@material-ui/core/FormGroup'
-import { Route, Redirect, useHistory } from 'react-router-dom'
+import Notification from './Notification'
 
-// function usePasswordFromLocalStorage() {
-//   useEffect(() => {
-//     const storedPass = loginServiсe.getStoredPass()
-//     if (storedPass) {
-//       <Redirect to='/' />
-//       return handleIsLoggedChange(true)
-//     }
-//   }, [])
-// }
+export default function Login({ setUser }) {
+  const background = {
+    width: '95%',
+    margin: '0 auto',
+    padding: 20,
+    backgroundColor: 'lightgrey',
+    borderBottom: '4px solid darkgrey',
+  }
 
-export default function Login({ handleIsLoggedChange, isLogged }) {
+  const flexItem = {
+    marginBottom: '7px',
+    backgroundColor: 'white',
+  }
+
+  const formContainer = {
+    color: 'black',
+    fontSize: '1.3rem',
+    letterSpacing: '0.7px',
+    marginTop: '10px',
+    marginBottom: '15px',
+  }
+
+  const flexForm = {
+    paddingBottom: '10px',
+    height: '80%',
+    display: 'flex',
+    flexFlow: 'column wrap',
+    justifyContent: 'space-evenly',
+  }
+
+  const history = useHistory()
+  const referrer = history?.location.state?.referrer
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isButtonDisabled, setIsButtonDisabled] = useState(false)
   const [inputError, setInputError] = useState(false)
+  const [notification, setNotification] = useState('')
 
-  const history = useHistory()
+  async function handleLogin(event) {
+    event.preventDefault()
+    setNotification('Working...')
 
-  const tryToLogin = useCallback(
-    (pass) => {
-      loginServiсe
-        .checkPass(pass)
-        .then((data) => {
-          const { isCorrect, message, throttleTime } = data
+    try {
+      const { user } = await loginServiсe.loginWithCredentials({
+        username,
+        password,
+      })
+      setNotification('Done')
 
-          if (message) {
-            Toast.fail(
-              `${message} Try again after ${throttleTime / 1000} seconds.`,
-              throttleTime - 400
-            )
-            setIsButtonDisabled(true)
-            setTimeout(() => {
-              setIsButtonDisabled(false)
-            }, throttleTime)
-          }
-          if (!isCorrect) {
-            return setInputError(true)
-          }
-
-          handleIsLoggedChange(isCorrect)
-          history.replace('/')
-        })
-        .catch((err) => console.log(err))
-    },
-    [handleIsLoggedChange, history]
-  )
-
-  const flexStyle = {
-    display: 'flex',
-    flexFlow: 'row wrap',
-    justifyContent: 'center',
-  }
-
-  const background = {
-    width: '70%',
-    padding: 30,
-    backgroundColor: 'lightgrey',
+      history.push(referrer || '/')
+      setUser(user)
+    } catch (err) {
+      setInputError(true)
+      setIsButtonDisabled(true)
+      setTimeout(() => setIsButtonDisabled(false), 2000)
+      setNotification(`Error: ${err.response?.data.error}`)
+    }
   }
 
   return (
-    <div style={flexStyle}>
+    <div style={{ margin: '30px 5px' }}>
       <div style={background}>
-        <h3>Login!</h3>
-        <form>
+        <div style={formContainer}>
+          LOGIN
+          <span
+            style={{
+              color: 'black',
+              fontSize: '1.0rem',
+              letterSpacing: '0.2px',
+            }}
+          >
+            {' '}
+            or <Link to="/register">request access</Link>
+          </span>
+        </div>
+
+        <Notification notification={notification} />
+
+        <form onSubmit={handleLogin} style={flexForm}>
           <TextField
+            className="flex-item"
+            style={flexItem}
             error={inputError}
-            helperText={inputError ? 'Incorrect password.' : null}
+            required
+            name="username"
+            value={username}
+            onChange={({ target }) => setUsername(target.value)}
+            label="Username"
+            variant="filled"
+            size="small"
+          />
+          <TextField
+            className="flex-item"
+            style={flexItem}
+            error={inputError}
             type="password"
-            required={true}
+            required
+            value={password}
             name="password"
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={({ target }) => setPassword(target.value)}
             label="Password"
-            variant="outlined"
+            variant="filled"
             size="small"
           />
 
           <Button
-            type="type"
+            className="flex-item"
+            style={flexItem}
+            type="submit"
             disabled={isButtonDisabled}
-            variant="outlined"
+            variant="contained"
             size="small"
-            onClick={(e) => {
-              e.preventDefault()
-              tryToLogin(password)
-            }}
           >
             Login
           </Button>

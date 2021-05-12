@@ -1,30 +1,25 @@
 const emailRouter = require('express').Router()
-
 const sendMail = require('../utils/email/awsSES')
-const termsData = require('../utils/data/terms.json')
+const { makeTerms } = require('../utils/email/helpers')
+const {
+  authenticateAccessToken,
+} = require('../utils/middleware/authentication')
 
-function makeTerms(options) {
-  if (options.hsy)
-    return `${termsData[options.distance] + termsData.hsy}\n${
-      termsData.defaultTerms
-    }`
+emailRouter.use(authenticateAccessToken)
 
-  return `${termsData[options.distance]}\n${termsData.defaultTerms}`
-}
-
-emailRouter.post('/', (req, res, next) => {
-  const { email, confirmation, options } = req.body
+emailRouter.post('/send-confirmation', (req, res, next) => {
+  const { email, orderDetails, options } = req.body
   const subject = 'VARAUSVAHVISTUS'
   const terms = makeTerms(options)
+  const body = `VARAUSVAHVISTUS\n${orderDetails}\nKIITOS VARAUKSESTANNE!\n\n${terms}`
 
-  try {
-    sendMail(email, subject, `${confirmation}\n\n${terms}`)
-  } catch (err) {
-    res.send({ error: err.message })
-    next(err)
-  }
-
-  res.status(200).send('Email sent successfully')
+  sendMail({
+    email,
+    subject,
+    body,
+  })
+    .then(() => res.status(200).send({ message: 'Email sent successfully' }))
+    .catch((err) => next(err))
 })
 
 module.exports = emailRouter

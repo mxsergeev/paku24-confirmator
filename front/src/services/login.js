@@ -1,27 +1,16 @@
-import axios from 'axios'
+import interceptor from './interceptor'
 
-function checkPass(pass) {
-  return axios.post('/api/login', { pass }).then((res) => {
-    if (res.data.isCorrect) storePass(pass)
-    return res.data
-  })
+const baseUrl = '/api/login'
+
+async function loginWithCredentials(credentials) {
+  return interceptor.axiosInstance
+    .post(baseUrl, credentials)
+    .then((res) => res.data)
 }
 
-// function askPass() {
-//   return prompt('Enter password:')
-// }
-
-function storePass(pass) {
-  return localStorage.setItem('pass', pass)
+async function loginWithAccessToken() {
+  const response = await interceptor.axiosInstance.post(`${baseUrl}/token`)
+  return response.data
 }
 
-function getStoredPass() {
-  return localStorage.getItem('pass')
-}
-
-const loginServiсe = {
-  checkPass,
-  getStoredPass,
-}
-
-export default loginServiсe
+export default { loginWithCredentials, loginWithAccessToken }

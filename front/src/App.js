@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Switch,
-  Route,
-  useHistory,
-  useLocation,
-  useRouteMatch,
-  Redirect,
-} from 'react-router-dom'
-import Convert from './components/Convert'
+import { Route, Switch, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
-import loginServiсe from './services/login'
+import Confirmator from './components/Confirmator'
 import Header from './components/Header'
 import Login from './components/Login'
+import Register from './components/Register'
+import loginServiсe from './services/login'
 import './styles/container.css'
+import Footer from './components/Footer'
+import LoadingUntillDone from './components/LoadingUntillDone'
+import interceptor from './services/interceptor'
 
 function ErrorFallback({ error }) {
   return (
@@ -23,66 +20,83 @@ function ErrorFallback({ error }) {
   )
 }
 
-function App() {
-  let history = useHistory()
-  let location = useLocation()
-
-  useEffect(() => {
-    const storedPass = loginServiсe.getStoredPass()
-    if (storedPass) {
-      console.log('You are already logged in.')
-      history.replace('/')
-      setIsLogged(true)
-    } else {
-      history.replace('/login')
-    }
-  }, [history])
-
-  const [isLogged, setIsLogged] = useState(false)
-  const [custom, setCustom] = useState(false)
-
-  function handleIsLoggedChange(boolean) {
-    setIsLogged(boolean)
+function AuthenticateUser({ user, setUser, children }) {
+  const history = useHistory()
+  let currentLocation
+  if (user === null || user === 'Loading') {
+    currentLocation = history.location.pathname
   }
 
-  const match = useRouteMatch('/custom')
+  useEffect(async () => {
+    try {
+      const { user: userFromToken } = await loginServiсe.loginWithAccessToken()
 
+      return setUser(userFromToken)
+    } catch (err) {
+      return setUser(null)
+    }
+  }, [])
+
+  const loading = user === 'Loading'
+  const mustRedirect = user === null
+  const redirectToLoginPage = mustRedirect && (
+    <Redirect
+      to={{ pathname: '/login', state: { referrer: currentLocation } }}
+    />
+  )
+
+  return (
+    <>
+      <LoadingUntillDone
+        loading={loading}
+        redirectComponent={redirectToLoginPage}
+      >
+        {children}
+      </LoadingUntillDone>
+
+      <Route path="/login">
+        {user === null ? <Login setUser={setUser} /> : <Redirect to="/" />}
+      </Route>
+    </>
+  )
+}
+
+function App() {
+  const [user, setUser] = useState('Loading')
+  const [custom, setCustom] = useState(false)
+
+  // Initializing Axios interceptor with ability to logout user
   useEffect(() => {
-    if (match) return setCustom(true)
-    return setCustom(false)
-  }, [location.pathname, match])
+    interceptor.setupInterceptor({ logout: () => setUser(null) })
+  }, [])
+
+  const history = useHistory()
 
   function handleCustomChange(e) {
-    const checked = e.target.checked
+    const { checked } = e.target
     setCustom(checked)
 
-    if (checked) return history.push('/custom')
-    return history.push('/')
+    return checked ? history.push('/custom') : history.push('/')
   }
 
   return (
     <div className="container">
-      <Header
-        custom={custom}
-        handleChange={handleCustomChange}
-        logged={isLogged}
-      />
-
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        {/* {isLogged ? <Convert custom={custom} /> : <Redirect to='/login' />} */}
-
+        <Header
+          isLogged={user !== null && user !== 'Loading'}
+          custom={custom}
+          setCustom={setCustom}
+          handleChange={handleCustomChange}
+        />
         <Switch>
-          {/* {isLogged ? <Redirect to='/' /> : <Redirect to='/login' />} */}
-
-          <Route path="/login">
-            <Login
-              isLogged={isLogged}
-              handleIsLoggedChange={handleIsLoggedChange}
-            />
+          <Route path="/register">
+            <Register />
           </Route>
-
-          <Route exact path="/:slug*">
-            <Convert custom={custom} />
+          <Route path="/">
+            <AuthenticateUser user={user} setUser={setUser}>
+              <Confirmator custom={custom} />
+              <Footer user={user} logoutUser={() => setUser(null)} />
+            </AuthenticateUser>
           </Route>
         </Switch>
       </ErrorBoundary>
