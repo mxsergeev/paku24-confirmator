@@ -1,0 +1,26 @@
+{
+  "morning": {
+    "name": "Aamulisä",
+    "amount": 20
+  },
+  "night": {
+    "name": "Yölisä",
+    "amount": 20
+  },
+  "holiday": {
+    "name": "Pyhälisä",
+    "amount": 15
+  },
+  "weekend": {
+    "name": "Viikonloppulisä",
+    "amount": 15
+  },
+  "firstOrLastDayOfTheMonth": {
+    "name": "Kuunvaihdelisä",
+    "amount": 15
+  },
+  "bill" : {
+    "name": "Laskulisä",
+    "amount": 14
+  }
+}

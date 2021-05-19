@@ -1,18 +1,22 @@
-const { makeTitle, makeColor, makeEventObject } = require('../calendar/helpers')
+const {
+  makeIcons,
+  makeColor,
+  makeGoogleEventObject,
+} = require('../calendar/helpers')
 
 function createEvent(req, res, next) {
-  const { entry, order, options } = req.body
-  const icons = makeTitle(order, options)
-  const color = makeColor(order, options)
+  const { entry, order, fees } = req.body
+  const icons = makeIcons(order, fees)
+  const color = makeColor(order)
 
   const eventInfo = {
     title: icons + entry,
-    date: order.date.original,
+    dateTime: order.dateTime,
     duration: order.duration,
     color,
   }
 
-  req.event = makeEventObject(eventInfo)
+  req.event = makeGoogleEventObject(eventInfo)
 
   return next()
 }

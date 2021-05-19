@@ -1,0 +1,6 @@
+{
+  "insideCapital": "insideCapital",
+  "outsideCapital": "outsideCapital",
+  "fromCapitalToOutside": "fromCapitalToOutside",
+  "fromOutsideToCapital": "fromOutsideToCapital"
+}

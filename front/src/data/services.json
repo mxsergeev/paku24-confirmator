@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Pakettiauto ja kuljettaja",
+    "price": 30,
+    "priceXL": 40
+  },
+  {
+    "id": 2,
+    "name": "Pakettiauto ja muuttomies",
+    "price": 60,
+    "priceXL": 60
+  },
+  {
+    "id": 3,
+    "name": "Pakettiauto ja kaksi muuttomiestä",
+    "price": 90,
+    "priceXL": 90
+  },
+  {
+    "id": 4,
+    "name": "Nouto/tyhjennyspalvelu yhdellä kantajalla",
+    "price": 40,
+    "priceXL": 40
+  },
+  {
+    "id": 5,
+    "name": "Nouto/tyhjennyspalvelu kahdella kantajalla",
+    "price": 70,
+    "priceXL": 70
+  }
+]

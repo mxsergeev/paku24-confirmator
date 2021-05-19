@@ -50,6 +50,7 @@ async function createUser(req, res, next) {
   }
 }
 
+// checkUserToken
 async function checkUser(req, res, next) {
   const requestToken = decodeURIComponent(req.query.token)
 

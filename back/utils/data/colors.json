@@ -1,14 +1,14 @@
 {
-  "Paku ja kuski": "1",
-  "Paku ja kuski kantoapuna": "7",
-  "Paku ja kaksi muuttomiestä": "9",
-  "Paku ja mies": "7",
-  "Paku ja kaksi miestä": "9",
-  "secondCar": {
-    "Paku ja kuski": "4",
-    "Paku ja kuski kantoapuna": "6",
-    "Paku ja kaksi muuttomiestä": "11",
-    "Paku ja mies": "6",
-    "Paku ja kaksi miestä": "11"
+  "Pakettiauto ja kuljettaja": "1",
+  "Pakettiauto ja muuttomies": "7",
+  "Pakettiauto ja kaksi muuttomiestä": "9",
+  "Noutopalvelu yhdellä kantajalla": "7",
+  "Noutopalvelu kahdella kantajalla": "9",
+  "altColorPalette": {
+    "Pakettiauto ja kuljettaja": "4",
+    "Pakettiauto ja muuttomies": "6",
+    "Pakettiauto ja kaksi muuttomiestä": "11",
+    "Noutopalvelu yhdellä kantajalla": "6",
+    "Noutopalvelu kahdella kantajalla": "11"
   }
 }

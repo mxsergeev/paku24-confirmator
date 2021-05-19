@@ -1,0 +1,25 @@
+.text-container-with-scroll {
+  width: 100%;
+  line-height: 0.95rem;
+  letter-spacing: 0.04rem;
+  color: rgb(63, 63, 63);
+  text-overflow: ellipsis;
+  overflow-x: auto;
+  white-space: normal;
+  max-height: 200px;
+  padding: 10px;
+}
+
+.not-editable-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 66.5%;
+  background-color: var(--brand-color-very-light) !important;
+  padding: 1px 7px;
+  border-bottom: 1px solid var(--brand-color-dark);
+  color: var(--brand-color-very-dark);
+  font-size: 0.9rem;
+  letter-spacing: 0.05rem;
+  margin: 5px 0;
+}
