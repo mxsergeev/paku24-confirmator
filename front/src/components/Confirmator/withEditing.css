@@ -1,0 +1,27 @@
+/* Changing the material-ui icon's background */
+/* span button {
+  background-color: var(--brand-color-very-light) !important;
+  align-self: flex-start !important;
+} */
+
+.buttons-block {
+  margin-top: 5px;
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+  gap: 5px
+}
+
+.buttons-block button {
+  font-size: 0.65rem;
+  padding: 1px;
+  background-color: var(--brand-color-light);
+}
+
+.buttons-block .primary {
+  background-color: var(--brand-color);
+}
+
+.buttons-block button:hover {
+  background-color: var(--brand-color-dark);
+}

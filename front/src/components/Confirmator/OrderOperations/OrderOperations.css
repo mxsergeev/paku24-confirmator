@@ -1,0 +1,53 @@
+.order-operations {
+  width: 100%;
+  display: flex;
+  flex-flow: column;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 3px;
+}
+
+.order-operations .message {
+  display: flex;
+  padding-left: 10px;
+  align-items: center;
+  background-color: var(--brand-color-very-light);
+  border-radius: 4px;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.order-operations .block {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 5px;
+  height: 2rem;
+  /* overflow: hidden; */
+  /* text-overflow: ellipsis; */
+}
+
+.order-operations .block button:not(.Mui-disabled)  {
+  border: 1px solid var(--brand-color-medium) 
+}
+
+.order-operations .block .width-75 {
+  max-width: 75%;
+  width: 75%;
+}
+
+.order-operations .block .width-25 {
+  width: 25%;
+  max-width: 25%;
+}
+
+.order-operations .block .share-space {
+  flex: auto;
+}
+
+.order-operations .block .grayedFont {
+  color: rgba(0, 0, 0, 0.26);
+}

@@ -330,6 +330,7 @@ describe('Authentication middleware', () => {
       expect(() =>
         authentication.authenticateAccessToken(mockReq, mockRes, mockNext)
       ).toThrowError(newErrorWithCustomName('JsonWebTokenError', 'jwt expired'))
+
       expect(mockReq).not.toHaveProperty('user')
     })
 

@@ -1,11 +1,14 @@
 const calendarRouter = require('express').Router()
+
 const {
   authenticateAccessToken,
 } = require('../utils/middleware/authentication')
+
 const {
   addEventToCalendar,
   deleteEventFromCalendar,
 } = require('../utils/calendar/calendarAPI')
+
 const { createEvent } = require('../utils/middleware/calendar')
 
 calendarRouter.use(authenticateAccessToken)

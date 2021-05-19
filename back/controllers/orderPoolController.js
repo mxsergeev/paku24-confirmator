@@ -65,7 +65,7 @@ orderPoolRouter.post('/add', checkRequest, async (req, res, next) => {
 
     await receivedOrder.save()
 
-    return res.status(200)
+    return res.status(201)
   } catch (err) {
     return next(err)
   }
@@ -75,7 +75,7 @@ orderPoolRouter.use(authenticateAccessToken)
 
 orderPoolRouter.get('/', async (req, res, next) => {
   try {
-    let ordersInPool = await RawOrder.find({ markedForDeletion: false })
+    const ordersInPool = await RawOrder.find({ markedForDeletion: false })
       .sort({ date: -1 })
       .exec()
 
@@ -99,7 +99,7 @@ orderPoolRouter.get('/deleted', async (req, res, next) => {
   }
 })
 
-orderPoolRouter.put('/delete/:id', async (req, res, next) => {
+orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
   const { id } = req.params
   try {
     await RawOrder.findByIdAndUpdate({ _id: id }, { markedForDeletion: true })
@@ -109,6 +109,7 @@ orderPoolRouter.put('/delete/:id', async (req, res, next) => {
   }
 })
 
+// RESTORE (not retrieve)
 orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
   const { id } = req.params
   try {

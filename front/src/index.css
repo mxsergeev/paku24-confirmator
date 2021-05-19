@@ -1,0 +1,28 @@
+* {
+  box-sizing: border-box;
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+}
+
+:root {
+  --brand-color: #ffaa48d8;
+  --brand-color-dark: #a7a7a7;
+  --brand-color-very-dark: #8b8b8b;
+  --brand-color-medium: #b3b3b3;
+  --brand-color-very-light: #f0f0f0;
+  --brand-color-light: #e0e0e0;
+}
+
+.width-100 {
+  width: 100%;
+}
+
+.max-width-100 {
+  max-width: 100%;
+}
+
+.row-flex-end {
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: flex-end;
+  width: 100%;
+}

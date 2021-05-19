@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { Route, Switch, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
-import Confirmator from './components/Confirmator'
+import Confirmator from './components/Confirmator/Confirmator'
 import Header from './components/Header'
 import Login from './components/Login'
 import Register from './components/Register'
 import loginServiсe from './services/login'
-import './styles/container.css'
+import './App.css'
 import Footer from './components/Footer'
 import LoadingUntillDone from './components/LoadingUntillDone'
 import interceptor from './services/interceptor'
@@ -20,37 +20,22 @@ function ErrorFallback({ error }) {
   )
 }
 
-function AuthenticateUser({ user, setUser, children }) {
+function RedirectToLoginPageIfNotAuthenticated({ user, setUser, children }) {
   const history = useHistory()
   let currentLocation
   if (user === null || user === 'Loading') {
     currentLocation = history.location.pathname
   }
 
-  useEffect(async () => {
-    try {
-      const { user: userFromToken } = await loginServiсe.loginWithAccessToken()
-
-      return setUser(userFromToken)
-    } catch (err) {
-      return setUser(null)
-    }
-  }, [])
-
   const loading = user === 'Loading'
   const mustRedirect = user === null
   const redirectToLoginPage = mustRedirect && (
-    <Redirect
-      to={{ pathname: '/login', state: { referrer: currentLocation } }}
-    />
+    <Redirect to={{ pathname: '/login', state: { referrer: currentLocation } }} />
   )
 
   return (
     <>
-      <LoadingUntillDone
-        loading={loading}
-        redirectComponent={redirectToLoginPage}
-      >
+      <LoadingUntillDone loading={loading} redirectComponent={redirectToLoginPage}>
         {children}
       </LoadingUntillDone>
 
@@ -63,40 +48,34 @@ function AuthenticateUser({ user, setUser, children }) {
 
 function App() {
   const [user, setUser] = useState('Loading')
-  const [custom, setCustom] = useState(false)
 
   // Initializing Axios interceptor with ability to logout user
   useEffect(() => {
     interceptor.setupInterceptor({ logout: () => setUser(null) })
   }, [])
 
-  const history = useHistory()
-
-  function handleCustomChange(e) {
-    const { checked } = e.target
-    setCustom(checked)
-
-    return checked ? history.push('/custom') : history.push('/')
-  }
+  useEffect(async () => {
+    try {
+      const { user: userFromToken } = await loginServiсe.loginWithAccessToken()
+      return setUser(userFromToken)
+    } catch (err) {
+      return setUser(null)
+    }
+  }, [])
 
   return (
     <div className="container">
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <Header
-          isLogged={user !== null && user !== 'Loading'}
-          custom={custom}
-          setCustom={setCustom}
-          handleChange={handleCustomChange}
-        />
+        <Header isLogged={user !== null && user !== 'Loading'} />
         <Switch>
           <Route path="/register">
             <Register />
           </Route>
           <Route path="/">
-            <AuthenticateUser user={user} setUser={setUser}>
-              <Confirmator custom={custom} />
+            <RedirectToLoginPageIfNotAuthenticated user={user} setUser={setUser}>
+              <Confirmator />
               <Footer user={user} logoutUser={() => setUser(null)} />
-            </AuthenticateUser>
+            </RedirectToLoginPageIfNotAuthenticated>
           </Route>
         </Switch>
       </ErrorBoundary>

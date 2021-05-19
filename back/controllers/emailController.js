@@ -8,13 +8,13 @@ const {
 emailRouter.use(authenticateAccessToken)
 
 emailRouter.post('/send-confirmation', (req, res, next) => {
-  const { email, orderDetails, options } = req.body
+  const { orderDetails, order } = req.body
+  const terms = makeTerms(order)
   const subject = 'VARAUSVAHVISTUS'
-  const terms = makeTerms(options)
   const body = `VARAUSVAHVISTUS\n${orderDetails}\nKIITOS VARAUKSESTANNE!\n\n${terms}`
 
   sendMail({
-    email,
+    email: order.email,
     subject,
     body,
   })

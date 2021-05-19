@@ -7,6 +7,7 @@ function filterReqsBasedOnUrl(req, res, next) {
     '/logo',
     '/favicon',
     '/robots',
+    '/fonts',
   ]
 
   if (urls.some((url) => req.path.startsWith(url))) {

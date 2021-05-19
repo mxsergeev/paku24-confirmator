@@ -4,11 +4,7 @@ const baseUrl = '/api/email'
 /**
  * @param {Object} params
  * @param {string} params.orderDetails
- * @param {Object} params.options
- * @param {string} params.options.distance
- * @param {Boolean} params.options.hsy
- * @param {Boolean} params.options.XL
- * @param {string} params.email
+ * @param {Object} params.order
  */
 
 export default async function sendConfirmationEmail(params) {

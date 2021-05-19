@@ -1,16 +1,16 @@
 const {
-  makeTitle,
+  makeIcons,
   makeColor,
-  makeEventObject,
+  makeGoogleEventObject,
 } = require('../utils/calendar/helpers')
 const { exampleOrder, exampleOptions } = require('./test_helper')
 const iconsData = require('../utils/data/icons')
 const colorsData = require('../utils/data/colors')
 
-describe('makeTitle', () => {
+describe('makeIcons', () => {
   test('title created right', () => {
-    const title = makeTitle(exampleOrder, exampleOptions)
-    const title2 = makeTitle(
+    const title = makeIcons(exampleOrder, exampleOptions)
+    const title2 = makeIcons(
       {
         ...exampleOrder,
         serviceName: 'Paku ja kaksi muuttomiestä',
@@ -20,7 +20,7 @@ describe('makeTitle', () => {
       },
       { ...exampleOptions, XL: true, distance: 'outsideCapital' }
     )
-    const title3 = makeTitle(
+    const title3 = makeIcons(
       {
         ...exampleOrder,
         serviceName: 'Paku ja mies',
@@ -48,7 +48,7 @@ describe('makeColor', () => {
         ...exampleOrder,
         serviceName: 'Paku ja kaksi muuttomiestä',
       },
-      { ...exampleOptions, secondCar: true }
+      { ...exampleOptions, altColorPalette: true }
     )
     const color3 = makeColor(
       {
@@ -59,22 +59,24 @@ describe('makeColor', () => {
     )
 
     expect(color).toBe(colorsData['Paku ja kuski'])
-    expect(color2).toBe(colorsData.secondCar['Paku ja kaksi muuttomiestä'])
+    expect(color2).toBe(
+      colorsData.altColorPalette['Paku ja kaksi muuttomiestä']
+    )
     expect(color3).toBe(colorsData['Paku ja mies'])
   })
 })
 
-describe('makeEventObject', () => {
+describe('makeGoogleEventObject', () => {
   test('start date time and end date time of event object are correct', () => {
-    const title = makeTitle(exampleOrder, exampleOptions)
+    const title = makeIcons(exampleOrder, exampleOptions)
     const color = makeColor(exampleOrder, exampleOptions)
-    const eventObject = makeEventObject({
+    const eventObject = makeGoogleEventObject({
       title,
       color,
       date: exampleOrder.date.original,
       duration: exampleOrder.duration,
     })
-    const eventObject2 = makeEventObject({
+    const eventObject2 = makeGoogleEventObject({
       title,
       color,
       date: new Date('2021-07-10 23:00'),

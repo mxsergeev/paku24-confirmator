@@ -67,7 +67,6 @@ const res = {}
 
 const mockNext = jest.fn((param) => {
   if (param) {
-    // console.log('inside if in mockNext')
     throw param
   }
 })
@@ -99,7 +98,7 @@ const exampleOptions = {
   XL: false,
   distance: 'insideCapital',
   hsy: false,
-  secondCar: false,
+  altColorPalette: false,
 }
 
 const exampleEntryPartOfTheConfirmation =

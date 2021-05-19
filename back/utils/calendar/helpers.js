@@ -3,9 +3,9 @@ const colors = require('../data/colors.json')
 
 /**
  * Creates the title with icons, starting time and duration for an event
- * @param {object} options
- * @param {boolean} options.XL
- * @param {string} options.distance
+ * @param {object} order
+ * @param {boolean} order.XL
+ * @param {string} order.distance
  * @param {object} order
  * @param {object} order.fees
  * @param {string[]} order.fees.array
@@ -13,32 +13,33 @@ const colors = require('../data/colors.json')
  * @param {string} order.paymentType
  */
 
-function makeTitle(order, options) {
-  const sizeIcon = options.XL ? iconsData.size.XL : ''
-  const distanceIcon = iconsData.misc[options.distance] || ''
-  const feeIcons = order.fees.array
+function makeIcons(order, fees) {
+  const time = new Date(order.dateTime).toTimeString().slice(0, 5)
+  const sizeIcon = order.XL ? iconsData.size.XL : ''
+  const distanceIcon = iconsData.misc[order.distance] || ''
+  const feeIcons = fees
     .map((fee) => {
-      if (fee === 'LASKULISÄ') return ''
+      if (fee.name === 'Laskulisä') return ''
 
-      return iconsData.fees[fee]
+      return iconsData.fees[fee.name]
     })
     .reduce((acc, cur) => acc + cur, '')
   const serviceIcons = iconsData.service[order.serviceName]
   const paymentIcons = iconsData.payment[order.paymentType]
 
-  return `${sizeIcon}${distanceIcon}${feeIcons}${serviceIcons}${paymentIcons}${order.time}(${order.duration}h)`
+  return `${sizeIcon}${distanceIcon}${feeIcons}${serviceIcons}${paymentIcons}${time}(${order.duration}h)`
 }
 
 /**
  * Decides which color the event will be depending on car and service name
- * @param {object} options
- * @param {boolean} options.secondCar
+ * @param {object} order
+ * @param {boolean} order.altColorPalette
  * @param {object} order
  * @param {string} order.serviceName
  */
 
-function makeColor(order, options) {
-  if (options.secondCar) return colors.secondCar[order.serviceName]
+function makeColor(order) {
+  if (order.altColorPalette) return colors.altColorPalette[order.serviceName]
   return colors[order.serviceName]
 }
 
@@ -51,26 +52,27 @@ function makeColor(order, options) {
  * @param {string} eventInfo.color
  */
 
-function makeEventObject({ title, date, duration, color }) {
-  const dateRaw = new Date(date)
+// makeGoogleEventObject
+function makeGoogleEventObject({ title, dateTime, duration, color }) {
+  const date = new Date(dateTime)
 
   const hours = Math.floor(Number(duration))
   let minutes = (Number(duration) % 1) * 60
   if (!minutes) minutes = 0
 
   const endDate = new Date(
-    dateRaw.getFullYear(),
-    dateRaw.getMonth(),
-    dateRaw.getDate(),
-    dateRaw.getHours() + hours,
-    dateRaw.getMinutes() + minutes
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours() + hours,
+    date.getMinutes() + minutes
   )
 
   const event = {
     summary: title,
     colorId: color,
     start: {
-      dateTime: dateRaw.toISOString(),
+      dateTime: date.toISOString(),
       timeZone: 'Europe/Helsinki',
     },
     end: {
@@ -85,4 +87,4 @@ function makeEventObject({ title, date, duration, color }) {
   return event
 }
 
-module.exports = { makeTitle, makeColor, makeEventObject }
+module.exports = { makeIcons, makeColor, makeGoogleEventObject }
