@@ -1,3 +1,8 @@
+const dayjs = require('dayjs')
+const utc = require('dayjs/plugin/utc')
+const timezone = require('dayjs/plugin/timezone') // dependent on utc plugin
+dayjs.extend(utc)
+dayjs.extend(timezone)
 const iconsData = require('../data/icons.json')
 const colors = require('../data/colors.json')
 
@@ -14,7 +19,12 @@ const colors = require('../data/colors.json')
  */
 
 function makeIcons(order, fees) {
-  const time = new Date(order.dateTime).toTimeString().slice(0, 5)
+  const time = dayjs(order.dateTime)
+    .utc('z')
+    .local()
+    .tz('Europe/Helsinki')
+    .utc()
+    .format('HH:mm')
   const sizeIcon = order.XL ? iconsData.size.XL : ''
   const distanceIcon = iconsData.misc[order.distance] || ''
   const feeIcons = fees
@@ -54,7 +64,9 @@ function makeColor(order) {
 
 // makeGoogleEventObject
 function makeGoogleEventObject({ title, dateTime, duration, color }) {
+  console.log(dateTime)
   const date = new Date(dateTime)
+  console.log(date.toLocaleDateString())
 
   const hours = Math.floor(Number(duration))
   let minutes = (Number(duration) % 1) * 60
