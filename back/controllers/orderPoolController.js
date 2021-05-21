@@ -85,8 +85,7 @@ orderPoolRouter.get('/', async (req, res, next) => {
   try {
     const { deleted: markedForDeletion } = req.query
     const { skip, limit } = howMuchToGet(req.query.pages)
-    console.log('deleted?', markedForDeletion)
-    console.log('query', { skip, limit })
+
     const ordersInPool = await getOrdersWithLimit({
       markedForDeletion,
       skip,
