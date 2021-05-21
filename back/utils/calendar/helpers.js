@@ -23,7 +23,6 @@ function makeIcons(order, fees) {
     .utc('z')
     .local()
     .tz('Europe/Helsinki')
-    .utc()
     .format('HH:mm')
   const sizeIcon = order.XL ? iconsData.size.XL : ''
   const distanceIcon = iconsData.misc[order.distance] || ''
