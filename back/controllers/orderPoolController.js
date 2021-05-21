@@ -1,5 +1,4 @@
 const orderPoolRouter = require('express').Router()
-const sanitizeHtml = require('sanitize-html')
 const ms = require('ms')
 const CronJob = require('cron').CronJob
 
@@ -50,22 +49,14 @@ function checkRequest(req, res, next) {
 }
 
 orderPoolRouter.post('/add', checkRequest, async (req, res, next) => {
-  const potentiallyDirtyText = req.body.order
-  const cleanText = sanitizeHtml(potentiallyDirtyText, {
-    allowedTags: [],
-    allowedAttributes: [],
-  })
   try {
     const receivedOrder = new RawOrder({
-      text: cleanText,
-      date: req.body.date,
-      confirmed: false,
-      markedForDeletion: false,
+      text: req.body.order,
     })
 
     await receivedOrder.save()
 
-    return res.status(201)
+    return res.status(204).end()
   } catch (err) {
     return next(err)
   }
@@ -73,31 +64,58 @@ orderPoolRouter.post('/add', checkRequest, async (req, res, next) => {
 
 orderPoolRouter.use(authenticateAccessToken)
 
+async function getOrdersWithLimit({ markedForDeletion, skip, limit }) {
+  return RawOrder.find({ markedForDeletion })
+    .skip(skip)
+    .limit(limit)
+    .sort({ date: -1 })
+    .exec()
+}
+
+function howMuchToGet(pages) {
+  // pages is something like: [ '1', '2', '3' ] (for many pages) || ['2'] (for only one page)
+  const pagesInNumberType = pages.map((p) => Number(p))
+  const skip = pagesInNumberType[0] == 1 ? 0 : (pagesInNumberType[0] - 1) * 20
+  const limit = pagesInNumberType.length * 20
+
+  return { skip, limit }
+}
+
 orderPoolRouter.get('/', async (req, res, next) => {
   try {
-    const ordersInPool = await RawOrder.find({ markedForDeletion: false })
-      .sort({ date: -1 })
-      .exec()
+    const { deleted: markedForDeletion } = req.query
+    const { skip, limit } = howMuchToGet(req.query.pages)
+    console.log('deleted?', markedForDeletion)
+    console.log('query', { skip, limit })
+    const ordersInPool = await getOrdersWithLimit({
+      markedForDeletion,
+      skip,
+      limit,
+    })
 
     // Documents are automatically transformed to JSON
-    return res.status(200).send(ordersInPool)
+    return res.status(200).send({ orders: ordersInPool, limitPerPage: 20 })
   } catch (err) {
     return next(err)
   }
 })
 
-orderPoolRouter.get('/deleted', async (req, res, next) => {
-  try {
-    const deletedOrdersInPool = await RawOrder.find({ markedForDeletion: true })
-      .sort({ date: -1 })
-      .exec()
+// orderPoolRouter.get('/deleted', async (req, res, next) => {
+//   console.log('deleted', howMuchToGet(req.query.pages))
+//   try {
+//     const { skip, limit } = howMuchToGet(req.query.pages)
+//     const deletedOrdersInPool = await getOrdersWithLimit({
+//       markedForDeletion: true,
+//       skip,
+//       limit,
+//     })
 
-    // Documents are automatically transformed to JSON
-    return res.status(200).send(deletedOrdersInPool)
-  } catch (err) {
-    return next(err)
-  }
-})
+//     // Documents are automatically transformed to JSON
+//     return res.status(200).send(deletedOrdersInPool)
+//   } catch (err) {
+//     return next(err)
+//   }
+// })
 
 orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
   const { id } = req.params

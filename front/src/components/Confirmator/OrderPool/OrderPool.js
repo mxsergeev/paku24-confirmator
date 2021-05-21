@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
+import IconButton from '@material-ui/core/IconButton'
+import RefreshIcon from '@material-ui/icons/Refresh'
 import DeleteIcon from '@material-ui/icons/Delete'
 import RestoreIcon from '@material-ui/icons/Restore'
 import orderPoolAPI from '../../../services/orderPoolAPI'
@@ -18,15 +20,19 @@ export default function OrderPool({ handleExport }) {
   const [currentTab, setCurrentTab] = useState(INBOX)
   const [searchOptions, setSearchOptions] = useState({
     inbox: {
+      pages: [1],
       searchText: '',
       showOnlyNotConfirmed: false,
     },
     trashcan: {
+      pages: [1],
       searchText: '',
       showOnlyNotConfirmed: false,
     },
   })
   const [searchResults, setSearchResults] = useState(orders)
+  const [forceUpdate, setForceUpdate] = useState({ hasToUpdate: false, trigger: 0 })
+  const [pages, setPages] = useState({ inbox: [1], trashcan: [1] })
 
   const numberOfOrders = orders.length
   const numberOfUnconfirmedOrders = orders.filter((order) => !order.confirmed).length
@@ -52,7 +58,14 @@ export default function OrderPool({ handleExport }) {
   useEffect(async () => {
     setIsloading(true)
     const ordersFromPool =
-      currentTab === INBOX ? await orderPoolAPI.get() : await orderPoolAPI.getDeleted()
+      currentTab === INBOX
+        ? await orderPoolAPI.get(pages[currentTab], {
+            forceUpdate: forceUpdate.hasToUpdate,
+          })
+        : await orderPoolAPI.get(pages[currentTab], {
+            deleted: true,
+            forceUpdate: forceUpdate.hasToUpdate,
+          })
 
     if (!ordersFromPool) return
 
@@ -65,7 +78,30 @@ export default function OrderPool({ handleExport }) {
     )
     setSearchResults(filteredOrders)
     setIsloading(false)
-  }, [currentTab])
+  }, [currentTab, forceUpdate.trigger])
+
+  async function handleLoadingMoreOrders() {
+    const newPage = [pages[currentTab].length + 1]
+    setPages({
+      ...pages,
+      [currentTab]: [...pages[currentTab], ...newPage],
+    })
+    const moreOrdersFromPool =
+      currentTab === INBOX
+        ? await orderPoolAPI.get(newPage)
+        : await orderPoolAPI.get(newPage, { deleted: true })
+
+    const concatenatedOrders = orders.concat(moreOrdersFromPool)
+
+    setOrders(concatenatedOrders)
+
+    const filteredOrders = makeSearch(
+      searchOptions[currentTab].searchText,
+      searchOptions[currentTab].showOnlyNotConfirmed,
+      concatenatedOrders
+    )
+    setSearchResults(filteredOrders)
+  }
 
   function handleSearchChange(e) {
     const prevOptsForCurTab = searchOptions[currentTab]
@@ -99,6 +135,20 @@ export default function OrderPool({ handleExport }) {
     setCurrentTab(e.target.dataset.tabname)
   }
 
+  function handleRefresh() {
+    setForceUpdate({
+      ...forceUpdate,
+      trigger: forceUpdate.trigger + 1,
+      hasToUpdate: true,
+    })
+    setTimeout(() =>
+      setForceUpdate({
+        ...forceUpdate,
+        hasToUpdate: false,
+      })
+    )
+  }
+
   async function handleOrderDeletion(id) {
     await orderPoolAPI.remove(id)
     setOrders(orders.filter((order) => order.id !== id))
@@ -130,6 +180,15 @@ export default function OrderPool({ handleExport }) {
             Trashcan
           </h3>
         </Button>
+        <IconButton
+          style={{ marginLeft: 'auto', marginRight: '12px' }}
+          onClick={handleRefresh}
+          className="p-0"
+          variant="text"
+          size="small"
+        >
+          <RefreshIcon />
+        </IconButton>
       </div>
       <div className="filters-tab">
         <span className="filters-tab-orders-count">
@@ -175,6 +234,7 @@ export default function OrderPool({ handleExport }) {
           handleExport={handleExport}
           labelForDeletion={currentTab === TRASHCAN ? <RestoreIcon /> : <DeleteIcon />}
           handleDeletion={currentTab === TRASHCAN ? handleRetrieval : handleOrderDeletion}
+          handleLoadingMoreOrders={handleLoadingMoreOrders}
         />
       </LoadingUntillDone>
     </>
