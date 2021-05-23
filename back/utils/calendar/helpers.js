@@ -1,10 +1,11 @@
 const dayjs = require('dayjs')
 const utc = require('dayjs/plugin/utc')
 const timezone = require('dayjs/plugin/timezone') // dependent on utc plugin
-dayjs.extend(utc)
-dayjs.extend(timezone)
 const iconsData = require('../data/icons.json')
 const colors = require('../data/colors.json')
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 /**
  * Creates the title with icons, starting time and duration for an event
@@ -19,8 +20,9 @@ const colors = require('../data/colors.json')
  */
 
 function makeIcons(order, fees) {
-  const time = dayjs(order.dateTime)
-    .utc('z')
+  // Making so that the time is in the right timezone.
+  // Potentially easier fix is to send the time string directly from client.
+  const time = dayjs(new Date(order.dateTime).toUTCString())
     .local()
     .tz('Europe/Helsinki')
     .format('HH:mm')
@@ -61,11 +63,8 @@ function makeColor(order) {
  * @param {string} eventInfo.color
  */
 
-// makeGoogleEventObject
 function makeGoogleEventObject({ title, dateTime, duration, color }) {
-  console.log(dateTime)
   const date = new Date(dateTime)
-  console.log(date.toLocaleDateString())
 
   const hours = Math.floor(Number(duration))
   let minutes = (Number(duration) % 1) * 60
