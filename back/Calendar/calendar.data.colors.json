@@ -2,13 +2,13 @@
   "Pakettiauto ja kuljettaja": "1",
   "Pakettiauto ja muuttomies": "7",
   "Pakettiauto ja kaksi muuttomiestä": "9",
-  "Noutopalvelu yhdellä kantajalla": "7",
-  "Noutopalvelu kahdella kantajalla": "9",
+  "Nouto/tyhjennyspalvelu yhdellä kantajalla": "7",
+  "Nouto/tyhjennyspalvelu kahdella kantajalla": "9",
   "altColorPalette": {
     "Pakettiauto ja kuljettaja": "4",
     "Pakettiauto ja muuttomies": "6",
     "Pakettiauto ja kaksi muuttomiestä": "11",
-    "Noutopalvelu yhdellä kantajalla": "6",
-    "Noutopalvelu kahdella kantajalla": "11"
+    "Nouto/tyhjennyspalvelu yhdellä kantajalla": "6",
+    "Nouto/tyhjennyspalvelu kahdella kantajalla": "11"
   }
 }

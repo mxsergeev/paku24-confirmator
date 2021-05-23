@@ -12,8 +12,8 @@
     "Pakettiauto ja kuljettaja": "🚚",
     "Pakettiauto ja muuttomies": "🚛",
     "Pakettiauto ja kaksi muuttomiestä": "🚛🚛",
-    "Noutopalvelu yhdellä kantajalla": "🛒",
-    "Noutopalvelu kahdella kantajalla": "🛒🛒"
+    "Nouto/tyhjennyspalvelu yhdellä kantajalla": "🛒",
+    "Nouto/tyhjennyspalvelu kahdella kantajalla": "🛒🛒"
   },
   "fees": {
     "Viikonloppulisä": "🎉",
