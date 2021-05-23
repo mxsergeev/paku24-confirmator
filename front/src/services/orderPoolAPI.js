@@ -17,41 +17,39 @@ function makeQueryArray(queryName, items) {
 }
 
 function storeOrdersInSessionStorage({ query, orders }) {
-  return new Promise((resolve) => {
-    resolve(
-      sessionStorage.setItem(
-        `order-pool/${query}`,
-        JSON.stringify({
-          validUntil: Date.now() + 5 * 60 * 1000,
-          orders,
-        })
-      )
+  return Promise.resolve(() =>
+    sessionStorage.setItem(
+      `order-pool/${query}`,
+      JSON.stringify({
+        validUntil: Date.now() + 5 * 60 * 1000,
+        orders,
+      })
     )
-  })
+  )
 }
 
 function getOrdersFromSessionStorage(query) {
-  return new Promise((resolve) => {
-    const { orders } = JSON.parse(sessionStorage.getItem(`order-pool/${query}`))
-    resolve(orders)
-  })
+  return Promise.resolve().then(() =>
+    JSON.parse(sessionStorage.getItem(`order-pool/${query}`))
+  )
 }
 
 function isStorageUpToDate(query) {
-  return new Promise((resolve) => {
+  return Promise.resolve(() => {
     try {
       const { validUntil } = JSON.parse(sessionStorage.getItem(`order-pool/${query}`))
-      resolve(validUntil > Date.now())
+      return validUntil > Date.now()
     } catch {
-      resolve(false)
+      return false
     }
   })
 }
 
 /**
  * @param {Array} [pages] - Default: [ 1 ]
- * @param {Object} options - Default: { deleted: false }
+ * @param {Object} options - Default: { deleted: false, forceUpdate: false }
  * @param {Boolean} [options.deleted]
+ * @param {Boolean} [options.forceUpdate]
  */
 async function get(pages = [1], options = { deleted: false, forceUpdate: false }) {
   const { deleted, forceUpdate } = options
@@ -62,7 +60,7 @@ async function get(pages = [1], options = { deleted: false, forceUpdate: false }
   )}`
 
   if (!forceUpdate && (await isStorageUpToDate(query))) {
-    return getOrdersFromSessionStorage(query)
+    return getOrdersFromSessionStorage(query).then((data) => data.orders)
   }
 
   // example: /api/order-pool/?deleted=false&pages[]=1&pages[]=2
