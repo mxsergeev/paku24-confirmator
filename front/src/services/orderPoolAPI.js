@@ -17,13 +17,15 @@ function makeQueryArray(queryName, items) {
 }
 
 function storeOrdersInSessionStorage({ query, orders }) {
-  return Promise.resolve(() =>
-    sessionStorage.setItem(
-      `order-pool/${query}`,
-      JSON.stringify({
-        validUntil: Date.now() + 5 * 60 * 1000,
-        orders,
-      })
+  return new Promise((resolve) =>
+    resolve(
+      sessionStorage.setItem(
+        `order-pool/${query}`,
+        JSON.stringify({
+          validUntil: Date.now() + 5 * 60 * 1000,
+          orders,
+        })
+      )
     )
   )
 }
@@ -35,14 +37,16 @@ function getOrdersFromSessionStorage(query) {
 }
 
 function isStorageUpToDate(query) {
-  return Promise.resolve(() => {
-    try {
-      const { validUntil } = JSON.parse(sessionStorage.getItem(`order-pool/${query}`))
-      return validUntil > Date.now()
-    } catch {
-      return false
-    }
-  })
+  return Promise.resolve(
+    (() => {
+      try {
+        const { validUntil } = JSON.parse(sessionStorage.getItem(`order-pool/${query}`))
+        return validUntil > Date.now()
+      } catch {
+        return false
+      }
+    })()
+  )
 }
 
 /**
@@ -66,9 +70,9 @@ async function get(pages = [1], options = { deleted: false, forceUpdate: false }
   // example: /api/order-pool/?deleted=false&pages[]=1&pages[]=2
   const url = `${baseUrl}/?${query}`
 
-  return interceptor.axiosInstance.get(url).then((res) => {
+  return interceptor.axiosInstance.get(url).then(async (res) => {
     const { orders } = res?.data
-    storeOrdersInSessionStorage({ query, orders })
+    await storeOrdersInSessionStorage({ query, orders })
 
     return orders
   })
