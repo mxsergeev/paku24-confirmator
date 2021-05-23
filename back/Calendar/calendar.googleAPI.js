@@ -2,15 +2,13 @@
 const fs = require('fs')
 const readline = require('readline')
 const { google } = require('googleapis')
-const logger = require('../logger')
-const { createEvent } = require('./helpers')
-
+const logger = require('../utils/logger')
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar']
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
-const TOKEN_PATH = 'token.json'
+const TOKEN_PATH = './Calendar/calendar.google.token.json'
 
 /**
  * Adds event to the Google calendar. Before that checks OAuth credentials. Mostly boilerplate from Google Docs example.
@@ -84,13 +82,11 @@ function deleteEventFromCalendar(eventId) {
 }
 
 // Load client secrets from a local file.
-// This function is exported thus credentials have to be allocated keeping that in mind.
-// This function gets called from file ./controllers/calendarController
 function contactAPI(callback) {
-  fs.readFile('./utils/calendar/credentials.json', (err, content) => {
+  fs.readFile('./Calendar/calendar.google.credentials.json', (err, content) => {
     if (err) return console.log('Error loading client secret file:', err)
     // Authorize a client with credentials, then call the Google Calendar API.
-    authorize(JSON.parse(content), callback)
+    return authorize(JSON.parse(content), callback)
   })
 }
 

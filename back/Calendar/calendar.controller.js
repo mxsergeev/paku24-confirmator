@@ -1,20 +1,22 @@
 const calendarRouter = require('express').Router()
 
-const {
-  authenticateAccessToken,
-} = require('../utils/middleware/authentication')
+const authMW = require('../Authentication/auth.middleware')
 
 const {
   addEventToCalendar,
   deleteEventFromCalendar,
-} = require('../utils/calendar/calendarAPI')
+} = require('./calendar.googleAPI')
 
-const { createEvent } = require('../utils/middleware/calendar')
+const { composeGoogleEventObject } = require('./calendar.helpers')
 
-calendarRouter.use(authenticateAccessToken)
+calendarRouter.use(authMW.authenticateAccessToken)
 
-calendarRouter.post('/', createEvent, (req, res, next) => {
-  const { event } = req
+calendarRouter.post('/', (req, res, next) => {
+  const event = composeGoogleEventObject(
+    req.body.entry,
+    req.body.order,
+    req.body.fees
+  )
 
   addEventToCalendar(event)
     .then((ev) =>

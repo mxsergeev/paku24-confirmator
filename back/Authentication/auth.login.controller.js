@@ -1,6 +1,4 @@
-const ms = require('ms')
 const loginRouter = require('express').Router()
-const { AT_EXPIRES_IN } = require('../../utils/config')
 
 const {
   filterRequestsWithExceededAttemptLimit,
@@ -11,7 +9,7 @@ const {
   generateRefreshToken,
   setTokenCookies,
   authenticateAccessToken,
-} = require('../../utils/middleware/authentication')
+} = require('./auth.middleware')
 
 function sendUserInfo(req, res) {
   const { user } = req

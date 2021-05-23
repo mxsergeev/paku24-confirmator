@@ -1,11 +1,9 @@
 const emailRouter = require('express').Router()
-const sendMail = require('../utils/email/awsSES')
-const { makeTerms } = require('../utils/email/helpers')
-const {
-  authenticateAccessToken,
-} = require('../utils/middleware/authentication')
+const sendMail = require('./email.awsAPI')
+const { makeTerms } = require('./email.helpers')
+const authMW = require('../Authentication/auth.middleware')
 
-emailRouter.use(authenticateAccessToken)
+emailRouter.use(authMW.authenticateAccessToken)
 
 emailRouter.post('/send-confirmation', (req, res, next) => {
   const { orderDetails, order } = req.body

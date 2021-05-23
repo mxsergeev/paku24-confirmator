@@ -1,4 +1,4 @@
-const RefreshToken = require('../../models/refreshToken')
+const RefreshToken = require('../models/refreshToken')
 
 /**
  * Deletes refresh token and clears cookies.

@@ -9,11 +9,9 @@ const {
   // DELETE_ORDERS_AFTER,
   // DELETE_ORDERS_MARKED_FOR_DELETION_AFTER,
 } = require('../utils/config')
-const newErrorWithCustomName = require('../utils/helpers/newErrorWithCustomName')
+const newErrorWithCustomName = require('../utils/newErrorWithCustomName')
 // const logger = require('../utils/logger')
-const {
-  authenticateAccessToken,
-} = require('../utils/middleware/authentication')
+const authMW = require('../Authentication/auth.middleware')
 
 // const job = new CronJob(
 //   '*/10 * * * * *',
@@ -62,7 +60,7 @@ orderPoolRouter.post('/add', checkRequest, async (req, res, next) => {
   }
 })
 
-orderPoolRouter.use(authenticateAccessToken)
+orderPoolRouter.use(authMW.authenticateAccessToken)
 
 async function getOrdersWithLimit({ markedForDeletion, skip, limit }) {
   return RawOrder.find({ markedForDeletion })
@@ -82,6 +80,7 @@ function howMuchToGet(pages) {
 }
 
 orderPoolRouter.get('/', async (req, res, next) => {
+  console.log('working?')
   try {
     const { deleted: markedForDeletion } = req.query
     const { skip, limit } = howMuchToGet(req.query.pages)

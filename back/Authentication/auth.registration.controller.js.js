@@ -1,12 +1,12 @@
 const registrationRouter = require('express').Router()
 const ms = require('ms')
 
-const User = require('../../models/user')
-const sendMail = require('../../utils/email/awsSES')
-const { DOMAIN_NAME } = require('../../utils/config')
-const requestAccessMessage = require('../../utils/data/requestAccessMessage.json')
-const accessGrantedMessage = require('../../utils/data/accessGrantedMessage.json')
-const { ACCESS_REQUESTED_EXPIRES_IN_DAYS } = require('../../utils/config')
+const User = require('../models/user')
+const sendMail = require('../Email/email.awsAPI')
+const { DOMAIN_NAME } = require('../utils/config')
+const requestAccessMessage = require('./auth.registration.data.requestAccessMessage.json')
+const accessGrantedMessage = require('./auth.registration.data.accessGrantedMessage.json')
+const { ACCESS_REQUESTED_EXPIRES_IN_DAYS } = require('../utils/config')
 
 const {
   checkIfUserExists,
@@ -14,7 +14,7 @@ const {
   checkUser,
   generatePasswordAndUsername,
   updateUser,
-} = require('../../utils/middleware/registration')
+} = require('./auth.registration.middleware')
 
 async function deleteUsersWithExpiredAccessRequest(next) {
   try {

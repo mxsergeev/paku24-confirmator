@@ -1,8 +1,8 @@
 const dayjs = require('dayjs')
 const utc = require('dayjs/plugin/utc')
 const timezone = require('dayjs/plugin/timezone') // dependent on utc plugin
-const iconsData = require('../data/icons.json')
-const colors = require('../data/colors.json')
+const iconsData = require('./calendar.data.icons.json')
+const colors = require('./calendar.data.colors.json')
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -97,4 +97,20 @@ function makeGoogleEventObject({ title, dateTime, duration, color }) {
   return event
 }
 
-module.exports = { makeIcons, makeColor, makeGoogleEventObject }
+function composeGoogleEventObject(entry, order, fees) {
+  const icons = makeIcons(order, fees)
+  const color = makeColor(order)
+
+  const eventInfo = {
+    title: icons + entry,
+    dateTime: order.dateTime,
+    duration: order.duration,
+    color,
+  }
+
+  return makeGoogleEventObject(eventInfo)
+}
+
+module.exports = {
+  composeGoogleEventObject,
+}

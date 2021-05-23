@@ -4,10 +4,10 @@ const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const ms = require('ms')
-const User = require('../../models/user')
-const RefreshToken = require('../../models/refreshToken')
-const newErrorWithCustomName = require('../helpers/newErrorWithCustomName')
-const logout = require('../helpers/logout')
+const User = require('../models/user')
+const RefreshToken = require('../models/refreshToken')
+const newErrorWithCustomName = require('../utils/newErrorWithCustomName')
+const logout = require('./auth.helpers')
 
 const randomBytes = util.promisify(crypto.randomBytes)
 
@@ -16,7 +16,7 @@ const {
   AT_EXPIRES_IN,
   RT_EXPIRES_IN,
   RT_REFRESH_AFTER_SEC,
-} = require('../config')
+} = require('../utils/config')
 
 /**
  * ip, {

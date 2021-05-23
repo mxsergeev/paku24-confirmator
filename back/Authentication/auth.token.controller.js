@@ -6,7 +6,7 @@ const {
   generateAccessToken,
   generateRefreshToken,
   setTokenCookies,
-} = require('../../utils/middleware/authentication')
+} = require('./auth.middleware')
 
 tokenRouter.post(
   '/',

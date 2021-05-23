@@ -1,5 +1,5 @@
 const logoutRouter = require('express').Router()
-const logout = require('../../utils/helpers/logout')
+const logout = require('./auth.helpers')
 
 logoutRouter.post('/', async (req, res) => {
   await logout(req, res)

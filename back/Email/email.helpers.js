@@ -1,4 +1,4 @@
-const termsData = require('../data/terms.json')
+const termsData = require('./email.data.terms.json')
 
 /**
  * @param {object} order

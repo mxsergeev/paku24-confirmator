@@ -1,6 +1,6 @@
 const AWS = require('aws-sdk')
-const logger = require('../logger')
-const { SOURCE_EMAIL } = require('../config')
+const logger = require('../utils/logger')
+const { SOURCE_EMAIL } = require('../utils/config')
 
 AWS.config.update({ region: 'eu-north-1' })
 

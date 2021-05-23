@@ -1,13 +1,11 @@
 const smsRouter = require('express').Router()
 const axios = require('axios')
 const { SEMYSMS_API_TOKEN } = require('../utils/config')
-const termsData = require('../utils/data/terms.json')
+const termsData = require('../Email/email.data.terms.json')
 const logger = require('../utils/logger')
-const {
-  authenticateAccessToken,
-} = require('../utils/middleware/authentication')
+const authMW = require('../Authentication/auth.middleware')
 
-smsRouter.use(authenticateAccessToken)
+smsRouter.use(authMW.authenticateAccessToken)
 
 const deviceId = 268248
 
