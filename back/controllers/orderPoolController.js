@@ -1,16 +1,16 @@
 const orderPoolRouter = require('express').Router()
-const ms = require('ms')
-const CronJob = require('cron').CronJob
+// const ms = require('ms')
+// const CronJob = require('cron').CronJob
 
 const RawOrder = require('../models/rawOrder.js')
 const {
   ORDER_POOL_KEY,
-  ACCEPTED_HOSTNAME,
-  DELETE_ORDERS_AFTER,
-  DELETE_ORDERS_MARKED_FOR_DELETION_AFTER,
+  // ACCEPTED_HOSTNAME,
+  // DELETE_ORDERS_AFTER,
+  // DELETE_ORDERS_MARKED_FOR_DELETION_AFTER,
 } = require('../utils/config')
 const newErrorWithCustomName = require('../utils/helpers/newErrorWithCustomName')
-const logger = require('../utils/logger')
+// const logger = require('../utils/logger')
 const {
   authenticateAccessToken,
 } = require('../utils/middleware/authentication')
@@ -75,7 +75,7 @@ async function getOrdersWithLimit({ markedForDeletion, skip, limit }) {
 function howMuchToGet(pages) {
   // pages is something like: [ '1', '2', '3' ] (for many pages) || ['2'] (for only one page)
   const pagesInNumberType = pages.map((p) => Number(p))
-  const skip = pagesInNumberType[0] == 1 ? 0 : (pagesInNumberType[0] - 1) * 20
+  const skip = pagesInNumberType[0] === 1 ? 0 : (pagesInNumberType[0] - 1) * 20
   const limit = pagesInNumberType.length * 20
 
   return { skip, limit }

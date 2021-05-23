@@ -97,7 +97,7 @@ function controlRequestFlow(req, res, next) {
   cr.expires = expireDate
   cr.numberOfAttempts = cr.attempts.length
 
-  const length = cr.attempts.length
+  const { length } = cr.attempts
   const firstAttempt_sec = cr.attempts[0] / 1000
   const lastAttempt_sec = cr.attempts[length - 1] / 1000
 
@@ -106,7 +106,7 @@ function controlRequestFlow(req, res, next) {
     : (cr.spamSpeed = 0)
 
   if (length >= 3) {
-    let throttleTime = 10000
+    const throttleTime = 10000
     cr.throttled = true
 
     const timeoutID = setTimeout(() => {

@@ -13,7 +13,7 @@ const { createEvent } = require('../utils/middleware/calendar')
 
 calendarRouter.use(authenticateAccessToken)
 
-calendarRouter.post('/', createEvent, (req, res) => {
+calendarRouter.post('/', createEvent, (req, res, next) => {
   const { event } = req
 
   addEventToCalendar(event)
@@ -27,7 +27,7 @@ calendarRouter.post('/', createEvent, (req, res) => {
     .catch((err) => next(err))
 })
 
-calendarRouter.delete('/:eventId', (req, res) => {
+calendarRouter.delete('/:eventId', (req, res, next) => {
   const { eventId } = req.params
   deleteEventFromCalendar(eventId)
     .then(() => {
