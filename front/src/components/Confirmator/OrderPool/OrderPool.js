@@ -57,27 +57,30 @@ export default function OrderPool({ handleExport }) {
 
   useEffect(async () => {
     setIsloading(true)
-    const ordersFromPool =
-      currentTab === INBOX
-        ? await orderPoolAPI.get(pages[currentTab], {
-            forceUpdate: forceUpdate.hasToUpdate,
-          })
-        : await orderPoolAPI.get(pages[currentTab], {
-            deleted: true,
-            forceUpdate: forceUpdate.hasToUpdate,
-          })
+    let ordersFromPool
+    try {
+      ordersFromPool =
+        currentTab === INBOX
+          ? await orderPoolAPI.get(pages[currentTab], {
+              forceUpdate: forceUpdate.hasToUpdate,
+            })
+          : await orderPoolAPI.get(pages[currentTab], {
+              deleted: true,
+              forceUpdate: forceUpdate.hasToUpdate,
+            })
 
-    if (!ordersFromPool) return
+      setOrders(ordersFromPool)
 
-    setOrders(ordersFromPool)
-
-    const filteredOrders = makeSearch(
-      searchOptions[currentTab].searchText,
-      searchOptions[currentTab].showOnlyNotConfirmed,
-      ordersFromPool
-    )
-    setSearchResults(filteredOrders)
-    setIsloading(false)
+      const filteredOrders = makeSearch(
+        searchOptions[currentTab].searchText,
+        searchOptions[currentTab].showOnlyNotConfirmed,
+        ordersFromPool
+      )
+      setSearchResults(filteredOrders)
+      return setIsloading(false)
+    } catch (err) {
+      return err
+    }
   }, [currentTab, forceUpdate.trigger])
 
   async function handleLoadingMoreOrders() {

@@ -3,6 +3,7 @@ import TextField from '@material-ui/core/TextField'
 import NativeSelect from '@material-ui/core/NativeSelect'
 import TextareaAutosize from '@material-ui/core/TextareaAutosize'
 import DayjsUtils from '@date-io/dayjs'
+import locale_en from 'dayjs/locale/en'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import services from '../../data/services.json'
 import paymentTypes from '../../data/paymentTypes.json'
@@ -22,10 +23,12 @@ export default function Editor({ order, handleChange }) {
     handleChange({ target: { name: 'dateTime', value: selectedDate } })
   }, [selectedDate])
 
+  locale_en.weekStart = 1
+
   return (
     <div className="basic-flex" style={{ marginTop: '5px' }}>
       <div className="flex-100-space-between flex-item" style={marginLeftRight}>
-        <MuiPickersUtilsProvider utils={DayjsUtils}>
+        <MuiPickersUtilsProvider utils={DayjsUtils} locale={locale_en}>
           <DateTimePicker
             ampm={false}
             format="DD-MM-YYYY HH:mm"

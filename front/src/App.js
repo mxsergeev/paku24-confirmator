@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Route, Switch, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
+import { useSnackbar } from 'notistack'
 import Confirmator from './components/Confirmator/Confirmator'
 import Header from './components/Header'
 import Login from './components/Login'
@@ -40,7 +41,7 @@ function RedirectToLoginPageIfNotAuthenticated({ user, setUser, children }) {
       </LoadingUntillDone>
 
       <Route path="/login">
-        {user === null ? <Login setUser={setUser} /> : <Redirect to="/" />}
+        {user === null ? <Login setUser={setUser} /> : <Redirect to="/confirmator" />}
       </Route>
     </>
   )
@@ -49,14 +50,26 @@ function RedirectToLoginPageIfNotAuthenticated({ user, setUser, children }) {
 function App() {
   const [user, setUser] = useState('Loading')
 
-  // Initializing Axios interceptor with ability to logout user
-  useEffect(() => {
-    interceptor.setupInterceptor({ logout: () => setUser(null) })
-  }, [])
+  const { enqueueSnackbar } = useSnackbar()
+  const history = useHistory()
 
   useEffect(async () => {
+    // Initializing Axios interceptor with ability to logout user
+    interceptor.setupInterceptor({
+      logout: () => setUser(null),
+      notificate: () =>
+        enqueueSnackbar(
+          'You were logged out for security reasons. Your work has been saved. Login to continue.',
+          {
+            variant: 'warning',
+            autoHideDuration: 10000,
+          }
+        ),
+    })
+
     try {
       const { user: userFromToken } = await loginServiсe.loginWithAccessToken()
+      history.push('/confirmator')
       return setUser(userFromToken)
     } catch (err) {
       return setUser(null)
@@ -73,8 +86,10 @@ function App() {
           </Route>
           <Route path="/">
             <RedirectToLoginPageIfNotAuthenticated user={user} setUser={setUser}>
-              <Confirmator />
-              <Footer user={user} logoutUser={() => setUser(null)} />
+              <Route path="/confirmator">
+                <Confirmator />
+                <Footer user={user} logoutUser={() => setUser(null)} />
+              </Route>
             </RedirectToLoginPageIfNotAuthenticated>
           </Route>
         </Switch>

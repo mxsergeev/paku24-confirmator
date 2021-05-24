@@ -54,7 +54,7 @@ export default function Login({ setUser }) {
       })
       setNotification('Done')
 
-      history.push(referrer || '/')
+      history.push(referrer || '/confirmator')
       setUser(user)
     } catch (err) {
       setInputError(true)

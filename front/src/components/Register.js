@@ -113,7 +113,7 @@ export default function Register() {
             value={purpose}
             name="purpose"
             onChange={({ target }) => setPurpose(target.value)}
-            label="Why you want to use this application?"
+            label="Why do you want to use this application?"
             variant="filled"
             size="small"
           />

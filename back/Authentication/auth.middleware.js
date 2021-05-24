@@ -227,13 +227,19 @@ function authenticateAccessToken(req, res, next) {
   const { at: accessToken } = req.cookies
 
   if (!accessToken || accessToken === 'undefined') {
-    const err = newErrorWithCustomName('TokenMissingError')
+    const err = newErrorWithCustomName('AccessTokenMissingError')
     return next(err)
   }
 
   return jwt.verify(accessToken, ACCESS_TOKEN_SECRET, (err, user) => {
-    if (err) return next(err)
-
+    if (err) {
+      // Proceeding to authenticate refresh token only if client HAS access token (even if it's expired).
+      // In all other cases throwing an error.
+      if (err.name === 'TokenExpiredError' && req.baseUrl === '/api/token') {
+        return next()
+      }
+      return next(err)
+    }
     // Skip generation of new access token if the one that client has is valid
     if (req.path === '/is-new') {
       req.accessToken = accessToken
@@ -257,7 +263,7 @@ async function authenticateRefreshToken(req, res, next) {
   const { rt: refreshTokenFromCookie } = req.cookies
 
   if (!refreshTokenFromCookie || refreshTokenFromCookie === 'undefined') {
-    const err = newErrorWithCustomName('TokenMissingError')
+    const err = newErrorWithCustomName('RefreshTokenMissingError')
     return next(err)
   }
 

@@ -19,13 +19,14 @@ calendarRouter.post('/', (req, res, next) => {
   )
 
   addEventToCalendar(event)
-    .then((ev) =>
-      res.status(200).send({
+    .then((ev) => {
+      console.log(ev.data)
+      return res.status(200).send({
         message: 'Event added to calendar.',
-        createdEvent: ev.data.summary,
+        createdEvent: ev.data.summary?.split('\n')[0],
         eventId: ev.data.id,
       })
-    )
+    })
     .catch((err) => next(err))
 })
 

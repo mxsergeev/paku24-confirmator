@@ -22,9 +22,13 @@ function errorHandler(err, req, res, next) {
       status: 400,
       message: err.message,
     },
-    TokenMissingError: {
+    AccessTokenMissingError: {
       status: 403,
-      message: 'token missing',
+      message: 'access token missing',
+    },
+    RefreshTokenMissingError: {
+      status: 403,
+      message: 'refresh token missing',
     },
     JsonWebTokenError: {
       status: 403,

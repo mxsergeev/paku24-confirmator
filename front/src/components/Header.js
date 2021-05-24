@@ -7,7 +7,7 @@ export default function Header({ isLogged }) {
   return (
     <div className="logo">
       <div>
-        <Link to={isLogged ? '/' : '/login'}>
+        <Link to={isLogged ? '/confirmator' : '/login'}>
           <img src={logo} alt="Logo" width="125px" />
         </Link>
         <span className="text">CONFIRMATOR</span>

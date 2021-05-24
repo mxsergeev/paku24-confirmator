@@ -80,7 +80,6 @@ function howMuchToGet(pages) {
 }
 
 orderPoolRouter.get('/', async (req, res, next) => {
-  console.log('working?')
   try {
     const { deleted: markedForDeletion } = req.query
     const { skip, limit } = howMuchToGet(req.query.pages)
@@ -97,23 +96,6 @@ orderPoolRouter.get('/', async (req, res, next) => {
     return next(err)
   }
 })
-
-// orderPoolRouter.get('/deleted', async (req, res, next) => {
-//   console.log('deleted', howMuchToGet(req.query.pages))
-//   try {
-//     const { skip, limit } = howMuchToGet(req.query.pages)
-//     const deletedOrdersInPool = await getOrdersWithLimit({
-//       markedForDeletion: true,
-//       skip,
-//       limit,
-//     })
-
-//     // Documents are automatically transformed to JSON
-//     return res.status(200).send(deletedOrdersInPool)
-//   } catch (err) {
-//     return next(err)
-//   }
-// })
 
 orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
   const { id } = req.params

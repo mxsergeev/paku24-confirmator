@@ -10,6 +10,9 @@ const {
 
 tokenRouter.post(
   '/',
+  // Proceeding to authenticate refresh token only if client HAS access token (even if it's expired).
+  // In all other cases throwing an error.
+  authenticateAccessToken,
   authenticateRefreshToken,
   generateAccessToken,
   generateRefreshToken,

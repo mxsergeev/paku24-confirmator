@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react'
-import Toast from 'light-toast'
+import React, { useState, useRef, useEffect } from 'react'
+import { useSnackbar } from 'notistack'
+import { Route } from 'react-router-dom'
 
 import './Confirmator.css'
 import Editor from './Editor'
@@ -23,8 +24,23 @@ export default function Confirmator() {
 
   const [order, setOrder] = useState(Order.default())
 
+  useEffect(() => {
+    const savedOrder = localStorage.getItem('confirmator_order')
+    if (savedOrder) {
+      setOrder(new Order(JSON.parse(savedOrder)))
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('confirmator_order', JSON.stringify(order))
+  }, [order])
+
+  const { enqueueSnackbar } = useSnackbar()
+
   function transform(o) {
-    return Order.transformToText(o, (msg) => Toast.info(msg, 500))
+    return Order.transformToText(o, (msg) =>
+      enqueueSnackbar(msg, { autoHideDuration: 750 })
+    )
   }
 
   const rawOrderOrderContainerRef = useRef(null)
@@ -61,7 +77,7 @@ export default function Confirmator() {
           text: transform(orderFromText),
         })
       })
-      .catch((err) => Toast.fail(err.message, 400))
+      .catch((err) => enqueueSnackbar(err.message, { variant: 'error' }))
   }
 
   function handleOrderTransformFromEditor() {
@@ -108,8 +124,11 @@ export default function Confirmator() {
         orderId={rawOrder.id}
         transformedOrder={transformedOrder}
         handleResetClick={reset}
+        orderPoolUrl="/confirmator/order-pool"
       />
-      <OrderPoolDialog handleExport={handleOrderPoolExport} />
+      <Route path="/confirmator/order-pool">
+        <OrderPoolDialog handleExport={handleOrderPoolExport} />
+      </Route>
     </div>
   )
 }

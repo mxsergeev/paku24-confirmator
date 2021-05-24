@@ -1,9 +1,11 @@
 import React from 'react'
 import Button from '@material-ui/core/Button'
 import FileCopyIcon from '@material-ui/icons/FileCopy'
-import Toast from 'light-toast'
+import { useSnackbar } from 'notistack'
 
 export default function CopyButton({ elementRef, disabled }) {
+  const { enqueueSnackbar } = useSnackbar()
+
   function copyToClipboard() {
     const tempTextarea = document.createElement('textarea')
     document.body.appendChild(tempTextarea)
@@ -16,7 +18,7 @@ export default function CopyButton({ elementRef, disabled }) {
 
   function handleCopying() {
     copyToClipboard()
-    Toast.info('Copied!', 500)
+    enqueueSnackbar('Copied!', { autoHideDuration: 750 })
   }
 
   return (
