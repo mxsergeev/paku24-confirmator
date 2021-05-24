@@ -2,16 +2,16 @@ const orderPoolRouter = require('express').Router()
 // const ms = require('ms')
 // const CronJob = require('cron').CronJob
 
-const RawOrder = require('../models/rawOrder.js')
+const RawOrder = require('../../models/rawOrder.js')
 const {
   ORDER_POOL_KEY,
   // ACCEPTED_HOSTNAME,
   // DELETE_ORDERS_AFTER,
   // DELETE_ORDERS_MARKED_FOR_DELETION_AFTER,
-} = require('../utils/config')
-const newErrorWithCustomName = require('../utils/newErrorWithCustomName')
+} = require('../../utils/config')
+const newErrorWithCustomName = require('../../utils/newErrorWithCustomName')
 // const logger = require('../utils/logger')
-const authMW = require('../Authentication/auth.middleware')
+const authMW = require('../authentication/auth.middleware')
 
 // const job = new CronJob(
 //   '*/10 * * * * *',

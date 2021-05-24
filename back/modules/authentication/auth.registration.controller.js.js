@@ -1,12 +1,12 @@
 const registrationRouter = require('express').Router()
 const ms = require('ms')
 
-const User = require('../models/user')
-const sendMail = require('../Email/email.awsAPI')
-const { DOMAIN_NAME } = require('../utils/config')
+const User = require('../../models/user')
+const sendMail = require('../email/email.awsAPI')
+const { DOMAIN_NAME } = require('../../utils/config')
 const requestAccessMessage = require('./auth.registration.data.requestAccessMessage.json')
 const accessGrantedMessage = require('./auth.registration.data.accessGrantedMessage.json')
-const { ACCESS_REQUESTED_EXPIRES_IN_DAYS } = require('../utils/config')
+const { ACCESS_REQUESTED_EXPIRES_IN_DAYS } = require('../../utils/config')
 
 const {
   checkIfUserExists,

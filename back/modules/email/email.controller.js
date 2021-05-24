@@ -1,7 +1,7 @@
 const emailRouter = require('express').Router()
 const sendMail = require('./email.awsAPI')
 const { makeTerms } = require('./email.helpers')
-const authMW = require('../Authentication/auth.middleware')
+const authMW = require('../authentication/auth.middleware')
 
 emailRouter.use(authMW.authenticateAccessToken)
 

@@ -1,6 +1,6 @@
 const calendarRouter = require('express').Router()
 
-const authMW = require('../Authentication/auth.middleware')
+const authMW = require('../authentication/auth.middleware')
 
 const {
   addEventToCalendar,

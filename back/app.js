@@ -11,14 +11,14 @@ const logger = require('./utils/logger')
 const errorHandler = require('./utils/errorHandler.middleware')
 const filterReqsBasedOnUrl = require('./utils/filterReqsBasedOnUrl.middleware')
 
-const calendarRouter = require('./Calendar/calendar.controller')
-const emailRouter = require('./Email/email.controller')
-const orderPoolRouter = require('./OrderPool/orderPool.controller')
-const smsRouter = require('./SMS/sms.controller')
-const loginRouter = require('./Authentication/auth.login.controller')
-const logoutRouter = require('./Authentication/auth.logout.controller')
-const registrationRouter = require('./Authentication/auth.registration.controller.js')
-const tokenRouter = require('./Authentication/auth.token.controller')
+const calendarRouter = require('./modules/calendar/calendar.controller')
+const emailRouter = require('./modules/email/email.controller')
+const orderPoolRouter = require('./modules/orderPool/orderPool.controller')
+const smsRouter = require('./modules/sms/sms.controller')
+const loginRouter = require('./modules/authentication/auth.login.controller')
+const logoutRouter = require('./modules/authentication/auth.logout.controller')
+const registrationRouter = require('./modules/authentication/auth.registration.controller.js')
+const tokenRouter = require('./modules/authentication/auth.token.controller')
 
 mongoose
   .connect(config.MONGODB_URI, {

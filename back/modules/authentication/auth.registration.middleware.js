@@ -7,8 +7,8 @@ const {
   animals,
 } = require('unique-names-generator')
 
-const User = require('../models/user')
-const newErrorWithCustomName = require('../utils/newErrorWithCustomName')
+const User = require('../../models/user')
+const newErrorWithCustomName = require('../../utils/newErrorWithCustomName')
 
 async function checkIfUserExists(req, res, next) {
   const { email } = req.body
