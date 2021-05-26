@@ -10,101 +10,126 @@ import Paper from '@material-ui/core/Paper'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import orderPoolApi from '../../services/orderPoolAPI'
 
+dayjs.extend(isSameOrAfter)
 dayjs.extend(isoWeek)
 dayjs.extend(weekOfYear)
 
-// const useStyles = makeStyles({
-//   table: {
-//     minWidth: 650,
-//   },
-// })
+/**
+ * @param {Object} period
+ * @param {dayjsdate} period.periodFrom
+ * @param {dayjsdate} period.periodTo
+ * @return {Array} - [{ periodFrom: '2021-05-23T21:00:00.000Z', periodTo: '2021-05-30T21:00:00.000Z'}]
+ */
+
+function splitPeriodToWeeks({ periodFrom, periodTo }) {
+  const numberOfWeeks = periodTo.isoWeek() - periodFrom.isoWeek() + 1 // 6
+  const weeks = Array(numberOfWeeks)
+    .fill(periodFrom.isoWeek())
+    .map((number, count) => number + count) // [17, 18, 19, 20, 21, 22]
+    .map((weekNumber) => ({
+      periodFrom: dayjs().isoWeek(weekNumber).startOf('isoWeek').toISOString(),
+      periodTo: dayjs()
+        .isoWeek(weekNumber + 1)
+        .startOf('isoWeek')
+        .toISOString(),
+    }))
+
+  return weeks
+}
+
+function splitOrdersByPeriods(orders, periods) {
+  const splitted = []
+  periods.forEach((period) => {
+    const filtered = orders.filter(
+      (o) =>
+        dayjs(o.confirmedAt).isSameOrAfter(dayjs(period.periodFrom)) &&
+        dayjs(o.confirmedAt).isBefore(dayjs(period.periodTo))
+    )
+    splitted.push(filtered)
+  })
+
+  return splitted
+}
 
 function createData(name, orderCount) {
   return { name, orderCount }
+}
+
+/**
+ * @returns {array} Array of objects
+ */
+function makeRows(labels, data) {
+  return data.map((d, i) => createData(labels[i], d))
+}
+
+function makeWeekRows(orders, weeks) {
+  return makeRows(
+    orders.map((o, i) => `Week ${dayjs(weeks[i].periodFrom).isoWeek()}`),
+    orders.map((o) => o.length)
+  )
+}
+
+function makeTotalRow(orders) {
+  return makeRows(
+    ['Total during specified period'],
+    orders.map((o) => o.length)
+  )
 }
 
 export default function Statistics() {
   const defStartDate = dayjs().startOf('month')
   const defEndDate = defStartDate.add(1, 'month').startOf('month')
   const [period, setPeriod] = useState({
-    start: defStartDate,
-    end: defEndDate,
+    periodFrom: defStartDate,
+    periodTo: defEndDate,
   })
-  const [confirmedOrders, setConfirmedOrders] = useState([])
 
   const [rows, setRows] = useState([])
 
-  // console.log(period)
-  // console.log(period.start.isoWeek())
-  // console.log(period.end.isoWeek())
-  // console.log(dayjs().isoWeek(21).startOf('isoWeek').toDate())
-
   useEffect(async () => {
-    const numberOfWeeks = period.end.isoWeek() - period.start.isoWeek() + 1 // 6
-    const weeks = Array(numberOfWeeks)
-      .fill(period.start.isoWeek())
-      .map((number, count) => number + count) // [17, 18, 19, 20, 21, 22]
-      .map((weekNumber) => ({
-        // { start: Unix Timestamp_ms, end: Unix Timestamp_ms}
-        start: dayjs().isoWeek(weekNumber).startOf('isoWeek').valueOf(),
-        end: dayjs()
-          .isoWeek(weekNumber + 1)
-          .startOf('isoWeek')
-          .valueOf(),
-      }))
-      .concat({ start: period.start.valueOf(), end: period.end.valueOf() }) // Adding whole period
+    const weeks = splitPeriodToWeeks(period)
+    const firstWeek = weeks[0]
+    const lastWeek = weeks[weeks.length - 1]
 
-    console.log(weeks)
-
-    const apiCallsArray = []
-
-    weeks.forEach((week) => {
-      apiCallsArray.push(orderPoolApi.getConfirmedOrders([week.start, week.end]))
+    const {
+      confirmedOrders: confirmedOrdersOfAllWeeksOfPeriod,
+    } = await orderPoolApi.getConfirmedOrders({
+      periodFrom: firstWeek.periodFrom,
+      periodTo: lastWeek.periodTo,
     })
 
-    const ordersByWeek = await Promise.all(apiCallsArray)
+    const ordersByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
+    const ordersOfWholePeriod = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, [period])
 
-    console.log(ordersByWeek)
+    const weekRows = makeWeekRows(ordersByWeeks, weeks)
+    const totalRow = makeTotalRow(ordersOfWholePeriod)
 
-    setConfirmedOrders(ordersByWeek)
-
-    setRows(
-      ordersByWeek.map((order, index, array) => {
-        const weekNumber = dayjs(weeks[index].start).isoWeek()
-        const label =
-          index === array.length - 1
-            ? 'Total during specified period'
-            : `Week ${weekNumber}`
-
-        return createData(label, order.orderCount)
-      })
-    )
+    setRows([...weekRows, ...totalRow])
   }, [period])
 
   function handlePeriodChange(e) {
     setPeriod({ ...period, [e.target.name]: dayjs(e.target.value) })
   }
 
-  // console.log(confirmedOrders)
-
   return (
     <>
       <div className="row-flex-start gap-1">
         <TextField
           onChange={handlePeriodChange}
-          name="start"
+          name="periodFrom"
           label="Start of period"
           type="date"
-          value={period.start.format('YYYY-MM-DD')}
+          value={period.periodFrom.format('YYYY-MM-DD')}
         />
         <TextField
           onChange={handlePeriodChange}
-          name="end"
+          name="periodTo"
           label="End of period"
           type="date"
-          value={period.end.format('YYYY-MM-DD')}
+          value={period.periodTo.format('YYYY-MM-DD')}
         />
       </div>
       <TableContainer component={Paper}>

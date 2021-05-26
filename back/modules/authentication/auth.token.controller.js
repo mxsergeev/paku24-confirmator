@@ -1,5 +1,6 @@
 const tokenRouter = require('express').Router()
 const {
+  controlRequestFlow,
   authenticateAccessToken,
   authenticateRefreshToken,
   updateOrDeleteOldToken,
@@ -10,6 +11,7 @@ const {
 
 tokenRouter.post(
   '/',
+  controlRequestFlow,
   // Proceeding to authenticate refresh token only if client HAS access token (even if it's expired).
   // In all other cases throwing an error.
   authenticateAccessToken,

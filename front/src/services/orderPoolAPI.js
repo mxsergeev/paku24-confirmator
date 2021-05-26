@@ -92,9 +92,7 @@ function getConfirmedOrders(period, options = { onlyCount: true }) {
   const { periodFrom, periodTo } = period
 
   return interceptor.axiosInstance
-    .get(
-      `${baseUrl}/confirmed-by-user/?onlyCount=${options.onlyCount}&periodFrom=${periodFrom}&periodTo=${periodTo}`
-    )
+    .get(`${baseUrl}/confirmed-by-user/?periodFrom=${periodFrom}&periodTo=${periodTo}`)
     .then((res) => res.data)
 }
 

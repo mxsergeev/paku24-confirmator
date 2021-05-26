@@ -1,3 +1,6 @@
+const dayjs = require('dayjs')
+const isISO8601 = require('validator/lib/isISO8601')
+
 const orderPoolRouter = require('express').Router()
 
 // const ms = require('ms')
@@ -64,14 +67,10 @@ orderPoolRouter.post('/add', checkRequest, async (req, res, next) => {
 orderPoolRouter.use(authMW.authenticateAccessToken)
 
 async function getOrdersWithLimit({ markedForDeletion, skip, limit }) {
-  return RawOrder.find({ markedForDeletion })
-    .skip(skip)
-    .limit(limit)
-    .sort({ date: -1 })
-    .exec()
+  return RawOrder.find({ markedForDeletion }).skip(skip).limit(limit).sort({ date: -1 }).exec()
 }
 
-function howMuchToGet(pages) {
+function howMuchToGet(pages = ['1']) {
   // pages is something like: [ '1', '2', '3' ] (for many pages) || ['2'] (for only one page)
   const pagesInNumberType = pages.map((p) => Number(p))
   const skip = pagesInNumberType[0] === 1 ? 0 : (pagesInNumberType[0] - 1) * 20
@@ -126,7 +125,7 @@ orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
       { _id: id },
       {
         confirmed: true,
-        confirmedByUser: req.user.id,
+        confirmedBy: req.user.id,
         confirmedAt: new Date().toISOString(),
       }
     )
@@ -138,17 +137,23 @@ orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
 })
 
 orderPoolRouter.get('/confirmed-by-user/', async (req, res, next) => {
-  const { periodFrom, periodTo } = req.query
-  if (req.query.onlyCount) {
-    const orderCount = await RawOrder.countDocuments({
-      confirmed: true,
-      confirmedByUser: req.user.id,
-      confirmedAt: { $gte: periodFrom, $lt: periodTo },
-    })
+  const periodFrom = isISO8601(req.query.periodFrom)
+    ? req.query.periodFrom
+    : dayjs().startOf('month')
+  const periodTo = isISO8601(req.query.periodTo)
+    ? req.query.periodTo
+    : dayjs().add(1, 'month').startOf('month')
 
-    return res.status(200).send({ orderCount })
-  }
-  return res.status(404).send({ error: 'Not implemented yet.' })
+  const confirmedOrders = await RawOrder.find({
+    confirmed: true,
+    confirmedBy: req.user.id,
+    confirmedAt: {
+      $gte: periodFrom,
+      $lt: periodTo,
+    },
+  })
+
+  return res.status(200).send({ confirmedOrders })
 })
 
 module.exports = orderPoolRouter
