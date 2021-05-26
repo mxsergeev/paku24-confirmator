@@ -11,12 +11,7 @@ export default function OrderPoolOpenerButton({ className, orderPoolUrl }) {
 
   return (
     <>
-      <Button
-        size="small"
-        className={className}
-        variant="contained"
-        onClick={handleClickOpen}
-      >
+      <Button size="small" className={className} variant="contained" onClick={handleClickOpen}>
         Order Pool
       </Button>
     </>

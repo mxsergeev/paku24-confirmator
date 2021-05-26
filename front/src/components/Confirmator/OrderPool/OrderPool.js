@@ -38,9 +38,7 @@ export default function OrderPool({ handleExport }) {
   const numberOfUnconfirmedOrders = orders.filter((order) => !order.confirmed).length
 
   function filterWithSearchText(values, search) {
-    return values.filter((value) =>
-      value.text.toLowerCase().includes(search?.toLowerCase().trim())
-    )
+    return values.filter((value) => value.text.toLowerCase().includes(search?.toLowerCase().trim()))
   }
 
   function filterConfirmed(values, condition) {
@@ -210,9 +208,7 @@ export default function OrderPool({ handleExport }) {
             className="p-0 filters-tab-orders-status-icon"
             size="small"
             onClick={() =>
-              handleOnlyNotConfirmedSearch(
-                !searchOptions[currentTab].showOnlyNotConfirmed
-              )
+              handleOnlyNotConfirmedSearch(!searchOptions[currentTab].showOnlyNotConfirmed)
             }
           >
             <span style={{ fontSize: '1rem' }}>
@@ -222,8 +218,7 @@ export default function OrderPool({ handleExport }) {
             </span>
             <span
               className={`order-status-icon order-status-notification ${
-                searchOptions[currentTab].showOnlyNotConfirmed &&
-                'order-status-icon-selected'
+                searchOptions[currentTab].showOnlyNotConfirmed && 'order-status-icon-selected'
               }`}
             >
               {searchOptions[currentTab].showOnlyNotConfirmed ? '✔&❕' : '❕'}

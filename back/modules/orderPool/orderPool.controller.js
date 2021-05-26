@@ -127,7 +127,7 @@ orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
       {
         confirmed: true,
         confirmedByUser: req.user.id,
-        confirmedAt: Date.now(),
+        confirmedAt: new Date().toISOString(),
       }
     )
 
@@ -138,12 +138,12 @@ orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
 })
 
 orderPoolRouter.get('/confirmed-by-user/', async (req, res, next) => {
-  const [start, end] = req.query.period
+  const { periodFrom, periodTo } = req.query
   if (req.query.onlyCount) {
     const orderCount = await RawOrder.countDocuments({
       confirmed: true,
       confirmedByUser: req.user.id,
-      confirmedAt: { $gte: start, $lt: end },
+      confirmedAt: { $gte: periodFrom, $lt: periodTo },
     })
 
     return res.status(200).send({ orderCount })

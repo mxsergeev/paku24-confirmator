@@ -11,11 +11,7 @@ export default function CheckboxGroup(props) {
 
   return (
     <div className="checkbox-container">
-      <FormControl
-        className="checkbox-distance flex-item"
-        hiddenLabel={false}
-        size="small"
-      >
+      <FormControl className="checkbox-distance flex-item" hiddenLabel={false} size="small">
         <FormLabel component="legend">Pick one:</FormLabel>
         <RadioGroup value={order.distance} onChange={handleChange}>
           <FormControlLabel
@@ -48,9 +44,7 @@ export default function CheckboxGroup(props) {
         <FormControlLabel
           size="small"
           className="flex-item"
-          control={
-            <Checkbox checked={order.hsy} onChange={handleChange} color="primary" />
-          }
+          control={<Checkbox checked={order.hsy} onChange={handleChange} color="primary" />}
           name="hsy"
           label="♻ HSY"
           labelPlacement="start"
@@ -58,11 +52,7 @@ export default function CheckboxGroup(props) {
         <FormControlLabel
           className="flex-item"
           control={
-            <Checkbox
-              checked={order.altColorPalette}
-              onChange={handleChange}
-              color="primary"
-            />
+            <Checkbox checked={order.altColorPalette} onChange={handleChange} color="primary" />
           }
           name="altColorPalette"
           label="Second car"
@@ -70,9 +60,7 @@ export default function CheckboxGroup(props) {
         />
         <FormControlLabel
           className="flex-item"
-          control={
-            <Checkbox checked={order.XL} onChange={handleChange} color="primary" />
-          }
+          control={<Checkbox checked={order.XL} onChange={handleChange} color="primary" />}
           name="XL"
           label="XL"
           labelPlacement="start"

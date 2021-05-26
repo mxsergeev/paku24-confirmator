@@ -19,10 +19,7 @@ export default function TransformPanel({
           handleClick={handleOrderTransformFromText}
         />
 
-        <TransformButton
-          text="from editor"
-          handleClick={handleOrderTransformFromEditor}
-        />
+        <TransformButton text="from editor" handleClick={handleOrderTransformFromEditor} />
       </div>
     </div>
   )

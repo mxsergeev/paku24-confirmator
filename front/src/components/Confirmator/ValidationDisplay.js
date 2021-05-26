@@ -31,10 +31,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
         {
           id: 1,
           name: 'Date and time',
-          isError: validator.isBefore(
-            order.dateTime.toISOString(),
-            new Date().toISOString()
-          ),
+          isError: validator.isBefore(order.dateTime.toISOString(), new Date().toISOString()),
           message: `might have some problems. Check to be sure: ${
             `${order.confirmationDateString} ${order.time}` || '---'
           }`,

@@ -71,8 +71,7 @@ export default class Order {
     ]
 
     const weekEndFeeApplicable = dayOFWeek === 6 || dayOFWeek === 0
-    const endOfMonthFeeApplicable =
-      !weekEndFeeApplicable && endOfMonth.includes(dayOfMonth)
+    const endOfMonthFeeApplicable = !weekEndFeeApplicable && endOfMonth.includes(dayOfMonth)
     const morningFeeApplicable = timeInNumberType < 8
     const nightFeeApplicable = timeInNumberType > 20
     const paymentFeeApplicable =

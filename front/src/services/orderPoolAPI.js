@@ -31,9 +31,7 @@ function storeOrdersInSessionStorage({ query, orders }) {
 }
 
 function getOrdersFromSessionStorage(query) {
-  return Promise.resolve().then(() =>
-    JSON.parse(sessionStorage.getItem(`order-pool/${query}`))
-  )
+  return Promise.resolve().then(() => JSON.parse(sessionStorage.getItem(`order-pool/${query}`)))
 }
 
 function isStorageUpToDate(query) {
@@ -58,10 +56,7 @@ function isStorageUpToDate(query) {
 async function get(pages = [1], options = { deleted: false, forceUpdate: false }) {
   const { deleted, forceUpdate } = options
 
-  const query = `${deleted ? 'deleted=true' : 'deleted=false'}&${makeQueryArray(
-    'pages',
-    pages
-  )}`
+  const query = `${deleted ? 'deleted=true' : 'deleted=false'}&${makeQueryArray('pages', pages)}`
 
   if (!forceUpdate && (await isStorageUpToDate(query))) {
     return getOrdersFromSessionStorage(query).then((data) => data.orders)
@@ -79,9 +74,7 @@ async function get(pages = [1], options = { deleted: false, forceUpdate: false }
 }
 
 async function confirm(id) {
-  return interceptor.axiosInstance
-    .put(`${baseUrl}/confirm/${id}`)
-    .then((res) => res?.data)
+  return interceptor.axiosInstance.put(`${baseUrl}/confirm/${id}`).then((res) => res?.data)
   // .catch((err) => console.log(err))
 }
 
@@ -96,11 +89,11 @@ async function retrieve(id) {
 }
 
 function getConfirmedOrders(period, options = { onlyCount: true }) {
-  const [start, end] = period
+  const { periodFrom, periodTo } = period
 
   return interceptor.axiosInstance
     .get(
-      `${baseUrl}/confirmed-by-user/?onlyCount=${options.onlyCount}&period[]=${start}&period[]=${end}`
+      `${baseUrl}/confirmed-by-user/?onlyCount=${options.onlyCount}&periodFrom=${periodFrom}&periodTo=${periodTo}`
     )
     .then((res) => res.data)
 }

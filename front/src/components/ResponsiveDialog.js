@@ -21,11 +21,7 @@ export default function ResponsiveDialog({ children, handleClose }) {
       >
         <DialogContent>{children}</DialogContent>
         <DialogActions>
-          <Button
-            style={{ backgroundColor: 'white' }}
-            variant="text"
-            onClick={handleClose}
-          >
+          <Button style={{ backgroundColor: 'white' }} variant="text" onClick={handleClose}>
             Close
           </Button>
         </DialogActions>

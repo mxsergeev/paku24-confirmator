@@ -14,9 +14,7 @@ export default class TextOrder {
   }
 
   get dateTime() {
-    const dateRe = /(?<=Date and time: \w+, )\w+ \d+(th|rd|st|nd)? \w+/.exec(
-      this.textOrder
-    )
+    const dateRe = /(?<=Date and time: \w+, )\w+ \d+(th|rd|st|nd)? \w+/.exec(this.textOrder)
 
     if (!dateRe) throw new Error(cannotFind('date'))
 
@@ -103,10 +101,7 @@ export default class TextOrder {
       const beginIndex = this.textOrder.indexOf(marker) + marker.length
       const endIndex = this.textOrder.indexOf(endMarkers[index])
 
-      const rawAddress = this.textOrder
-        .slice(beginIndex, endIndex)
-        .replaceAll(',', '')
-        .trim()
+      const rawAddress = this.textOrder.slice(beginIndex, endIndex).replaceAll(',', '').trim()
 
       const cityField = rawAddress.slice(0, rawAddress.indexOf(' / '))
 
@@ -124,10 +119,7 @@ export default class TextOrder {
       const numbersInAddress = /\d+/.test(addressField)
 
       // User provided address instead of city and city instead of address
-      if (
-        !numbersInAddress ||
-        (addressField.includes(postalCode) && addressField.length < 15)
-      ) {
+      if (!numbersInAddress || (addressField.includes(postalCode) && addressField.length < 15)) {
         address = cityField.replace(postalCode, '')
         city = addressField.match(/\D+/)
         city = city && city[0]
@@ -182,9 +174,7 @@ export default class TextOrder {
 
   get phone() {
     // regex from internet
-    const phone = /(?<=Phone: )[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*/.exec(
-      this.textOrder
-    )
+    const phone = /(?<=Phone: )[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*/.exec(this.textOrder)
 
     if (!phone) throw new Error(cannotFind('phone'))
 

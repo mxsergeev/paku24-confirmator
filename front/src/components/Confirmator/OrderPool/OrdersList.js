@@ -18,8 +18,7 @@ export default function OrdersList({
         order: {
           ...order,
         },
-        isNew:
-          new Date(order.date).toDateString() === new Date(Date.now()).toDateString(),
+        isNew: new Date(order.date).toDateString() === new Date(Date.now()).toDateString(),
         className: order.confirmed
           ? 'basic-order-style confirmed-order-style'
           : 'basic-order-style',
@@ -35,9 +34,7 @@ export default function OrdersList({
           return {
             ...orderWithStyles,
             hidden: !o.hidden,
-            className: o.hidden
-              ? 'basic-order-style'
-              : 'basic-order-style confirmed-order-style',
+            className: o.hidden ? 'basic-order-style' : 'basic-order-style confirmed-order-style',
           }
         }
         return o
@@ -69,9 +66,7 @@ export default function OrdersList({
   }
 
   function textOrder(txtOrder, id) {
-    return txtOrder
-      .split('\n')
-      .map((line, index) => <div key={`${id}${index}${line}`}>{line}</div>)
+    return txtOrder.split('\n').map((line, index) => <div key={`${id}${index}${line}`}>{line}</div>)
   }
 
   function list() {

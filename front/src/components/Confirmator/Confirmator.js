@@ -41,9 +41,7 @@ export default function Confirmator() {
   const { enqueueSnackbar } = useSnackbar()
 
   function transform(o) {
-    return Order.transformToText(o, (msg) =>
-      enqueueSnackbar(msg, { autoHideDuration: 750 })
-    )
+    return Order.transformToText(o, (msg) => enqueueSnackbar(msg, { autoHideDuration: 750 }))
   }
 
   const rawOrderOrderContainerRef = useRef(null)
@@ -90,10 +88,7 @@ export default function Confirmator() {
   function handleOrderPoolExport(o) {
     handleRawOrderUpdate(o)
     handleOrderTransformFromText(o)
-    setTimeout(
-      () => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }),
-      700
-    )
+    setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
   }
 
   return (
