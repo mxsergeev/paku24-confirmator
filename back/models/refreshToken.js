@@ -9,7 +9,7 @@ const refreshTokenSchema = new mongoose.Schema({
   user: {
     name: String,
     username: String,
-    _id: String,
+    id: String,
   },
 })
 

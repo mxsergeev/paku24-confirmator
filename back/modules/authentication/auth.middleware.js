@@ -169,7 +169,7 @@ function generateAccessToken(req, res, next) {
   const userForToken = {
     name: user.name,
     username: user.username,
-    id: user._id,
+    id: user.id,
   }
 
   req.accessToken = generateJWT(userForToken)
@@ -206,7 +206,7 @@ async function generateRefreshToken(req, res, next) {
     user: {
       name: user.name,
       username: user.username,
-      _id: user._id,
+      id: user.id,
     },
   })
 

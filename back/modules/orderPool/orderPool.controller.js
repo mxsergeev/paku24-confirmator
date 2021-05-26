@@ -1,4 +1,5 @@
 const orderPoolRouter = require('express').Router()
+
 // const ms = require('ms')
 // const CronJob = require('cron').CronJob
 
@@ -121,11 +122,33 @@ orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
 orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    await RawOrder.findByIdAndUpdate({ _id: id }, { confirmed: true })
+    await RawOrder.findByIdAndUpdate(
+      { _id: id },
+      {
+        confirmed: true,
+        confirmedByUser: req.user.id,
+        confirmedAt: Date.now(),
+      }
+    )
+
     return res.status(200).send({ message: 'Order confirmed' })
   } catch (err) {
     return next(err)
   }
+})
+
+orderPoolRouter.get('/confirmed-by-user/', async (req, res, next) => {
+  const [start, end] = req.query.period
+  if (req.query.onlyCount) {
+    const orderCount = await RawOrder.countDocuments({
+      confirmed: true,
+      confirmedByUser: req.user.id,
+      confirmedAt: { $gte: start, $lt: end },
+    })
+
+    return res.status(200).send({ orderCount })
+  }
+  return res.status(404).send({ error: 'Not implemented yet.' })
 })
 
 module.exports = orderPoolRouter
