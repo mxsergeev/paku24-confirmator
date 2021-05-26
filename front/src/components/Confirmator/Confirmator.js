@@ -26,14 +26,17 @@ export default function Confirmator() {
 
   useEffect(() => {
     const savedOrder = localStorage.getItem('confirmator_order')
-    if (savedOrder) {
-      setOrder(new Order(JSON.parse(savedOrder)))
-    }
+    const savedRawOrder = localStorage.getItem('confirmator_rawOrder')
+    setOrder(new Order(JSON.parse(savedOrder)))
+    setRawOrder(JSON.parse(savedRawOrder))
   }, [])
 
   useEffect(() => {
     localStorage.setItem('confirmator_order', JSON.stringify(order))
   }, [order])
+  useEffect(() => {
+    localStorage.setItem('confirmator_rawOrder', JSON.stringify(rawOrder))
+  }, [rawOrder])
 
   const { enqueueSnackbar } = useSnackbar()
 
