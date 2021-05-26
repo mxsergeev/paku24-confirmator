@@ -5,7 +5,7 @@ import Button from '@material-ui/core/Button'
 import loginServiсe from '../services/login'
 import Notification from './Notification'
 
-export default function Login({ setUser }) {
+export default function Login({ updateUser }) {
   const background = {
     width: '95%',
     margin: '0 auto',
@@ -55,13 +55,13 @@ export default function Login({ setUser }) {
       setNotification('Done')
 
       // Not counting '/' as referrer
-      history.push(referrer.length > 1 ? referrer : '/confirmator')
-      setUser(user)
+      history.push(referrer?.length > 1 ? referrer : '/confirmator')
+      updateUser(user)
     } catch (err) {
       setInputError(true)
       setIsButtonDisabled(true)
       setTimeout(() => setIsButtonDisabled(false), 2000)
-      setNotification(`Error: ${err.response?.data.error}`)
+      setNotification(`Error: ${err.response?.data.error || 'Mystery 👻'}`)
     }
   }
 

@@ -58,7 +58,7 @@ export default function Register() {
       setDisabled(false)
     } catch (err) {
       setDisabled(false)
-      setResponse(`Error: ${err?.response.data?.error}`)
+      setResponse(`Error: ${err?.response.data?.error || 'Mystery 👻'}`)
     }
   }
 
