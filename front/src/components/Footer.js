@@ -8,10 +8,11 @@ export default function Footer({ user, logoutUser }) {
       style={{
         backgroundColor: 'darkgrey',
         padding: '15px',
-        marginTop: '40px',
+        // marginTop: '40px',
         display: 'flex',
         justifyContent: 'space-between',
         borderTop: '3.5px solid lightgrey',
+        marginTop: 'auto',
       }}
     >
       <div style={{ paddingTop: '2px', marginRight: '20px' }}>
