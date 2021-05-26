@@ -50,8 +50,7 @@ async function checkUser(req, res, next) {
 
   const user = await User.findOne({ username })
 
-  const passwordCorrect =
-    user === null ? false : await bcrypt.compare(password, user.passwordHash)
+  const passwordCorrect = user === null ? false : await bcrypt.compare(password, user.passwordHash)
 
   const userJSON = user?.toJSON()
 
@@ -101,9 +100,7 @@ function controlRequestFlow(req, res, next) {
   const firstAttempt_sec = cr.attempts[0] / 1000
   const lastAttempt_sec = cr.attempts[length - 1] / 1000
 
-  length > 1
-    ? (cr.spamSpeed = length / (lastAttempt_sec - firstAttempt_sec))
-    : (cr.spamSpeed = 0)
+  length > 1 ? (cr.spamSpeed = length / (lastAttempt_sec - firstAttempt_sec)) : (cr.spamSpeed = 0)
 
   if (length >= 3) {
     const throttleTime = 10000
@@ -300,8 +297,7 @@ async function authenticateRefreshToken(req, res, next) {
     return next(err)
   }
 
-  const issuedRecently =
-    Date.now() - refreshTokenInDB.issuedAt < ms(RT_REFRESH_AFTER_SEC)
+  const issuedRecently = Date.now() - refreshTokenInDB.issuedAt < ms(RT_REFRESH_AFTER_SEC)
   if (issuedRecently && req.path !== '/is-new') {
     const err = newErrorWithCustomName('TooManyRequestsError')
     return next(err)
