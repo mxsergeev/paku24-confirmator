@@ -95,4 +95,14 @@ async function retrieve(id) {
   return response?.data
 }
 
-export default { get, confirm, remove, retrieve }
+function getConfirmedOrders(period, options = { onlyCount: true }) {
+  const [start, end] = period
+
+  return interceptor.axiosInstance
+    .get(
+      `${baseUrl}/confirmed-by-user/?onlyCount=${options.onlyCount}&period[]=${start}&period[]=${end}`
+    )
+    .then((res) => res.data)
+}
+
+export default { get, confirm, remove, retrieve, getConfirmedOrders }

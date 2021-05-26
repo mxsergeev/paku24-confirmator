@@ -3,6 +3,7 @@
 const mongoose = require('mongoose')
 
 const userSchema = new mongoose.Schema({
+  _id: mongoose.Schema.Types.ObjectId,
   username: String,
   name: String,
   passwordHash: String,
@@ -13,7 +14,7 @@ const userSchema = new mongoose.Schema({
   // orders: [
   //   {
   //     type: mongoose.Schema.Types.ObjectId,
-  //     ref: 'Order',
+  //     ref: 'RawOrder',
   //   },
   // ],
 })
