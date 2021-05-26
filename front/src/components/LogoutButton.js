@@ -1,6 +1,6 @@
 import React from 'react'
 import Button from '@material-ui/core/Button'
-import MeetingRoomIcon from '@material-ui/icons/MeetingRoom'
+import ExitToAppIcon from '@material-ui/icons/ExitToApp'
 
 export default function LogoutButton({ handleClick }) {
   return (
@@ -10,7 +10,7 @@ export default function LogoutButton({ handleClick }) {
       size="small"
       onClick={handleClick}
     >
-      Logout <MeetingRoomIcon />
+      Logout <ExitToAppIcon />
     </Button>
   )
 }
