@@ -22,7 +22,7 @@ ReactDOM.render(
         ref={notistackRef}
         maxSnack={3}
         dense
-        autoHideDuration={3500}
+        autoHideDuration={5000}
         anchorOrigin={{ horizontal: 'left', vertical: 'top' }}
       >
         <App />
