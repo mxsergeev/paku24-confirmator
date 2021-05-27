@@ -14,7 +14,7 @@ import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
-
+import './Statistics.css'
 import orderPoolApi from '../../services/orderPoolAPI'
 
 dayjs.extend(isSameOrAfter)
@@ -146,8 +146,8 @@ export default function Statistics() {
   const shouldApplyEventHandler = (row) => row.orderCount > 0 && !row.name.includes('Total')
 
   return (
-    <>
-      <div className="row-flex-start gap-1">
+    <div className="statistics">
+      <div className="row-flex-start gap-1 dates">
         <TextField
           onChange={handlePeriodChange}
           name="periodFrom"
@@ -169,9 +169,6 @@ export default function Statistics() {
             <TableRow>
               <TableCell>Statistics</TableCell>
               <TableCell align="right">Confirmed orders</TableCell>
-              {/* <TableCell align="right">Fat&nbsp;(g)</TableCell>
-            <TableCell align="right">Carbs&nbsp;(g)</TableCell>
-            <TableCell align="right">Protein&nbsp;(g)</TableCell> */}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -190,7 +187,7 @@ export default function Statistics() {
                       <Paper>
                         <div style={{ padding: 10 }}>
                           {Object.entries(ordersByDays).map(([key, value]) => (
-                            <div>
+                            <div key={key}>
                               {key}: {value.length}
                             </div>
                           ))}
@@ -206,14 +203,11 @@ export default function Statistics() {
                     {row.orderCount}
                   </IconButton>
                 </TableCell>
-                {/* <TableCell align="right">{row.fat}</TableCell>
-              <TableCell align="right">{row.carbs}</TableCell>
-              <TableCell align="right">{row.protein}</TableCell> */}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
-    </>
+    </div>
   )
 }
