@@ -100,6 +100,18 @@ export default class Order {
     return printed
   }
 
+  /**
+   * Deletes properties hsy, altColorPalette and distance.
+   * Transforms to JSON
+   */
+  prepareForSending() {
+    const filtered = this
+    delete filtered.hsy
+    delete filtered.altColorPalette
+    delete filtered.distance
+    return JSON.stringify(filtered)
+  }
+
   static getEventForCalendar(formattedStr, startMarker) {
     return formattedStr.slice(formattedStr.indexOf(startMarker))
   }

@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 import React from 'react'
 import { useSnackbar } from 'notistack'
 import EventIcon from '@material-ui/icons/Event'
@@ -30,7 +31,14 @@ export default function AddOrderToCalendarButton({
           order,
           fees: order.fees,
         })
-        if (orderId) await orderPoolAPI.confirm(orderId)
+        if (!orderId) {
+          const { id } = await orderPoolAPI.add({
+            order: order.prepareForSending(),
+            key: 'supersecretorderpoolkey',
+          })
+          orderId = id
+        }
+        await orderPoolAPI.confirm(orderId)
         changeStatus(CALENDAR, 'Done', true)
         enqueueSnackbar(`${response.message}\n${response.createdEvent}`)
       }

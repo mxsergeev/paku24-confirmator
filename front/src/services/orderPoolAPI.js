@@ -73,7 +73,7 @@ async function get(pages = [1], options = { deleted: false, forceUpdate: false }
   })
 }
 
-async function confirm(id) {
+function confirm(id) {
   return interceptor.axiosInstance.put(`${baseUrl}/confirm/${id}`).then((res) => res?.data)
   // .catch((err) => console.log(err))
 }
@@ -96,4 +96,8 @@ function getConfirmedOrders(period, options = { onlyCount: true }) {
     .then((res) => res.data)
 }
 
-export default { get, confirm, remove, retrieve, getConfirmedOrders }
+function add({ order, key }) {
+  return interceptor.axiosInstance.post(`${baseUrl}/add`, { order, key }).then((res) => res?.data)
+}
+
+export default { get, confirm, remove, retrieve, getConfirmedOrders, add }

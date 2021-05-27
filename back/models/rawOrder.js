@@ -12,7 +12,7 @@ const rawOrderSchema = new mongoose.Schema({
   },
   orderId: {
     type: String,
-    required: true,
+    required: false,
   },
   confirmed: {
     type: Boolean,

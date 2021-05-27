@@ -41,7 +41,7 @@ const authMW = require('../authentication/auth.middleware')
 //   'Europe/Helsinki'
 // )
 
-function checkRequest(req, res, next) {
+function checkKey(req, res, next) {
   // if (req.body.key === ORDER_POOL_KEY && req.hostname === ACCEPTED_HOSTNAME) {
   if (req.body.key === ORDER_POOL_KEY) {
     return next()
@@ -50,7 +50,7 @@ function checkRequest(req, res, next) {
   return next(OrderPoolKeyError)
 }
 
-orderPoolRouter.post('/add', checkRequest, async (req, res, next) => {
+orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
   try {
     const receivedOrder = new RawOrder({
       text: req.body.order,
@@ -58,7 +58,7 @@ orderPoolRouter.post('/add', checkRequest, async (req, res, next) => {
 
     await receivedOrder.save()
 
-    return res.status(204).end()
+    return res.status(200).send({ message: 'Order added to the pool.', id: receivedOrder._id })
   } catch (err) {
     return next(err)
   }
