@@ -27,8 +27,8 @@ export default function Confirmator() {
   useEffect(() => {
     const savedOrder = localStorage.getItem('confirmator_order')
     const savedRawOrder = localStorage.getItem('confirmator_rawOrder')
-    setOrder(new Order(JSON.parse(savedOrder)))
-    setRawOrder(JSON.parse(savedRawOrder))
+    savedOrder && setOrder(new Order(JSON.parse(savedOrder)))
+    savedRawOrder && setRawOrder(JSON.parse(savedRawOrder))
   }, [])
 
   useEffect(() => {
