@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Route, Switch, Redirect, useHistory, Link } from 'react-router-dom'
+import { Route, Switch, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import { useSnackbar } from 'notistack'
+import Hub from './components/Hub'
 import Confirmator from './components/Confirmator/Confirmator'
 import Statistics from './components/Statistics/Statistics'
 import Header from './components/Header'
@@ -98,8 +99,7 @@ function App() {
             <Statistics />
           </ProtectedRoute>
           <ProtectedRoute dependsOn={user} exact path="/">
-            <Link to="/confirmator">Confirmator</Link>
-            <Link to="/statistics">Statistics</Link>
+            <Hub />
           </ProtectedRoute>
         </Switch>
         <ProtectedRoute dependsOn={user} path="/">
