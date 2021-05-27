@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import TextField from '@material-ui/core/TextField'
+import Popper from '@material-ui/core/Popper'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
 import TableContainer from '@material-ui/core/TableContainer'
 import TableHead from '@material-ui/core/TableHead'
 import TableRow from '@material-ui/core/TableRow'
+import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import Paper from '@material-ui/core/Paper'
+import IconButton from '@material-ui/core/IconButton'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
+
 import orderPoolApi from '../../services/orderPoolAPI'
 
 dayjs.extend(isSameOrAfter)
@@ -21,14 +25,14 @@ dayjs.extend(weekOfYear)
  * @param {Object} period
  * @param {dayjsdate} period.periodFrom
  * @param {dayjsdate} period.periodTo
- * @return {Array} - [{ periodFrom: '2021-05-23T21:00:00.000Z', periodTo: '2021-05-30T21:00:00.000Z'}]
+ * @return {Array} Example: [{ periodFrom: '2021-05-23T21:00:00.000Z', periodTo: '2021-05-30T21:00:00.000Z'}]
  */
 
 function splitPeriodToWeeks({ periodFrom, periodTo }) {
-  const numberOfWeeks = periodTo.isoWeek() - periodFrom.isoWeek() + 1 // 6
+  const numberOfWeeks = periodTo.isoWeek() - periodFrom.isoWeek() + 1 // example 6
   const weeks = Array(numberOfWeeks)
     .fill(periodFrom.isoWeek())
-    .map((number, count) => number + count) // [17, 18, 19, 20, 21, 22]
+    .map((number, count) => number + count) // example [17, 18, 19, 20, 21, 22]
     .map((weekNumber) => ({
       periodFrom: dayjs().isoWeek(weekNumber).startOf('isoWeek').toISOString(),
       periodTo: dayjs()
@@ -86,11 +90,16 @@ export default function Statistics() {
     periodFrom: defStartDate,
     periodTo: defEndDate,
   })
+  const [confirmedOrders, setConfirmedOrders] = useState([])
+  const [ordersByDays, setOrdersByDays] = useState({})
+  const [anchorEl, setAnchorEl] = useState(null)
 
+  let weeks = splitPeriodToWeeks(period)
+  let ordersByWeeks = splitOrdersByPeriods(confirmedOrders, weeks)
   const [rows, setRows] = useState([])
 
   useEffect(async () => {
-    const weeks = splitPeriodToWeeks(period)
+    weeks = splitPeriodToWeeks(period)
     const firstWeek = weeks[0]
     const lastWeek = weeks[weeks.length - 1]
 
@@ -100,8 +109,9 @@ export default function Statistics() {
       periodFrom: firstWeek.periodFrom,
       periodTo: lastWeek.periodTo,
     })
+    setConfirmedOrders(confirmedOrdersOfAllWeeksOfPeriod)
 
-    const ordersByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
+    ordersByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
     const ordersOfWholePeriod = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, [period])
 
     const weekRows = makeWeekRows(ordersByWeeks, weeks)
@@ -113,6 +123,27 @@ export default function Statistics() {
   function handlePeriodChange(e) {
     setPeriod({ ...period, [e.target.name]: dayjs(e.target.value) })
   }
+
+  function showOrdersByDay(e) {
+    setAnchorEl(e.currentTarget)
+
+    const ordersOfSelectedWeek = ordersByWeeks[e.currentTarget.dataset.rownumber]
+
+    const ordByDays = {}
+
+    ordersOfSelectedWeek.forEach((order) => {
+      const day = new Date(order.confirmedAt).toLocaleDateString('en-US', { weekday: 'long' })
+      if (ordByDays[day] == null) {
+        ordByDays[day] = []
+      }
+      ordByDays[day].push(order)
+    })
+
+    setOrdersByDays(ordByDays)
+  }
+
+  const open = Boolean(anchorEl)
+  const shouldApplyEventHandler = (row) => row.orderCount > 0 && !row.name.includes('Total')
 
   return (
     <>
@@ -144,12 +175,37 @@ export default function Statistics() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
+            {rows.map((row, rowNumber) => (
               <TableRow key={row.name}>
                 <TableCell component="th" scope="row">
                   {row.name}
                 </TableCell>
-                <TableCell align="right">{row.orderCount}</TableCell>
+                <TableCell align="right">
+                  <Popper style={{ padding: 10 }} placement="left" open={open} anchorEl={anchorEl}>
+                    <ClickAwayListener
+                      mouseEvent="onMouseDown"
+                      touchEvent="onTouchStart"
+                      onClickAway={() => setAnchorEl(null)}
+                    >
+                      <Paper>
+                        <div style={{ padding: 10 }}>
+                          {Object.entries(ordersByDays).map(([key, value]) => (
+                            <div>
+                              {key}: {value.length}
+                            </div>
+                          ))}
+                        </div>
+                      </Paper>
+                    </ClickAwayListener>
+                  </Popper>
+                  <IconButton
+                    data-rownumber={rowNumber}
+                    size="small"
+                    onClick={shouldApplyEventHandler(row) ? showOrdersByDay : null}
+                  >
+                    {row.orderCount}
+                  </IconButton>
+                </TableCell>
                 {/* <TableCell align="right">{row.fat}</TableCell>
               <TableCell align="right">{row.carbs}</TableCell>
               <TableCell align="right">{row.protein}</TableCell> */}
