@@ -42,7 +42,5 @@ export default function TransformedOrderContainer({
     </div>
   )
   const ContainerWithEditing = withEditing(Editable, NotEditable)
-  return (
-    <ContainerWithEditing handleUpdate={handleClick} content={transformedOrderText} />
-  )
+  return <ContainerWithEditing handleUpdate={handleClick} content={transformedOrderText} />
 }

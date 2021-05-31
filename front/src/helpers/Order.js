@@ -71,8 +71,7 @@ export default class Order {
     ]
 
     const weekEndFeeApplicable = dayOFWeek === 6 || dayOFWeek === 0
-    const endOfMonthFeeApplicable =
-      !weekEndFeeApplicable && endOfMonth.includes(dayOfMonth)
+    const endOfMonthFeeApplicable = !weekEndFeeApplicable && endOfMonth.includes(dayOfMonth)
     const morningFeeApplicable = timeInNumberType < 8
     const nightFeeApplicable = timeInNumberType > 20
     const paymentFeeApplicable =
@@ -99,6 +98,18 @@ export default class Order {
     })
 
     return printed
+  }
+
+  /**
+   * Deletes properties hsy, altColorPalette and distance.
+   * Transforms to JSON
+   */
+  prepareForSending() {
+    const filtered = this
+    delete filtered.hsy
+    delete filtered.altColorPalette
+    delete filtered.distance
+    return JSON.stringify(filtered)
   }
 
   static getEventForCalendar(formattedStr, startMarker) {

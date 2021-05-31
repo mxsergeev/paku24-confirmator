@@ -16,13 +16,13 @@ describe('makeTerms', () => {
     })
 
     expect(terms).toBe(
-      `${termsData['insideCapital']}\n\n${termsData.defaultTerms}`
+      `${termsData.insideCapital}\n\n${termsData.defaultTerms}`
     )
     expect(terms2).toBe(
-      `${termsData['outsideCapital']}\n\n${termsData.hsy}\n\n${termsData.defaultTerms}`
+      `${termsData.outsideCapital}\n\n${termsData.hsy}\n\n${termsData.defaultTerms}`
     )
     expect(terms3).toBe(
-      `${termsData['fromCapitalToOutside']}\n\n${termsData.defaultTerms}`
+      `${termsData.fromCapitalToOutside}\n\n${termsData.defaultTerms}`
     )
   })
 })

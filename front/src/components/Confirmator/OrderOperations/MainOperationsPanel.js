@@ -12,6 +12,7 @@ export default function MainOperationsPanel({
   orderId,
   transformedOrder,
   handleResetClick,
+  orderPoolUrl,
 }) {
   const defaultStatuses = {
     email: {
@@ -85,7 +86,7 @@ export default function MainOperationsPanel({
             handleResetClick()
           }}
         />
-        <OrderPoolOpenerButton className="share-space" />
+        <OrderPoolOpenerButton className="share-space" orderPoolUrl={orderPoolUrl} />
         <AddOrderToCalendarButton
           className="width-25"
           statusText={statuses.calendar.status}

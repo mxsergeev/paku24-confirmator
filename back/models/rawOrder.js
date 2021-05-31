@@ -2,9 +2,27 @@ const mongoose = require('mongoose')
 
 const rawOrderSchema = new mongoose.Schema({
   text: String,
-  date: Number,
-  confirmed: Boolean,
-  markedForDeletion: Boolean,
+  date: {
+    type: Date,
+    default: new Date(),
+  },
+  markedForDeletion: {
+    type: Boolean,
+    default: false,
+  },
+  orderId: {
+    type: String,
+    required: false,
+  },
+  confirmed: {
+    type: Boolean,
+    default: false,
+  },
+  confirmedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  confirmedAt: Date,
 })
 
 rawOrderSchema.set('toJSON', {

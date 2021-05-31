@@ -1,5 +1,6 @@
+/* eslint-disable no-param-reassign */
 import React from 'react'
-import Toast from 'light-toast'
+import { useSnackbar } from 'notistack'
 import EventIcon from '@material-ui/icons/Event'
 import addEventToCalendar from '../../../services/calendarAPI'
 import orderPoolAPI from '../../../services/orderPoolAPI'
@@ -18,6 +19,8 @@ export default function AddOrderToCalendarButton({
   changeStatus,
   className,
 }) {
+  const { enqueueSnackbar } = useSnackbar()
+
   async function handleAddingToCalendar() {
     try {
       const entry = Order.getEventForCalendar(transformedOrderText, order.address)
@@ -28,13 +31,21 @@ export default function AddOrderToCalendarButton({
           order,
           fees: order.fees,
         })
-        if (orderId) await orderPoolAPI.confirm(orderId)
+        if (!orderId) {
+          const { id } = await orderPoolAPI.add({
+            order: order.prepareForSending(),
+            key: 'supersecretorderpoolkey',
+          })
+          orderId = id
+        }
+        await orderPoolAPI.confirm(orderId)
         changeStatus(CALENDAR, 'Done', true)
-        Toast.info(`${response.message}\n${response.createdEvent}`, 3000)
+        enqueueSnackbar(`${response.message}\n${response.createdEvent}`)
       }
     } catch (err) {
+      if (err.message === 'logout') return
       changeStatus(CALENDAR, 'Error', false)
-      Toast.fail(err.response?.data.error, 2000)
+      enqueueSnackbar(err.response?.data.error, { variant: 'error' })
     }
   }
 

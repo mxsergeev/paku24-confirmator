@@ -1,5 +1,6 @@
 import React from 'react'
-import Toast from 'light-toast'
+import { useSnackbar } from 'notistack'
+
 import EmailIcon from '@material-ui/icons/Email'
 import CustomButton from './CustomButton'
 import sendConfirmationEmail from '../../../services/emailAPI'
@@ -15,6 +16,8 @@ export default function ConfirmationEmailSenderButton({
   changeStatus,
   className,
 }) {
+  const { enqueueSnackbar } = useSnackbar()
+
   function handleEmailSending() {
     if (email && transformedOrderText) {
       changeStatus(EMAIL, 'Working', true)
@@ -25,14 +28,17 @@ export default function ConfirmationEmailSenderButton({
       })
         .then((res) => {
           changeStatus(EMAIL, 'Done', true)
-          Toast.info(res.message, 500)
+          enqueueSnackbar(res.message)
         })
         .catch((err) => {
+          if (err.message === 'logout') return
           changeStatus(EMAIL, 'Error', false)
-          Toast.fail(err.response.data.error)
+          enqueueSnackbar(err.response.data.error, { variant: 'error' })
         })
     }
-    return Toast.fail('No confirmation found or recipients defined.', 1000)
+    return enqueueSnackbar('No confirmation found or recipients defined.', {
+      variant: 'warning',
+    })
   }
 
   const buttonContent = statusText || (

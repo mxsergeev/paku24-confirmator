@@ -1,13 +1,7 @@
 import React from 'react'
 import Button from '@material-ui/core/Button'
 
-export default function CustomButton({
-  handleClick,
-  isDisabled,
-  grayScale,
-  content,
-  className,
-}) {
+export default function CustomButton({ handleClick, isDisabled, grayScale, content, className }) {
   const style = grayScale && { color: 'grey' }
   return (
     <Button

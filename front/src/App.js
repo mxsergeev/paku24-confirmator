@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Route, Switch, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
+import { useSnackbar } from 'notistack'
+import Hub from './components/Hub'
 import Confirmator from './components/Confirmator/Confirmator'
+import Statistics from './components/Statistics/Statistics'
 import Header from './components/Header'
 import Login from './components/Login'
 import Register from './components/Register'
@@ -20,15 +23,15 @@ function ErrorFallback({ error }) {
   )
 }
 
-function RedirectToLoginPageIfNotAuthenticated({ user, setUser, children }) {
+function ProtectedRoute({ dependsOn, path, children, ...rest }) {
   const history = useHistory()
   let currentLocation
-  if (user === null || user === 'Loading') {
+  if (dependsOn === null || dependsOn === 'Loading') {
     currentLocation = history.location.pathname
   }
 
-  const loading = user === 'Loading'
-  const mustRedirect = user === null
+  const loading = dependsOn === 'Loading'
+  const mustRedirect = dependsOn === null
   const redirectToLoginPage = mustRedirect && (
     <Redirect to={{ pathname: '/login', state: { referrer: currentLocation } }} />
   )
@@ -36,12 +39,10 @@ function RedirectToLoginPageIfNotAuthenticated({ user, setUser, children }) {
   return (
     <>
       <LoadingUntillDone loading={loading} redirectComponent={redirectToLoginPage}>
-        {children}
+        <Route {...rest} path={path}>
+          {children}
+        </Route>
       </LoadingUntillDone>
-
-      <Route path="/login">
-        {user === null ? <Login setUser={setUser} /> : <Redirect to="/" />}
-      </Route>
     </>
   )
 }
@@ -49,14 +50,30 @@ function RedirectToLoginPageIfNotAuthenticated({ user, setUser, children }) {
 function App() {
   const [user, setUser] = useState('Loading')
 
-  // Initializing Axios interceptor with ability to logout user
-  useEffect(() => {
-    interceptor.setupInterceptor({ logout: () => setUser(null) })
-  }, [])
+  const { enqueueSnackbar } = useSnackbar()
+  const history = useHistory()
+  let referrer
+  if (user === null || user === 'Loading') {
+    referrer = history.location.pathname
+  }
 
   useEffect(async () => {
+    // Initializing Axios interceptor with ability to logout user
+    interceptor.setupInterceptor({
+      logout: () => setUser(null),
+      notificate: () =>
+        enqueueSnackbar(
+          'You were logged out for security reasons. Your work has been saved. Login to continue.',
+          {
+            variant: 'warning',
+            autoHideDuration: 10000,
+          }
+        ),
+    })
+
     try {
       const { user: userFromToken } = await loginServiсe.loginWithAccessToken()
+      history.push(referrer)
       return setUser(userFromToken)
     } catch (err) {
       return setUser(null)
@@ -64,22 +81,32 @@ function App() {
   }, [])
 
   return (
-    <div className="container">
+    <>
       <ErrorBoundary FallbackComponent={ErrorFallback}>
         <Header isLogged={user !== null && user !== 'Loading'} />
         <Switch>
           <Route path="/register">
             <Register />
           </Route>
-          <Route path="/">
-            <RedirectToLoginPageIfNotAuthenticated user={user} setUser={setUser}>
-              <Confirmator />
-              <Footer user={user} logoutUser={() => setUser(null)} />
-            </RedirectToLoginPageIfNotAuthenticated>
+          <Route path="/login">
+            {user === null ? <Login updateUser={setUser} /> : <Redirect to="/" />}
           </Route>
+
+          <ProtectedRoute dependsOn={user} path="/confirmator">
+            <Confirmator />
+          </ProtectedRoute>
+          <ProtectedRoute dependsOn={user} path="/statistics">
+            <Statistics />
+          </ProtectedRoute>
+          <ProtectedRoute dependsOn={user} exact path="/">
+            <Hub />
+          </ProtectedRoute>
         </Switch>
+        <ProtectedRoute dependsOn={user} path="/">
+          <Footer user={user} logoutUser={() => setUser(null)} />
+        </ProtectedRoute>
       </ErrorBoundary>
-    </div>
+    </>
   )
 }
 
