@@ -4,7 +4,6 @@ const rawOrderSchema = new mongoose.Schema({
   text: String,
   date: {
     type: Date,
-    default: new Date(),
   },
   markedForDeletion: {
     type: Boolean,

@@ -54,6 +54,7 @@ orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
   try {
     const receivedOrder = new RawOrder({
       text: req.body.order,
+      date: new Date().toISOString()
     })
 
     await receivedOrder.save()
