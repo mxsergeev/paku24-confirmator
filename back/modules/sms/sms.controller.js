@@ -4,10 +4,9 @@ const { SEMYSMS_API_TOKEN } = require('../../utils/config')
 const termsData = require('../email/email.data.terms.json')
 const logger = require('../../utils/logger')
 const authMW = require('../authentication/auth.middleware')
+const { SEMYSMS_DEVICE_ID } = require('../../utils/config')
 
 smsRouter.use(authMW.authenticateAccessToken)
-
-const deviceId = 268248
 
 // function getOutboxSMS() {
 //   const urlOutbox = 'https://semysms.net/api/3/outbox_sms.php'
@@ -45,7 +44,7 @@ function sendSMSWithGateway(phone, msg) {
     .get(urlSend, {
       params: {
         token: SEMYSMS_API_TOKEN,
-        device: deviceId,
+        device: SEMYSMS_DEVICE_ID,
         phone,
         msg,
       },
