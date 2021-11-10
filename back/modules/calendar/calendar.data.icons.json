@@ -13,7 +13,12 @@
     "Pakettiauto ja muuttomies": "🚛",
     "Pakettiauto ja kaksi muuttomiestä": "🚛🚛",
     "Nouto/tyhjennyspalvelu yhdellä kantajalla": "🛒",
-    "Nouto/tyhjennyspalvelu kahdella kantajalla": "🛒🛒"
+    "Nouto/tyhjennyspalvelu kahdella kantajalla": "🛒🛒",
+    "Van and driver (doesn't assist in carrying)": "🚚",
+    "Van and mover": "🚛",
+    "Van and two movers": "🚛🚛",
+    "Recycle service with one carrier": "🛒",
+    "Recycle service with two carriers": "🛒🛒"
   },
   "fees": {
     "Viikonloppulisä": "🎉",
