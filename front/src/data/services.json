@@ -14,8 +14,8 @@
   {
     "id": 3,
     "name": "Pakettiauto ja kaksi muuttomiestä",
-    "price": 110,
-    "priceXL": 110
+    "price": 100,
+    "priceXL": 100
   },
   {
     "id": 4,
@@ -26,8 +26,8 @@
   {
     "id": 5,
     "name": "Nouto/tyhjennyspalvelu kahdella kantajalla",
-    "price": 110,
-    "priceXL": 110
+    "price": 100,
+    "priceXL": 100
   },
   {
     "id": 6,
@@ -44,8 +44,8 @@
   {
     "id": 8,
     "name": "Van and two movers",
-    "price": 110,
-    "priceXL": 110
+    "price": 100,
+    "priceXL": 100
   },
   {
     "id": 9,
@@ -56,7 +56,7 @@
   {
     "id": 10,
     "name": "Recycle service with two carriers",
-    "price": 110,
-    "priceXL": 110
+    "price": 100,
+    "priceXL": 100
   }
 ]
