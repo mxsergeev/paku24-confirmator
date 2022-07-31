@@ -18,7 +18,7 @@ export default class TextOrder {
 
     if (!dateRe) throw new Error(cannotFind('date'))
 
-    const date = new Date(`${dateRe[0].replace(/th|rd|st|nd/, '')}Z`)
+    const date = new Date(`${dateRe[0].replace(/(?<=\d+)(th|rd|st|nd)/, '')}Z`)
     const time = /\d+:\d+/.exec(this.textOrder)[0]
 
     const dateTime = new Date(`
