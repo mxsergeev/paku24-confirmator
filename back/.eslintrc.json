@@ -11,9 +11,12 @@
     "ecmaVersion": 2020
   },
   "rules": {
-    "prettier/prettier": ["error", {
-     "endOfLine":"auto"
-   }],
+    "prettier/prettier": [
+      "error",
+      {
+        "endOfLine": "auto"
+      }
+    ],
     "no-console": ["warn"],
     "no-unused-vars": ["warn"],
     "camelcase": "off",

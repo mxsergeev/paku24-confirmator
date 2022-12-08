@@ -16,9 +16,7 @@ emailRouter.post('/send-confirmation', (req, res, next) => {
     subject,
     body,
   })
-    .then(() =>
-      res.status(200).send({ message: `Email sent to ${order.email}.` })
-    )
+    .then(() => res.status(200).send({ message: `Email sent to ${order.email}.` }))
     .catch((err) => next(err))
 })
 

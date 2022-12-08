@@ -2,10 +2,9 @@ const {
   makeIcons,
   makeColor,
   makeGoogleEventObject,
-} = require('../utils/calendar/helpers')
+} = require('../modules/calendar/calendar.helpers')
 const { exampleOrder, exampleOptions } = require('./test_helper')
-const iconsData = require('../utils/data/icons')
-const colorsData = require('../utils/data/colors')
+const colorsData = require('../modules/calendar/calendar.data.colors.json')
 
 describe('makeIcons', () => {
   test('title created right', () => {
@@ -59,9 +58,7 @@ describe('makeColor', () => {
     )
 
     expect(color).toBe(colorsData['Paku ja kuski'])
-    expect(color2).toBe(
-      colorsData.altColorPalette['Paku ja kaksi muuttomiestä']
-    )
+    expect(color2).toBe(colorsData.altColorPalette['Paku ja kaksi muuttomiestä'])
     expect(color3).toBe(colorsData['Paku ja mies'])
   })
 })
@@ -83,17 +80,9 @@ describe('makeGoogleEventObject', () => {
       duration: 4,
     })
 
-    expect(eventObject.start.dateTime).toBe(
-      exampleOrder.date.original.toISOString()
-    )
-    expect(eventObject.end.dateTime).toBe(
-      new Date('2021-04-22 19:00').toISOString()
-    )
-    expect(eventObject2.start.dateTime).toBe(
-      new Date('2021-07-10 23:00').toISOString()
-    )
-    expect(eventObject2.end.dateTime).toBe(
-      new Date('2021-07-11 3:00').toISOString()
-    )
+    expect(eventObject.start.dateTime).toBe(exampleOrder.date.original.toISOString())
+    expect(eventObject.end.dateTime).toBe(new Date('2021-04-22 19:00').toISOString())
+    expect(eventObject2.start.dateTime).toBe(new Date('2021-07-10 23:00').toISOString())
+    expect(eventObject2.end.dateTime).toBe(new Date('2021-07-11 3:00').toISOString())
   })
 })

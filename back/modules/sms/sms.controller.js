@@ -61,9 +61,7 @@ smsRouter.post('/', (req, res, next) => {
 
   return sendSMSWithGateway(phone, msg)
     .then((data) => {
-      logger.info(
-        `SMS to phonenumber ${phone} sent with status code: ${data.code}`
-      )
+      logger.info(`SMS to phonenumber ${phone} sent with status code: ${data.code}`)
       return res.status(200).send({
         message: `SMS to phonenumber ${phone} added to the queue. Don't forget to start the SMS Gateway.`,
       })

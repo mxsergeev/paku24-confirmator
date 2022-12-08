@@ -30,8 +30,8 @@
   /* text-overflow: ellipsis; */
 }
 
-.order-operations .block button:not(.Mui-disabled)  {
-  border: 1px solid var(--brand-color-medium) 
+.order-operations .block button:not(.Mui-disabled) {
+  border: 1px solid var(--brand-color-medium);
 }
 
 .order-operations .block .width-75 {

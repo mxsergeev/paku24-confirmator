@@ -1,11 +1,8 @@
 const crypto = require('crypto')
 const bcrypt = require('bcrypt')
 const passwordGenerator = require('generate-password')
-const {
-  uniqueNamesGenerator,
-  colors,
-  animals,
-} = require('unique-names-generator')
+const { uniqueNamesGenerator, colors, animals } = require('unique-names-generator')
+const mongoose = require('mongoose')
 
 const User = require('../../models/user')
 const newErrorWithCustomName = require('../../utils/newErrorWithCustomName')
@@ -34,12 +31,15 @@ async function createUser(req, res, next) {
       .digest('base64')
 
     const user = new User({
+      _id: mongoose.Types.ObjectId(),
       name,
       email,
       requestToken,
       access: false,
       accessRequested: Date.now(),
     })
+
+    console.log('user', user)
 
     await user.save()
     req.requestToken = requestToken

@@ -8,8 +8,7 @@ const initialUsers = [
     username: 'unicorn123',
     name: 'Twilight Sparkle',
     // hash for 'password'
-    passwordHash:
-      '$2b$10$DMPCz0Z2EDLBvZskwagMYO3YWIFChJapuyPbNWW.LIXPC5Nl7j7tK',
+    passwordHash: '$2b$10$DMPCz0Z2EDLBvZskwagMYO3YWIFChJapuyPbNWW.LIXPC5Nl7j7tK',
     email: 'test@test.com',
     access: true,
   },

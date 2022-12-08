@@ -1,14 +1,5 @@
 function filterReqsBasedOnUrl(req, res, next) {
-  const urls = [
-    '/app',
-    '/api',
-    '/static',
-    '/manifest',
-    '/logo',
-    '/favicon',
-    '/robots',
-    '/fonts',
-  ]
+  const urls = ['/app', '/api', '/static', '/manifest', '/logo', '/favicon', '/robots', '/fonts']
 
   if (urls.some((url) => req.path.startsWith(url))) {
     return next()

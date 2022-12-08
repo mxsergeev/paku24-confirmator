@@ -94,11 +94,7 @@ describe('Authentication middleware', () => {
         passwordCorrect: true,
       }
 
-      const result = authentication.controlRequestFlow(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const result = authentication.controlRequestFlow(mockReq, mockRes, mockNext)
       const request = authentication.requests.get(ip)
 
       // middleware returned mockNext() thus undefined
@@ -114,11 +110,7 @@ describe('Authentication middleware', () => {
       }
 
       // 1th failed attempt
-      const result = authentication.controlRequestFlow(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const result = authentication.controlRequestFlow(mockReq, mockRes, mockNext)
       const request = authentication.requests.get(ip)
 
       // middleware returned mockNext() thus undefined
@@ -142,9 +134,9 @@ describe('Authentication middleware', () => {
       const request = authentication.requests.get(ip)
 
       // 3th failed attempt
-      expect(() =>
-        authentication.controlRequestFlow(mockReq, mockRes, mockNext)
-      ).toThrowError(newErrorWithCustomName('TooManyRequestsError'))
+      expect(() => authentication.controlRequestFlow(mockReq, mockRes, mockNext)).toThrowError(
+        newErrorWithCustomName('TooManyRequestsError')
+      )
     })
 
     test('after three failed attempts, successful login with correct credentials', () => {
@@ -164,9 +156,7 @@ describe('Authentication middleware', () => {
       mockReq.passwordCorrect = true
       const request = authentication.requests.get(ip)
 
-      expect(
-        authentication.controlRequestFlow(mockReq, mockRes, mockNext)
-      ).toBeUndefined()
+      expect(authentication.controlRequestFlow(mockReq, mockRes, mockNext)).toBeUndefined()
       expect(request).toHaveProperty('numberOfAttempts', 0)
     })
   })
@@ -180,11 +170,7 @@ describe('Authentication middleware', () => {
         passwordCorrect: true,
       }
 
-      const result = await authentication.invalidAuth(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const result = await authentication.invalidAuth(mockReq, mockRes, mockNext)
 
       expect(result).toBeUndefined()
     })
@@ -195,9 +181,9 @@ describe('Authentication middleware', () => {
         passwordCorrect: false,
       }
 
-      expect(() =>
-        authentication.invalidAuth(mockReq, mockRes, mockNext)
-      ).toThrowError(newErrorWithCustomName('InvalidUserError'))
+      expect(() => authentication.invalidAuth(mockReq, mockRes, mockNext)).toThrowError(
+        newErrorWithCustomName('InvalidUserError')
+      )
     })
 
     test('user is null', async () => {
@@ -206,9 +192,9 @@ describe('Authentication middleware', () => {
         passwordCorrect: false,
       }
 
-      expect(() =>
-        authentication.invalidAuth(mockReq, mockRes, mockNext)
-      ).toThrowError(newErrorWithCustomName('InvalidUserError'))
+      expect(() => authentication.invalidAuth(mockReq, mockRes, mockNext)).toThrowError(
+        newErrorWithCustomName('InvalidUserError')
+      )
     })
   })
 
@@ -217,11 +203,7 @@ describe('Authentication middleware', () => {
     test('access token is generated', async () => {
       const mockReq = { user }
 
-      const result = await authentication.generateAccessToken(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const result = await authentication.generateAccessToken(mockReq, mockRes, mockNext)
 
       expect(result).toBeUndefined()
       expect(mockReq).toHaveProperty('accessToken')
@@ -234,11 +216,7 @@ describe('Authentication middleware', () => {
         accessToken: 'notrealtoken',
       }
 
-      const result = await authentication.generateAccessToken(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const result = await authentication.generateAccessToken(mockReq, mockRes, mockNext)
 
       expect(result).toBeUndefined()
       expect(mockReq).toHaveProperty('accessToken', 'notrealtoken')
@@ -249,11 +227,7 @@ describe('Authentication middleware', () => {
     const user = initialUsers[0]
     test('refresh token is generated for the first time', async () => {
       const mockReq = { user }
-      const result = await authentication.generateRefreshToken(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const result = await authentication.generateRefreshToken(mockReq, mockRes, mockNext)
 
       expect(result).toBeUndefined()
       expect(mockReq).toHaveProperty('refreshToken')
@@ -277,11 +251,7 @@ describe('Authentication middleware', () => {
       await refreshTokenInDB.save()
 
       const mockReq = { user, refreshTokenInDB }
-      const result = await authentication.generateRefreshToken(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const result = await authentication.generateRefreshToken(mockReq, mockRes, mockNext)
 
       expect(result).toBeUndefined()
       expect(mockReq).toHaveProperty('refreshToken')
@@ -310,11 +280,7 @@ describe('Authentication middleware', () => {
         cookies: { at: authentication.generateJWT(user) },
       }
 
-      const result = await authentication.authenticateAccessToken(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const result = await authentication.authenticateAccessToken(mockReq, mockRes, mockNext)
 
       expect(result).toBeUndefined()
       expect(mockReq).toHaveProperty('user')
@@ -327,9 +293,9 @@ describe('Authentication middleware', () => {
         cookies: { at: authentication.generateJWT(user, { expiresIn: '1ms' }) },
       }
 
-      expect(() =>
-        authentication.authenticateAccessToken(mockReq, mockRes, mockNext)
-      ).toThrowError(newErrorWithCustomName('JsonWebTokenError', 'jwt expired'))
+      expect(() => authentication.authenticateAccessToken(mockReq, mockRes, mockNext)).toThrowError(
+        newErrorWithCustomName('JsonWebTokenError', 'jwt expired')
+      )
 
       expect(mockReq).not.toHaveProperty('user')
     })
@@ -341,11 +307,7 @@ describe('Authentication middleware', () => {
         cookies: { at },
       }
 
-      const rslt = await authentication.authenticateAccessToken(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const rslt = await authentication.authenticateAccessToken(mockReq, mockRes, mockNext)
 
       expect(rslt).toBeUndefined()
       expect(mockReq).toHaveProperty('accessToken')
@@ -368,11 +330,7 @@ describe('Authentication middleware', () => {
         },
       }
 
-      const rslt = await authentication.authenticateRefreshToken(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const rslt = await authentication.authenticateRefreshToken(mockReq, mockRes, mockNext)
 
       expect(rslt).toBeUndefined()
       expect(mockReq).toHaveProperty('user', exampleRefreshToken.user)
@@ -385,11 +343,7 @@ describe('Authentication middleware', () => {
       }
 
       await expect(async () => {
-        await authentication.authenticateRefreshToken(
-          mockReq,
-          mockRes,
-          mockNext
-        )
+        await authentication.authenticateRefreshToken(mockReq, mockRes, mockNext)
       }).rejects.toThrowError(newErrorWithCustomName('TokenMissingError'))
       expect(mockReq).not.toHaveProperty('user')
       expect(mockReq).not.toHaveProperty('refreshTokenInDB')
@@ -401,11 +355,7 @@ describe('Authentication middleware', () => {
       }
 
       await expect(async () => {
-        await authentication.authenticateRefreshToken(
-          mockReq,
-          mockRes,
-          mockNext
-        )
+        await authentication.authenticateRefreshToken(mockReq, mockRes, mockNext)
       }).rejects.toThrowError(newErrorWithCustomName('RefreshTokenError'))
       expect(mockReq).not.toHaveProperty('user')
       expect(mockReq).not.toHaveProperty('refreshTokenInDB')
@@ -421,11 +371,7 @@ describe('Authentication middleware', () => {
       mockReq.cookies.rt = 'ancestortoken'
 
       await expect(async () => {
-        await authentication.authenticateRefreshToken(
-          mockReq,
-          mockRes,
-          mockNext
-        )
+        await authentication.authenticateRefreshToken(mockReq, mockRes, mockNext)
       }).rejects.toThrowError(newErrorWithCustomName('TokenTheftError'))
       expect(mockReq).not.toHaveProperty('user')
       expect(mockReq).not.toHaveProperty('refreshTokenInDB')
@@ -441,14 +387,8 @@ describe('Authentication middleware', () => {
       mockReq.cookies.rt = exampleRefreshToken.token
 
       await expect(async () => {
-        await authentication.authenticateRefreshToken(
-          mockReq,
-          mockRes,
-          mockNext
-        )
-      }).rejects.toThrowError(
-        newErrorWithCustomName('RefreshTokenExpiredError')
-      )
+        await authentication.authenticateRefreshToken(mockReq, mockRes, mockNext)
+      }).rejects.toThrowError(newErrorWithCustomName('RefreshTokenExpiredError'))
       expect(mockReq).not.toHaveProperty('user')
       expect(mockReq).not.toHaveProperty('refreshTokenInDB')
     })
@@ -463,11 +403,7 @@ describe('Authentication middleware', () => {
       mockReq.cookies.rt = exampleRefreshToken.token
 
       await expect(async () => {
-        await authentication.authenticateRefreshToken(
-          mockReq,
-          mockRes,
-          mockNext
-        )
+        await authentication.authenticateRefreshToken(mockReq, mockRes, mockNext)
       }).rejects.toThrowError(newErrorWithCustomName('TooManyRequestsError'))
       expect(mockReq).not.toHaveProperty('user')
       expect(mockReq).not.toHaveProperty('refreshTokenInDB')
@@ -488,16 +424,10 @@ describe('Authentication middleware', () => {
       const tokensInDBBeforeDeletion = await tokensInDB()
       mockReq.refreshTokenInDB = descendantToken
 
-      const rslt = await authentication.updateOrDeleteOldToken(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const rslt = await authentication.updateOrDeleteOldToken(mockReq, mockRes, mockNext)
 
       expect(rslt).toBeUndefined()
-      expect(await tokensInDB()).toHaveLength(
-        tokensInDBBeforeDeletion.length - 1
-      )
+      expect(await tokensInDB()).toHaveLength(tokensInDBBeforeDeletion.length - 1)
       expect(mockReq).toHaveProperty('refreshTokenIsNew')
       expect(mockReq).not.toHaveProperty('refreshToken')
     })
@@ -515,11 +445,7 @@ describe('Authentication middleware', () => {
       const tokensInDBBeforeDeletion = await tokensInDB()
       mockReq.refreshTokenInDB = ancestorToken
 
-      const rslt = await authentication.updateOrDeleteOldToken(
-        mockReq,
-        mockRes,
-        mockNext
-      )
+      const rslt = await authentication.updateOrDeleteOldToken(mockReq, mockRes, mockNext)
 
       expect(rslt).toBeUndefined()
       expect(await tokensInDB()).toHaveLength(tokensInDBBeforeDeletion.length)
