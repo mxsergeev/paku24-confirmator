@@ -82,8 +82,8 @@ function App() {
 
   return (
     <>
+      <Header isLogged={user !== null && user !== 'Loading'} />
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <Header isLogged={user !== null && user !== 'Loading'} />
         <Switch>
           <Route path="/register">
             <Register />

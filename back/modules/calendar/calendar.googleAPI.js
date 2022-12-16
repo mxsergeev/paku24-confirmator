@@ -1,6 +1,8 @@
 /* eslint-disable quote-props */
-const fs = require('fs')
-const readline = require('readline')
+const fs = require('fs').promises
+const path = require('path')
+const process = require('process')
+const { authenticate } = require('@google-cloud/local-auth')
 const { google } = require('googleapis')
 const logger = require('../../utils/logger')
 // If modifying these scopes, delete token.json.
@@ -8,7 +10,12 @@ const SCOPES = ['https://www.googleapis.com/auth/calendar']
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
-const TOKEN_PATH = './modules/calendar/calendar.google.token.json'
+
+const TOKEN_PATH = path.join(process.cwd(), '/modules/calendar/calendar.google.token.json')
+const CREDENTIALS_PATH = path.join(
+  process.cwd(),
+  '/modules/calendar/calendar.google.credentials.json'
+)
 
 /**
  * Adds event to the Google calendar. Before that checks OAuth credentials. Mostly boilerplate from Google Docs example.
@@ -37,9 +44,7 @@ function addEventToCalendar(event) {
         },
         (err, ev) => {
           if (err) {
-            logger.info(
-              `There was an error contacting the Calendar service: ${err}`
-            )
+            logger.info(`There was an error contacting the Calendar service: ${err}`)
             return reject(err)
           }
           logger.info(
@@ -50,7 +55,7 @@ function addEventToCalendar(event) {
       )
     }
 
-    contactAPI(addEvent)
+    authorize().then(addEvent)
   })
 }
 
@@ -66,9 +71,7 @@ function deleteEventFromCalendar(eventId) {
         },
         (err) => {
           if (err) {
-            logger.info(
-              `There was an error contacting the Calendar service: ${err}`
-            )
+            logger.info(`There was an error contacting the Calendar service: ${err}`)
             return reject(err)
           }
           logger.info(`Event with id ${eventId} deleted.`)
@@ -77,73 +80,61 @@ function deleteEventFromCalendar(eventId) {
       )
     }
 
-    contactAPI(deleteEvent)
-  })
-}
-
-// Load client secrets from a local file.
-function contactAPI(callback) {
-  fs.readFile(
-    './modules/calendar/calendar.google.credentials.json',
-    (err, content) => {
-      if (err) return console.log('Error loading client secret file:', err)
-      // Authorize a client with credentials, then call the Google Calendar API.
-      return authorize(JSON.parse(content), callback)
-    }
-  )
-}
-
-/**
- * Create an OAuth2 client with the given credentials, and then execute the
- * given callback function.
- * @param {Object} credentials The authorization client credentials.
- * @param {function} callback The callback to call with the authorized client.
- */
-function authorize(credentials, callback) {
-  const { client_secret, client_id, redirect_uris } = credentials.installed
-  const oAuth2Client = new google.auth.OAuth2(
-    client_id,
-    client_secret,
-    redirect_uris[0]
-  )
-
-  // Check if we have previously stored a token.
-  fs.readFile(TOKEN_PATH, (err, token) => {
-    if (err) return getAccessToken(oAuth2Client, callback)
-    oAuth2Client.setCredentials(JSON.parse(token))
-    callback(oAuth2Client)
+    authorize().then(deleteEvent)
   })
 }
 
 /**
- * Get and store new token after prompting for user authorization, and then
- * execute the given callback with the authorized OAuth2 client.
- * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback for the authorized client.
+ * Load or request or authorization to call APIs.
+ *
  */
-function getAccessToken(oAuth2Client, callback) {
-  const authUrl = oAuth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES,
+async function authorize() {
+  let client = await loadSavedCredentialsIfExist()
+  if (client) {
+    return client
+  }
+  client = await authenticate({
+    scopes: SCOPES,
+    keyfilePath: CREDENTIALS_PATH,
   })
-  console.log('Authorize this app by visiting this url:', authUrl)
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+  if (client.credentials) {
+    await saveCredentials(client)
+  }
+  return client
+}
+
+/**
+ * Serializes credentials to a file compatible with GoogleAUth.fromJSON.
+ *
+ * @param {OAuth2Client} client
+ * @return {Promise<void>}
+ */
+async function saveCredentials(client) {
+  const content = await fs.readFile(CREDENTIALS_PATH)
+  const keys = JSON.parse(content)
+  const key = keys.installed || keys.web
+  const payload = JSON.stringify({
+    type: 'authorized_user',
+    client_id: key.client_id,
+    client_secret: key.client_secret,
+    refresh_token: client.credentials.refresh_token,
   })
-  rl.question('Enter the code from that page here: ', (code) => {
-    rl.close()
-    oAuth2Client.getToken(code, (err, token) => {
-      if (err) return console.error('Error retrieving access token', err)
-      oAuth2Client.setCredentials(token)
-      // Store the token to disk for later program executions
-      fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
-        if (err) return console.error(err)
-        console.log('Token stored to', TOKEN_PATH)
-      })
-      callback(oAuth2Client)
-    })
-  })
+  await fs.writeFile(TOKEN_PATH, payload)
+}
+
+/**
+ * Reads previously authorized credentials from the save file.
+ *
+ * @return {Promise<OAuth2Client|null>}
+ */
+async function loadSavedCredentialsIfExist() {
+  try {
+    const content = await fs.readFile(TOKEN_PATH)
+    const credentials = JSON.parse(content)
+    return google.auth.fromJSON(credentials)
+  } catch (err) {
+    return null
+  }
 }
 
 /**

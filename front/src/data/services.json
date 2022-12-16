@@ -2,31 +2,61 @@
   {
     "id": 1,
     "name": "Pakettiauto ja kuljettaja",
-    "price": 30,
-    "priceXL": 40
+    "price": 50,
+    "priceXL": 50
   },
   {
     "id": 2,
     "name": "Pakettiauto ja muuttomies",
-    "price": 60,
-    "priceXL": 60
+    "price": 70,
+    "priceXL": 70
   },
   {
     "id": 3,
     "name": "Pakettiauto ja kaksi muuttomiestä",
-    "price": 90,
-    "priceXL": 90
+    "price": 100,
+    "priceXL": 100
   },
   {
     "id": 4,
     "name": "Nouto/tyhjennyspalvelu yhdellä kantajalla",
-    "price": 40,
-    "priceXL": 40
+    "price": 70,
+    "priceXL": 70
   },
   {
     "id": 5,
     "name": "Nouto/tyhjennyspalvelu kahdella kantajalla",
+    "price": 100,
+    "priceXL": 100
+  },
+  {
+    "id": 6,
+    "name": "Van and driver (doesn't assist in carrying)",
+    "price": 50,
+    "priceXL": 50
+  },
+  {
+    "id": 7,
+    "name": "Van and mover",
     "price": 70,
     "priceXL": 70
+  },
+  {
+    "id": 8,
+    "name": "Van and two movers",
+    "price": 100,
+    "priceXL": 100
+  },
+  {
+    "id": 9,
+    "name": "Recycle service with one carrier",
+    "price": 70,
+    "priceXL": 70
+  },
+  {
+    "id": 10,
+    "name": "Recycle service with two carriers",
+    "price": 100,
+    "priceXL": 100
   }
 ]

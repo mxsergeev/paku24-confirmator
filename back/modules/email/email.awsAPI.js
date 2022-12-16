@@ -13,13 +13,7 @@ AWS.config.update({ region: 'eu-north-1' })
  * @param {string} [mail.sourceEmail=SOURCE_EMAIL] - Source
  */
 
-function sendMail({
-  email,
-  subject,
-  body,
-  html = false,
-  sourceEmail = SOURCE_EMAIL,
-}) {
+function sendMail({ email, subject, body, html = false, sourceEmail = SOURCE_EMAIL }) {
   const params = {
     Destination: {
       ToAddresses: [email],
@@ -39,14 +33,10 @@ function sendMail({
     Data: body,
   }
 
-  html
-    ? (params.Message.Body.Html = messageBody)
-    : (params.Message.Body.Text = messageBody)
+  html ? (params.Message.Body.Html = messageBody) : (params.Message.Body.Text = messageBody)
 
   if (process.env.NODE_ENV !== 'test') {
-    const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' })
-      .sendEmail(params)
-      .promise()
+    const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' }).sendEmail(params).promise()
 
     return sendPromise
       .then((data) => {

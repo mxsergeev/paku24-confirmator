@@ -4,10 +4,9 @@ const { SEMYSMS_API_TOKEN } = require('../../utils/config')
 const termsData = require('../email/email.data.terms.json')
 const logger = require('../../utils/logger')
 const authMW = require('../authentication/auth.middleware')
+const { SEMYSMS_DEVICE_ID } = require('../../utils/config')
 
 smsRouter.use(authMW.authenticateAccessToken)
-
-const deviceId = 268248
 
 // function getOutboxSMS() {
 //   const urlOutbox = 'https://semysms.net/api/3/outbox_sms.php'
@@ -45,7 +44,7 @@ function sendSMSWithGateway(phone, msg) {
     .get(urlSend, {
       params: {
         token: SEMYSMS_API_TOKEN,
-        device: deviceId,
+        device: SEMYSMS_DEVICE_ID,
         phone,
         msg,
       },
@@ -62,9 +61,7 @@ smsRouter.post('/', (req, res, next) => {
 
   return sendSMSWithGateway(phone, msg)
     .then((data) => {
-      logger.info(
-        `SMS to phonenumber ${phone} sent with status code: ${data.code}`
-      )
+      logger.info(`SMS to phonenumber ${phone} sent with status code: ${data.code}`)
       return res.status(200).send({
         message: `SMS to phonenumber ${phone} added to the queue. Don't forget to start the SMS Gateway.`,
       })

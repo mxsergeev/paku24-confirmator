@@ -9,7 +9,7 @@
   display: flex;
   width: 100%;
   justify-content: flex-end;
-  gap: 5px
+  gap: 5px;
 }
 
 .buttons-block button {

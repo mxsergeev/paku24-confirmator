@@ -40,10 +40,7 @@ describe('Registration', () => {
         purpose: 'Spam hard',
       }
 
-      await api
-        .post('/api/registration/request-access')
-        .send(testUser)
-        .expect(403)
+      await api.post('/api/registration/request-access').send(testUser).expect(403)
 
       const usersAfterRequest = await usersInDB()
       expect(usersAfterRequest).toHaveLength(initialUsers.length)
@@ -73,9 +70,7 @@ describe('Registration', () => {
     })
 
     test('Access not granted if request token is invalid', async () => {
-      await api
-        .get('/api/registration/grant-access/?token=blabla1234')
-        .expect(403)
+      await api.get('/api/registration/grant-access/?token=blabla1234').expect(403)
 
       const userStillWithoutAccess = await User.findOne({
         email: userWithoutAccess.email,

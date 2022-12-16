@@ -16,7 +16,6 @@
 .tab-panel-item-selected {
   color: rgb(85, 85, 85);
   background-color: rgba(211, 211, 211, 0.692);
-
 }
 
 .p-0 {
@@ -96,13 +95,13 @@
 .order-actions {
   display: flex;
   justify-content: space-between;
-  flex: 2 0 2
+  flex: 2 0 2;
 }
 
 .order-status-icons-container {
   display: flex;
   justify-content: flex-start;
-  flex: 1 5 1
+  flex: 1 5 1;
 }
 
 .order-status-icon {
@@ -111,11 +110,11 @@
 }
 
 .order-status-icon-selected {
-  background-color:#f8d96a !important;
+  background-color: #f8d96a !important;
 }
 
 .order-status-notification {
-  background-color: var(--brand-color) 
+  background-color: var(--brand-color);
 }
 
 .order-status-notification-selected {
@@ -123,12 +122,12 @@
 }
 
 .order-status-confirmed {
-  background-color: greenyellow 
+  background-color: greenyellow;
 }
 
 .order-status-new-order {
   justify-self: end;
   color: white;
   font-weight: bold;
-  background-color: lightskyblue
+  background-color: lightskyblue;
 }
