@@ -54,7 +54,7 @@ orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
   try {
     const receivedOrder = new RawOrder({
       text: req.body.order,
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
     })
 
     await receivedOrder.save()
@@ -68,7 +68,7 @@ orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
 orderPoolRouter.use(authMW.authenticateAccessToken)
 
 async function getOrdersWithLimit({ markedForDeletion, skip, limit }) {
-  return RawOrder.find({ markedForDeletion }).skip(skip).limit(limit).sort({ date: -1 }).exec()
+  return RawOrder.find({ markedForDeletion }).skip(skip).limit(limit).sort({ _id: -1 }).exec()
 }
 
 function howMuchToGet(pages = ['1']) {
