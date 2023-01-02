@@ -47,7 +47,8 @@
     "dev": "cross-env NODE_ENV=development nodemon index.js",
     "build:ui": "rm -rf build && cd ../front && npm run build && cp -r build ../back",
     "ngrok": "../../ngrok http 3000 -host-header='localhost:3000'",
-    "test": "cross-env NODE_ENV=test jest --verbose --runInBand"
+    "test": "cross-env NODE_ENV=test jest --verbose --runInBand",
+    "authorizeCalendarAccess": "node modules/calendar/authorize.js"
   },
   "jest": {
     "testEnvironment": "node"

@@ -38,7 +38,7 @@ Create and populate the `.env` file in the [back](./back/) folder. Use [`.env.ex
 
 This app adds events to the Google Calendar. You need to provide access to this app in order to do that.
 
-> Source: [Node.js quickstart guide](https://developers.google.com/calendar/api/quickstart/nodejs).
+> Please, read the source as it may contain an updated version of the guide: [Node.js quickstart guide](https://developers.google.com/calendar/api/quickstart/nodejs).
 
 #### Enable the API
 Before using Google APIs, you need to turn them on in a Google Cloud project. You can turn on one or more APIs in a single Google Cloud project.
@@ -56,14 +56,13 @@ To authenticate as an end user and access user data in your app, you need to cre
 
 #### Create a token
 
-In your working directory, run the script, which will create the token needed for accessing Google APIs. You will need to log in or select the Google account to which you want to provide access. 
+In "back" directory, run a script, which will create the token needed for accessing Google APIs. You will need to log in or select the Google account to which you want to provide access. 
 
 Authorization information will be stored in the file system, so the next time you run the project, you won't be prompted for authorization.
 
 ```
-node ./back/modules/calendar/createCredentialsExample.js
+yarn authorizeCalendarAccess
 ```
-
 ### SMS Gateway
 
 This app sends SMS using the SemySMS Gateway. SMS Gateway is useful if you want to send SMS from your existing phone number, be able to view them on the phone, and receive replies.

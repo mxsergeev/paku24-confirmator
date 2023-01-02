@@ -2,8 +2,8 @@
   {
     "id": 1,
     "name": "Pakettiauto ja kuljettaja",
-    "price": 50,
-    "priceXL": 50
+    "price": 55,
+    "priceXL": 55
   },
   {
     "id": 2,
@@ -32,8 +32,8 @@
   {
     "id": 6,
     "name": "Van and driver (doesn't assist in carrying)",
-    "price": 50,
-    "priceXL": 50
+    "price": 55,
+    "priceXL": 55
   },
   {
     "id": 7,
