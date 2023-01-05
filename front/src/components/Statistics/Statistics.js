@@ -94,16 +94,14 @@ export default function Statistics() {
     periodFrom: defStartDate,
     periodTo: defEndDate,
   })
-  const [confirmedOrders, setConfirmedOrders] = useState([])
   const [ordersByDays, setOrdersByDays] = useState({})
   const [anchorEl, setAnchorEl] = useState(null)
 
-  let weeks = splitPeriodToWeeks(period)
-  let ordersByWeeks = splitOrdersByPeriods(confirmedOrders, weeks)
+  const [ordersByWeeks, setOrdersByWeeks] = useState([])
   const [rows, setRows] = useState([])
 
   useEffect(async () => {
-    weeks = splitPeriodToWeeks(period)
+    const weeks = splitPeriodToWeeks(period)
     const firstWeek = weeks[0]
     const lastWeek = weeks[weeks.length - 1]
 
@@ -113,14 +111,15 @@ export default function Statistics() {
       periodFrom: firstWeek.periodFrom,
       periodTo: lastWeek.periodTo,
     })
-    setConfirmedOrders(confirmedOrdersOfAllWeeksOfPeriod)
 
-    ordersByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
+    const ordsByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
+
     const ordersOfWholePeriod = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, [period])
 
-    const weekRows = makeWeekRows(ordersByWeeks, weeks)
+    const weekRows = makeWeekRows(ordsByWeeks, weeks)
     const totalRow = makeTotalRow(ordersOfWholePeriod)
 
+    setOrdersByWeeks(ordsByWeeks)
     setRows([...weekRows, ...totalRow])
   }, [period])
 
