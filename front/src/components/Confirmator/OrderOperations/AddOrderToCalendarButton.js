@@ -4,7 +4,6 @@ import { useSnackbar } from 'notistack'
 import EventIcon from '@material-ui/icons/Event'
 import addEventToCalendar from '../../../services/calendarAPI'
 import orderPoolAPI from '../../../services/orderPoolAPI'
-import Order from '../../../helpers/Order'
 
 import CustomButton from './CustomButton'
 
