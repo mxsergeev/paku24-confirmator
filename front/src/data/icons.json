@@ -1,0 +1,41 @@
+{
+  "payment": {
+    "Maksukortti": "💳",
+    "Bank card": "💳",
+    "Käteinen": "🎁",
+    "Cash": "🎁",
+    "Lasku": "📜",
+    "Lasku/Osamaksu": "📜",
+    "Invoice/Instalment payment": "📜"
+  },
+  "service": {
+    "Pakettiauto ja kuljettaja": "🚚",
+    "Pakettiauto ja muuttomies": "🚛",
+    "Pakettiauto ja kaksi muuttomiestä": "🚛🚛",
+    "Nouto/tyhjennyspalvelu yhdellä kantajalla": "🛒",
+    "Nouto/tyhjennyspalvelu kahdella kantajalla": "🛒🛒",
+    "Van and driver (doesn't assist in carrying)": "🚚",
+    "Van and mover": "🚛",
+    "Van and two movers": "🚛🚛",
+    "Recycle service with one carrier": "🛒",
+    "Recycle service with two carriers": "🛒🛒"
+  },
+  "fees": {
+    "Viikonloppulisä": "🎉",
+    "Pyhälisä": "🎉",
+    "Kuunvaihdelisä": "🎉",
+    "Aamulisä": "🌞",
+    "Yölisä": "🌚"
+  },
+  "misc": {
+    "outsideCapital": "🚧",
+    "fromOutsideToCapital": "🚧"
+  },
+  "size": {
+    "XL": "XL"
+  },
+  "boxes": {
+    "delivery": "📦",
+    "pickup": "📦"
+  }
+}

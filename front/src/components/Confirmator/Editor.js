@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import TextField from '@material-ui/core/TextField'
 import NativeSelect from '@material-ui/core/NativeSelect'
 import TextareaAutosize from '@material-ui/core/TextareaAutosize'
@@ -7,6 +7,7 @@ import locale_en from 'dayjs/locale/en'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import services from '../../data/services.json'
 import paymentTypes from '../../data/paymentTypes.json'
+import Boxes from './Boxes'
 
 export default function Editor({ order, handleChange }) {
   const margin = {
@@ -17,13 +18,11 @@ export default function Editor({ order, handleChange }) {
     marginRight: 5,
   }
 
-  // hack to make date from mui datetimepicker to be inside fake event object
-  const [selectedDate, handleDateChange] = useState(order.dateTime)
-  useEffect(() => {
-    handleChange({ target: { name: 'dateTime', value: selectedDate } })
-  }, [selectedDate])
-
   locale_en.weekStart = 1
+
+  function handleDateChange(name, value) {
+    return handleChange({ target: { name, value } })
+  }
 
   return (
     <div className="basic-flex" style={{ marginTop: '5px' }}>
@@ -35,9 +34,8 @@ export default function Editor({ order, handleChange }) {
             minutesStep={15}
             style={marginLeftRight}
             className="time-duration"
-            name="dateTime"
             value={order.dateTime}
-            onChange={handleDateChange}
+            onChange={(v) => handleDateChange('dateTime', new Date(v))}
             DialogProps={{ disableScrollLock: true }}
           />
         </MuiPickersUtilsProvider>
@@ -165,6 +163,8 @@ export default function Editor({ order, handleChange }) {
         variant="outlined"
         size="small"
       />
+
+      <Boxes style={{ marginTop: margin.marginTop }} order={order} handleChange={handleChange} />
 
       <TextareaAutosize
         style={margin}

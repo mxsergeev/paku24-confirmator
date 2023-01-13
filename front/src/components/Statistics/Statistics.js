@@ -12,14 +12,12 @@ import Paper from '@material-ui/core/Paper'
 import IconButton from '@material-ui/core/IconButton'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
-import weekOfYear from 'dayjs/plugin/weekOfYear'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import './Statistics.css'
 import orderPoolApi from '../../services/orderPoolAPI'
 
 dayjs.extend(isSameOrAfter)
 dayjs.extend(isoWeek)
-dayjs.extend(weekOfYear)
 
 /**
  * @param {Object} period
@@ -29,17 +27,23 @@ dayjs.extend(weekOfYear)
  */
 
 function splitPeriodToWeeks({ periodFrom, periodTo }) {
-  const numberOfWeeks = periodTo.isoWeek() - periodFrom.isoWeek() + 1 // example 6
-  const weeks = Array(numberOfWeeks)
-    .fill(periodFrom.isoWeek())
-    .map((number, count) => number + count) // example [17, 18, 19, 20, 21, 22]
-    .map((weekNumber) => ({
-      periodFrom: dayjs().isoWeek(weekNumber).startOf('isoWeek').toISOString(),
-      periodTo: dayjs()
-        .isoWeek(weekNumber + 1)
-        .startOf('isoWeek')
-        .toISOString(),
-    }))
+  const numberOfWeeksInPeriod = Math.ceil(periodTo.diff(periodFrom, 'week', true))
+
+  // A turn of a year example: [50, 51, 52, 53, 54, 55]
+  const weekNumbers = Array(numberOfWeeksInPeriod)
+    .fill(periodFrom.isoWeek()) // The first week of the period
+    .map((number, count) => number + count)
+
+  const startYear = periodFrom.startOf('isoWeek').year()
+
+  const weeks = weekNumbers.map((weekNumber) => ({
+    periodFrom: dayjs().year(startYear).isoWeek(weekNumber).startOf('isoWeek').toISOString(),
+    periodTo: dayjs()
+      .year(startYear)
+      .isoWeek(weekNumber + 1)
+      .startOf('isoWeek')
+      .toISOString(),
+  }))
 
   return weeks
 }
@@ -90,16 +94,14 @@ export default function Statistics() {
     periodFrom: defStartDate,
     periodTo: defEndDate,
   })
-  const [confirmedOrders, setConfirmedOrders] = useState([])
   const [ordersByDays, setOrdersByDays] = useState({})
   const [anchorEl, setAnchorEl] = useState(null)
 
-  let weeks = splitPeriodToWeeks(period)
-  let ordersByWeeks = splitOrdersByPeriods(confirmedOrders, weeks)
+  const [ordersByWeeks, setOrdersByWeeks] = useState([])
   const [rows, setRows] = useState([])
 
   useEffect(async () => {
-    weeks = splitPeriodToWeeks(period)
+    const weeks = splitPeriodToWeeks(period)
     const firstWeek = weeks[0]
     const lastWeek = weeks[weeks.length - 1]
 
@@ -109,14 +111,15 @@ export default function Statistics() {
       periodFrom: firstWeek.periodFrom,
       periodTo: lastWeek.periodTo,
     })
-    setConfirmedOrders(confirmedOrdersOfAllWeeksOfPeriod)
 
-    ordersByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
+    const ordsByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
+
     const ordersOfWholePeriod = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, [period])
 
-    const weekRows = makeWeekRows(ordersByWeeks, weeks)
+    const weekRows = makeWeekRows(ordsByWeeks, weeks)
     const totalRow = makeTotalRow(ordersOfWholePeriod)
 
+    setOrdersByWeeks(ordsByWeeks)
     setRows([...weekRows, ...totalRow])
   }, [period])
 
