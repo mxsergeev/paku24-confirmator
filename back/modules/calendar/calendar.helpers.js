@@ -1,45 +1,5 @@
 const dayjs = require('dayjs')
-const utc = require('dayjs/plugin/utc')
-const timezone = require('dayjs/plugin/timezone') // dependent on utc plugin
-const iconsData = require('./calendar.data.icons.json')
 const colors = require('./calendar.data.colors.json')
-
-dayjs.extend(utc)
-dayjs.extend(timezone)
-
-/**
- * Creates the title with icons, starting time and duration for an event
- * @param {object} order
- * @param {boolean} order.XL
- * @param {string} order.distance
- * @param {object} order
- * @param {object} order.fees
- * @param {string[]} order.fees.array
- * @param {string} order.serviceName
- * @param {string} order.paymentType
- */
-
-function makeIcons(order, fees) {
-  // Making so that the time is in the right timezone.
-  // Potentially easier fix is to send the time string directly from client.
-  const time = dayjs(new Date(order.dateTime).toUTCString())
-    .local()
-    .tz('Europe/Helsinki')
-    .format('HH:mm')
-  const sizeIcon = order.XL ? iconsData.size.XL : ''
-  const distanceIcon = iconsData.misc[order.distance] || ''
-  const feeIcons = fees
-    .map((fee) => {
-      if (fee.name === 'Laskulisä') return ''
-
-      return iconsData.fees[fee.name]
-    })
-    .reduce((acc, cur) => acc + cur, '')
-  const serviceIcons = iconsData.service[order.serviceName]
-  const paymentIcons = iconsData.payment[order.paymentType]
-
-  return `${sizeIcon}${distanceIcon}${feeIcons}${serviceIcons}${paymentIcons}${time}(${order.duration}h)`
-}
 
 /**
  * Decides which color the event will be depending on car and service name
@@ -55,7 +15,7 @@ function makeColor(order) {
 }
 
 /**
- * Creates an event object for Google Calendar API.
+ * Creates move, boxes delivery and pickup event objects for Google Calendar API.
  * @param {Object} eventInfo
  * @param {string} eventInfo.title
  * @param {Date} eventInfo.date
@@ -63,54 +23,70 @@ function makeColor(order) {
  * @param {string} eventInfo.color
  */
 
-function makeGoogleEventObject({ title, dateTime, duration, color }) {
-  const date = new Date(dateTime)
-
-  const hours = Math.floor(Number(duration))
-  let minutes = (Number(duration) % 1) * 60
+function makeGoogleEventObjects(order, entries) {
+  const hours = Math.floor(Number(order.duration))
+  let minutes = (Number(order.duration) % 1) * 60
   if (!minutes) minutes = 0
 
-  const endDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    date.getHours() + hours,
-    date.getMinutes() + minutes
-  )
-
-  const event = {
-    summary: title,
-    colorId: color,
-    start: {
-      dateTime: date.toISOString(),
-      timeZone: 'Europe/Helsinki',
-    },
-    end: {
-      dateTime: endDate.toISOString(),
-      timeZone: 'Europe/Helsinki',
-    },
-    reminders: {
-      useDefault: false,
-    },
-  }
-
-  return event
-}
-
-function composeGoogleEventObject(entry, order, fees) {
-  const icons = makeIcons(order, fees)
   const color = makeColor(order)
 
-  const eventInfo = {
-    title: icons + entry,
-    dateTime: order.dateTime,
-    duration: order.duration,
-    color,
+  const timeZone = 'Europe/Helsinki'
+
+  const events = [
+    {
+      summary: entries.move.title,
+      description: entries.move.description,
+      colorId: color,
+      start: {
+        dateTime: order.dateTime,
+        timeZone,
+      },
+      end: {
+        dateTime: dayjs(order.dateTime).add(hours, 'hour').add(minutes, 'minute').toISOString(),
+        timeZone,
+      },
+      reminders: {
+        useDefault: false,
+      },
+    },
+  ]
+
+  if (order.boxesAmount > 0) {
+    ;['boxesDelivery', 'boxesPickup'].forEach((f) => {
+      const dateStr = order[`${f}Date`]
+
+      events.push({
+        summary: entries[f].title,
+        description: entries[f].description,
+        colorId: colors.boxes,
+        start: dateStr.includes('T')
+          ? {
+              dateTime: dateStr,
+              timeZone,
+            }
+          : {
+              date: dateStr,
+              timeZone,
+            },
+        end: dateStr.includes('T')
+          ? {
+              dateTime: dayjs(dateStr).add(1, 'hour').toISOString(),
+              timeZone,
+            }
+          : {
+              date: dateStr,
+              timeZone,
+            },
+        reminders: {
+          useDefault: false,
+        },
+      })
+    })
   }
 
-  return makeGoogleEventObject(eventInfo)
+  return events
 }
 
 module.exports = {
-  composeGoogleEventObject,
+  makeGoogleEventObjects,
 }

@@ -40,10 +40,6 @@ export default function Confirmator() {
 
   const { enqueueSnackbar } = useSnackbar()
 
-  function transform(o) {
-    return Order.transformToText(o, (msg) => enqueueSnackbar(msg, { autoHideDuration: 750 }))
-  }
-
   const rawOrderOrderContainerRef = useRef(null)
   const transformedOrderContainerRef = useRef(null)
 
@@ -75,14 +71,14 @@ export default function Confirmator() {
         setOrder(orderFromText)
         return setTransformedOrder({
           id: o.id,
-          text: transform(orderFromText),
+          text: orderFromText.format(),
         })
       })
       .catch((err) => enqueueSnackbar(err.message, { variant: 'error' }))
   }
 
   function handleOrderTransformFromEditor() {
-    return setTransformedOrder({ id: rawOrder.id, text: transform(order) })
+    return setTransformedOrder({ id: rawOrder.id, text: order.format() })
   }
 
   function handleOrderPoolExport(o) {

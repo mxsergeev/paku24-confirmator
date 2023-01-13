@@ -1,0 +1,11 @@
+{
+  "minAmount": 10,
+  "maxAmount": 50,
+  "step": 5,
+  "minPeriod": 7,
+  "maxPeriod": null,
+  "price": 0.1,
+  "timeUnit": "day",
+  "deliveryFee": 14,
+  "pickupFee": 14
+}

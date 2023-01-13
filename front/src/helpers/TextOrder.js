@@ -8,6 +8,10 @@ function cannotFind(name) {
   return `Cannot find ${name}`
 }
 
+function removeOrdinalSuffix(dateStr) {
+  return dateStr.replace(/(?<=\d+)(th|rd|st|nd)/, '')
+}
+
 export default class TextOrder {
   constructor(textOrder) {
     this.textOrder = TextOrder.initialCleanup(textOrder)
@@ -18,7 +22,7 @@ export default class TextOrder {
 
     if (!dateRe) throw new Error(cannotFind('date'))
 
-    const date = new Date(`${dateRe[0].replace(/(?<=\d+)(th|rd|st|nd)/, '')}Z`)
+    const date = new Date(`${removeOrdinalSuffix(dateRe[0])}Z`)
     const time = /\d+:\d+/.exec(this.textOrder)[0]
 
     const dateTime = new Date(`
@@ -62,6 +66,61 @@ export default class TextOrder {
       throw new Error('Unrecognized payment type')
     }
     return paymentType
+  }
+
+  get boxesAmount() {
+    const beginIndex = this.textOrder.indexOf('— Amount: ')
+    const endIndex = this.textOrder.indexOf('— Price')
+    const amountLine = this.textOrder.slice(beginIndex, endIndex)
+    const re = /\d+/
+    const amount = amountLine && amountLine.match(re)[0]
+    return amount
+  }
+
+  get boxesDeliveryDate() {
+    const beginIndex =
+      this.textOrder.indexOf('— Booking time starts: ') + '— Booking time starts: '.length
+    const endIndex = this.textOrder.indexOf('— Booking time ends')
+    const deliveryLine = this.textOrder.slice(beginIndex, endIndex).replace()
+
+    const date = new Date(removeOrdinalSuffix(deliveryLine)).toISOString()
+
+    return date
+  }
+
+  get boxesPickupDate() {
+    const beginIndex =
+      this.textOrder.indexOf('— Booking time ends: ') + '— Booking time ends: '.length
+    const endIndex = this.textOrder.indexOf('— Self pickup')
+    const deliveryLine = this.textOrder.slice(beginIndex, endIndex).replace()
+
+    const date = new Date(removeOrdinalSuffix(deliveryLine)).toISOString()
+
+    return date
+  }
+
+  get selfPickup() {
+    const startMarker = 'Self pickup: '
+    const endMarker = '— Self return'
+
+    const fromIndex = this.textOrder.indexOf(startMarker) + startMarker.length
+    const endIndex = this.textOrder.indexOf(endMarker)
+
+    const value = this.textOrder.slice(fromIndex, endIndex).trim()
+
+    return value === 'Yes'
+  }
+
+  get selfReturn() {
+    const startMarker = 'Self return: '
+    const endMarker = 'Payment Type'
+
+    const fromIndex = this.textOrder.indexOf(startMarker) + startMarker.length
+    const endIndex = this.textOrder.indexOf(endMarker)
+
+    const value = this.textOrder.slice(fromIndex, endIndex).trim()
+
+    return value === 'Yes'
   }
 
   get movingBoxesPrice() {

@@ -4,22 +4,23 @@ const authMW = require('../authentication/auth.middleware')
 
 const { addEventToCalendar, deleteEventFromCalendar } = require('./calendar.googleAPI')
 
-const { composeGoogleEventObject } = require('./calendar.helpers')
+const { makeGoogleEventObjects } = require('./calendar.helpers')
 
 calendarRouter.use(authMW.authenticateAccessToken)
 
-calendarRouter.post('/', (req, res, next) => {
-  const event = composeGoogleEventObject(req.body.entry, req.body.order, req.body.fees)
+calendarRouter.post('/', async (req, res, next) => {
+  const events = makeGoogleEventObjects(req.body.order, req.body.calendarEntries)
 
-  addEventToCalendar(event)
-    .then((ev) =>
-      res.status(200).send({
-        message: 'Event added to calendar.',
-        createdEvent: ev.data.summary?.split('\n')[0],
-        eventId: ev.data.id,
-      })
-    )
-    .catch((err) => next(err))
+  try {
+    await Promise.allSettled(events.map((ev) => addEventToCalendar(ev)))
+
+    return res.status(200).send({
+      message: events.length > 1 ? 'Events added to calendar.' : 'Event added to calendar.',
+      createdEvent: events.map((ev) => ev.summary).join('\n'),
+    })
+  } catch (err) {
+    return next(err)
+  }
 })
 
 calendarRouter.delete('/:eventId', (req, res, next) => {
