@@ -29,8 +29,8 @@ export default function Boxes({ order = {}, handleChange, style }) {
   const [selfReturn, setSelfReturn] = useState(false)
 
   useEffect(() => {
-    setSelfPickup(order.selfPickup)
-    setSelfReturn(order.selfReturn)
+    setSelfPickup(order.selfPickup ?? false)
+    setSelfReturn(order.selfReturn ?? false)
   }, [order.selfPickup, order.selfReturn])
 
   const handleDateChange = (name, date, includeTime) =>
