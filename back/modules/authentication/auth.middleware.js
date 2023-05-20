@@ -2,7 +2,6 @@
 const util = require('util')
 const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
-const bcrypt = require('bcrypt')
 const ms = require('ms')
 const User = require('../../models/user')
 const RefreshToken = require('../../models/refreshToken')
@@ -48,11 +47,16 @@ function filterRequestsWithExceededAttemptLimit(req, res, next) {
 async function checkUser(req, res, next) {
   const { username, password } = req.body
 
-  const user = await User.findOne({ username })
+  const user = await User.findOne({ username }).select('+salt +passwordHash')
 
-  const passwordCorrect = user === null ? false : await bcrypt.compare(password, user.passwordHash)
+  const hash = crypto.pbkdf2Sync(password, user.salt, 1000, 64, `sha512`).toString(`hex`)
+
+  const passwordCorrect = user === null ? false : hash === user.passwordHash
 
   const userJSON = user?.toJSON()
+
+  delete userJSON.passwordHash
+  delete userJSON.salt
 
   req.user = userJSON || null
   req.passwordCorrect = passwordCorrect

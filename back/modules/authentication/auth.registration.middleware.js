@@ -1,5 +1,4 @@
 const crypto = require('crypto')
-const bcrypt = require('bcrypt')
 const passwordGenerator = require('generate-password')
 const { uniqueNamesGenerator, colors, animals } = require('unique-names-generator')
 const mongoose = require('mongoose')
@@ -39,8 +38,6 @@ async function createUser(req, res, next) {
       accessRequested: Date.now(),
     })
 
-    console.log('user', user)
-
     await user.save()
     req.requestToken = requestToken
 
@@ -54,7 +51,7 @@ async function createUser(req, res, next) {
 async function checkUser(req, res, next) {
   const requestToken = decodeURIComponent(req.query.token)
 
-  const matchedUser = await User.findOne({ requestToken }).exec()
+  const matchedUser = await User.findOne({ requestToken }).select('+passwordHash +salt').exec()
   req.matchedUser = matchedUser
 
   if (matchedUser) return next()
@@ -69,8 +66,16 @@ async function generatePasswordAndUsername(req, res, next) {
       length: 8,
       numbers: true,
     })
-    const saltRounds = 10
-    req.passwordHash = await bcrypt.hash(generatedPassword, saltRounds)
+
+    const salt = crypto.randomBytes(16).toString('hex')
+
+    const passwordHash = crypto
+      .pbkdf2Sync(generatedPassword, salt, 1000, 64, `sha512`)
+      .toString(`hex`)
+
+    req.passwordHash = passwordHash
+    req.salt = salt
+
     req.generatedPassword = generatedPassword
     req.randomUsername = uniqueNamesGenerator({
       dictionaries: [colors, animals],
@@ -82,17 +87,19 @@ async function generatePasswordAndUsername(req, res, next) {
 }
 
 async function updateUser(req, res, next) {
-  const { matchedUser, randomUsername, passwordHash } = req
+  const { matchedUser, randomUsername, passwordHash, salt } = req
 
   try {
     await matchedUser
       .updateOne({
         username: randomUsername,
         passwordHash,
+        salt,
         access: true,
         $unset: { requestToken: '', accessRequested: '' },
       })
       .exec()
+
     return next()
   } catch (err) {
     return next(err)

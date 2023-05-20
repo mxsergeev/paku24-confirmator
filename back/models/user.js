@@ -6,7 +6,14 @@ const userSchema = new mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
   username: String,
   name: String,
-  passwordHash: String,
+  passwordHash: {
+    type: String,
+    select: false,
+  },
+  salt: {
+    type: String,
+    select: false,
+  },
   email: String,
   requestToken: String,
   access: Boolean,
