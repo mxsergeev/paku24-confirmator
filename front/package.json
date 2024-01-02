@@ -14,7 +14,7 @@
     "dayjs": "^1.10.4",
     "dotenv": "^8.2.0",
     "ngrok": "^3.3.0",
-    "notistack": "^1.0.9",
+    "notistack": "^3.0.1",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-error-boundary": "^3.0.2",

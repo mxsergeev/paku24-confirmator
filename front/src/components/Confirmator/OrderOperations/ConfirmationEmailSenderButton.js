@@ -1,5 +1,5 @@
 import React from 'react'
-import { useSnackbar } from 'notistack'
+import { enqueueSnackbar } from 'notistack'
 
 import EmailIcon from '@material-ui/icons/Email'
 import CustomButton from './CustomButton'
@@ -16,8 +16,6 @@ export default function ConfirmationEmailSenderButton({
   changeStatus,
   className,
 }) {
-  const { enqueueSnackbar } = useSnackbar()
-
   function handleEmailSending() {
     if (email && transformedOrderText) {
       changeStatus(EMAIL, 'Working', true)

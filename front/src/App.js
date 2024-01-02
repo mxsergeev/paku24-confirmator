@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Route, Switch, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
-import { useSnackbar } from 'notistack'
+import { enqueueSnackbar } from 'notistack'
 import Hub from './components/Hub'
 import Confirmator from './components/Confirmator/Confirmator'
 import Statistics from './components/Statistics/Statistics'
@@ -50,7 +50,6 @@ function ProtectedRoute({ dependsOn, path, children, ...rest }) {
 function App() {
   const [user, setUser] = useState('Loading')
 
-  const { enqueueSnackbar } = useSnackbar()
   const history = useHistory()
   let referrer
   if (user === null || user === 'Loading') {

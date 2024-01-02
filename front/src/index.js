@@ -24,9 +24,9 @@ ReactDOM.render(
         dense
         autoHideDuration={5000}
         anchorOrigin={{ horizontal: 'left', vertical: 'top' }}
-      >
-        <App />
-      </SnackbarProvider>
+      />
+
+      <App />
     </Router>
   </React.StrictMode>,
   document.getElementById('root')

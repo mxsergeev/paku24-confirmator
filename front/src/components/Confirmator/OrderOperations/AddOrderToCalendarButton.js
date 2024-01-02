@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 import React from 'react'
-import { useSnackbar } from 'notistack'
+import { enqueueSnackbar } from 'notistack'
 import EventIcon from '@material-ui/icons/Event'
 import addEventToCalendar from '../../../services/calendarAPI'
 import orderPoolAPI from '../../../services/orderPoolAPI'
@@ -17,8 +17,6 @@ export default function AddOrderToCalendarButton({
   changeStatus,
   className,
 }) {
-  const { enqueueSnackbar } = useSnackbar()
-
   async function handleAddingToCalendar() {
     try {
       changeStatus(CALENDAR, 'Working', true)

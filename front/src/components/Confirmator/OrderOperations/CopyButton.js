@@ -1,11 +1,9 @@
 import React from 'react'
 import Button from '@material-ui/core/Button'
 import FileCopyIcon from '@material-ui/icons/FileCopy'
-import { useSnackbar } from 'notistack'
+import { enqueueSnackbar } from 'notistack'
 
 export default function CopyButton({ elementRef, disabled }) {
-  const { enqueueSnackbar } = useSnackbar()
-
   function copyToClipboard() {
     const tempTextarea = document.createElement('textarea')
     document.body.appendChild(tempTextarea)

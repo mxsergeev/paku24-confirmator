@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useSnackbar } from 'notistack'
+import { enqueueSnackbar } from 'notistack'
 import { Route } from 'react-router-dom'
 
 import './Confirmator.css'
@@ -37,8 +37,6 @@ export default function Confirmator() {
   useEffect(() => {
     localStorage.setItem('confirmator_rawOrder', JSON.stringify(rawOrder))
   }, [rawOrder])
-
-  const { enqueueSnackbar } = useSnackbar()
 
   const rawOrderOrderContainerRef = useRef(null)
   const transformedOrderContainerRef = useRef(null)

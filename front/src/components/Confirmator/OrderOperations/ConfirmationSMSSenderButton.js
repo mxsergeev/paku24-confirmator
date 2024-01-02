@@ -1,5 +1,5 @@
 import React from 'react'
-import { useSnackbar } from 'notistack'
+import { enqueueSnackbar } from 'notistack'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 import sendSMS from '../../../services/smsAPI'
 import CustomButton from './CustomButton'
@@ -14,8 +14,6 @@ export default function ConfirmationSMSSenderButton({
   changeStatus,
   className,
 }) {
-  const { enqueueSnackbar } = useSnackbar()
-
   async function handleSendingSMS() {
     try {
       const msg = transformedOrderText
