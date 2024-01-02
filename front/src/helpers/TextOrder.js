@@ -78,8 +78,13 @@ export default class TextOrder {
   }
 
   get boxesDeliveryDate() {
-    const beginIndex =
-      this.textOrder.indexOf('— Booking time starts: ') + '— Booking time starts: '.length
+    const startLineIndex = this.textOrder.indexOf('— Booking time starts: ')
+
+    if (startLineIndex === -1) {
+      return null
+    }
+
+    const beginIndex = startLineIndex + '— Booking time starts: '.length
     const endIndex = this.textOrder.indexOf('— Booking time ends')
     const deliveryLine = this.textOrder.slice(beginIndex, endIndex).replace()
 
@@ -89,8 +94,13 @@ export default class TextOrder {
   }
 
   get boxesPickupDate() {
-    const beginIndex =
-      this.textOrder.indexOf('— Booking time ends: ') + '— Booking time ends: '.length
+    const startLineIndex = this.textOrder.indexOf('— Booking time ends: ')
+
+    if (startLineIndex === -1) {
+      return null
+    }
+
+    const beginIndex = startLineIndex + '— Booking time ends: '.length
     const endIndex = this.textOrder.indexOf('— Self pickup')
     const deliveryLine = this.textOrder.slice(beginIndex, endIndex).replace()
 
