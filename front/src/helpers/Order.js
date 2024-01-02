@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import { enqueueSnackbar } from 'notistack'
 import isJSON from 'validator/es/lib/isJSON'
 import dayjs from 'dayjs'
 import fees from '../data/fees.json'
@@ -151,8 +152,15 @@ export default class Order {
       const orderArguments = {}
       const textOrder = new TextOrder(text)
       for (const propertyName of orderClassPropertyNames) {
-        orderArguments[propertyName] = textOrder[propertyName]
+        try {
+          orderArguments[propertyName] = textOrder[propertyName]
+        } catch (err) {
+          enqueueSnackbar(err.message, { variant: 'error' })
+
+          orderArguments[propertyName] = null
+        }
       }
+
       resolve(new Order(orderArguments))
     })
   }
