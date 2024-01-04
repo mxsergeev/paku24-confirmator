@@ -146,7 +146,7 @@ export default class Order {
   static setupOrderFromText(text) {
     return new Promise((resolve) => {
       if (isJSON(text)) {
-        resolve(new Order(JSON.parse(text)))
+        return resolve(new Order(JSON.parse(text)))
       }
 
       const orderArguments = {}
@@ -161,7 +161,7 @@ export default class Order {
         }
       }
 
-      resolve(new Order(orderArguments))
+      return resolve(new Order(orderArguments))
     })
   }
 
