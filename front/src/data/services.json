@@ -2,8 +2,8 @@
   {
     "id": 1,
     "name": "Pakettiauto ja kuljettaja",
-    "price": 55,
-    "priceXL": 55
+    "price": 50,
+    "priceXL": 50
   },
   {
     "id": 2,
@@ -14,8 +14,8 @@
   {
     "id": 3,
     "name": "Pakettiauto ja kaksi muuttomiestä",
-    "price": 100,
-    "priceXL": 100
+    "price": 90,
+    "priceXL": 90
   },
   {
     "id": 4,
@@ -26,14 +26,14 @@
   {
     "id": 5,
     "name": "Nouto/tyhjennyspalvelu kahdella kantajalla",
-    "price": 100,
-    "priceXL": 100
+    "price": 90,
+    "priceXL": 90
   },
   {
     "id": 6,
     "name": "Van and driver (doesn't assist in carrying)",
-    "price": 55,
-    "priceXL": 55
+    "price": 50,
+    "priceXL": 50
   },
   {
     "id": 7,
@@ -44,8 +44,8 @@
   {
     "id": 8,
     "name": "Van and two movers",
-    "price": 100,
-    "priceXL": 100
+    "price": 90,
+    "priceXL": 90
   },
   {
     "id": 9,
