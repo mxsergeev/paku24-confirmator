@@ -17,7 +17,6 @@ export default function ResponsiveDialog({ children, handleClose }) {
         open
         onClose={handleClose}
         aria-labelledby="responsive-dialog-title"
-        disableScrollLock
       >
         <DialogContent>{children}</DialogContent>
         <DialogActions>
