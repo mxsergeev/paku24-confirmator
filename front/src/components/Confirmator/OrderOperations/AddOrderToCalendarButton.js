@@ -21,12 +21,12 @@ export default function AddOrderToCalendarButton({
     try {
       changeStatus(CALENDAR, 'Working', true)
       const response = await addEventToCalendar({
-        order,
+        order: order.prepareForSending(),
         calendarEntries: order.makeCalendarEntries(),
       })
       if (!orderId) {
         const { id } = await orderPoolAPI.add({
-          order: order.prepareForSending(),
+          order: JSON.stringify(order.prepareForSending()),
           key: 'supersecretorderpoolkey',
         })
         orderId = id

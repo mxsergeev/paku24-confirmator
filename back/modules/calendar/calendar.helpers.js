@@ -10,8 +10,7 @@ const colors = require('./calendar.data.colors.json')
  */
 
 function makeColor(order) {
-  if (order.altColorPalette) return colors.altColorPalette[order.serviceName]
-  return colors[order.serviceName]
+  return order.eventColor
 }
 
 /**

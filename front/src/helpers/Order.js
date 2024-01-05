@@ -13,6 +13,7 @@ import icons from '../data/icons.json'
 const defaultOrder = {
   dateTime: new Date(),
   duration: 1,
+  service: services[0],
   serviceName: services[0].name,
   paymentType: paymentTypes[0].name,
   address: '',
@@ -28,8 +29,8 @@ const defaultOrder = {
   comment: '',
   distance: distances.insideCapital,
   hsy: false,
-  altColorPalette: false,
   XL: false,
+  eventColor: null,
 }
 const orderClassPropertyNames = Object.keys(defaultOrder)
 
@@ -115,6 +116,28 @@ export default class Order {
     ].filter((f) => f !== false)
   }
 
+  get color() {
+    if (this.eventColor) {
+      return this.eventColor
+    }
+
+    if (this.serviceName) {
+      return services.find((s) => s.name === this.serviceName).eventColor
+    }
+
+    return null
+  }
+
+  get serviceName() {
+    return this.service.name
+  }
+
+  set serviceName(serviceName) {
+    this.service = services.find((s) => s.name === serviceName)
+    this.eventColor = services.find((s) => s.name === serviceName)?.eventColor
+    this.hsy = Boolean(this.service.hsy)
+  }
+
   printFees() {
     const template = '\n@feeName\n@feeAmount'
     // template needs to be as long as the fees array
@@ -132,11 +155,15 @@ export default class Order {
    * Transforms to JSON
    */
   prepareForSending() {
-    const filtered = this
-    delete filtered.hsy
-    delete filtered.altColorPalette
-    delete filtered.distance
-    return JSON.stringify(filtered)
+    const prepared = {}
+
+    for (const key of Object.keys(defaultOrder)) {
+      if (key !== 'service') {
+        prepared[key] = this[key]
+      }
+    }
+
+    return prepared
   }
 
   static getEventForCalendar(formattedStr, startMarker) {

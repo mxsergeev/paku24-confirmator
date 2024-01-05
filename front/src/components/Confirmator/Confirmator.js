@@ -32,7 +32,7 @@ export default function Confirmator() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('confirmator_order', JSON.stringify(order))
+    localStorage.setItem('confirmator_order', JSON.stringify(order.prepareForSending()))
   }, [order])
   useEffect(() => {
     localStorage.setItem('confirmator_rawOrder', JSON.stringify(rawOrder))
@@ -48,11 +48,10 @@ export default function Confirmator() {
   }
 
   function handleOrderChange(e) {
-    const changedOrder = new Order({
-      ...order,
-      [e.target.name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value,
-    })
-    return setOrder(changedOrder)
+    // It's not very good to mutate the state directly but setters won't work otherwise
+    order[e.target.name] = e.target.type === 'checkbox' ? e.target.checked : e.target.value
+
+    return setOrder(new Order(order))
   }
 
   function handleRawOrderUpdate(rawO) {

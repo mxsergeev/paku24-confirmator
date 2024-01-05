@@ -9,17 +9,5 @@
   "Van and mover": "7",
   "Van and two movers": "9",
   "Recycle service with one carrier": "7",
-  "Recycle service with two carriers": "9",
-  "altColorPalette": {
-    "Pakettiauto ja kuljettaja": "4",
-    "Pakettiauto ja muuttomies": "6",
-    "Pakettiauto ja kaksi muuttomiestä": "11",
-    "Nouto/tyhjennyspalvelu yhdellä kantajalla": "6",
-    "Nouto/tyhjennyspalvelu kahdella kantajalla": "11",
-    "Van and driver (doesn't assist in carrying)": "4",
-    "Van and mover": "6",
-    "Van and two movers": "11",
-    "Recycle service with one carrier": "6",
-    "Recycle service with two carriers": "11"
-  }
+  "Recycle service with two carriers": "9"
 }
