@@ -137,7 +137,7 @@ orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
   }
 })
 
-orderPoolRouter.get('/confirmed-by-user/', async (req, res, next) => {
+orderPoolRouter.get('/confirmed-by-user/', async (req, res) => {
   const periodFrom = isISO8601(req.query.periodFrom)
     ? req.query.periodFrom
     : dayjs().startOf('month')
@@ -147,6 +147,7 @@ orderPoolRouter.get('/confirmed-by-user/', async (req, res, next) => {
 
   const confirmedOrders = await RawOrder.find({
     confirmed: true,
+    markedForDeletion: false,
     confirmedBy: req.user.id,
     confirmedAt: {
       $gte: periodFrom,
