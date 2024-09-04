@@ -36,6 +36,7 @@ function makeGoogleEventObjects(order, entries) {
       summary: entries.move.title,
       description: entries.move.description,
       colorId: color,
+      location: [order.address].concat(order.destination?.split('\n')).filter(Boolean).join('\n'),
       start: {
         dateTime: order.dateTime,
         timeZone,
