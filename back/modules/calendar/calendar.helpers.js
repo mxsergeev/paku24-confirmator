@@ -55,10 +55,21 @@ function makeGoogleEventObjects(order, entries) {
     ;['boxesDelivery', 'boxesPickup'].forEach((f) => {
       const dateStr = order[`${f}Date`]
 
+      let location = ''
+
+      if (f === 'boxesDelivery') {
+        location = order.address
+      }
+
+      if (f === 'boxesPickup') {
+        location = order.destination
+      }
+
       events.push({
         summary: entries[f].title,
         description: entries[f].description,
         colorId: colors.boxes,
+        location,
         start: dateStr.includes('T')
           ? {
               dateTime: dateStr,
