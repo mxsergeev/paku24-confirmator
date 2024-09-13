@@ -50,7 +50,7 @@ export default function CheckboxGroup(props) {
           <Select
             variant="filled"
             name="eventColor"
-            value={order?.color}
+            value={order?.eventColor}
             onChange={handleChange}
             label="Event color"
             renderValue={(value) => (

@@ -116,9 +116,9 @@ export default class Order {
     ].filter((f) => f !== false)
   }
 
-  get color() {
-    if (this.eventColor) {
-      return this.eventColor
+  get eventColor() {
+    if (this.color) {
+      return this.color
     }
 
     if (this.serviceName) {
@@ -126,6 +126,10 @@ export default class Order {
     }
 
     return null
+  }
+
+  set eventColor(color) {
+    this.color = color
   }
 
   get serviceName() {
@@ -172,15 +176,18 @@ export default class Order {
 
   static setupOrderFromText(text) {
     return new Promise((resolve) => {
+      let tmpOrder
+      const orderArguments = {}
+
       if (isJSON(text)) {
-        return resolve(new Order(JSON.parse(text)))
+        tmpOrder = new Order(JSON.parse(text))
+      } else {
+        tmpOrder = new TextOrder(text)
       }
 
-      const orderArguments = {}
-      const textOrder = new TextOrder(text)
       for (const propertyName of orderClassPropertyNames) {
         try {
-          orderArguments[propertyName] = textOrder[propertyName]
+          orderArguments[propertyName] = tmpOrder[propertyName]
         } catch (err) {
           enqueueSnackbar(err.message, { variant: 'error' })
 
