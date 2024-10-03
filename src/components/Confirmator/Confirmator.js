@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import { Route } from 'react-router-dom'
 
@@ -41,48 +41,65 @@ export default function Confirmator() {
   const rawOrderOrderContainerRef = useRef(null)
   const transformedOrderContainerRef = useRef(null)
 
-  function reset() {
+  const reset = useCallback(() => {
     setRawOrder({ text: '', id: null })
     setTransformedOrder({ text: '', id: null })
     setOrder(Order.default())
-  }
+  }, [])
 
-  function handleOrderChange(e) {
-    // It's not very good to mutate the state directly but setters won't work otherwise
-    order[e.target.name] = e.target.type === 'checkbox' ? e.target.checked : e.target.value
+  const handleOrderChange = useCallback(
+    (e) => {
+      // It's not very good to mutate the state directly but setters won't work otherwise
+      order[e.target.name] = e.target.type === 'checkbox' ? e.target.checked : e.target.value
 
-    return setOrder(new Order(order))
-  }
+      return setOrder(new Order(order))
+    },
+    [order]
+  )
 
-  function handleRawOrderUpdate(rawO) {
-    // Raw order has an id and is an object if it is exported from DB otherwise it's a plain string
-    setRawOrder({ ...rawOrder, id: rawO.id || null, text: rawO.text || rawO })
-  }
-  function handleTransformedOrderUpdate(transO) {
+  const handleRawOrderUpdate = useCallback(
+    (rawO) => {
+      // Raw order has an id and is an object if it is exported from DB otherwise it's a plain string
+      setRawOrder({ ...rawOrder, id: rawO.id || null, text: rawO.text || rawO })
+    },
+    [rawOrder]
+  )
+
+  const handleTransformedOrderUpdate = useCallback((transO) => {
     setTransformedOrder({ ...transformedOrder, text: transO })
-  }
+  }, [])
 
-  function handleOrderTransformFromText(o = rawOrder) {
-    Order.setupOrderFromText(o.text)
-      .then((orderFromText) => {
-        setOrder(orderFromText)
-        return setTransformedOrder({
-          id: o.id,
-          text: orderFromText.format(),
+  const handleOrderTransformFromText = useCallback(
+    (o = rawOrder) => {
+      Order.setupOrderFromText(o.text)
+        .then((orderFromText) => {
+          setOrder(orderFromText)
+          return setTransformedOrder({
+            id: o.id,
+            text: orderFromText.format(),
+          })
         })
-      })
-      .catch((err) => enqueueSnackbar(err.message, { variant: 'error' }))
-  }
+        .catch((err) => enqueueSnackbar(err.message, { variant: 'error' }))
+    },
+    [rawOrder]
+  )
 
-  function handleOrderTransformFromEditor() {
-    return setTransformedOrder({ id: rawOrder.id, text: order.format() })
-  }
+  const handleOrderTransformFromEditor = useCallback(
+    () => setTransformedOrder({ id: rawOrder.id, text: order.format() }),
+    [rawOrder, order]
+  )
 
-  function handleOrderPoolExport(o) {
+  // function handleOrderPoolExport(o) {
+  //   handleRawOrderUpdate(o)
+  //   handleOrderTransformFromText(o)
+  //   setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
+  // }
+
+  const handleOrderPoolExport = useCallback((o) => {
     handleRawOrderUpdate(o)
     handleOrderTransformFromText(o)
     setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
-  }
+  }, [])
 
   return (
     <div className="flex-container">

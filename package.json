@@ -4,7 +4,14 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "@date-io/dayjs": "1.x",
     "@google-cloud/local-auth": "2.1.0",
+    "@material-ui/core": "^4.11.3",
+    "@material-ui/icons": "^4.9.1",
+    "@material-ui/pickers": "^3.3.10",
+    "@testing-library/jest-dom": "^5.11.4",
+    "@testing-library/react": "^11.1.0",
+    "@testing-library/user-event": "^12.1.10",
     "aws-sdk": "^2.812.0",
     "axios": "^0.21.1",
     "bcrypt": "^5.0.0",
@@ -21,10 +28,20 @@
     "mongoose": "^5.11.11",
     "morgan": "^1.10.0",
     "ms": "^2.1.3",
+    "ngrok": "^3.3.0",
+    "notistack": "^3.0.1",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1",
+    "react-error-boundary": "^3.0.2",
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "4.0.0",
     "unique-names-generator": "^4.3.1",
-    "validator": "^13.6.0"
+    "validator": "^13.6.0",
+    "web-vitals": "^0.2.4"
   },
   "devDependencies": {
+    "@types/react": "^16.9.55",
+    "concurrently": "^9.0.1",
     "cross-env": "^7.0.3",
     "eslint": "^7.24.0",
     "eslint-config-airbnb": "18.2.1",
@@ -36,7 +53,8 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^3.3.1",
     "eslint-plugin-react": "^7.23.2",
-    "jest": "^26.6.3",
+    "eslint-plugin-react-hooks": "4.0.0",
+    "jest": "26.6.0",
     "jsdoc": "^3.6.6",
     "nodemon": "^2.0.6",
     "prettier": "^2.2.1",
@@ -44,13 +62,27 @@
   },
   "scripts": {
     "start": "cross-env NODE_ENV=produciton node index.js",
-    "dev": "cross-env NODE_ENV=development nodemon index.js",
-    "build:ui": "rm -rf build && cd ../front && npm run build && cp -r build ../back",
+    "start:ui": "PORT=3001 BROWSER=none react-scripts start",
+    "dev": "concurrently \"NODE_ENV=development && yarn nodemon back/index.js\" \"yarn start:ui\"",
+    "build:ui": "rm -rf build && cd ../front && yarn INLINE_RUNTIME_CHUNK=false react-scripts build && cp -r build ../back",
     "ngrok": "../../ngrok http 3000 -host-header='localhost:3000'",
     "test": "cross-env NODE_ENV=test jest --verbose --runInBand",
+    "test:ui": "react-scripts test",
     "authorizeCalendarAccess": "node modules/calendar/authorize.js"
   },
   "jest": {
     "testEnvironment": "node"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

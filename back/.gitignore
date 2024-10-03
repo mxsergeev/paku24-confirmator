@@ -1,6 +1,0 @@
-node_modules
-.env
-modules/calendar/calendar.google.credentials.json
-modules/calendar/calendar.google.token.json
-requests
-jsdoc
