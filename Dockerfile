@@ -6,6 +6,7 @@ RUN apt-get update
 RUN apt-get install -y git
 RUN yarn install
 COPY . .
+RUN yarn build:ui
 
 FROM base AS dev
 CMD [ "echo", "Development container started" ]
