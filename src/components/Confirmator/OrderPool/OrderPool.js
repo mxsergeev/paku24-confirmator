@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 import IconButton from '@material-ui/core/IconButton'
@@ -81,7 +81,7 @@ export default function OrderPool({ handleExport }) {
     }
   }, [currentTab, forceUpdate.trigger])
 
-  async function handleLoadingMoreOrders() {
+  const handleLoadingMoreOrders = useCallback(async () => {
     const newPage = [pages[currentTab].length + 1]
     setPages({
       ...pages,
@@ -102,9 +102,9 @@ export default function OrderPool({ handleExport }) {
       concatenatedOrders
     )
     setSearchResults(filteredOrders)
-  }
+  }, [])
 
-  function handleSearchChange(e) {
+  const handleSearchChange = useCallback((e) => {
     const prevOptsForCurTab = searchOptions[currentTab]
     setSearchOptions({
       ...searchOptions,
@@ -118,9 +118,9 @@ export default function OrderPool({ handleExport }) {
     )
 
     setSearchResults(filteredOrders)
-  }
+  }, [])
 
-  function handleOnlyNotConfirmedSearch(bool) {
+  const handleOnlyNotConfirmedSearch = useCallback((bool) => {
     const prevOptsForCurTab = searchOptions[currentTab]
     setSearchOptions({
       ...searchOptions,
@@ -130,13 +130,13 @@ export default function OrderPool({ handleExport }) {
     const filteredOrders = makeSearch(prevOptsForCurTab.searchText, bool, orders)
 
     setSearchResults(filteredOrders)
-  }
+  }, [])
 
-  function handleTabBarChange(e) {
+  const handleTabBarChange = useCallback((e) => {
     setCurrentTab(e.target.dataset.tabname)
-  }
+  }, [])
 
-  function handleRefresh() {
+  const handleRefresh = useCallback(() => {
     setForceUpdate({
       ...forceUpdate,
       trigger: forceUpdate.trigger + 1,
@@ -148,19 +148,19 @@ export default function OrderPool({ handleExport }) {
         hasToUpdate: false,
       })
     )
-  }
+  }, [])
 
-  async function handleOrderDeletion(id) {
+  const handleOrderDeletion = useCallback(async (id) => {
     await orderPoolAPI.remove(id)
     setOrders(orders.filter((order) => order.id !== id))
     setSearchResults(searchResults.filter((order) => order.id !== id))
-  }
+  }, [])
 
-  async function handleRetrieval(id) {
+  const handleRetrieval = useCallback(async (id) => {
     await orderPoolAPI.retrieve(id)
     setOrders(orders.filter((order) => order.id !== id))
     setSearchResults(searchResults.filter((order) => order.id !== id))
-  }
+  }, [])
 
   const inboxClassName = () =>
     currentTab === INBOX ? 'tab-panel-item tab-panel-item-selected' : 'tab-panel-item'

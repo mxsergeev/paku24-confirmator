@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import NewOrderButton from '../NewOrderButton'
 import OrderPoolOpenerButton from '../OrderPool/OrderPoolOpenerButton'
 import MessageBeforeButton from './MessageBeforeButton'
@@ -30,9 +30,9 @@ export default function MainOperationsPanel({
   }
   const [statuses, setStatuses] = useState(defaultStatuses)
 
-  function changeStatus(name, status, disable) {
-    setStatuses({ ...statuses, [name]: { status, disable } })
-  }
+  const changeStatus = useCallback((name, status, disable) => {
+    setStatuses((prev) => ({ ...prev, [name]: { status, disable } }))
+  }, [])
 
   function emailBlock() {
     const isDisabled = statuses.email.disable || !(order.email && transformedOrder.text)

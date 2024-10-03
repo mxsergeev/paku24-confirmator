@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import Button from '@material-ui/core/Button'
 import IconButton from '@material-ui/core/IconButton'
 import EditOutlinedIcon from '@material-ui/icons/EditOutlined'
@@ -13,28 +13,28 @@ const withEditing = (EditableComponent, NotEditableComponent) => ({
   const [savedChanges, setSavedChanges] = useState(content)
   const [incomingChanges, setIncomingChanges] = useState(savedChanges)
 
-  function removeUnsavedChanges() {
+  const removeUnsavedChanges = useCallback(() => {
     setIncomingChanges(savedChanges)
-  }
+  }, [])
 
-  function handleIncomingChanges(e) {
+  const handleIncomingChanges = useCallback((e) => {
     setIncomingChanges(e.target.value)
-  }
+  }, [])
 
-  function handleCancelClick() {
+  const handleCancelClick = useCallback(() => {
     removeUnsavedChanges()
     setIsEditable(!isEditable)
-  }
+  }, [])
 
-  function handleSaveClick() {
+  const handleSaveClick = useCallback(() => {
     setSavedChanges(incomingChanges)
     handleUpdate(incomingChanges)
     setIsEditable(!isEditable)
-  }
+  }, [])
 
-  function handleEditClick() {
+  const handleEditClick = useCallback(() => {
     setIsEditable(!isEditable)
-  }
+  }, [])
 
   function notEditable() {
     return (

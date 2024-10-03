@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 import sendSMS from '../../../services/smsAPI'
@@ -14,7 +14,7 @@ export default function ConfirmationSMSSenderButton({
   changeStatus,
   className,
 }) {
-  async function handleSendingSMS() {
+  const handleSendingSMS = useCallback(async () => {
     try {
       const msg = transformedOrderText
       if (msg && phone) {
@@ -28,7 +28,7 @@ export default function ConfirmationSMSSenderButton({
       changeStatus(SMS, 'Error', false)
       enqueueSnackbar(err.response?.data.error, { variant: 'error' })
     }
-  }
+  }, [])
 
   const buttonContent = statusText || (
     <>

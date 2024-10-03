@@ -1,5 +1,5 @@
 /* eslint-disable no-param-reassign */
-import React from 'react'
+import React, { useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import EventIcon from '@material-ui/icons/Event'
 import addEventToCalendar from '../../../services/calendarAPI'
@@ -17,7 +17,7 @@ export default function AddOrderToCalendarButton({
   changeStatus,
   className,
 }) {
-  async function handleAddingToCalendar() {
+  const handleAddingToCalendar = useCallback(async () => {
     try {
       changeStatus(CALENDAR, 'Working', true)
       const response = await addEventToCalendar({
@@ -39,7 +39,7 @@ export default function AddOrderToCalendarButton({
       changeStatus(CALENDAR, 'Error', false)
       enqueueSnackbar(err.response?.data.error || err?.toString(), { variant: 'error' })
     }
-  }
+  }, [])
 
   const buttonContent = statusText || (
     <>

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
 
 import EmailIcon from '@material-ui/icons/Email'
@@ -16,7 +16,7 @@ export default function ConfirmationEmailSenderButton({
   changeStatus,
   className,
 }) {
-  function handleEmailSending() {
+  const handleEmailSending = useCallback(() => {
     if (email && transformedOrderText) {
       changeStatus(EMAIL, 'Working', true)
       return sendConfirmationEmail({
@@ -37,7 +37,7 @@ export default function ConfirmationEmailSenderButton({
     return enqueueSnackbar('No confirmation found or recipients defined.', {
       variant: 'warning',
     })
-  }
+  }, [])
 
   const buttonContent = statusText || (
     <>

@@ -1,14 +1,15 @@
 import { Button } from '@material-ui/core'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useHistory } from 'react-router-dom'
 import './Hub.css'
 
 export default function Hub() {
   const history = useHistory()
 
-  function handleBlockClick(e) {
+  const handleBlockClick = useCallback((e) => {
     history.push(e.currentTarget.name)
-  }
+  }, [])
+
   return (
     <div className="hub">
       <Button
