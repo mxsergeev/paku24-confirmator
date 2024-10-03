@@ -12,10 +12,10 @@ const {
   // ACCEPTED_HOSTNAME,
   // DELETE_ORDERS_AFTER,
   // DELETE_ORDERS_MARKED_FOR_DELETION_AFTER,
-} = require('../../utils/config')
-const newErrorWithCustomName = require('../../utils/newErrorWithCustomName')
+} = require('../../utils/config.js')
+const newErrorWithCustomName = require('../../utils/newErrorWithCustomName.js')
 // const logger = require('../utils/logger')
-const authMW = require('../authentication/auth.middleware')
+const authMW = require('../authentication/auth.middleware.js')
 
 // const job = new CronJob(
 //   '*/10 * * * * *',

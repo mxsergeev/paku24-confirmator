@@ -1,5 +1,5 @@
 {
-  "name": "paku24-confirmator-back",
+  "name": "paku24-confirmator",
   "version": "1.0.0",
   "main": "src/index.js",
   "license": "MIT",
@@ -62,11 +62,11 @@
     "supertest": "^6.1.3"
   },
   "scripts": {
-    "start": "NODE_ENV=production node back/index.js",
+    "start": "NODE_ENV=production node backend/index.js",
     "dev:ui": "PORT=3001 BROWSER=none NODE_ENV=development react-scripts start",
-    "dev:server": "NODE_ENV=development yarn nodemon back/index.js",
+    "dev:server": "NODE_ENV=development yarn nodemon backend/index.js",
     "dev": "concurrently \"yarn dev:server\" \"yarn dev:ui\"",
-    "build:ui": "rm -rf build && INLINE_RUNTIME_CHUNK=false NODE_ENV=development react-scripts build && cp -r build ../back",
+    "build:ui": "rm -rf build && INLINE_RUNTIME_CHUNK=false NODE_ENV=development react-scripts build && cp -r build ../backend",
     "ngrok": "../../ngrok http 3000 -host-header='localhost:3000'",
     "test": "NODE_ENV=test jest --verbose --runInBand",
     "test:ui": "react-scripts test",
