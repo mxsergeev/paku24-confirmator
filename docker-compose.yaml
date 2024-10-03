@@ -1,0 +1,14 @@
+name: confirmator
+services:
+  app:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - '3000:3000'
+      - '3001:3001'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'

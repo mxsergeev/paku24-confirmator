@@ -24,6 +24,7 @@
     "generate-password": "^1.5.1",
     "googleapis": "105",
     "helmet": "^4.4.1",
+    "http-proxy-middleware": "2.0.6",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^5.11.11",
     "morgan": "^1.10.0",
@@ -71,7 +72,6 @@
     "test:ui": "react-scripts test",
     "authorizeCalendarAccess": "node modules/calendar/authorize.js"
   },
-  "proxy": "http://localhost:3000",
   "jest": {
     "testEnvironment": "node"
   },
