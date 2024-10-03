@@ -18,9 +18,6 @@
 	// connected. This is typically a file mount in .devcontainer/docker-compose.yml
 	"workspaceFolder": "/app",
 
-
-
-
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
