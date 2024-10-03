@@ -42,7 +42,11 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'))
 }
 
-app.use(helmet())
+// When using helmet in developemnt, it will force HTTPS which doesn't work without creating an ssl certificate
+// Because of that it is disabled in development
+if (process.env.NODE_ENV === 'production') {
+  app.use(helmet())
+}
 
 app.use(cors())
 app.use(express.json())
