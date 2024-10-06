@@ -22,6 +22,8 @@ services:
       - '3000:3000'
       - '3001:3001'
 
+    restart: 'no'
+
     # Uncomment the next four lines if you will use a ptrace-based debugger like C++, Go, and Rust.
     # cap_add:
     #   - SYS_PTRACE
