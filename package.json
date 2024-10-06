@@ -64,7 +64,7 @@
     "ngrok": "../../ngrok http 3000 -host-header='localhost:3000'",
     "test": "NODE_ENV=test jest --verbose --runInBand",
     "test:ui": "react-scripts test",
-    "authorizeCalendarAccess": "node modules/calendar/authorize.js"
+    "authorizeCalendarAccess": "node backend/modules/calendar/authorize.js"
   },
   "jest": {
     "testEnvironment": "node"
