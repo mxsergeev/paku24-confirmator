@@ -37,7 +37,7 @@ export default function ConfirmationEmailSenderButton({
     return enqueueSnackbar('No confirmation found or recipients defined.', {
       variant: 'warning',
     })
-  }, [])
+  }, [email, order, transformedOrderText, changeStatus])
 
   const buttonContent = statusText || (
     <>

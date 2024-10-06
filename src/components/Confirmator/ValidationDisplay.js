@@ -57,7 +57,15 @@ export default function ValidationDisplay({ order, shouldValidate }) {
       ]
       setValidationArray(validationAr)
     }
-  }, [order.dateTime, order.phone, order.address, order.email, shouldValidate])
+  }, [
+    order.dateTime,
+    order.phone,
+    order.address,
+    order.email,
+    order.confirmationDateString,
+    order.time,
+    shouldValidate,
+  ])
 
   const someIsInvalid = validationArray.some((v) => v.isError)
 

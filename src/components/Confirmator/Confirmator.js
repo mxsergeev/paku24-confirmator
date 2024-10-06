@@ -66,7 +66,7 @@ export default function Confirmator() {
   )
 
   const handleTransformedOrderUpdate = useCallback((transO) => {
-    setTransformedOrder({ ...transformedOrder, text: transO })
+    setTransformedOrder((prev) => ({ ...prev, text: transO }))
   }, [])
 
   const handleOrderTransformFromText = useCallback(
@@ -95,11 +95,14 @@ export default function Confirmator() {
   //   setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
   // }
 
-  const handleOrderPoolExport = useCallback((o) => {
-    handleRawOrderUpdate(o)
-    handleOrderTransformFromText(o)
-    setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
-  }, [])
+  const handleOrderPoolExport = useCallback(
+    (o) => {
+      handleRawOrderUpdate(o)
+      handleOrderTransformFromText(o)
+      setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
+    },
+    [handleRawOrderUpdate, handleOrderTransformFromText]
+  )
 
   return (
     <div className="flex-container">

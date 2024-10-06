@@ -17,7 +17,7 @@ export default function CopyButton({ elementRef, disabled }) {
 
     copyToClipboard()
     enqueueSnackbar('Copied!', { autoHideDuration: 750 })
-  }, [])
+  }, [elementRef])
 
   return (
     <Button

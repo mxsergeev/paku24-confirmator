@@ -24,14 +24,16 @@ export default function AddOrderToCalendarButton({
         order: order.prepareForSending(),
         calendarEntries: order.makeCalendarEntries(),
       })
-      if (!orderId) {
+      let oId = orderId
+
+      if (!oId) {
         const { id } = await orderPoolAPI.add({
           order: JSON.stringify(order.prepareForSending()),
           key: 'supersecretorderpoolkey',
         })
-        orderId = id
+        oId = id
       }
-      await orderPoolAPI.confirm(orderId)
+      await orderPoolAPI.confirm(oId)
       changeStatus(CALENDAR, 'Done', true)
       enqueueSnackbar(`${response?.message}\n${response?.createdEvent}`)
     } catch (err) {
@@ -39,7 +41,7 @@ export default function AddOrderToCalendarButton({
       changeStatus(CALENDAR, 'Error', false)
       enqueueSnackbar(err.response?.data.error || err?.toString(), { variant: 'error' })
     }
-  }, [])
+  }, [order, orderId, changeStatus])
 
   const buttonContent = statusText || (
     <>

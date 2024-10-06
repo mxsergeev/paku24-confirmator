@@ -13,6 +13,22 @@ import './OrderPool.css'
 const INBOX = 'inbox'
 const TRASHCAN = 'trashcan'
 
+function filterWithSearchText(values, search) {
+  return values.filter((value) => value.text.toLowerCase().includes(search?.toLowerCase().trim()))
+}
+
+function filterConfirmed(values, condition) {
+  return condition ? values.filter((value) => value?.confirmed === false) : values
+}
+
+function makeSearch(val, bool, searchTarget) {
+  const filteredWithConfirmedAndSearch = filterConfirmed(
+    filterWithSearchText(searchTarget, val),
+    bool
+  )
+  return filteredWithConfirmedAndSearch
+}
+
 export default function OrderPool({ handleExport }) {
   const [orders, setOrders] = useState([])
   const [isLoading, setIsloading] = useState(true)
@@ -36,22 +52,6 @@ export default function OrderPool({ handleExport }) {
 
   const numberOfOrders = orders.length
   const numberOfUnconfirmedOrders = orders.filter((order) => !order.confirmed).length
-
-  function filterWithSearchText(values, search) {
-    return values.filter((value) => value.text.toLowerCase().includes(search?.toLowerCase().trim()))
-  }
-
-  function filterConfirmed(values, condition) {
-    return condition ? values.filter((value) => value?.confirmed === false) : values
-  }
-
-  function makeSearch(val, bool, searchTarget) {
-    const filteredWithConfirmedAndSearch = filterConfirmed(
-      filterWithSearchText(searchTarget, val),
-      bool
-    )
-    return filteredWithConfirmedAndSearch
-  }
 
   useEffect(async () => {
     setIsloading(true)
@@ -79,7 +79,7 @@ export default function OrderPool({ handleExport }) {
     } catch (err) {
       return err
     }
-  }, [currentTab, forceUpdate.trigger])
+  }, [currentTab, forceUpdate.trigger, forceUpdate.hasToUpdate, pages, searchOptions])
 
   const handleLoadingMoreOrders = useCallback(async () => {
     const newPage = [pages[currentTab].length + 1]
@@ -102,65 +102,77 @@ export default function OrderPool({ handleExport }) {
       concatenatedOrders
     )
     setSearchResults(filteredOrders)
-  }, [])
+  }, [pages, currentTab, orders, searchOptions])
 
-  const handleSearchChange = useCallback((e) => {
-    const prevOptsForCurTab = searchOptions[currentTab]
-    setSearchOptions({
-      ...searchOptions,
-      [currentTab]: { ...prevOptsForCurTab, searchText: e.target.value },
-    })
+  const handleSearchChange = useCallback(
+    (e) => {
+      const prevOptsForCurTab = searchOptions[currentTab]
+      setSearchOptions({
+        ...searchOptions,
+        [currentTab]: { ...prevOptsForCurTab, searchText: e.target.value },
+      })
 
-    const filteredOrders = makeSearch(
-      e.target.value,
-      prevOptsForCurTab.showOnlyNotConfirmed,
-      orders
-    )
+      const filteredOrders = makeSearch(
+        e.target.value,
+        prevOptsForCurTab.showOnlyNotConfirmed,
+        orders
+      )
 
-    setSearchResults(filteredOrders)
-  }, [])
+      setSearchResults(filteredOrders)
+    },
+    [currentTab, orders, searchOptions]
+  )
 
-  const handleOnlyNotConfirmedSearch = useCallback((bool) => {
-    const prevOptsForCurTab = searchOptions[currentTab]
-    setSearchOptions({
-      ...searchOptions,
-      [currentTab]: { ...prevOptsForCurTab, showOnlyNotConfirmed: bool },
-    })
+  const handleOnlyNotConfirmedSearch = useCallback(
+    (bool) => {
+      const prevOptsForCurTab = searchOptions[currentTab]
+      setSearchOptions({
+        ...searchOptions,
+        [currentTab]: { ...prevOptsForCurTab, showOnlyNotConfirmed: bool },
+      })
 
-    const filteredOrders = makeSearch(prevOptsForCurTab.searchText, bool, orders)
+      const filteredOrders = makeSearch(prevOptsForCurTab.searchText, bool, orders)
 
-    setSearchResults(filteredOrders)
-  }, [])
+      setSearchResults(filteredOrders)
+    },
+    [currentTab, orders, searchOptions]
+  )
 
   const handleTabBarChange = useCallback((e) => {
     setCurrentTab(e.target.dataset.tabname)
   }, [])
 
   const handleRefresh = useCallback(() => {
-    setForceUpdate({
-      ...forceUpdate,
-      trigger: forceUpdate.trigger + 1,
+    setForceUpdate((prev) => ({
+      ...prev,
+      trigger: prev.trigger + 1,
       hasToUpdate: true,
-    })
+    }))
     setTimeout(() =>
-      setForceUpdate({
-        ...forceUpdate,
+      setForceUpdate((prev) => ({
+        ...prev,
         hasToUpdate: false,
-      })
+      }))
     )
   }, [])
 
-  const handleOrderDeletion = useCallback(async (id) => {
-    await orderPoolAPI.remove(id)
-    setOrders(orders.filter((order) => order.id !== id))
-    setSearchResults(searchResults.filter((order) => order.id !== id))
-  }, [])
+  const handleOrderDeletion = useCallback(
+    async (id) => {
+      await orderPoolAPI.remove(id)
+      setOrders(orders.filter((order) => order.id !== id))
+      setSearchResults(searchResults.filter((order) => order.id !== id))
+    },
+    [orders, searchResults]
+  )
 
-  const handleRetrieval = useCallback(async (id) => {
-    await orderPoolAPI.retrieve(id)
-    setOrders(orders.filter((order) => order.id !== id))
-    setSearchResults(searchResults.filter((order) => order.id !== id))
-  }, [])
+  const handleRetrieval = useCallback(
+    async (id) => {
+      await orderPoolAPI.retrieve(id)
+      setOrders(orders.filter((order) => order.id !== id))
+      setSearchResults(searchResults.filter((order) => order.id !== id))
+    },
+    [orders, searchResults]
+  )
 
   const inboxClassName = () =>
     currentTab === INBOX ? 'tab-panel-item tab-panel-item-selected' : 'tab-panel-item'
