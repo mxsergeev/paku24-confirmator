@@ -6,5 +6,4 @@ EXPOSE 3000 3001
 COPY package.json yarn.lock ./
 RUN yarn install
 COPY . .
-RUN yarn build:ui
 CMD [ "echo", "Development container started" ]
