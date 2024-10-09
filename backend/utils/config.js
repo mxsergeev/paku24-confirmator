@@ -2,11 +2,11 @@ require('dotenv').config()
 
 const MONGODB_URI =
   process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development'
-    ? process.env.TEST_MONGODB_URI
+    ? process.env.DEV_MONGODB_URI
     : process.env.MONGODB_URI
 
 const {
-  PORT,
+  BACKEND_PORT,
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,
   SEMYSMS_API_TOKEN,
@@ -26,7 +26,7 @@ const {
 } = process.env
 
 module.exports = {
-  PORT,
+  BACKEND_PORT,
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,
   SEMYSMS_API_TOKEN,
