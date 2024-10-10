@@ -124,7 +124,7 @@ export default function Statistics() {
   }, [period])
 
   const handlePeriodChange = useCallback((e) => {
-    setPeriod({ ...period, [e.target.name]: dayjs(e.target.value) })
+    setPeriod((prev) => ({ ...prev, [e.target.name]: dayjs(e.target.value) }))
   }, [])
 
   function showOrdersByDay(e) {

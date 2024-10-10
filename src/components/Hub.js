@@ -8,6 +8,7 @@ export default function Hub() {
 
   const handleBlockClick = useCallback((e) => {
     history.push(e.currentTarget.name)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

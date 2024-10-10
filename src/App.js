@@ -51,12 +51,13 @@ function App() {
   const [user, setUser] = useState('Loading')
 
   const history = useHistory()
-  let referrer
-  if (user === null || user === 'Loading') {
-    referrer = history.location.pathname
-  }
 
   useEffect(async () => {
+    let referrer
+    if (user === null || user === 'Loading') {
+      referrer = history.location.pathname
+    }
+
     // Initializing Axios interceptor with ability to logout user
     interceptor.setupInterceptor({
       logout: () => setUser(null),
@@ -77,7 +78,8 @@ function App() {
     } catch (err) {
       return setUser(null)
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   return (
     <>
