@@ -15,7 +15,7 @@ const withEditing = (EditableComponent, NotEditableComponent) => ({
 
   const removeUnsavedChanges = useCallback(() => {
     setIncomingChanges(savedChanges)
-  }, [])
+  }, [savedChanges])
 
   const handleIncomingChanges = useCallback((e) => {
     setIncomingChanges(e.target.value)
@@ -23,17 +23,17 @@ const withEditing = (EditableComponent, NotEditableComponent) => ({
 
   const handleCancelClick = useCallback(() => {
     removeUnsavedChanges()
-    setIsEditable(!isEditable)
-  }, [])
+    setIsEditable((prev) => !prev)
+  }, [removeUnsavedChanges])
 
   const handleSaveClick = useCallback(() => {
     setSavedChanges(incomingChanges)
     handleUpdate(incomingChanges)
-    setIsEditable(!isEditable)
-  }, [])
+    setIsEditable((prev) => !prev)
+  }, [incomingChanges, handleUpdate])
 
   const handleEditClick = useCallback(() => {
-    setIsEditable(!isEditable)
+    setIsEditable((prev) => !prev)
   }, [])
 
   function notEditable() {
