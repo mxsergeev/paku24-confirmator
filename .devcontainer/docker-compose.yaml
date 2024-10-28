@@ -34,3 +34,18 @@ services:
 
     # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
+
+  mongodb:
+    image: mongo
+    restart: 'no'
+    working_dir: /app
+    volumes:
+      # Persistent data folder
+      - ./.devcontainer/mongodb/data:/data
+      # Init script
+      - ./.devcontainer/mongodb/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
