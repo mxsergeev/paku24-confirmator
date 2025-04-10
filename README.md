@@ -21,18 +21,25 @@ The app also uses an authentication pattern that features [rotating refresh toke
 
 ## Setup
 
-The app is split into two folders: [back](./back/) and [front](./front/). You need to set them up and start them separately. 
-
-### Install
-
-Install all the packages in both the [back](./back/) and [front](./front/) folders. Run this command in the work directory:
-```
-cd front && yarn install && cd ../back && yarn install
-```
-
 ### `.env`
 
-Create and populate the `.env` file in the [back](./back/) folder. Use [`.env.example`](back/.env.example) as a reference.
+Create and populate the `.env` file in the root folder. Use [`.env.example`](.env.example) as a reference.
+
+### Starting up
+
+#### Production
+
+```
+docker compose up
+```
+
+#### Development
+
+- Install [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) VS Code extension.
+
+- Start development environment. Press `CTRL + P` and then type `>Dev Containers: Open folder in Container`.
+
+- Run `yarn dev`.
 
 ### Google Calendar
 
@@ -90,3 +97,4 @@ To get premium access, install the [SemySMS Pay app](https://play.google.com/sto
 ### AWS SES
 
 This app sends emails using AWS SES. You need to have an AWS account and set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to the `.env` file. AWS SES offers 62,000 Outbound Messages per month to any recipient when you call Amazon SES from an Amazon EC2 instance directly.
+
