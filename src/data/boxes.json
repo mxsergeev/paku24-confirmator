@@ -4,8 +4,8 @@
   "step": 5,
   "minPeriod": 7,
   "maxPeriod": null,
-  "price": 0.1,
+  "price": 0.15,
   "timeUnit": "day",
-  "deliveryFee": 14,
-  "pickupFee": 14
+  "deliveryFee": 20,
+  "pickupFee": 20
 }
