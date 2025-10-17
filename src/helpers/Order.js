@@ -11,72 +11,117 @@ import boxesSettings from '../data/boxes.json'
 import icons from '../data/icons.json'
 
 const defaultOrder = {
-  dateTime: new Date(),
-  duration: 1,
-  service: services[0],
-  serviceName: services[0].name,
-  paymentType: paymentTypes[0].name,
-  address: '',
-  destination: '',
-  name: '',
-  email: '',
-  phone: '',
-  boxesDeliveryDate: new Date().toISOString(),
-  boxesPickupDate: new Date().toISOString(),
-  boxesAmount: 0,
-  selfPickup: false,
-  selfReturn: false,
-  comment: '',
   distance: distances.insideCapital,
   hsy: false,
   XL: false,
   eventColor: null,
+
+  date: new Date(),
+  duration: 1,
+  service: {
+    id: '1',
+    name: services[0].name,
+    pricePerHour: Number(services[0].price),
+  },
+  paymentType: {
+    id: '1',
+    name: paymentTypes[0].name,
+    fee: Number(paymentTypes[0].fee) || 0,
+  },
+  address: {
+    street: '',
+    index: '',
+    city: '',
+    floor: 0,
+    elevator: false,
+  },
+  extraAddresses: [],
+  destination: {
+    street: '',
+    index: '',
+    city: '',
+    floor: 0,
+    elevator: false,
+  },
+  name: '',
+  email: '',
+  phone: '',
+  comment: '',
+  boxes: {
+    returnDate: new Date().toISOString(),
+    deliveryDate: new Date().toISOString(),
+    amount: 0,
+  },
+  initialFees: [],
+  manualFees: [],
+  manualBoxesPrice: null,
 }
 const orderClassPropertyNames = Object.keys(defaultOrder)
+
+/**
+ * Formats an address object into a string with an optional label.
+ * @param {{street: string, index: string, city: string}} address - The address details.
+ * @returns {string} Formatted address string ending with newline.
+ */
+function getAddressString(address) {
+  let result = ''
+  result += address.street
+  if (address.index || address.city) {
+    result += `, ${address.index} ${address.city}`
+  }
+  result += '\n'
+  return result
+}
 
 export default class Order {
   constructor(order) {
     for (const propertyName of orderClassPropertyNames) {
       this[propertyName] = order[propertyName] ?? defaultOrder[propertyName]
     }
-    this.dateTime = new Date(order.dateTime)
+    this.date = new Date(order.date)
   }
 
   get time() {
-    return this.dateTime.toTimeString().slice(0, 5)
+    return this.date.toTimeString().slice(0, 5)
   }
 
   get servicePrice() {
-    const service = services.find((s) => s.name === this.serviceName)
-    return this.XL ? service.priceXL : service.price
+    return this.service.pricePerHour * this.duration
   }
 
-  get boxesPrice() {
-    const duration = dayjs(this.boxesPickupDate).diff(
-      dayjs(this.boxesDeliveryDate),
+  // set service(service) {
+  //   this.servicePrice = service.pricePerHour * this.duration
+  // }
+
+  get autoBoxesPrice() {
+    const duration = dayjs(this.boxes.returnDate).diff(
+      dayjs(this.boxes.deliveryDate),
       boxesSettings.timeUnit
     )
 
-    let price = this.boxesAmount * boxesSettings.price * duration
+    return (
+      this.boxes.amount * boxesSettings.price * duration +
+      (boxesSettings.deliveryFee || 0) +
+      (boxesSettings.pickupFee || 0)
+    )
+  }
 
-    if (!this.selfPickup) {
-      price += boxesSettings.deliveryFee
-    }
-    if (!this.selfReturn) {
-      price += boxesSettings.pickupFee
-    }
+  get boxesPrice() {
+    return this.manualBoxesPrice ?? this.autoBoxesPrice
+  }
 
-    return price
+  get price() {
+    return this.servicePrice + this.boxes.price + this.fees.reduce((acc, cur) => acc + cur.price, 0)
   }
 
   get ISODateString() {
-    return `${this.dateTime.toISOString().split('T')[0]}T${this.time}`
+    return `${this.date.toISOString().split('T')[0]}T${this.time}`
   }
 
   get confirmationDateString() {
-    let dd = this.dateTime.getDate()
-    let mm = this.dateTime.getMonth() + 1
-    const yyyy = this.dateTime.getFullYear()
+    let dd = this.date.getDate()
+    let mm = this.date.getMonth() + 1
+    const yyyy = this.date.getFullYear()
 
     if (dd < 10) {
       dd = `0${dd}`
@@ -88,32 +133,54 @@ export default class Order {
     return `${dd}-${mm}-${yyyy}`
   }
 
-  get fees() {
-    const timeInNumberType = this.time.split(':')[0] * 1
+  get autoFees() {
+    const hour = this.time.split(':')[0] * 1
 
-    const dayOFWeek = this.dateTime.getDay()
-    const dayOfMonth = this.dateTime.getDate()
-    const endOfMonth = [
-      new Date(this.dateTime.getFullYear(), this.dateTime.getMonth() + 1, 0).getDate(),
-      1,
-    ]
+    const dayOFWeek = this.date.getDay()
+    const dayOfMonth = this.date.getDate()
+    const endOfMonth = [new Date(this.date.getFullYear(), this.date.getMonth() + 1, 0).getDate(), 1]
 
     const weekEndFeeApplicable = dayOFWeek === 6 || dayOFWeek === 0
-    const endOfMonthFeeApplicable = !weekEndFeeApplicable && endOfMonth.includes(dayOfMonth)
-    const morningFeeApplicable = timeInNumberType < 8
-    const nightFeeApplicable = timeInNumberType >= 20
-    const paymentFeeApplicable =
-      this.paymentType === 'Lasku' ||
-      this.paymentType === 'Lasku/Osamaksu' ||
-      this.paymentType === 'Invoice/Instalment payment'
 
-    return [
-      weekEndFeeApplicable && fees.weekend,
-      endOfMonthFeeApplicable && fees.firstOrLastDayOfTheMonth,
-      morningFeeApplicable && fees.morning,
-      nightFeeApplicable && fees.night,
-      paymentFeeApplicable && fees.bill,
-    ].filter((f) => f !== false)
+    return fees.filter((f) => {
+      switch (f.name) {
+        case 'holidayFee': {
+          // Currently not implemented
+          return false
+        }
+        case 'weekendFee': {
+          return weekEndFeeApplicable
+        }
+        case 'startOrEndOfMonthFee': {
+          return !weekEndFeeApplicable && endOfMonth.includes(dayOfMonth)
+        }
+        case 'nightFee': {
+          return hour < 8 || hour >= 20
+        }
+        case 'paymentTypeFee': {
+          return this.paymentType.fee > 0
+        }
+        default: {
+          return false
+        }
+      }
+    })
+  }
+
+  set fees(f) {
+    this.initialFees = f
+  }
+
+  get fees() {
+    const allFees = [...this.initialFees, ...this.autoFees]
+
+    // Filter out fees that are marked for removal in manualFees
+    // and concat the rest
+    const uniqueFees = allFees
+      .filter((f) => !this.manualFees.find((mf) => mf.remove && mf.id === f.id))
+      .concat(this.manualFees.filter((mf) => !mf.remove))
+
+    return uniqueFees
   }
 
   get eventColor() {
@@ -140,18 +207,6 @@ export default class Order {
     this.service = services.find((s) => s.name === serviceName)
     this.eventColor = services.find((s) => s.name === serviceName)?.eventColor
     this.hsy = Boolean(this.service.hsy)
-  }
-
-  printFees() {
-    const template = '\n@feeName\n@feeAmount'
-    // template needs to be as long as the fees array
-    let printed = template.repeat(this.fees.length)
-    this.fees.forEach((fee) => {
-      printed = printed.replace('@feeName', fee.name.toUpperCase())
-      printed = printed.replace('@feeAmount', `${fee.amount}€`)
-    })
-
-    return printed
   }
 
   /**
@@ -286,7 +341,9 @@ export default class Order {
       time: 1,
       duration: 1,
       paymentType: 1,
+      fees: 1,
       address: 1,
+      extraAddresses: 1,
       destination: 1,
       name: 1,
       email: 1,
@@ -328,47 +385,72 @@ export default class Order {
       }
       if (options.paymentType) {
         transformed += 'MAKSUTAPA\n'
-        transformed += `${this.paymentType}${this.printFees()}\n`
+        transformed += `${this.paymentType.name}\n`
+      }
+      if (options.fees) {
+        this.fees.forEach((f) => {
+          transformed += `${f.label?.toUpperCase()}\n`
+          transformed += `${f.amount}€\n`
+        })
       }
       if (options.address) {
         transformed += 'LÄHTÖPAIKKA\n'
-        transformed += `${this.address}\n`
+        transformed += getAddressString(this.address)
       }
-      if (options.destination && this.destination.length > 5) {
+      if (options.extraAddresses && this.extraAddresses.length > 0) {
+        transformed += 'LISÄPYSÄHDYKSET\n'
+        this.extraAddresses.forEach((a) => {
+          transformed += getAddressString(a)
+        })
+      }
+      if (options.destination && this.destination.street.length > 5) {
         transformed += 'MÄÄRÄNPÄÄ\n'
-        transformed += `${this.destination}\n`
+        transformed += getAddressString(this.destination)
       }
       if (options.name) {
         transformed += 'NIMI\n'
-        transformed += `${this.name}\n`
+        transformed += `${this.name || '?'}\n`
       }
-      if (options.email && this.email) {
+      if (options.email) {
         transformed += 'SÄHKÖPOSTI\n'
-        transformed += `${this.email}\n`
+        transformed += `${this.email || '?'}\n`
       }
       if (options.phone) {
         transformed += 'PUHELIN\n'
-        transformed += `${this.phone}\n`
+        transformed += `${this.phone || '?'}\n`
       }
 
-      if (options.boxes && this.boxesAmount > 0) {
-        const boxDelDateStr = dayjs(this.boxesDeliveryDate).format(
-          `DD-MM-YYYY ${this.boxesDeliveryDate.includes('T') ? 'HH:mm' : ''}`
+      if (options.boxes && this.boxes.amount > 0) {
+        const boxDelDateStr = dayjs(this.boxes.deliveryDate).format(
+          `DD-MM-YYYY ${this.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
         )
-        const boxPickDateStr = dayjs(this.boxesPickupDate).format(
-          `DD-MM-YYYY ${this.boxesPickupDate.includes('T') ? 'HH:mm' : ''}`
+        const boxPickDateStr = dayjs(this.boxes.returnDate).format(
+          `DD-MM-YYYY ${this.boxes.returnDate.includes('T') ? 'HH:mm' : ''}`
         )
 
         transformed += 'MUUTTOLAATIKOT\n'
         transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
         if (this.selfPickup) transformed += 'Itse nouto\n'
         if (this.selfReturn) transformed += 'Itse palautus\n'
-        transformed += `Määrä: ${this.boxesAmount} kpl\n`
+        transformed += `Määrä: ${this.boxes.amount} kpl\n`
         transformed += `Hinta: ${this.boxesPrice}€\n`
       }
 
-      if (options.comment && this.comment) {
+      if (options.comment) {
         transformed += 'LISÄTIETOJA\n'
+
+        if (this.address.floor || this.address.elevator) {
+          transformed += `Lähtö: ${this.address.floor} krs.${
+            this.address.elevator ? ', hissi on.' : ', ei hissiä.'
+          }\n`
+        }
+
+        if (this.destination.floor || this.destination.elevator) {
+          transformed += `Määränpää: ${this.destination.floor} krs.${
+            this.destination.elevator ? ', hissi on.' : ', ei hissiä.'
+          }\n`
+        }
+
         transformed += `${this.comment}\n`
       }
 

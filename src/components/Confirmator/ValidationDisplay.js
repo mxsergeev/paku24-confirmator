@@ -31,7 +31,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
         {
           id: 1,
           name: 'Date and time',
-          isError: validator.isBefore(order.dateTime.toISOString(), new Date().toISOString()),
+          isError: validator.isBefore(order.date.toISOString(), new Date().toISOString()),
           message: `might have some problems. Check to be sure: ${
             `${order.confirmationDateString} ${order.time}` || '---'
           }`,
@@ -39,7 +39,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
         {
           id: 2,
           name: 'Address',
-          isError: validator.isEmpty(order.address),
+          isError: validator.isEmpty(order.address.street),
           message: 'is missing',
         },
         {
@@ -58,7 +58,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
       setValidationArray(validationAr)
     }
   }, [
-    order.dateTime,
+    order.date,
     order.phone,
     order.address,
     order.email,

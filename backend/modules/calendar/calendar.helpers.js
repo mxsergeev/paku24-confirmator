@@ -124,11 +124,11 @@ function makeGoogleEventObjects(order, entries) {
       colorId: color,
       location: [order.address].concat(order.destination?.split('\n')).filter(Boolean).join('\n'),
       start: {
-        dateTime: order.dateTime,
+        date: order.date,
         timeZone,
       },
       end: {
-        dateTime: dayjs(order.dateTime).add(hours, 'hour').add(minutes, 'minute').toISOString(),
+        date: dayjs(order.date).add(hours, 'hour').add(minutes, 'minute').toISOString(),
         timeZone,
       },
       reminders: {
@@ -158,7 +158,7 @@ function makeGoogleEventObjects(order, entries) {
         location,
         start: dateStr.includes('T')
           ? {
-              dateTime: dateStr,
+              date: dateStr,
               timeZone,
             }
           : {
@@ -167,7 +167,7 @@ function makeGoogleEventObjects(order, entries) {
             },
         end: dateStr.includes('T')
           ? {
-              dateTime: dayjs(dateStr).add(1, 'hour').toISOString(),
+              date: dayjs(dateStr).add(1, 'hour').toISOString(),
               timeZone,
             }
           : {

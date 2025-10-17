@@ -56,7 +56,7 @@ export default function OrdersList({
         }}
       >
         <span style={{ fontWeight: 'bold' }}>{fieldName}</span>:{' '}
-        {fieldName === 'dateTime'
+        {fieldName === 'date'
           ? `${new Date(fieldValue).toLocaleDateString()} ${new Date(fieldValue)
               .toLocaleTimeString()
               .slice(0, 5)}`

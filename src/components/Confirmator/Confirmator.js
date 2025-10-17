@@ -48,9 +48,9 @@ export default function Confirmator() {
   }, [])
 
   const handleOrderChange = useCallback(
-    (e) => {
+    (key, value) => {
       // It's not very good to mutate the state directly but setters won't work otherwise
-      order[e.target.name] = e.target.type === 'checkbox' ? e.target.checked : e.target.value
+      order[key] = value
 
       return setOrder(new Order(order))
     },

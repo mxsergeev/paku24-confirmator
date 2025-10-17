@@ -1,27 +1,27 @@
 [
   {
-    "id": 1,
+    "id": "1",
     "name": "Pakettiauto ja kuljettaja",
     "price": 50,
     "priceXL": 50,
     "eventColor": "1"
   },
   {
-    "id": 2,
+    "id": "2",
     "name": "Pakettiauto ja muuttomies",
     "price": 70,
     "priceXL": 70,
     "eventColor": "7"
   },
   {
-    "id": 3,
+    "id": "3",
     "name": "Pakettiauto ja kaksi muuttomiestä",
     "price": 90,
     "priceXL": 90,
     "eventColor": "9"
   },
   {
-    "id": 4,
+    "id": "4",
     "name": "Nouto/tyhjennyspalvelu yhdellä kantajalla",
     "price": 70,
     "priceXL": 70,
@@ -29,7 +29,7 @@
     "hsy": true
   },
   {
-    "id": 5,
+    "id": "5",
     "name": "Nouto/tyhjennyspalvelu kahdella kantajalla",
     "price": 90,
     "priceXL": 90,
@@ -37,28 +37,28 @@
     "hsy": true
   },
   {
-    "id": 6,
+    "id": "6",
     "name": "Van and driver (doesn't assist in carrying)",
     "price": 50,
     "priceXL": 50,
     "eventColor": "1"
   },
   {
-    "id": 7,
+    "id": "7",
     "name": "Van and mover",
     "price": 70,
     "priceXL": 70,
     "eventColor": "7"
   },
   {
-    "id": 8,
+    "id": "8",
     "name": "Van and two movers",
     "price": 90,
     "priceXL": 90,
     "eventColor": "9"
   },
   {
-    "id": 9,
+    "id": "9",
     "name": "Recycle service with one carrier",
     "price": 70,
     "priceXL": 70,
@@ -66,7 +66,7 @@
     "hsy": true
   },
   {
-    "id": 10,
+    "id": "10",
     "name": "Recycle service with two carriers",
     "price": 100,
     "priceXL": 100,

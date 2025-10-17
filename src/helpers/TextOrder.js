@@ -17,21 +17,21 @@ export default class TextOrder {
     this.textOrder = TextOrder.initialCleanup(textOrder)
   }
 
-  get dateTime() {
+  get date() {
     const dateRe = /(?<=Date and time: \w+, )\w+ \d+(th|rd|st|nd)? \w+/.exec(this.textOrder)
 
     if (!dateRe) throw new Error(cannotFind('date'))
 
-    const date = new Date(`${removeOrdinalSuffix(dateRe[0])}Z`)
+    const d = new Date(`${removeOrdinalSuffix(dateRe[0])}Z`)
     const time = /\d+:\d+/.exec(this.textOrder)[0]
 
-    const dateTime = new Date(`
-    ${date.getFullYear()}
-    ${date.getMonth() + 1}
-    ${date.getDate()}
+    const date = new Date(`
+    ${d.getFullYear()}
+    ${d.getMonth() + 1}
+    ${d.getDate()}
     ${time}`)
 
-    return dateTime
+    return date
   }
 
   get duration() {

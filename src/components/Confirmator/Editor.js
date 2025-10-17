@@ -1,13 +1,16 @@
 import React from 'react'
+import { Button } from '@material-ui/core'
 import TextField from '@material-ui/core/TextField'
 import NativeSelect from '@material-ui/core/NativeSelect'
 import TextareaAutosize from '@material-ui/core/TextareaAutosize'
+import PlaylistAddRoundedIcon from '@material-ui/icons/PlaylistAddRounded'
 import DayjsUtils from '@date-io/dayjs'
 import locale_en from 'dayjs/locale/en'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import services from '../../data/services.json'
 import paymentTypes from '../../data/paymentTypes.json'
 import Boxes from './Boxes'
+import Address from './Address'
 
 export default function Editor({ order, handleChange }) {
   const margin = {
@@ -20,10 +23,6 @@ export default function Editor({ order, handleChange }) {
 
   locale_en.weekStart = 1
 
-  function handleDateChange(name, value) {
-    return handleChange({ target: { name, value } })
-  }
-
   return (
     <div className="basic-flex" style={{ marginTop: '5px' }}>
       <div className="flex-100-space-between flex-item" style={marginLeftRight}>
@@ -34,8 +33,8 @@ export default function Editor({ order, handleChange }) {
             minutesStep={15}
             style={marginLeftRight}
             className="time-duration"
-            value={order.dateTime}
-            onChange={(v) => handleDateChange('dateTime', new Date(v))}
+            value={order.date}
+            onChange={(v) => handleChange('date', new Date(v))}
             DialogProps={{ disableScrollLock: true }}
           />
         </MuiPickersUtilsProvider>
@@ -45,7 +44,7 @@ export default function Editor({ order, handleChange }) {
           style={{ ...marginLeftRight, paddingLeft: 10 }}
           name="duration"
           value={order?.duration}
-          onChange={handleChange}
+          onChange={(e) => handleChange(e.target.name, e.target.value)}
         >
           <option value={1}>1h</option>
           <option value={1.5}>1.5h</option>
@@ -68,63 +67,92 @@ export default function Editor({ order, handleChange }) {
           <option value={10}>10h</option>
         </NativeSelect>
       </div>
-
       <NativeSelect
         fullWidth
         style={marginLeftRight}
         className="flex-item"
-        name="serviceName"
-        value={order?.serviceName}
-        onChange={handleChange}
+        name="service"
+        value={order.service.id}
+        onChange={(e) =>
+          handleChange(
+            'service',
+            services.find((s) => s.id === e.target.value)
+          )
+        }
       >
         {services.map((service) => (
-          <option key={service.id} value={service.name}>
+          <option key={service.id} value={service.id}>
             {service.name}
           </option>
         ))}
       </NativeSelect>
-
       <NativeSelect
         fullWidth
         style={marginLeftRight}
         className="flex-item"
         name="paymentType"
-        value={order?.paymentType}
-        onChange={handleChange}
+        value={order?.paymentType.id}
+        onChange={(e) =>
+          handleChange(
+            'paymentType',
+            paymentTypes.find((p) => p.id === e.target.value)
+          )
+        }
       >
         {paymentTypes.map(({ name, id }) => (
-          <option key={id} value={name}>
+          <option key={id} value={id}>
             {name}
           </option>
         ))}
       </NativeSelect>
-
-      <TextField
-        fullWidth
-        style={margin}
-        className="flex-item"
-        required
-        name="address"
+      <Address
         value={order?.address}
-        onChange={handleChange}
-        label="Address"
-        variant="outlined"
-        size="small"
+        onChange={(address) => handleChange('address', address)}
+        style={{
+          marginTop: '0.25rem',
+          marginBottom: order?.extraAddresses?.length > 0 ? '1rem' : 0,
+        }}
       />
+      {order?.extraAddresses.map((a) => (
+        <Address
+          key={a.id}
+          value={a}
+          showRemove
+          onChange={(address) =>
+            handleChange(
+              'extraAddresses',
+              address.removeId
+                ? order.extraAddresses.filter((addr) => addr.id !== address.removeId)
+                : order.extraAddresses.map((addr) => (addr.id === address.id ? address : addr))
+            )
+          }
+        />
+      ))}
 
-      <TextField
-        fullWidth
-        multiline
-        style={margin}
-        className="flex-item"
-        name="destination"
+      <Button
+        size="small"
+        style={{ color: 'gray' }}
+        onClick={() =>
+          handleChange('extraAddresses', [
+            ...order.extraAddresses,
+            {
+              id: Date.now().toString(),
+              street: '',
+              city: '',
+              index: '',
+              floor: 0,
+              elevator: false,
+            },
+          ])
+        }
+      >
+        <PlaylistAddRoundedIcon />
+      </Button>
+
+      <Address
         value={order?.destination}
-        onChange={handleChange}
-        label="Destination"
-        variant="outlined"
-        size="small"
+        onChange={(address) => handleChange('destination', address)}
       />
-
       <TextField
         fullWidth
         required
@@ -132,25 +160,23 @@ export default function Editor({ order, handleChange }) {
         className="flex-item"
         name="name"
         value={order?.name}
-        onChange={handleChange}
+        onChange={(e) => handleChange(e.target.name, e.target.value)}
         label="Name"
         variant="outlined"
         size="small"
       />
-
       <TextField
         fullWidth
         style={margin}
         className="flex-item"
         name="email"
         value={order?.email}
-        onChange={handleChange}
+        onChange={(e) => handleChange(e.target.name, e.target.value)}
         type="email"
         label="Email"
         variant="outlined"
         size="small"
       />
-
       <TextField
         fullWidth
         style={margin}
@@ -158,14 +184,12 @@ export default function Editor({ order, handleChange }) {
         required
         name="phone"
         value={order?.phone}
-        onChange={handleChange}
+        onChange={(e) => handleChange(e.target.name, e.target.value)}
         label="Phonenumber"
         variant="outlined"
         size="small"
       />
-
       <Boxes style={{ marginTop: margin.marginTop }} order={order} handleChange={handleChange} />
-
       <TextareaAutosize
         style={margin}
         className="flex-item textarea-2"
@@ -174,7 +198,7 @@ export default function Editor({ order, handleChange }) {
         name="comment"
         value={order?.comment}
         placeholder="Additional information."
-        onChange={handleChange}
+        onChange={(e) => handleChange(e.target.name, e.target.value)}
       />
     </div>
   )
