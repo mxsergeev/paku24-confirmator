@@ -89,19 +89,18 @@ export default function Confirmator() {
     [rawOrder, order]
   )
 
-  // function handleOrderPoolExport(o) {
-  //   handleRawOrderUpdate(o)
-  //   handleOrderTransformFromText(o)
-  //   setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
-  // }
-
   const handleOrderPoolExport = useCallback(
     (o) => {
-      handleRawOrderUpdate(o)
-      handleOrderTransformFromText(o)
+      const ord = new Order(o)
+
+      setOrder(ord)
+      setTransformedOrder({
+        id: o.id,
+        text: ord.format(),
+      })
       setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
     },
-    [handleRawOrderUpdate, handleOrderTransformFromText]
+    [rawOrderOrderContainerRef]
   )
 
   return (

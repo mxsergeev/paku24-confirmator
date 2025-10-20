@@ -10,73 +10,76 @@ import distances from '../data/distances.json'
 import boxesSettings from '../data/boxes.json'
 import icons from '../data/icons.json'
 
-const defaultOrder = {
-  distance: distances.insideCapital,
-  hsy: false,
-  XL: false,
-  eventColor: null,
-
-  date: new Date(),
-  duration: 1,
-  service: {
-    id: '1',
-    name: services[0].name,
-    pricePerHour: Number(services[0].price),
-  },
-  paymentType: {
-    id: '1',
-    name: paymentTypes[0].name,
-    fee: Number(paymentTypes[0].fee) || 0,
-  },
-  address: {
-    street: '',
-    index: '',
-    city: '',
-    floor: 0,
-    elevator: false,
-  },
-  extraAddresses: [],
-  destination: {
-    street: '',
-    index: '',
-    city: '',
-    floor: 0,
-    elevator: false,
-  },
-  name: '',
-  email: '',
-  phone: '',
-  comment: '',
-  boxes: {
-    returnDate: new Date().toISOString(),
-    deliveryDate: new Date().toISOString(),
-    amount: 0,
-  },
-  initialFees: [],
-  manualFees: [],
-  manualBoxesPrice: null,
-}
-const orderClassPropertyNames = Object.keys(defaultOrder)
-
-/**
- * Formats an address object into a string with an optional label.
- * @param {{street: string, index: string, city: string}} address - The address details.
- * @returns {string} Formatted address string ending with newline.
- */
-function getAddressString(address) {
-  let result = ''
-  result += address.street
-  if (address.index || address.city) {
-    result += `, ${address.index} ${address.city}`
-  }
-  result += '\n'
-  return result
-}
-
 export default class Order {
+  static EMPTY_ORDER = {
+    distance: distances.insideCapital,
+    hsy: false,
+    XL: false,
+    eventColor: null,
+    initialFees: [],
+    manualFees: [],
+    manualBoxesPrice: null,
+    initialPrice: null,
+    manualPrice: null,
+
+    date: new Date(),
+    duration: 1,
+    service: {
+      id: '1',
+      name: services[0].name,
+      pricePerHour: Number(services[0].price),
+    },
+    paymentType: {
+      id: '1',
+      name: paymentTypes[0].name,
+      fee: Number(paymentTypes[0].fee) || 0,
+    },
+    address: {
+      street: '',
+      index: '',
+      city: '',
+      floor: 0,
+      elevator: false,
+    },
+    extraAddresses: [],
+    destination: {
+      street: '',
+      index: '',
+      city: '',
+      floor: 0,
+      elevator: false,
+    },
+    name: '',
+    email: '',
+    phone: '',
+    boxes: {
+      returnDate: new Date().toISOString(),
+      deliveryDate: new Date().toISOString(),
+      amount: 0,
+    },
+    comment: '',
+  }
+
+  static ORDER_KEYS = [
+    'date',
+    'duration',
+    'service',
+    'paymentType',
+    'fees',
+    'price',
+    'address',
+    'extraAddresses',
+    'destination',
+    'name',
+    'email',
+    'phone',
+    'boxes',
+    'comment',
+  ]
+
   constructor(order) {
-    for (const propertyName of orderClassPropertyNames) {
-      this[propertyName] = order[propertyName] ?? defaultOrder[propertyName]
+    for (const propertyName of [...Order.ORDER_KEYS, ...Object.keys(Order.EMPTY_ORDER)]) {
+      this[propertyName] = order[propertyName] ?? Order.EMPTY_ORDER[propertyName]
     }
     this.date = new Date(order.date)
   }
@@ -110,8 +113,18 @@ export default class Order {
     return this.manualBoxesPrice ?? this.autoBoxesPrice
   }
 
+  set price(p) {
+    this.initialPrice = p
+  }
+
+  get autoPrice() {
+    return (
+      this.servicePrice + this.boxes.price + this.fees.reduce((acc, cur) => acc + cur.amount, 0)
+    )
+  }
+
   get price() {
-    return this.servicePrice + this.boxes.price + this.fees.reduce((acc, cur) => acc + cur.price, 0)
+    return this.manualPrice ?? this.autoPrice
   }
 
   get ISODateString() {
@@ -188,8 +201,8 @@ export default class Order {
       return this.color
     }
 
-    if (this.serviceName) {
-      return services.find((s) => s.name === this.serviceName).eventColor
+    if (this.service.id) {
+      return services[this.service.id].eventColor
     }
 
     return null
@@ -216,7 +229,7 @@ export default class Order {
   prepareForSending() {
     const prepared = {}
 
-    for (const key of Object.keys(defaultOrder)) {
+    for (const key of [...Order.ORDER_KEYS, ...Object.keys(Order.EMPTY_ORDER)]) {
       if (key !== 'service') {
         prepared[key] = this[key]
       }
@@ -240,7 +253,7 @@ export default class Order {
         tmpOrder = new TextOrder(text)
       }
 
-      for (const propertyName of orderClassPropertyNames) {
+      for (const propertyName of Order.ORDER_KEYS) {
         try {
           orderArguments[propertyName] = tmpOrder[propertyName]
         } catch (err) {
@@ -255,7 +268,22 @@ export default class Order {
   }
 
   static default() {
-    return new Order(defaultOrder)
+    return new Order(Order.EMPTY_ORDER)
+  }
+
+  /**
+   * Formats an address object into a string with an optional label.
+   * @param {{street: string, index: string, city: string}} address - The address details.
+   * @returns {string} Formatted address string ending with newline.
+   */
+  static getAddressString(address) {
+    let result = ''
+    result += address.street
+    if (address.index || address.city) {
+      result += `, ${address.index} ${address.city}`
+    }
+    result += '\n'
+    return result
   }
 
   makeIcons() {
@@ -395,17 +423,17 @@ export default class Order {
       }
       if (options.address) {
         transformed += 'LÄHTÖPAIKKA\n'
-        transformed += getAddressString(this.address)
+        transformed += Order.getAddressString(this.address)
       }
       if (options.extraAddresses && this.extraAddresses.length > 0) {
         transformed += 'LISÄPYSÄHDYKSET\n'
         this.extraAddresses.forEach((a) => {
-          transformed += getAddressString(a)
+          transformed += Order.getAddressString(a)
         })
       }
       if (options.destination && this.destination.street.length > 5) {
         transformed += 'MÄÄRÄNPÄÄ\n'
-        transformed += getAddressString(this.destination)
+        transformed += Order.getAddressString(this.destination)
       }
       if (options.name) {
         transformed += 'NIMI\n'

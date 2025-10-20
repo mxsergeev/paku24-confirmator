@@ -7,10 +7,10 @@ const { getCalendar } = require('./calendar.helpers')
  * @param {string} event.summary
  * @param {string} event.colorId
  * @param {object} event.start
- * @param {string} event.start.dateTime - ISOString
+ * @param {string} event.start.date - ISOString
  * @param {string} event.start.timeZone
  * @param {object} event.end
- * @param {string} event.end.dateTime - ISOString
+ * @param {string} event.end.date - ISOString
  * @param {string} event.end.timeZone
  * @param {object} event.reminders
  * @param {boolean} event.reminders.useDefault
@@ -25,9 +25,7 @@ async function addEventToCalendar(event) {
       resource: event,
     })
 
-    logger.info(
-      `Event created: ${ev.data?.start.dateTime} - ${ev.data?.end.dateTime}\n${ev.data?.summary}`
-    )
+    logger.info(`Event created: ${ev.data?.start.date} - ${ev.data?.end.date}\n${ev.data?.summary}`)
     return ev
   } catch (err) {
     logger.error(err)
@@ -69,7 +67,7 @@ async function deleteEventFromCalendar(eventId) {
 //     if (events.length) {
 //       console.log('Upcoming 10 events:')
 //       events.map((event, i) => {
-//         const start = event.start.dateTime || event.start.date
+//         const start = event.start.date || event.start.date
 //         console.log(`${start} - ${event.summary}`)
 //       })
 //     } else {

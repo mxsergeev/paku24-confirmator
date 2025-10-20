@@ -11,6 +11,7 @@ const addressSchema = new mongoose.Schema({
 
 const order = new mongoose.Schema({
   date: Date,
+  duration: Number,
   service: {
     id: String,
     name: String,

@@ -16,6 +16,7 @@ const {
 const newErrorWithCustomName = require('../../utils/newErrorWithCustomName.js')
 // const logger = require('../utils/logger')
 const authMW = require('../authentication/auth.middleware.js')
+const Order = require('../../models/order.js')
 
 // const job = new CronJob(
 //   '*/10 * * * * *',
@@ -65,6 +66,23 @@ orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
   }
 })
 
+orderPoolRouter.post('/v2/add', checkKey, async (req, res, next) => {
+  try {
+    const receivedOrder = new Order({
+      receivedAt: new Date().toISOString(),
+      ...req.body.order,
+    })
+
+    await receivedOrder.save()
+
+    return res.status(200).send({ message: 'Order added to the pool.', id: receivedOrder._id })
+  } catch (err) {
+    console.log('err', err)
+
+    return next(err)
+  }
+})
+
 orderPoolRouter.use(authMW.authenticateAccessToken)
 
 async function getOrdersWithLimit({ markedForDeletion, skip, limit }) {
@@ -92,6 +110,25 @@ orderPoolRouter.get('/', async (req, res, next) => {
     })
 
     // Documents are automatically transformed to JSON
+    return res.status(200).send({ orders: ordersInPool, limitPerPage: 20 })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+orderPoolRouter.get('/v2/', async (req, res, next) => {
+  try {
+    const { deleted } = req.query
+    const { skip, limit } = howMuchToGet(req.query.pages)
+
+    const match = {}
+
+    if (deleted === 'true') {
+      match.deletedAt = { $exists: true }
+    }
+
+    const ordersInPool = await Order.find(match).skip(skip).limit(limit).sort({ _id: -1 })
+
     return res.status(200).send({ orders: ordersInPool, limitPerPage: 20 })
   } catch (err) {
     return next(err)

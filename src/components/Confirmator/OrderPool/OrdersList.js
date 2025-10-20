@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import Button from '@material-ui/core/Button'
 import isJSON from 'validator/es/lib/isJSON'
+import Order from '../../../helpers/Order'
 
 export default function OrdersList({
   orders,
@@ -46,27 +47,85 @@ export default function OrdersList({
     return <p>Nothing found</p>
   }
 
-  function JSONOrder(jsonOrder, id) {
-    return Object.entries(JSON.parse(jsonOrder)).map(([fieldName, fieldValue], index) => (
-      <div
-        key={`${fieldName}${fieldValue}${id}`}
-        style={{
-          minHeight: '1.2rem',
-          backgroundColor: index % 2 !== 0 && 'var(--brand-color-very-light)',
-        }}
-      >
-        <span style={{ fontWeight: 'bold' }}>{fieldName}</span>:{' '}
-        {fieldName === 'date'
-          ? `${new Date(fieldValue).toLocaleDateString()} ${new Date(fieldValue)
-              .toLocaleTimeString()
-              .slice(0, 5)}`
-          : fieldValue}
-      </div>
-    ))
-  }
+  function JSONOrder(jsonOrder) {
+    return Order.ORDER_KEYS.map((key, index) => {
+      let value = jsonOrder[key]
 
-  function textOrder(txtOrder, id) {
-    return txtOrder.split('\n').map((line, index) => <div key={`${id}${index}${line}`}>{line}</div>)
+      switch (key) {
+        case 'distance':
+        case 'hsy':
+        case 'XL':
+        case 'initialFees':
+        case 'manualFees':
+        case 'manualBoxesPrice':
+        case 'eventColor': {
+          return null
+        }
+        case 'date': {
+          value = `${new Date(value).toLocaleDateString()} ${new Date(value)
+            .toLocaleTimeString()
+            .slice(0, 5)}`
+          break
+        }
+        case 'duration': {
+          value = `${value ?? '?'} h`
+          break
+        }
+        case 'boxes': {
+          if (!value.amount) {
+            return null
+          }
+
+          value = `Delivery: ${new Date(value.deliveryDate).toLocaleDateString()} ${new Date(
+            value.deliveryDate
+          )
+            .toLocaleTimeString()
+            .slice(0, 5)}, Return: ${new Date(value.returnDate).toLocaleDateString()} ${new Date(
+            value.returnDate
+          )
+            .toLocaleTimeString()
+            .slice(0, 5)}, Amount: ${value.amount} kpl`
+          break
+        }
+        case 'address':
+        case 'destination':
+          value = Order.getAddressString(value)
+          break
+        case 'extraAddresses':
+          value = value.map((addr) => Order.getAddressString(addr)).join('; ')
+          if (!value) {
+            return null
+          }
+          break
+        case 'service': {
+          value = `${value.name} (${value.pricePerHour}€/h)`
+          break
+        }
+        case 'price':
+          value = `${value} €`
+          break
+        case 'paymentType':
+          value = value.name
+          break
+        case 'fees':
+          value = value.map((fee) => `${fee.name}: ${fee.amount}€`).join('; ')
+          break
+        default:
+          value = value?.toString() ?? ''
+      }
+
+      return (
+        <div
+          key={key}
+          style={{
+            minHeight: '1.2rem',
+            backgroundColor: index % 2 !== 0 && 'var(--brand-color-very-light)',
+          }}
+        >
+          <span style={{ fontWeight: 'bold' }}>{key}</span>: {value}
+        </div>
+      )
+    })
   }
 
   function list() {
@@ -122,11 +181,7 @@ export default function OrdersList({
                 </Button>
               </div>
             </div>
-            <div className={orderWithStyles.className}>
-              {isJSON(orderWithStyles.order.text)
-                ? JSONOrder(orderWithStyles.order.text, orderWithStyles.order.id)
-                : textOrder(orderWithStyles.order.text, orderWithStyles.order.id)}
-            </div>
+            <div className={orderWithStyles.className}>{JSONOrder(orderWithStyles.order)}</div>
           </div>
         ))}
         <Button onClick={handleLoadingMoreOrders} size="small">
