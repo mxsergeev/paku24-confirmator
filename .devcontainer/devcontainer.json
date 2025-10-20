@@ -38,13 +38,13 @@
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "ms-azuretools.vscode-docker",
-        "Codeium.codeium",
         "HookyQR.JSDocTagComplete",
         "mikestead.dotenv",
         "eamodio.gitlens",
         "bierner.jsdoc-markdown-highlighting",
         "alefragnani.Bookmarks",
-        "Gruntfuggly.todo-tree"
+        "Gruntfuggly.todo-tree",
+        "mk12.better-git-line-blame"
       ]
     }
   }
