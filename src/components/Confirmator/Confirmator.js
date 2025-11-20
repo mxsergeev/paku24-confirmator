@@ -13,7 +13,7 @@ import TransformPanel from './OrderOperations/TransformPanel'
 import MainOperationsPanel from './OrderOperations/MainOperationsPanel'
 import OrderPoolDialog from './OrderPool/OrderPoolDialog'
 
-import Order from '../../helpers/Order'
+import Order from '../../shared/Order'
 
 export default function Confirmator() {
   const [rawOrder, setRawOrder] = useState({ text: '', id: null })

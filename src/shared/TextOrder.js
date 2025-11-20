@@ -1,8 +1,8 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-control-regex */
 /* eslint-disable no-useless-escape */
-import services from '../data/services.json'
-import paymentTypes from '../data/paymentTypes.json'
+const services = require('../data/services.json')
+const paymentTypes = require('../data/paymentTypes.json')
 
 function cannotFind(name) {
   return `Cannot find ${name}`
@@ -12,7 +12,7 @@ function removeOrdinalSuffix(dateStr) {
   return dateStr.replace(/(?<=\d+)(th|rd|st|nd)/, '')
 }
 
-export default class TextOrder {
+class TextOrder {
   constructor(textOrder) {
     this.textOrder = TextOrder.initialCleanup(textOrder)
   }
@@ -280,3 +280,5 @@ export default class TextOrder {
     return string
   }
 }
+
+module.exports = TextOrder

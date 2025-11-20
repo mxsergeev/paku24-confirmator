@@ -1,8 +1,7 @@
 /* eslint-disable react/no-array-index-key */
 import React, { useEffect, useState } from 'react'
 import Button from '@material-ui/core/Button'
-import isJSON from 'validator/es/lib/isJSON'
-import Order from '../../../helpers/Order'
+import Order from '../../../shared/Order'
 
 export default function OrdersList({
   orders,

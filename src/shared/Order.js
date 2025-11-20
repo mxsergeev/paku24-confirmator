@@ -1,16 +1,16 @@
 /* eslint-disable no-console */
-import { enqueueSnackbar } from 'notistack'
-import isJSON from 'validator/es/lib/isJSON'
-import dayjs from 'dayjs'
-import fees from '../data/fees.json'
-import services from '../data/services.json'
-import TextOrder from './TextOrder'
-import paymentTypes from '../data/paymentTypes.json'
-import distances from '../data/distances.json'
-import boxesSettings from '../data/boxes.json'
-import icons from '../data/icons.json'
+const { enqueueSnackbar } = require('notistack')
+const isJSON = require('validator/lib/isJSON')
+const dayjs = require('dayjs')
+const fees = require('../data/fees.json')
+const services = require('../data/services.json')
+const TextOrder = require('./TextOrder')
+const paymentTypes = require('../data/paymentTypes.json')
+const distances = require('../data/distances.json')
+const boxesSettings = require('../data/boxes.json')
+const icons = require('../data/icons.json')
 
-export default class Order {
+class Order {
   static EMPTY_ORDER = {
     distance: distances.insideCapital,
     hsy: false,
@@ -495,3 +495,5 @@ export default class Order {
     return transformed
   }
 }
+
+module.exports = Order
