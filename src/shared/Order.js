@@ -53,15 +53,21 @@ class Order {
     email: '',
     phone: '',
     boxes: {
-      returnDate: new Date().toISOString(),
       deliveryDate: new Date().toISOString(),
+      returnDate: new Date().toISOString(),
       amount: 0,
     },
     comment: '',
   }
 
+  /**
+   * The most important keys to be included when transforming order to JSON. Useful for converting order to a plain object for APIs.
+   *
+   * Can be used in conjuction with `Object.keys(Order.EMPTY_ORDER)` if extra fiels are needed, but note that `Order.EMPTY_ORDER` doesn't include getter only properties so it shouldn't be used for that purpose standalone.
+   */
   static ORDER_KEYS = [
     'date',
+    'time',
     'duration',
     'service',
     'paymentType',
@@ -74,11 +80,13 @@ class Order {
     'email',
     'phone',
     'boxes',
+    'boxesPrice',
     'comment',
   ]
 
   constructor(order) {
-    for (const propertyName of [...Order.ORDER_KEYS, ...Object.keys(Order.EMPTY_ORDER)]) {
+    // for (const propertyName of [...Order.ORDER_KEYS, ...Object.keys(Order.EMPTY_ORDER)]) {
+    for (const propertyName of Object.keys(Order.EMPTY_ORDER)) {
       this[propertyName] = order[propertyName] ?? Order.EMPTY_ORDER[propertyName]
     }
     this.date = new Date(order.date)
@@ -129,21 +137,6 @@ class Order {
 
   get ISODateString() {
     return `${this.date.toISOString().split('T')[0]}T${this.time}`
-  }
-
-  get confirmationDateString() {
-    let dd = this.date.getDate()
-    let mm = this.date.getMonth() + 1
-    const yyyy = this.date.getFullYear()
-
-    if (dd < 10) {
-      dd = `0${dd}`
-    }
-    if (mm < 10) {
-      mm = `0${mm}`
-    }
-
-    return `${dd}-${mm}-${yyyy}`
   }
 
   get autoFees() {
@@ -223,16 +216,13 @@ class Order {
   }
 
   /**
-   * Deletes properties hsy, altColorPalette and distance.
-   * Transforms to JSON
+   * Transform into a plain object suitable for sending to backend or external APIs.
    */
   prepareForSending() {
     const prepared = {}
 
     for (const key of [...Order.ORDER_KEYS, ...Object.keys(Order.EMPTY_ORDER)]) {
-      if (key !== 'service') {
-        prepared[key] = this[key]
-      }
+      prepared[key] = this[key]
     }
 
     return prepared
@@ -253,7 +243,7 @@ class Order {
         tmpOrder = new TextOrder(text)
       }
 
-      for (const propertyName of Order.ORDER_KEYS) {
+      for (const propertyName of Object.keys(Order.EMPTY_ORDER)) {
         try {
           orderArguments[propertyName] = tmpOrder[propertyName]
         } catch (err) {
@@ -271,6 +261,21 @@ class Order {
     return new Order(Order.EMPTY_ORDER)
   }
 
+  static getConfirmationDateString(date) {
+    let dd = date.getDate()
+    let mm = date.getMonth() + 1
+    const yyyy = date.getFullYear()
+
+    if (dd < 10) {
+      dd = `0${dd}`
+    }
+    if (mm < 10) {
+      mm = `0${mm}`
+    }
+
+    return `${dd}-${mm}-${yyyy}`
+  }
+
   /**
    * Formats an address object into a string with an optional label.
    * @param {{street: string, index: string, city: string}} address - The address details.
@@ -286,18 +291,15 @@ class Order {
     return result
   }
 
-  makeIcons() {
-    const sizeIcon = this.XL ? icons.size.XL : ''
-    const distanceIcon = icons.misc[this.distance] || ''
-    const feeIcons = this.fees
-      .map((fee) => {
-        if (fee.name === 'Laskulisä') return ''
-
-        return icons.fees[fee.name]
-      })
+  static makeIcons(order) {
+    const sizeIcon = order.XL ? icons.size.XL : ''
+    const distanceIcon = icons.misc[order.distance] || ''
+    const feeIcons = order.fees
+      .map((fee) => icons.fees[fee.name])
+      .filter((icon) => icon)
       .reduce((acc, cur) => acc + cur, '')
-    const serviceIcons = icons.service[this.serviceName]
-    const paymentIcons = icons.payment[this.paymentType]
+    const serviceIcons = icons.service[order.service.id]
+    const paymentIcons = icons.payment[order.paymentType.id]
 
     return {
       move: `${sizeIcon}${distanceIcon}${feeIcons}${serviceIcons}${paymentIcons}`,
@@ -306,23 +308,26 @@ class Order {
     }
   }
 
-  makeCalendarEntries() {
-    const moveTitle = `${this.makeIcons().move}${this.time}(${this.duration}h)`
+  static makeCalendarEntries(order) {
+    const moveTitle = `${Order.makeIcons(order).move}${order.time}(${order.duration}h)`
 
-    const boxesDeliveryTitle = `${this.boxesAmount} ${this.makeIcons().boxesDelivery} ${
-      this.boxesDeliveryDate.includes('T')
-        ? `${dayjs(this.boxesDeliveryDate).format('HH:mm')} `
+    const boxesDeliveryTitle = `${order.boxes.amount} ${Order.makeIcons(order).boxesDelivery} ${
+      order.boxes.deliveryDate.includes('T')
+        ? `${dayjs(order.boxes.deliveryDate).format('HH:mm')} `
         : ''
     }`
 
-    const boxesPickupTitle = `NOUTO ${this.boxesAmount} ${this.makeIcons().boxesPickup} ${
-      this.boxesPickupDate.includes('T') ? `${dayjs(this.boxesPickupDate).format('HH:mm')} ` : ''
+    const boxesPickupTitle = `NOUTO ${order.boxes.amount} ${Order.makeIcons(order).boxesPickup} ${
+      order.boxes.returnDate.includes('T')
+        ? `${dayjs(order.boxes.returnDate).format('HH:mm')} `
+        : ''
     }`
 
     return {
       move: {
-        title: `${moveTitle} ${this.name}`,
-        description: `${moveTitle}${this.format(
+        title: `${moveTitle} ${order.name}`,
+        description: `${moveTitle}${Order.format(
+          order,
           {
             title: 0,
             date: 0,
@@ -333,9 +338,10 @@ class Order {
           { removeFirstHeading: true }
         )}`,
       },
-      boxesDelivery: {
-        title: `${boxesDeliveryTitle}${this.name}`,
-        description: `${boxesDeliveryTitle}${this.format(
+      deliveryDate: {
+        title: `${boxesDeliveryTitle}${order.name}`,
+        description: `${boxesDeliveryTitle}${Order.format(
+          order,
           {
             address: 1,
             name: 1,
@@ -346,9 +352,10 @@ class Order {
           { removeFirstHeading: true }
         )}`,
       },
-      boxesPickup: {
-        title: `${boxesPickupTitle}${this.name}`,
-        description: `${boxesPickupTitle}${this.format(
+      returnDate: {
+        title: `${boxesPickupTitle}${order.name}`,
+        description: `${boxesPickupTitle}${Order.format(
+          order,
           {
             destination: 1,
             name: 1,
@@ -362,7 +369,7 @@ class Order {
     }
   }
 
-  format(opts = {}, { removeFirstHeading = false } = {}) {
+  static format(order, opts = {}, { removeFirstHeading = false } = {}) {
     const defaultOpts = {
       title: 1,
       date: 1,
@@ -401,85 +408,83 @@ class Order {
         transformed += 'VARAUKSEN TIEDOT\n'
       }
       if (options.date) {
-        transformed += `${this.confirmationDateString}\n`
+        transformed += `${Order.getConfirmationDateString(order.date)}\n`
       }
       if (options.time) {
         transformed += 'ALKAMISAIKA\n'
-        transformed += `Klo ${this.time} (+/-15min)\n`
+        transformed += `Klo ${order.time} (+/-15min)\n`
       }
       if (options.duration) {
         transformed += 'ARVIOITU KESTO\n'
-        transformed += `${this.duration}h (${this.servicePrice}€/h, ${this.serviceName})\n`
+        transformed += `${order.duration}h (${order.servicePrice}€/h, ${order.serviceName})\n`
       }
       if (options.paymentType) {
         transformed += 'MAKSUTAPA\n'
-        transformed += `${this.paymentType.name}\n`
+        transformed += `${order.paymentType.name}\n`
       }
       if (options.fees) {
-        this.fees.forEach((f) => {
+        order.fees.forEach((f) => {
           transformed += `${f.label?.toUpperCase()}\n`
           transformed += `${f.amount}€\n`
         })
       }
       if (options.address) {
         transformed += 'LÄHTÖPAIKKA\n'
-        transformed += Order.getAddressString(this.address)
+        transformed += Order.getAddressString(order.address)
       }
-      if (options.extraAddresses && this.extraAddresses.length > 0) {
+      if (options.extraAddresses && order.extraAddresses.length > 0) {
         transformed += 'LISÄPYSÄHDYKSET\n'
-        this.extraAddresses.forEach((a) => {
+        order.extraAddresses.forEach((a) => {
           transformed += Order.getAddressString(a)
         })
       }
-      if (options.destination && this.destination.street.length > 5) {
+      if (options.destination && order.destination.street.length > 5) {
         transformed += 'MÄÄRÄNPÄÄ\n'
-        transformed += Order.getAddressString(this.destination)
+        transformed += Order.getAddressString(order.destination)
       }
       if (options.name) {
         transformed += 'NIMI\n'
-        transformed += `${this.name || '?'}\n`
+        transformed += `${order.name || '?'}\n`
       }
       if (options.email) {
         transformed += 'SÄHKÖPOSTI\n'
-        transformed += `${this.email || '?'}\n`
+        transformed += `${order.email || '?'}\n`
       }
       if (options.phone) {
         transformed += 'PUHELIN\n'
-        transformed += `${this.phone || '?'}\n`
+        transformed += `${order.phone || '?'}\n`
       }
 
-      if (options.boxes && this.boxes.amount > 0) {
-        const boxDelDateStr = dayjs(this.boxes.deliveryDate).format(
-          `DD-MM-YYYY ${this.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
+      if (options.boxes && order.boxes.amount > 0) {
+        const boxDelDateStr = dayjs(order.boxes.deliveryDate).format(
+          `DD-MM-YYYY ${order.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
         )
-        const boxPickDateStr = dayjs(this.boxes.returnDate).format(
-          `DD-MM-YYYY ${this.boxes.returnDate.includes('T') ? 'HH:mm' : ''}`
+        const boxPickDateStr = dayjs(order.boxes.returnDate).format(
+          `DD-MM-YYYY ${order.boxes.returnDate.includes('T') ? 'HH:mm' : ''}`
         )
 
         transformed += 'MUUTTOLAATIKOT\n'
         transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
-        if (this.selfPickup) transformed += 'Itse nouto\n'
-        if (this.selfReturn) transformed += 'Itse palautus\n'
-        transformed += `Määrä: ${this.boxes.amount} kpl\n`
-        transformed += `Hinta: ${this.boxesPrice}€\n`
+        transformed += `Määrä: ${order.boxes.amount} kpl\n`
+        transformed += `Hinta: ${order.boxesPrice}€\n`
       }
 
       if (options.comment) {
         transformed += 'LISÄTIETOJA\n'
 
-        if (this.address.floor || this.address.elevator) {
-          transformed += `Lähtö: ${this.address.floor} krs.${
-            this.address.elevator ? ', hissi on.' : ', ei hissiä.'
+        if (order.address.floor || order.address.elevator) {
+          transformed += `Lähtö: ${order.address.floor} krs.${
+            order.address.elevator ? ', hissi on.' : ', ei hissiä.'
           }\n`
         }
 
-        if (this.destination.floor || this.destination.elevator) {
-          transformed += `Määränpää: ${this.destination.floor} krs.${
-            this.destination.elevator ? ', hissi on.' : ', ei hissiä.'
+        if (order.destination.floor || order.destination.elevator) {
+          transformed += `Määränpää: ${order.destination.floor} krs.${
+            order.destination.elevator ? ', hissi on.' : ', ei hissiä.'
           }\n`
         }
 
-        transformed += `${this.comment}\n`
+        transformed += `${order.comment}\n`
       }
 
       if (removeFirstHeading) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import validator from 'validator'
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline'
+import Order from '../../shared/Order'
 
 function ValidationMessages({ validationArray }) {
   const errStyle = { color: 'red' }
@@ -33,7 +34,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
           name: 'Date and time',
           isError: validator.isBefore(order.date.toISOString(), new Date().toISOString()),
           message: `might have some problems. Check to be sure: ${
-            `${order.confirmationDateString} ${order.time}` || '---'
+            `${Order.getConfirmationDateString(order.date)} ${order.time}` || '---'
           }`,
         },
         {
@@ -57,15 +58,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
       ]
       setValidationArray(validationAr)
     }
-  }, [
-    order.date,
-    order.phone,
-    order.address,
-    order.email,
-    order.confirmationDateString,
-    order.time,
-    shouldValidate,
-  ])
+  }, [order.date, order.phone, order.address, order.email, order.time, shouldValidate])
 
   const someIsInvalid = validationArray.some((v) => v.isError)
 

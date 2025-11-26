@@ -76,7 +76,7 @@ export default function Confirmator() {
           setOrder(orderFromText)
           return setTransformedOrder({
             id: o.id,
-            text: orderFromText.format(),
+            text: Order.format(orderFromText),
           })
         })
         .catch((err) => enqueueSnackbar(err.message, { variant: 'error' }))
@@ -85,7 +85,7 @@ export default function Confirmator() {
   )
 
   const handleOrderTransformFromEditor = useCallback(
-    () => setTransformedOrder({ id: rawOrder.id, text: order.format() }),
+    () => setTransformedOrder({ id: rawOrder.id, text: Order.format(order) }),
     [rawOrder, order]
   )
 
@@ -96,7 +96,7 @@ export default function Confirmator() {
       setOrder(ord)
       setTransformedOrder({
         id: o.id,
-        text: ord.format(),
+        text: Order.format(ord),
       })
       setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
     },

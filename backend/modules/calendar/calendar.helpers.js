@@ -5,6 +5,8 @@ const fs = require('fs').promises
 const dayjs = require('dayjs')
 const colors = require('./calendar.data.colors.json')
 
+const Order = require('../../../src/shared/Order.js')
+
 const env = process.env.NODE_ENV || 'production'
 
 const credsFileName = `${env}.calendar.google.credentials.json`
@@ -108,7 +110,7 @@ function makeColor(order) {
  * @param {string} eventInfo.color
  */
 
-function makeGoogleEventObjects(order, entries) {
+function makeGoogleEventObjects(order) {
   const hours = Math.floor(Number(order.duration))
   let minutes = (Number(order.duration) % 1) * 60
   if (!minutes) minutes = 0
@@ -117,18 +119,23 @@ function makeGoogleEventObjects(order, entries) {
 
   const timeZone = 'Europe/Helsinki'
 
+  const entries = Order.makeCalendarEntries(order)
+
   const events = [
     {
       summary: entries.move.title,
       description: entries.move.description,
       colorId: color,
-      location: [order.address].concat(order.destination?.split('\n')).filter(Boolean).join('\n'),
+      location: [Order.getAddressString(order.address)]
+        .concat(order.extraAddresses?.map((ea) => Order.getAddressString(ea)))
+        .concat([Order.getAddressString(order.destination)])
+        .join('\n'),
       start: {
-        date: order.date,
+        dateTime: order.date,
         timeZone,
       },
       end: {
-        date: dayjs(order.date).add(hours, 'hour').add(minutes, 'minute').toISOString(),
+        dateTime: dayjs(order.date).add(hours, 'hour').add(minutes, 'minute').toISOString(),
         timeZone,
       },
       reminders: {
@@ -137,17 +144,17 @@ function makeGoogleEventObjects(order, entries) {
     },
   ]
 
-  if (order.boxesAmount > 0) {
-    ;['boxesDelivery', 'boxesPickup'].forEach((f) => {
-      const dateStr = order[`${f}Date`]
+  if (order.boxes.amount > 0) {
+    ;['deliveryDate', 'returnDate'].forEach((f) => {
+      const dateStr = order.boxes[f]
 
       let location = ''
 
-      if (f === 'boxesDelivery') {
+      if (f === 'deliveryDate') {
         location = order.address
       }
 
-      if (f === 'boxesPickup') {
+      if (f === 'returnDate') {
         location = order.destination
       }
 
@@ -158,21 +165,19 @@ function makeGoogleEventObjects(order, entries) {
         location,
         start: dateStr.includes('T')
           ? {
-              date: dateStr,
+              dateTime: dateStr,
               timeZone,
             }
           : {
               date: dateStr,
-              timeZone,
             },
         end: dateStr.includes('T')
           ? {
-              date: dayjs(dateStr).add(1, 'hour').toISOString(),
+              dateTime: dayjs(dateStr).add(1, 'hour').toISOString(),
               timeZone,
             }
           : {
               date: dateStr,
-              timeZone,
             },
         reminders: {
           useDefault: false,
