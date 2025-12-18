@@ -30,7 +30,7 @@ export default function Editor({ order, handleChange }) {
           <DateTimePicker
             ampm={false}
             format="DD-MM-YYYY HH:mm"
-            minutesStep={15}
+            minutesStep={5}
             style={marginLeftRight}
             className="time-duration"
             value={order.date}

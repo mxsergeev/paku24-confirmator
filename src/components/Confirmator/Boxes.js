@@ -100,9 +100,9 @@ export default function Boxes({ order = {}, handleChange, style }) {
                 <StartPicker
                   ampm={false}
                   format={includeTime_start ? 'DD.MM.YYYY HH:mm' : 'DD.MM.YYYY'}
-                  minutesStep={15}
+                  minutesStep={5}
                   value={order.boxes.deliveryDate}
-                  onChange={(v) => handleDateChange('deliveryDate', new Date(v), includeTime_start)}
+                  onChange={(v) => handleDateChange('deliveryDate', v, includeTime_start)}
                   DialogProps={{ disableScrollLock: true }}
                 />
               </MuiPickersUtilsProvider>
@@ -130,9 +130,9 @@ export default function Boxes({ order = {}, handleChange, style }) {
                 <EndPicker
                   ampm={false}
                   format={includeTime_end ? 'DD.MM.YYYY HH:mm' : 'DD.MM.YYYY'}
-                  minutesStep={15}
+                  minutesStep={5}
                   value={order.boxes.returnDate}
-                  onChange={(v) => handleDateChange('returnDate', new Date(v), includeTime_end)}
+                  onChange={(v) => handleDateChange('returnDate', v, includeTime_end)}
                   DialogProps={{ disableScrollLock: true }}
                 />
               </MuiPickersUtilsProvider>
