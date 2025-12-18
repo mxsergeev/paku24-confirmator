@@ -58,13 +58,9 @@ function errorHandler(err, req, res, next) {
 
   const error = errorsPass[err.name]
 
-  if (error) {
-    return res.status(error.status || 500).send({ error: error.message })
-  }
-
   logger.error(err.message)
 
-  return next(err)
+  return res.status(error?.status || 500).send({ error: error?.message || err.message })
 }
 
 module.exports = errorHandler
