@@ -44,7 +44,8 @@
         "bierner.jsdoc-markdown-highlighting",
         "alefragnani.Bookmarks",
         "Gruntfuggly.todo-tree",
-        "mk12.better-git-line-blame"
+        "mk12.better-git-line-blame",
+        "GitHub.copilot-chat"
       ]
     }
   }
