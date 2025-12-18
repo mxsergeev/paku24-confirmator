@@ -1,4 +1,3 @@
-const dayjs = require('dayjs')
 const isISO8601 = require('validator/lib/isISO8601')
 
 const orderPoolRouter = require('express').Router()
@@ -17,6 +16,7 @@ const newErrorWithCustomName = require('../../utils/newErrorWithCustomName.js')
 // const logger = require('../utils/logger')
 const authMW = require('../authentication/auth.middleware.js')
 const Order = require('../../models/order.js')
+const dayjs = require('../../../src/shared/dayjs.js')
 
 // const job = new CronJob(
 //   '*/10 * * * * *',

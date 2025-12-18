@@ -4,6 +4,7 @@ const path = require('path')
 const fs = require('fs').promises
 const colors = require('./calendar.data.colors.json')
 const Order = require('../../../src/shared/Order.js')
+const dayjs = require('../../../src/shared/dayjs.js')
 const { TIMEZONE } = require('../../utils/config.js')
 
 const env = process.env.NODE_ENV || 'production'

@@ -2,7 +2,6 @@ import DayjsUtils from '@date-io/dayjs'
 import { Checkbox, FormControlLabel, NativeSelect, TextField } from '@material-ui/core/'
 import AllInboxIcon from '@material-ui/icons/AllInbox'
 import { DatePicker, DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
-import dayjs from 'dayjs'
 import locale_en from 'dayjs/locale/en'
 import React, { useEffect, useState } from 'react'
 import boxesSettings from '../../data/boxes.json'
@@ -11,6 +10,7 @@ import {
   sanitizeDecimalString,
   parseAndFormatDecimalString,
 } from '../../helpers/decimalStringHelpers'
+import dayjs from '../../shared/dayjs'
 
 const boxesAmountOptions = [0]
 for (let i = boxesSettings.minAmount; i <= boxesSettings.maxAmount; i += boxesSettings.step) {
@@ -61,11 +61,9 @@ export default function Boxes({ order = {}, handleChange, style }) {
   const handleDateChange = (name, date, includeTime) =>
     handleChange('boxes', {
       ...order.boxes,
-      [name]: includeTime
-        ? new Date(date).toISOString()
-        : // Not using .toISOString() as it will change the date to a previos day in the Helsinki/Finland timezone
-          // dayjs().format() keeps the timezone info and displays the correct day
-          dayjs(date).format().split('T')[0],
+      // Not using .toISOString() as it will change the date to a previos day in the Helsinki/Finland timezone
+      // dayjs().format() keeps the timezone info and displays the correct day
+      [name]: includeTime ? dayjs(date).format() : dayjs(date).format('YYYY-MM-DD'),
     })
 
   return (

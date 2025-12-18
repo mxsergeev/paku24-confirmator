@@ -10,14 +10,9 @@ import TableRow from '@material-ui/core/TableRow'
 import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import Paper from '@material-ui/core/Paper'
 import IconButton from '@material-ui/core/IconButton'
-import dayjs from 'dayjs'
-import isoWeek from 'dayjs/plugin/isoWeek'
-import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import './Statistics.css'
 import orderPoolApi from '../../services/orderPoolAPI'
-
-dayjs.extend(isSameOrAfter)
-dayjs.extend(isoWeek)
+import dayjs from '../../shared/dayjs'
 
 /**
  * @param {Object} period

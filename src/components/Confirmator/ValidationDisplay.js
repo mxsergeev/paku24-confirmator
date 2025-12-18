@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import validator from 'validator'
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline'
-import Order from '../../shared/Order'
+import dayjs from '../../shared/dayjs'
 
 function ValidationMessages({ validationArray }) {
   const errStyle = { color: 'red' }
@@ -34,7 +34,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
           name: 'Date and time',
           isError: validator.isBefore(order.date.toISOString(), new Date().toISOString()),
           message: `might have some problems. Check to be sure: ${
-            `${Order.getConfirmationDateString(order.date)} ${order.time}` || '---'
+            `${dayjs(order.date).format('YYYY-MM-DD')} ${order.time}` || '---'
           }`,
         },
         {

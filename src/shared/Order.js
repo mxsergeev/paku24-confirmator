@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 const { enqueueSnackbar } = require('notistack')
 const isJSON = require('validator/lib/isJSON')
-const dayjs = require('dayjs')
 const fees = require('../data/fees.json')
 const services = require('../data/services.json')
 const TextOrder = require('./TextOrder')
@@ -9,6 +8,7 @@ const paymentTypes = require('../data/paymentTypes.json')
 const distances = require('../data/distances.json')
 const boxesSettings = require('../data/boxes.json')
 const icons = require('../data/icons.json')
+const dayjs = require('./dayjs.js')
 
 class Order {
   static EMPTY_ORDER = {
@@ -93,7 +93,7 @@ class Order {
   }
 
   get time() {
-    return this.date.toTimeString().slice(0, 5)
+    return dayjs(this.date).format('HH:mm')
   }
 
   get servicePrice() {
@@ -133,10 +133,6 @@ class Order {
 
   get price() {
     return this.manualPrice ?? this.autoPrice
-  }
-
-  get ISODateString() {
-    return `${this.date.toISOString().split('T')[0]}T${this.time}`
   }
 
   get autoFees() {
@@ -259,21 +255,6 @@ class Order {
 
   static default() {
     return new Order(Order.EMPTY_ORDER)
-  }
-
-  static getConfirmationDateString(date) {
-    let dd = date.getDate()
-    let mm = date.getMonth() + 1
-    const yyyy = date.getFullYear()
-
-    if (dd < 10) {
-      dd = `0${dd}`
-    }
-    if (mm < 10) {
-      mm = `0${mm}`
-    }
-
-    return `${dd}-${mm}-${yyyy}`
   }
 
   /**
@@ -403,98 +384,94 @@ class Order {
 
     let transformed = ''
 
-    try {
-      if (options.title) {
-        transformed += 'VARAUKSEN TIEDOT\n'
-      }
-      if (options.date) {
-        transformed += `${Order.getConfirmationDateString(order.date)}\n`
-      }
-      if (options.time) {
-        transformed += 'ALKAMISAIKA\n'
-        transformed += `Klo ${order.time} (+/-15min)\n`
-      }
-      if (options.duration) {
-        transformed += 'ARVIOITU KESTO\n'
-        transformed += `${order.duration}h (${order.servicePrice}€/h, ${order.serviceName})\n`
-      }
-      if (options.paymentType) {
-        transformed += 'MAKSUTAPA\n'
-        transformed += `${order.paymentType.name}\n`
-      }
-      if (options.fees) {
-        order.fees.forEach((f) => {
-          transformed += `${f.label?.toUpperCase()}\n`
-          transformed += `${f.amount}€\n`
-        })
-      }
-      if (options.address) {
-        transformed += 'LÄHTÖPAIKKA\n'
-        transformed += Order.getAddressString(order.address)
-      }
-      if (options.extraAddresses && order.extraAddresses.length > 0) {
-        transformed += 'LISÄPYSÄHDYKSET\n'
-        order.extraAddresses.forEach((a) => {
-          transformed += Order.getAddressString(a)
-        })
-      }
-      if (options.destination && order.destination.street.length > 5) {
-        transformed += 'MÄÄRÄNPÄÄ\n'
-        transformed += Order.getAddressString(order.destination)
-      }
-      if (options.name) {
-        transformed += 'NIMI\n'
-        transformed += `${order.name || '?'}\n`
-      }
-      if (options.email) {
-        transformed += 'SÄHKÖPOSTI\n'
-        transformed += `${order.email || '?'}\n`
-      }
-      if (options.phone) {
-        transformed += 'PUHELIN\n'
-        transformed += `${order.phone || '?'}\n`
+    if (options.title) {
+      transformed += 'VARAUKSEN TIEDOT\n'
+    }
+    if (options.date) {
+      transformed += `${dayjs(order.date).format('YYYY-MM-DD')}\n`
+    }
+    if (options.time) {
+      transformed += 'ALKAMISAIKA\n'
+      transformed += `Klo ${order.time} (+/-15min)\n`
+    }
+    if (options.duration) {
+      transformed += 'ARVIOITU KESTO\n'
+      transformed += `${order.duration}h (${order.servicePrice}€/h, ${order.serviceName})\n`
+    }
+    if (options.paymentType) {
+      transformed += 'MAKSUTAPA\n'
+      transformed += `${order.paymentType.name}\n`
+    }
+    if (options.fees) {
+      order.fees.forEach((f) => {
+        transformed += `${f.label?.toUpperCase()}\n`
+        transformed += `${f.amount}€\n`
+      })
+    }
+    if (options.address) {
+      transformed += 'LÄHTÖPAIKKA\n'
+      transformed += Order.getAddressString(order.address)
+    }
+    if (options.extraAddresses && order.extraAddresses.length > 0) {
+      transformed += 'LISÄPYSÄHDYKSET\n'
+      order.extraAddresses.forEach((a) => {
+        transformed += Order.getAddressString(a)
+      })
+    }
+    if (options.destination && order.destination.street.length > 5) {
+      transformed += 'MÄÄRÄNPÄÄ\n'
+      transformed += Order.getAddressString(order.destination)
+    }
+    if (options.name) {
+      transformed += 'NIMI\n'
+      transformed += `${order.name || '?'}\n`
+    }
+    if (options.email) {
+      transformed += 'SÄHKÖPOSTI\n'
+      transformed += `${order.email || '?'}\n`
+    }
+    if (options.phone) {
+      transformed += 'PUHELIN\n'
+      transformed += `${order.phone || '?'}\n`
+    }
+
+    if (options.boxes && order.boxes.amount > 0) {
+      const boxDelDateStr = dayjs(order.boxes.deliveryDate).format(
+        `DD-MM-YYYY ${order.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
+      )
+      const boxPickDateStr = dayjs(order.boxes.returnDate).format(
+        `DD-MM-YYYY ${order.boxes.returnDate.includes('T') ? 'HH:mm' : ''}`
+      )
+
+      transformed += 'MUUTTOLAATIKOT\n'
+      transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
+      transformed += `Määrä: ${order.boxes.amount} kpl\n`
+      transformed += `Hinta: ${order.boxesPrice}€\n`
+    }
+
+    if (options.comment) {
+      transformed += 'LISÄTIETOJA\n'
+
+      if (order.address.floor || order.address.elevator) {
+        transformed += `Lähtö: ${order.address.floor} krs.${
+          order.address.elevator ? ', hissi on.' : ', ei hissiä.'
+        }\n`
       }
 
-      if (options.boxes && order.boxes.amount > 0) {
-        const boxDelDateStr = dayjs(order.boxes.deliveryDate).format(
-          `DD-MM-YYYY ${order.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
-        )
-        const boxPickDateStr = dayjs(order.boxes.returnDate).format(
-          `DD-MM-YYYY ${order.boxes.returnDate.includes('T') ? 'HH:mm' : ''}`
-        )
-
-        transformed += 'MUUTTOLAATIKOT\n'
-        transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
-        transformed += `Määrä: ${order.boxes.amount} kpl\n`
-        transformed += `Hinta: ${order.boxesPrice}€\n`
+      if (order.destination.floor || order.destination.elevator) {
+        transformed += `Määränpää: ${order.destination.floor} krs.${
+          order.destination.elevator ? ', hissi on.' : ', ei hissiä.'
+        }\n`
       }
 
-      if (options.comment) {
-        transformed += 'LISÄTIETOJA\n'
+      transformed += `${order.comment}\n`
+    }
 
-        if (order.address.floor || order.address.elevator) {
-          transformed += `Lähtö: ${order.address.floor} krs.${
-            order.address.elevator ? ', hissi on.' : ', ei hissiä.'
-          }\n`
-        }
+    if (removeFirstHeading) {
+      const ar = transformed.split('\n')
+      ar.shift()
 
-        if (order.destination.floor || order.destination.elevator) {
-          transformed += `Määränpää: ${order.destination.floor} krs.${
-            order.destination.elevator ? ', hissi on.' : ', ei hissiä.'
-          }\n`
-        }
-
-        transformed += `${order.comment}\n`
-      }
-
-      if (removeFirstHeading) {
-        const ar = transformed.split('\n')
-        ar.shift()
-
-        transformed = ar.join('\n')
-      }
-    } catch (err) {
-      console.error(err)
+      transformed = ar.join('\n')
     }
 
     return transformed

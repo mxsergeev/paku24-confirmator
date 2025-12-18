@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import Button from '@material-ui/core/Button'
 import Order from '../../../shared/Order'
+import dayjs from '../../../shared/dayjs'
 
 export default function OrdersList({
   orders,
@@ -61,9 +62,7 @@ export default function OrdersList({
           return null
         }
         case 'date': {
-          value = `${new Date(value).toLocaleDateString()} ${new Date(value)
-            .toLocaleTimeString()
-            .slice(0, 5)}`
+          value = dayjs(value).format('DD-MM-YYYY HH:mm')
           break
         }
         case 'duration': {
