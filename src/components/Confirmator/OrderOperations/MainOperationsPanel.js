@@ -65,10 +65,9 @@ export default function MainOperationsPanel({
         />
         <ConfirmationSMSSenderButton
           className="width-25"
+          order={order}
           statusText={statuses.sms.status}
           isDisabled={isDisabled}
-          phone={order.phone}
-          transformedOrderText={transformedOrder.text}
           changeStatus={changeStatus}
         />
       </div>
