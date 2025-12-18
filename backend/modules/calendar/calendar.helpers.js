@@ -2,10 +2,9 @@ const { authenticate } = require('@google-cloud/local-auth')
 const { google } = require('googleapis')
 const path = require('path')
 const fs = require('fs').promises
-const dayjs = require('dayjs')
 const colors = require('./calendar.data.colors.json')
-
 const Order = require('../../../src/shared/Order.js')
+const { TIMEZONE } = require('../../utils/config.js')
 
 const env = process.env.NODE_ENV || 'production'
 
@@ -117,8 +116,6 @@ function makeGoogleEventObjects(order) {
 
   const color = makeColor(order)
 
-  const timeZone = 'Europe/Helsinki'
-
   const entries = Order.makeCalendarEntries(order)
 
   const events = [
@@ -132,11 +129,11 @@ function makeGoogleEventObjects(order) {
         .join('\n'),
       start: {
         dateTime: order.date,
-        timeZone,
+        timeZone: TIMEZONE,
       },
       end: {
         dateTime: dayjs(order.date).add(hours, 'hour').add(minutes, 'minute').toISOString(),
-        timeZone,
+        timeZone: TIMEZONE,
       },
       reminders: {
         useDefault: false,
@@ -166,7 +163,7 @@ function makeGoogleEventObjects(order) {
         start: dateStr.includes('T')
           ? {
               dateTime: dateStr,
-              timeZone,
+              timeZone: TIMEZONE,
             }
           : {
               date: dateStr,
@@ -174,7 +171,7 @@ function makeGoogleEventObjects(order) {
         end: dateStr.includes('T')
           ? {
               dateTime: dayjs(dateStr).add(1, 'hour').toISOString(),
-              timeZone,
+              timeZone: TIMEZONE,
             }
           : {
               date: dateStr,
