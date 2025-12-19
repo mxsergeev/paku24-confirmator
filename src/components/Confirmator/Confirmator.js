@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
-import { Route } from 'react-router-dom'
+import { Route, useParams } from 'react-router-dom'
 
 import './Confirmator.css'
 import Editor from './Editor'
@@ -12,10 +12,13 @@ import TransformedOrderContainer from './OrderContainers/TransformedOrderContain
 import TransformPanel from './OrderOperations/TransformPanel'
 import MainOperationsPanel from './OrderOperations/MainOperationsPanel'
 import OrderPoolDialog from './OrderPool/OrderPoolDialog'
-
 import Order from '../../shared/Order'
+import orderPoolAPI from '../../services/orderPoolAPI'
+import { isObjectId } from '../../shared/validators'
 
 export default function Confirmator() {
+  const params = useParams()
+
   const [rawOrder, setRawOrder] = useState({ text: '', id: null })
   const [transformedOrder, setTransformedOrder] = useState({
     text: '',
@@ -23,6 +26,24 @@ export default function Confirmator() {
   })
 
   const [order, setOrder] = useState(Order.default())
+
+  useEffect(() => {
+    const fetchOrder = async () => {
+      if (!params.id || !isObjectId(params.id)) {
+        return
+      }
+
+      const { order: o } = await orderPoolAPI.getOrderById(params.id)
+
+      if (!o) {
+        return
+      }
+
+      setOrder(new Order(o))
+    }
+
+    fetchOrder()
+  }, [params.id])
 
   useEffect(() => {
     const savedOrder = localStorage.getItem('confirmator_order')

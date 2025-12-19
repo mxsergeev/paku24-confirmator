@@ -39,6 +39,10 @@ async function get(pages = [1], options = { deleted: false }) {
   })
 }
 
+async function getOrderById(id) {
+  return interceptor.axiosInstance.get(`${baseUrl_v2}/${id}`).then((res) => res?.data)
+}
+
 function confirm(id) {
   return interceptor.axiosInstance.put(`${baseUrl}/confirm/${id}`).then((res) => res?.data)
   // .catch((err) => console.log(err))
@@ -66,4 +70,6 @@ function add({ order, key }) {
   return interceptor.axiosInstance.post(`${baseUrl}/add`, { order, key }).then((res) => res?.data)
 }
 
-export default { get, confirm, remove, retrieve, getConfirmedOrders, add }
+const orderPoolAPI = { get, getOrderById, confirm, remove, retrieve, getConfirmedOrders, add }
+
+export default orderPoolAPI

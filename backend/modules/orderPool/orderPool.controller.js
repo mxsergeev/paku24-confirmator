@@ -17,6 +17,7 @@ const newErrorWithCustomName = require('../../utils/newErrorWithCustomName.js')
 const authMW = require('../authentication/auth.middleware.js')
 const Order = require('../../models/order.js')
 const dayjs = require('../../../src/shared/dayjs.js')
+const { updateOrder, getOrderById } = require('./orderPool.service.js')
 
 // const job = new CronJob(
 //   '*/10 * * * * *',
@@ -79,6 +80,30 @@ orderPoolRouter.post('/v2/add', checkKey, async (req, res, next) => {
   } catch (err) {
     console.log('err', err)
 
+    return next(err)
+  }
+})
+
+orderPoolRouter.get('/v2/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params
+
+    const order = await getOrderById(id)
+
+    return res.status(200).send({ order })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+orderPoolRouter.put('/v2/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params
+
+    const order = await updateOrder(id, req.body.updateData)
+
+    return res.status(200).send({ order, message: 'Order updated' })
+  } catch (err) {
     return next(err)
   }
 })
