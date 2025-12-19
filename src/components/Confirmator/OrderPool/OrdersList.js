@@ -87,10 +87,10 @@ export default function OrdersList({
         }
         case 'address':
         case 'destination':
-          value = Order.getAddressString(value)
+          value = Order.addrStr(value)
           break
         case 'extraAddresses':
-          value = value.map((addr) => Order.getAddressString(addr)).join('; ')
+          value = value.map((addr) => Order.addrStr(addr)).join('; ')
           if (!value) {
             return null
           }

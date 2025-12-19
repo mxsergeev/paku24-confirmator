@@ -67,7 +67,6 @@ class Order {
    */
   static ORDER_KEYS = [
     'date',
-    'time',
     'duration',
     'service',
     'paymentType',
@@ -90,10 +89,6 @@ class Order {
       this[propertyName] = order[propertyName] ?? Order.EMPTY_ORDER[propertyName]
     }
     this.date = new Date(order.date)
-  }
-
-  get time() {
-    return dayjs(this.date).format('HH:mm')
   }
 
   get servicePrice() {
@@ -136,7 +131,7 @@ class Order {
   }
 
   get autoFees() {
-    const hour = this.time.split(':')[0] * 1
+    const hour = this.date.getHours()
 
     const dayOFWeek = this.date.getDay()
     const dayOfMonth = this.date.getDate()
@@ -224,10 +219,6 @@ class Order {
     return prepared
   }
 
-  static getEventForCalendar(formattedStr, startMarker) {
-    return formattedStr.slice(formattedStr.indexOf(startMarker))
-  }
-
   static setupOrderFromText(text) {
     return new Promise((resolve) => {
       let tmpOrder
@@ -258,11 +249,11 @@ class Order {
   }
 
   /**
-   * Formats an address object into a string with an optional label.
+   * Formats an address object into a string.
    * @param {{street: string, index: string, city: string}} address - The address details.
    * @returns {string} Formatted address string ending with newline.
    */
-  static getAddressString(address) {
+  static addrStr(address) {
     let result = ''
     result += address.street
     if (address.index || address.city) {
@@ -290,7 +281,9 @@ class Order {
   }
 
   static makeCalendarEntries(order) {
-    const moveTitle = `${Order.makeIcons(order).move}${order.time}(${order.duration}h)`
+    const moveTitle = `${Order.makeIcons(order).move}${dayjs(order.date).format('HH:mm')}(${
+      order.duration
+    }h)`
 
     const boxesDeliveryTitle = `${order.boxes.amount} ${Order.makeIcons(order).boxesDelivery} ${
       order.boxes.deliveryDate.includes('T')
@@ -392,7 +385,7 @@ class Order {
     }
     if (options.time) {
       transformed += 'ALKAMISAIKA\n'
-      transformed += `Klo ${order.time} (+/-15min)\n`
+      transformed += `Klo ${dayjs(order.date).format('HH:mm')} (+/-15min)\n`
     }
     if (options.duration) {
       transformed += 'ARVIOITU KESTO\n'
@@ -410,17 +403,17 @@ class Order {
     }
     if (options.address) {
       transformed += 'LÄHTÖPAIKKA\n'
-      transformed += Order.getAddressString(order.address)
+      transformed += Order.addrStr(order.address)
     }
     if (options.extraAddresses && order.extraAddresses.length > 0) {
       transformed += 'LISÄPYSÄHDYKSET\n'
       order.extraAddresses.forEach((a) => {
-        transformed += Order.getAddressString(a)
+        transformed += Order.addrStr(a)
       })
     }
     if (options.destination && order.destination.street.length > 5) {
       transformed += 'MÄÄRÄNPÄÄ\n'
-      transformed += Order.getAddressString(order.destination)
+      transformed += Order.addrStr(order.destination)
     }
     if (options.name) {
       transformed += 'NIMI\n'

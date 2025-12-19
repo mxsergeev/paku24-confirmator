@@ -124,9 +124,9 @@ function makeGoogleEventObjects(order) {
       summary: entries.move.title,
       description: entries.move.description,
       colorId: color,
-      location: [Order.getAddressString(order.address)]
-        .concat(order.extraAddresses?.map((ea) => Order.getAddressString(ea)))
-        .concat([Order.getAddressString(order.destination)])
+      location: [Order.addrStr(order.address)]
+        .concat(order.extraAddresses?.map((ea) => Order.addrStr(ea)))
+        .concat([Order.addrStr(order.destination)])
         .join('\n'),
       start: {
         dateTime: order.date,
