@@ -9,6 +9,10 @@ const distances = require('../data/distances.json')
 const boxesSettings = require('../data/boxes.json')
 const icons = require('../data/icons.json')
 const dayjs = require('./dayjs.js')
+const { isNode } = require('./isNode.js')
+const { toZonedTime, fromZonedTime } = require('./date-fns-tz.js')
+
+const getDateInTz = (d) => (isNode() ? toZonedTime(d) : d)
 
 class Order {
   static EMPTY_ORDER = {
@@ -213,7 +217,18 @@ class Order {
     const prepared = {}
 
     for (const key of [...Order.ORDER_KEYS, ...Object.keys(Order.EMPTY_ORDER)]) {
-      prepared[key] = this[key]
+      if (key === 'date') {
+        prepared.date = fromZonedTime(this.date).toISOString()
+      }
+      if (key === 'boxes') {
+        prepared.boxes = {
+          ...this.boxes,
+          deliveryDate: fromZonedTime(new Date(this.boxes.deliveryDate)).toISOString(),
+          returnDate: fromZonedTime(new Date(this.boxes.returnDate)).toISOString(),
+        }
+      } else {
+        prepared[key] = this[key]
+      }
     }
 
     return prepared
@@ -381,11 +396,11 @@ class Order {
       transformed += 'VARAUKSEN TIEDOT\n'
     }
     if (options.date) {
-      transformed += `${dayjs(order.date).format('YYYY-MM-DD')}\n`
+      transformed += `${dayjs(getDateInTz(order.date)).format('YYYY-MM-DD')}\n`
     }
     if (options.time) {
       transformed += 'ALKAMISAIKA\n'
-      transformed += `Klo ${dayjs(order.date).format('HH:mm')} (+/-15min)\n`
+      transformed += `Klo ${dayjs(getDateInTz(order.date)).format('HH:mm')} (+/-15min)\n`
     }
     if (options.duration) {
       transformed += 'ARVIOITU KESTO\n'
@@ -429,10 +444,10 @@ class Order {
     }
 
     if (options.boxes && order.boxes.amount > 0) {
-      const boxDelDateStr = dayjs(order.boxes.deliveryDate).format(
+      const boxDelDateStr = dayjs(getDateInTz(order.boxes.deliveryDate)).format(
         `DD-MM-YYYY ${order.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
       )
-      const boxPickDateStr = dayjs(order.boxes.returnDate).format(
+      const boxPickDateStr = dayjs(getDateInTz(order.boxes.returnDate)).format(
         `DD-MM-YYYY ${order.boxes.returnDate.includes('T') ? 'HH:mm' : ''}`
       )
 
