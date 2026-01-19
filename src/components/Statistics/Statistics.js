@@ -95,27 +95,31 @@ export default function Statistics() {
   const [ordersByWeeks, setOrdersByWeeks] = useState([])
   const [rows, setRows] = useState([])
 
-  useEffect(async () => {
-    const weeks = splitPeriodToWeeks(period)
-    const firstWeek = weeks[0]
-    const lastWeek = weeks[weeks.length - 1]
+  useEffect(() => {
+    async function fetchStats() {
+      const weeks = splitPeriodToWeeks(period)
+      const firstWeek = weeks[0]
+      const lastWeek = weeks[weeks.length - 1]
 
-    const {
-      confirmedOrders: confirmedOrdersOfAllWeeksOfPeriod,
-    } = await orderPoolApi.getConfirmedOrders({
-      periodFrom: firstWeek.periodFrom,
-      periodTo: lastWeek.periodTo,
-    })
+      const {
+        confirmedOrders: confirmedOrdersOfAllWeeksOfPeriod,
+      } = await orderPoolApi.getConfirmedOrders({
+        periodFrom: firstWeek.periodFrom,
+        periodTo: lastWeek.periodTo,
+      })
 
-    const ordsByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
+      const ordsByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
 
-    const ordersOfWholePeriod = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, [period])
+      const ordersOfWholePeriod = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, [period])
 
-    const weekRows = makeWeekRows(ordsByWeeks, weeks)
-    const totalRow = makeTotalRow(ordersOfWholePeriod)
+      const weekRows = makeWeekRows(ordsByWeeks, weeks)
+      const totalRow = makeTotalRow(ordersOfWholePeriod)
 
-    setOrdersByWeeks(ordsByWeeks)
-    setRows([...weekRows, ...totalRow])
+      setOrdersByWeeks(ordsByWeeks)
+      setRows([...weekRows, ...totalRow])
+    }
+
+    fetchStats()
   }, [period])
 
   const handlePeriodChange = useCallback((e) => {

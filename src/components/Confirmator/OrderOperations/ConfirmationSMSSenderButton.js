@@ -26,7 +26,7 @@ export default function ConfirmationSMSSenderButton({
       changeStatus(SMS, 'Error', false)
       enqueueSnackbar(err.response?.data.error, { variant: 'error' })
     }
-  }, [order.phone])
+  }, [order, changeStatus])
 
   const buttonContent = statusText || (
     <>

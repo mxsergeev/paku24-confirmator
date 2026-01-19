@@ -8,7 +8,7 @@ import Statistics from './components/Statistics/Statistics'
 import Header from './components/Header'
 import Login from './components/Login'
 import Register from './components/Register'
-import loginServiсe from './services/login'
+import loginService from './services/login'
 import './App.css'
 import Footer from './components/Footer'
 import LoadingUntillDone from './components/LoadingUntillDone'
@@ -52,33 +52,36 @@ function App() {
 
   const history = useHistory()
 
-  useEffect(async () => {
-    let referrer
-    if (user === null || user === 'Loading') {
-      referrer = history.location.pathname
+  useEffect(() => {
+    async function init() {
+      let referrer
+      if (user === null || user === 'Loading') {
+        referrer = history.location.pathname
+      }
+
+      // Initializing Axios interceptor with ability to logout user
+      interceptor.setupInterceptor({
+        logout: () => setUser(null),
+        notificate: () =>
+          enqueueSnackbar(
+            'You were logged out for security reasons. Your work has been saved. Login to continue.',
+            {
+              variant: 'warning',
+              autoHideDuration: 10000,
+            }
+          ),
+      })
+
+      try {
+        const { user: userFromToken } = await loginService.loginWithAccessToken()
+        history.push(referrer)
+        return setUser(userFromToken)
+      } catch (err) {
+        return setUser(null)
+      }
     }
 
-    // Initializing Axios interceptor with ability to logout user
-    interceptor.setupInterceptor({
-      logout: () => setUser(null),
-      notificate: () =>
-        enqueueSnackbar(
-          'You were logged out for security reasons. Your work has been saved. Login to continue.',
-          {
-            variant: 'warning',
-            autoHideDuration: 10000,
-          }
-        ),
-    })
-
-    try {
-      const { user: userFromToken } = await loginServiсe.loginWithAccessToken()
-      history.push(referrer)
-      return setUser(userFromToken)
-    } catch (err) {
-      return setUser(null)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    init()
   }, [])
 
   return (

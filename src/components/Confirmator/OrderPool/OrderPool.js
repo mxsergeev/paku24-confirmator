@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { enqueueSnackbar } from 'notistack'
 import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 import IconButton from '@material-ui/core/IconButton'
@@ -79,7 +80,7 @@ export default function OrderPool({ handleExport }) {
         setSearchResults(filteredOrders)
         setIsloading(false)
       } catch (err) {
-        console.error(err)
+        enqueueSnackbar(err?.response?.data?.error || err.message, { variant: 'error' })
         setIsloading(false)
       }
     }
