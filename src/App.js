@@ -82,6 +82,8 @@ function App() {
     }
 
     init()
+    // `user` and `history` are omitted to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
