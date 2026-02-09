@@ -202,7 +202,8 @@ export default function Editor({ order, handleChange }) {
         onChange={(e) => handleChange(e.target.name, e.target.value)}
       />
       <FeeSelector
-        fees={order?.fees}
+        manualFees={order?.manualFees}
+        autoFees={order?.autoFees}
         onChange={(fees) => handleChange('manualFees', fees)}
         path="/confirmator/fees"
       />
