@@ -1,13 +1,15 @@
 const mongoose = require('mongoose')
 
-const addressSchema = new mongoose.Schema({
-  id: String,
-  street: String,
-  index: String,
-  city: String,
-  floor: Number,
-  elevator: Boolean,
-})
+const addressSchema = new mongoose.Schema(
+  {
+    street: String,
+    index: String,
+    city: String,
+    floor: Number,
+    elevator: Boolean,
+  },
+  { _id: false }
+)
 
 const order = new mongoose.Schema({
   date: Date,
@@ -27,7 +29,7 @@ const order = new mongoose.Schema({
   },
   fees: [
     {
-      id: String,
+      _id: false,
       name: String,
       amount: Number,
     },
