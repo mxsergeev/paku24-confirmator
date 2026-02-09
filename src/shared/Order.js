@@ -20,8 +20,7 @@ class Order {
     hsy: false,
     XL: false,
     eventColor: null,
-    initialFees: [],
-    manualFees: [],
+    manualFees: null,
     manualBoxesPrice: null,
     initialPrice: null,
     manualPrice: null,
@@ -38,6 +37,7 @@ class Order {
       name: paymentTypes[0].name,
       fee: Number(paymentTypes[0].fee) || 0,
     },
+    fees: [],
     address: {
       street: '',
       index: '',
@@ -88,10 +88,10 @@ class Order {
   ]
 
   constructor(order) {
-    // for (const propertyName of [...Order.ORDER_KEYS, ...Object.keys(Order.EMPTY_ORDER)]) {
-    for (const propertyName of Object.keys(Order.EMPTY_ORDER)) {
-      this[propertyName] = order[propertyName] ?? Order.EMPTY_ORDER[propertyName]
+    for (const key of Object.keys(Order.EMPTY_ORDER)) {
+      this[key] = order[key] ?? Order.EMPTY_ORDER[key]
     }
+
     this.date = new Date(order.date)
   }
 
@@ -169,19 +169,11 @@ class Order {
   }
 
   set fees(f) {
-    this.initialFees = f
+    this.manualFees = f
   }
 
   get fees() {
-    const allFees = [...this.initialFees, ...this.autoFees]
-
-    // Filter out fees that are marked for removal in manualFees
-    // and concat the rest
-    const uniqueFees = allFees
-      .filter((f) => !this.manualFees.find((mf) => mf.remove && mf.id === f.id))
-      .concat(this.manualFees.filter((mf) => !mf.remove))
-
-    return uniqueFees
+    return this.manualFees ?? this.autoFees
   }
 
   get eventColor() {

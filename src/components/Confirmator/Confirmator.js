@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
-import { Route, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
 import './Confirmator.css'
 import Editor from './Editor'
@@ -157,9 +157,7 @@ export default function Confirmator() {
         handleResetClick={reset}
         orderPoolUrl="/confirmator/order-pool"
       />
-      <Route path="/confirmator/order-pool">
-        <OrderPoolDialog handleExport={handleOrderPoolExport} />
-      </Route>
+      <OrderPoolDialog path="/confirmator/order-pool" handleExport={handleOrderPoolExport} />
     </div>
   )
 }

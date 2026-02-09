@@ -11,6 +11,7 @@ import services from '../../data/services.json'
 import paymentTypes from '../../data/paymentTypes.json'
 import Boxes from './Boxes'
 import Address from './Address'
+import FeeSelector from './Editor/FeeSelector'
 
 export default function Editor({ order, handleChange }) {
   const margin = {
@@ -199,6 +200,11 @@ export default function Editor({ order, handleChange }) {
         value={order?.comment}
         placeholder="Additional information."
         onChange={(e) => handleChange(e.target.name, e.target.value)}
+      />
+      <FeeSelector
+        fees={order?.fees}
+        onChange={(fees) => handleChange('manualFees', fees)}
+        path="/confirmator/fees"
       />
     </div>
   )
