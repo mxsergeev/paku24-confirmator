@@ -404,7 +404,9 @@ class Order {
     }
     if (options.fees) {
       order.fees.forEach((f) => {
-        transformed += `${f.label?.toUpperCase()}\n`
+        const label = f.label ?? fees.find((fee) => fee.name === f.name)?.label ?? ''
+
+        transformed += `${label.toUpperCase()}\n`
         transformed += `${f.amount}€\n`
       })
     }
