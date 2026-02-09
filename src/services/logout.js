@@ -6,4 +6,6 @@ async function logout() {
   return axios.post(baseUrl).then((res) => res.data)
 }
 
-export default { logout }
+const logoutService = { logout }
+
+export default logoutService

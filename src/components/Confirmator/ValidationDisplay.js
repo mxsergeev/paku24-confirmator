@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import validator from 'validator'
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline'
+import dayjs from '../../shared/dayjs'
 
 function ValidationMessages({ validationArray }) {
   const errStyle = { color: 'red' }
@@ -31,15 +32,15 @@ export default function ValidationDisplay({ order, shouldValidate }) {
         {
           id: 1,
           name: 'Date and time',
-          isError: validator.isBefore(order.dateTime.toISOString(), new Date().toISOString()),
+          isError: validator.isBefore(order.date.toISOString(), new Date().toISOString()),
           message: `might have some problems. Check to be sure: ${
-            `${order.confirmationDateString} ${order.time}` || '---'
+            `${dayjs(order.date).format('YYYY-MM-DD')} ${order.time}` || '---'
           }`,
         },
         {
           id: 2,
           name: 'Address',
-          isError: validator.isEmpty(order.address),
+          isError: validator.isEmpty(order.address.street),
           message: 'is missing',
         },
         {
@@ -57,15 +58,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
       ]
       setValidationArray(validationAr)
     }
-  }, [
-    order.dateTime,
-    order.phone,
-    order.address,
-    order.email,
-    order.confirmationDateString,
-    order.time,
-    shouldValidate,
-  ])
+  }, [order.date, order.phone, order.address, order.email, order.time, shouldValidate])
 
   const someIsInvalid = validationArray.some((v) => v.isError)
 
