@@ -44,6 +44,9 @@ const order = new mongoose.Schema({
     deliveryDate: Date,
     returnDate: Date,
     amount: Number,
+    pricePerBox: Number,
+    deliveryPrice: Number,
+    returnPrice: Number,
   },
   markedForDeletion: {
     type: Boolean,

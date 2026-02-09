@@ -83,7 +83,7 @@ class Order {
     'email',
     'phone',
     'boxes',
-    'boxesPrice',
+    // 'boxesPrice',
     'comment',
   ]
 
