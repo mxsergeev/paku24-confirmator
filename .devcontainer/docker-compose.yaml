@@ -10,17 +10,19 @@ services:
     #
     build:
       dockerfile: .devcontainer/Dockerfile
-      context: .
+      context: ..
 
     volumes:
       # Update this to wherever you want VS Code to mount the folder of your project
-      - ..:/workspaces:cached
-      - .:/app
+      - ..:/app:cached
       - /app/node_modules
 
     ports:
       - '3000:3000'
       - '3001:3001'
+
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
 
     restart: 'no'
 
@@ -41,9 +43,9 @@ services:
     working_dir: /app
     volumes:
       # Persistent data folder
-      - ./.devcontainer/mongodb/data:/data
+      - ./mongodb/data:/data
       # Init script
-      - ./.devcontainer/mongodb/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./mongodb/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     ports:
       - 27017:27017
     environment:
