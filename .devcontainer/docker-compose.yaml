@@ -43,7 +43,7 @@ services:
     working_dir: /app
     volumes:
       # Persistent data volume
-      - mongodb_data:/data
+      - mongodb_data:/data/db
       # Init script
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     ports:
