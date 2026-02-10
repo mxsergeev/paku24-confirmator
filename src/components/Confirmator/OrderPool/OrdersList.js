@@ -70,7 +70,7 @@ export default function OrdersList({
           break
         }
         case 'boxes': {
-          if (!value.amount) {
+          if (!value?.amount) {
             return null
           }
 
