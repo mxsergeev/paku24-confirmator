@@ -2,7 +2,6 @@
 import interceptor from './interceptor'
 
 const baseUrl = '/api/order-pool'
-const baseUrl_v2 = '/api/order-pool/v2'
 /**
  * @param {string} queryName
  * @param {Array} items
@@ -17,30 +16,61 @@ function makeQueryArray(queryName, items) {
     .join('')
 }
 
+function storeOrdersInSessionStorage({ query, orders }) {
+  return new Promise((resolve) =>
+    resolve(
+      sessionStorage.setItem(
+        `order-pool/${query}`,
+        JSON.stringify({
+          validUntil: Date.now() + 5 * 60 * 1000,
+          orders,
+        })
+      )
+    )
+  )
+}
+
+function getOrdersFromSessionStorage(query) {
+  return Promise.resolve().then(() => JSON.parse(sessionStorage.getItem(`order-pool/${query}`)))
+}
+
+function isStorageUpToDate(query) {
+  return Promise.resolve(
+    (() => {
+      try {
+        const { validUntil } = JSON.parse(sessionStorage.getItem(`order-pool/${query}`))
+        return validUntil > Date.now()
+      } catch {
+        return false
+      }
+    })()
+  )
+}
+
 /**
  * @param {Array} [pages] - Default: [ 1 ]
  * @param {Object} options - Default: { deleted: false, forceUpdate: false }
  * @param {Boolean} [options.deleted]
  * @param {Boolean} [options.forceUpdate]
  */
-async function get(pages = [1], options = { deleted: false }) {
-  const { deleted } = options
+async function get(pages = [1], options = { deleted: false, forceUpdate: false }) {
+  const { deleted, forceUpdate } = options
 
   const query = `${deleted ? 'deleted=true' : 'deleted=false'}&${makeQueryArray('pages', pages)}`
 
+  if (!forceUpdate && (await isStorageUpToDate(query))) {
+    return getOrdersFromSessionStorage(query).then((data) => data.orders)
+  }
+
   // example: /api/order-pool/?deleted=false&pages[]=1&pages[]=2
-  const url = `${baseUrl_v2}/?${query}`
+  const url = `${baseUrl}/?${query}`
 
   return interceptor.axiosInstance.get(url).then(async (res) => {
     const { orders } = res?.data
-    // await storeOrdersInSessionStorage({ query, orders })
+    await storeOrdersInSessionStorage({ query, orders })
 
     return orders
   })
-}
-
-async function getOrderById(id) {
-  return interceptor.axiosInstance.get(`${baseUrl_v2}/${id}`).then((res) => res?.data)
 }
 
 function confirm(id) {
@@ -70,6 +100,4 @@ function add({ order, key }) {
   return interceptor.axiosInstance.post(`${baseUrl}/add`, { order, key }).then((res) => res?.data)
 }
 
-const orderPoolAPI = { get, getOrderById, confirm, remove, retrieve, getConfirmedOrders, add }
-
-export default orderPoolAPI
+export default { get, confirm, remove, retrieve, getConfirmedOrders, add }

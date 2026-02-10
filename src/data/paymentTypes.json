@@ -1,20 +1,26 @@
 [
   {
-    "id": "1",
+    "id": 1,
     "name": "Maksukortti"
   },
   {
-    "id": "2",
+    "id": 2,
     "name": "Käteinen"
   },
   {
-    "id": "3",
-    "name": "Yrityslasku",
-    "fee": 5
+    "id": 3,
+    "name": "Lasku/Osamaksu"
   },
   {
-    "id": "4",
-    "name": "Maksusitoumus",
-    "fee": 5
+    "id": 4,
+    "name": "Bank card"
+  },
+  {
+    "id": 5,
+    "name": "Cash"
+  },
+  {
+    "id": 6,
+    "name": "Invoice/Instalment payment"
   }
 ]

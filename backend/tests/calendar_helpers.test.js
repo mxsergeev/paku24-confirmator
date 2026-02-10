@@ -80,9 +80,9 @@ describe('makeGoogleEventObject', () => {
       duration: 4,
     })
 
-    expect(eventObject.start.date).toBe(exampleOrder.date.original.toISOString())
-    expect(eventObject.end.date).toBe(new Date('2021-04-22 19:00').toISOString())
-    expect(eventObject2.start.date).toBe(new Date('2021-07-10 23:00').toISOString())
-    expect(eventObject2.end.date).toBe(new Date('2021-07-11 3:00').toISOString())
+    expect(eventObject.start.dateTime).toBe(exampleOrder.date.original.toISOString())
+    expect(eventObject.end.dateTime).toBe(new Date('2021-04-22 19:00').toISOString())
+    expect(eventObject2.start.dateTime).toBe(new Date('2021-07-10 23:00').toISOString())
+    expect(eventObject2.end.dateTime).toBe(new Date('2021-07-11 3:00').toISOString())
   })
 })

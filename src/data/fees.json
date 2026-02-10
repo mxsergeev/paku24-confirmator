@@ -1,27 +1,26 @@
-[
-  {
-    "name": "holidayFee",
-    "label": "PYHÄLISÄ",
-    "amount": 15
-  },
-  {
-    "name": "weekendFee",
-    "label": "VIIKONLOPPULISÄ",
-    "amount": 15
-  },
-  {
-    "name": "startOrEndOfMonthFee",
-    "label": "KUUNVAIHDELISÄ",
-    "amount": 15
-  },
-  {
-    "name": "nightFee",
-    "label": "YÖ/AAMULISÄ",
+{
+  "morning": {
+    "name": "Aamulisä",
     "amount": 20
   },
-  {
-    "name": "paymentTypeFee",
-    "label": "MAKSUTAPALISÄ",
-    "amount": 5
+  "night": {
+    "name": "Yölisä",
+    "amount": 20
+  },
+  "holiday": {
+    "name": "Pyhälisä",
+    "amount": 15
+  },
+  "weekend": {
+    "name": "Viikonloppulisä",
+    "amount": 15
+  },
+  "firstOrLastDayOfTheMonth": {
+    "name": "Kuunvaihdelisä",
+    "amount": 15
+  },
+  "bill": {
+    "name": "Laskulisä",
+    "amount": 14
   }
-]
+}

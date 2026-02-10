@@ -7,7 +7,8 @@ import CustomButton from './CustomButton'
 const SMS = 'sms'
 
 export default function ConfirmationSMSSenderButton({
-  order,
+  phone,
+  transformedOrderText,
   statusText,
   isDisabled,
   changeStatus,
@@ -15,9 +16,10 @@ export default function ConfirmationSMSSenderButton({
 }) {
   const handleSendingSMS = useCallback(async () => {
     try {
-      if (order.phone) {
+      const msg = transformedOrderText
+      if (msg && phone) {
         changeStatus(SMS, 'Working', true)
-        const response = await sendSMS({ order: order.prepareForSending() })
+        const response = await sendSMS({ msg, phone })
         changeStatus(SMS, 'Done', true)
         enqueueSnackbar(`${response.message}`)
       }
@@ -26,7 +28,7 @@ export default function ConfirmationSMSSenderButton({
       changeStatus(SMS, 'Error', false)
       enqueueSnackbar(err.response?.data.error, { variant: 'error' })
     }
-  }, [order, changeStatus])
+  }, [transformedOrderText, phone, changeStatus])
 
   const buttonContent = statusText || (
     <>

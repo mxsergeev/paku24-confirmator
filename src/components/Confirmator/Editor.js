@@ -1,17 +1,13 @@
 import React from 'react'
-import { Button } from '@material-ui/core'
 import TextField from '@material-ui/core/TextField'
 import NativeSelect from '@material-ui/core/NativeSelect'
 import TextareaAutosize from '@material-ui/core/TextareaAutosize'
-import PlaylistAddRoundedIcon from '@material-ui/icons/PlaylistAddRounded'
 import DayjsUtils from '@date-io/dayjs'
 import locale_en from 'dayjs/locale/en'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import services from '../../data/services.json'
 import paymentTypes from '../../data/paymentTypes.json'
 import Boxes from './Boxes'
-import Address from './Address'
-import FeeSelector from './Editor/FeeSelector'
 
 export default function Editor({ order, handleChange }) {
   const margin = {
@@ -24,6 +20,10 @@ export default function Editor({ order, handleChange }) {
 
   locale_en.weekStart = 1
 
+  function handleDateChange(name, value) {
+    return handleChange({ target: { name, value } })
+  }
+
   return (
     <div className="basic-flex" style={{ marginTop: '5px' }}>
       <div className="flex-100-space-between flex-item" style={marginLeftRight}>
@@ -31,11 +31,11 @@ export default function Editor({ order, handleChange }) {
           <DateTimePicker
             ampm={false}
             format="DD-MM-YYYY HH:mm"
-            minutesStep={5}
+            minutesStep={15}
             style={marginLeftRight}
             className="time-duration"
-            value={order.date}
-            onChange={(v) => handleChange('date', new Date(v))}
+            value={order.dateTime}
+            onChange={(v) => handleDateChange('dateTime', new Date(v))}
             DialogProps={{ disableScrollLock: true }}
           />
         </MuiPickersUtilsProvider>
@@ -45,7 +45,7 @@ export default function Editor({ order, handleChange }) {
           style={{ ...marginLeftRight, paddingLeft: 10 }}
           name="duration"
           value={order?.duration}
-          onChange={(e) => handleChange(e.target.name, e.target.value)}
+          onChange={handleChange}
         >
           <option value={1}>1h</option>
           <option value={1.5}>1.5h</option>
@@ -68,92 +68,63 @@ export default function Editor({ order, handleChange }) {
           <option value={10}>10h</option>
         </NativeSelect>
       </div>
+
       <NativeSelect
         fullWidth
         style={marginLeftRight}
         className="flex-item"
-        name="service"
-        value={order.service.id}
-        onChange={(e) =>
-          handleChange(
-            'service',
-            services.find((s) => s.id === e.target.value)
-          )
-        }
+        name="serviceName"
+        value={order?.serviceName}
+        onChange={handleChange}
       >
         {services.map((service) => (
-          <option key={service.id} value={service.id}>
+          <option key={service.id} value={service.name}>
             {service.name}
           </option>
         ))}
       </NativeSelect>
+
       <NativeSelect
         fullWidth
         style={marginLeftRight}
         className="flex-item"
         name="paymentType"
-        value={order?.paymentType.id}
-        onChange={(e) =>
-          handleChange(
-            'paymentType',
-            paymentTypes.find((p) => p.id === e.target.value)
-          )
-        }
+        value={order?.paymentType}
+        onChange={handleChange}
       >
         {paymentTypes.map(({ name, id }) => (
-          <option key={id} value={id}>
+          <option key={id} value={name}>
             {name}
           </option>
         ))}
       </NativeSelect>
-      <Address
+
+      <TextField
+        fullWidth
+        style={margin}
+        className="flex-item"
+        required
+        name="address"
         value={order?.address}
-        onChange={(address) => handleChange('address', address)}
-        style={{
-          marginTop: '0.25rem',
-          marginBottom: order?.extraAddresses?.length > 0 ? '1rem' : 0,
-        }}
-      />
-      {order?.extraAddresses.map((a) => (
-        <Address
-          key={a.id}
-          value={a}
-          showRemove
-          onChange={(address) =>
-            handleChange(
-              'extraAddresses',
-              address.removeId
-                ? order.extraAddresses.filter((addr) => addr.id !== address.removeId)
-                : order.extraAddresses.map((addr) => (addr.id === address.id ? address : addr))
-            )
-          }
-        />
-      ))}
-
-      <Button
+        onChange={handleChange}
+        label="Address"
+        variant="outlined"
         size="small"
-        style={{ color: 'gray' }}
-        onClick={() =>
-          handleChange('extraAddresses', [
-            ...order.extraAddresses,
-            {
-              id: Date.now().toString(),
-              street: '',
-              city: '',
-              index: '',
-              floor: 0,
-              elevator: false,
-            },
-          ])
-        }
-      >
-        <PlaylistAddRoundedIcon />
-      </Button>
-
-      <Address
-        value={order?.destination}
-        onChange={(address) => handleChange('destination', address)}
       />
+
+      <TextField
+        fullWidth
+        multiline
+        style={margin}
+        className="flex-item"
+        name="destination"
+        value={order?.destination}
+        onChange={handleChange}
+        label="Destination"
+        variant="outlined"
+        size="small"
+      />
+
       <TextField
         fullWidth
         required
@@ -161,23 +132,25 @@ export default function Editor({ order, handleChange }) {
         className="flex-item"
         name="name"
         value={order?.name}
-        onChange={(e) => handleChange(e.target.name, e.target.value)}
+        onChange={handleChange}
         label="Name"
         variant="outlined"
         size="small"
       />
+
       <TextField
         fullWidth
         style={margin}
         className="flex-item"
         name="email"
         value={order?.email}
-        onChange={(e) => handleChange(e.target.name, e.target.value)}
+        onChange={handleChange}
         type="email"
         label="Email"
         variant="outlined"
         size="small"
       />
+
       <TextField
         fullWidth
         style={margin}
@@ -185,12 +158,14 @@ export default function Editor({ order, handleChange }) {
         required
         name="phone"
         value={order?.phone}
-        onChange={(e) => handleChange(e.target.name, e.target.value)}
+        onChange={handleChange}
         label="Phonenumber"
         variant="outlined"
         size="small"
       />
+
       <Boxes style={{ marginTop: margin.marginTop }} order={order} handleChange={handleChange} />
+
       <TextareaAutosize
         style={margin}
         className="flex-item textarea-2"
@@ -199,13 +174,7 @@ export default function Editor({ order, handleChange }) {
         name="comment"
         value={order?.comment}
         placeholder="Additional information."
-        onChange={(e) => handleChange(e.target.name, e.target.value)}
-      />
-      <FeeSelector
-        manualFees={order?.manualFees}
-        autoFees={order?.autoFees}
-        onChange={(fees) => handleChange('manualFees', fees)}
-        path="/confirmator/fees"
+        onChange={handleChange}
       />
     </div>
   )

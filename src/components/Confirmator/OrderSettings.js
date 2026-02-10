@@ -16,10 +16,7 @@ export default function CheckboxGroup(props) {
     <div className="checkbox-container">
       <FormControl className="checkbox-distance flex-item" hiddenLabel={false} size="small">
         <FormLabel component="legend">Pick one:</FormLabel>
-        <RadioGroup
-          value={order.distance}
-          onChange={(e) => handleChange(e.target.name, e.target.value)}
-        >
+        <RadioGroup value={order.distance} onChange={handleChange}>
           <FormControlLabel
             name="distance"
             value="insideCapital"
@@ -54,7 +51,7 @@ export default function CheckboxGroup(props) {
             variant="filled"
             name="eventColor"
             value={order?.eventColor}
-            onChange={(e) => handleChange(e.target.name, e.target.value)}
+            onChange={handleChange}
             label="Event color"
             renderValue={(value) => (
               <>
@@ -79,13 +76,7 @@ export default function CheckboxGroup(props) {
         <FormControlLabel
           size="small"
           className="flex-item"
-          control={
-            <Checkbox
-              checked={order.hsy}
-              onChange={(e) => handleChange('hsy', e.target.checked)}
-              color="primary"
-            />
-          }
+          control={<Checkbox checked={order.hsy} onChange={handleChange} color="primary" />}
           name="hsy"
           label="♻ HSY"
           labelPlacement="start"
@@ -94,13 +85,7 @@ export default function CheckboxGroup(props) {
         <FormControlLabel
           style={{ display: 'none' }}
           className="flex-item"
-          control={
-            <Checkbox
-              checked={order.XL}
-              onChange={(e) => handleChange('XL', e.target.checked)}
-              color="primary"
-            />
-          }
+          control={<Checkbox checked={order.XL} onChange={handleChange} color="primary" />}
           name="XL"
           label="XL"
           labelPlacement="start"

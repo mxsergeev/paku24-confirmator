@@ -22,6 +22,7 @@ export default function AddOrderToCalendarButton({
       changeStatus(CALENDAR, 'Working', true)
       const response = await addEventToCalendar({
         order: order.prepareForSending(),
+        calendarEntries: order.makeCalendarEntries(),
       })
       let oId = orderId
 

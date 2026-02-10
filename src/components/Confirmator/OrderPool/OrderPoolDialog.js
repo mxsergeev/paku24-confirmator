@@ -3,7 +3,7 @@ import { useHistory } from 'react-router-dom'
 import ResponsiveDialog from '../../ResponsiveDialog'
 import OrderPool from './OrderPool'
 
-export default function OrderPoolDialog({ handleExport, path }) {
+export default function OrderPoolDialog({ handleExport }) {
   const history = useHistory()
 
   const handleClose = () => {
@@ -12,7 +12,7 @@ export default function OrderPoolDialog({ handleExport, path }) {
 
   return (
     <>
-      <ResponsiveDialog path={path}>
+      <ResponsiveDialog handleClose={handleClose}>
         <OrderPool
           handleExport={(o) => {
             handleExport(o)

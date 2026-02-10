@@ -1,8 +1,8 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-control-regex */
 /* eslint-disable no-useless-escape */
-const services = require('../data/services.json')
-const paymentTypes = require('../data/paymentTypes.json')
+import services from '../data/services.json'
+import paymentTypes from '../data/paymentTypes.json'
 
 function cannotFind(name) {
   return `Cannot find ${name}`
@@ -12,26 +12,26 @@ function removeOrdinalSuffix(dateStr) {
   return dateStr.replace(/(?<=\d+)(th|rd|st|nd)/, '')
 }
 
-class TextOrder {
+export default class TextOrder {
   constructor(textOrder) {
     this.textOrder = TextOrder.initialCleanup(textOrder)
   }
 
-  get date() {
+  get dateTime() {
     const dateRe = /(?<=Date and time: \w+, )\w+ \d+(th|rd|st|nd)? \w+/.exec(this.textOrder)
 
     if (!dateRe) throw new Error(cannotFind('date'))
 
-    const d = new Date(`${removeOrdinalSuffix(dateRe[0])}Z`)
+    const date = new Date(`${removeOrdinalSuffix(dateRe[0])}Z`)
     const time = /\d+:\d+/.exec(this.textOrder)[0]
 
-    const date = new Date(`
-    ${d.getFullYear()}
-    ${d.getMonth() + 1}
-    ${d.getDate()}
+    const dateTime = new Date(`
+    ${date.getFullYear()}
+    ${date.getMonth() + 1}
+    ${date.getDate()}
     ${time}`)
 
-    return date
+    return dateTime
   }
 
   get duration() {
@@ -280,5 +280,3 @@ class TextOrder {
     return string
   }
 }
-
-module.exports = TextOrder

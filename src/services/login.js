@@ -34,6 +34,4 @@ async function loginWithAccessToken() {
   return response.data
 }
 
-const loginService = { loginWithCredentials, loginWithAccessToken }
-
-export default loginService
+export default { loginWithCredentials, loginWithAccessToken }

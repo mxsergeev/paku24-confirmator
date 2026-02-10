@@ -10,9 +10,14 @@ import TableRow from '@material-ui/core/TableRow'
 import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import Paper from '@material-ui/core/Paper'
 import IconButton from '@material-ui/core/IconButton'
+import dayjs from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import './Statistics.css'
 import orderPoolApi from '../../services/orderPoolAPI'
-import dayjs from '../../shared/dayjs'
+
+dayjs.extend(isSameOrAfter)
+dayjs.extend(isoWeek)
 
 /**
  * @param {Object} period
@@ -95,31 +100,27 @@ export default function Statistics() {
   const [ordersByWeeks, setOrdersByWeeks] = useState([])
   const [rows, setRows] = useState([])
 
-  useEffect(() => {
-    async function fetchStats() {
-      const weeks = splitPeriodToWeeks(period)
-      const firstWeek = weeks[0]
-      const lastWeek = weeks[weeks.length - 1]
+  useEffect(async () => {
+    const weeks = splitPeriodToWeeks(period)
+    const firstWeek = weeks[0]
+    const lastWeek = weeks[weeks.length - 1]
 
-      const {
-        confirmedOrders: confirmedOrdersOfAllWeeksOfPeriod,
-      } = await orderPoolApi.getConfirmedOrders({
-        periodFrom: firstWeek.periodFrom,
-        periodTo: lastWeek.periodTo,
-      })
+    const {
+      confirmedOrders: confirmedOrdersOfAllWeeksOfPeriod,
+    } = await orderPoolApi.getConfirmedOrders({
+      periodFrom: firstWeek.periodFrom,
+      periodTo: lastWeek.periodTo,
+    })
 
-      const ordsByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
+    const ordsByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
 
-      const ordersOfWholePeriod = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, [period])
+    const ordersOfWholePeriod = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, [period])
 
-      const weekRows = makeWeekRows(ordsByWeeks, weeks)
-      const totalRow = makeTotalRow(ordersOfWholePeriod)
+    const weekRows = makeWeekRows(ordsByWeeks, weeks)
+    const totalRow = makeTotalRow(ordersOfWholePeriod)
 
-      setOrdersByWeeks(ordsByWeeks)
-      setRows([...weekRows, ...totalRow])
-    }
-
-    fetchStats()
+    setOrdersByWeeks(ordsByWeeks)
+    setRows([...weekRows, ...totalRow])
   }, [period])
 
   const handlePeriodChange = useCallback((e) => {

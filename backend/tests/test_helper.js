@@ -137,40 +137,6 @@ const exampleEvent = {
 
 const exampleCreatedEvent = `🚛🚛💳15:00(5h)${exampleEvent.entry}`
 
-const smsOrderPayload = {
-  address: {
-    street: 'Raiviosuonmäki 2 E 68',
-    index: '',
-    city: 'Vantaa',
-    floor: 0,
-    elevator: false,
-  },
-  destination: {
-    street: 'Raiviosuonmäki 5 C 32',
-    index: '',
-    city: 'Vantaa',
-    floor: 0,
-    elevator: false,
-  },
-  extraAddresses: [],
-  fees: [],
-  paymentType: { id: '1', name: 'Maksukortti', fee: 0 },
-  boxes: {
-    deliveryDate: '2021-04-22T17:00:00.000Z',
-    returnDate: '2021-04-22T19:00:00.000Z',
-    amount: 0,
-  },
-  boxesPrice: 0,
-  date: '2021-04-22T17:00:00.000Z',
-  time: '17:00',
-  duration: '2',
-  servicePrice: 30,
-  serviceName: 'Paku ja kuski',
-  name: 'Maxim Sergeev',
-  email: 'themaximsergeev@gmail.com',
-  phone: '+358449747442',
-}
-
 module.exports = {
   initialUsers,
   usersInDB,
@@ -185,6 +151,5 @@ module.exports = {
   exampleEntryPartOfTheConfirmation,
   exampleEvent,
   exampleCreatedEvent,
-  smsOrderPayload,
   orderDetails,
 }

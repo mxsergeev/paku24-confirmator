@@ -4,7 +4,9 @@ const baseUrl = '/api/calendar'
 
 /**
  * @param {Object} params
+ * @param {string} params.entry
  * @param {Object} params.order
+ * @param {Array} params.fees
  */
 
 export default async function addEventToCalendar(params) {

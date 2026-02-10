@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
-import { useParams } from 'react-router-dom'
+import { Route } from 'react-router-dom'
 
 import './Confirmator.css'
 import Editor from './Editor'
@@ -12,13 +12,10 @@ import TransformedOrderContainer from './OrderContainers/TransformedOrderContain
 import TransformPanel from './OrderOperations/TransformPanel'
 import MainOperationsPanel from './OrderOperations/MainOperationsPanel'
 import OrderPoolDialog from './OrderPool/OrderPoolDialog'
-import Order from '../../shared/Order'
-import orderPoolAPI from '../../services/orderPoolAPI'
-import { isObjectId } from '../../shared/validators'
+
+import Order from '../../helpers/Order'
 
 export default function Confirmator() {
-  const params = useParams()
-
   const [rawOrder, setRawOrder] = useState({ text: '', id: null })
   const [transformedOrder, setTransformedOrder] = useState({
     text: '',
@@ -26,24 +23,6 @@ export default function Confirmator() {
   })
 
   const [order, setOrder] = useState(Order.default())
-
-  useEffect(() => {
-    const fetchOrder = async () => {
-      if (!params.id || !isObjectId(params.id)) {
-        return
-      }
-
-      const { order: o } = await orderPoolAPI.getOrderById(params.id)
-
-      if (!o) {
-        return
-      }
-
-      setOrder(new Order(o))
-    }
-
-    fetchOrder()
-  }, [params.id])
 
   useEffect(() => {
     const savedOrder = localStorage.getItem('confirmator_order')
@@ -69,9 +48,9 @@ export default function Confirmator() {
   }, [])
 
   const handleOrderChange = useCallback(
-    (key, value) => {
+    (e) => {
       // It's not very good to mutate the state directly but setters won't work otherwise
-      order[key] = value
+      order[e.target.name] = e.target.type === 'checkbox' ? e.target.checked : e.target.value
 
       return setOrder(new Order(order))
     },
@@ -97,7 +76,7 @@ export default function Confirmator() {
           setOrder(orderFromText)
           return setTransformedOrder({
             id: o.id,
-            text: Order.format(orderFromText),
+            text: orderFromText.format(),
           })
         })
         .catch((err) => enqueueSnackbar(err.message, { variant: 'error' }))
@@ -106,22 +85,23 @@ export default function Confirmator() {
   )
 
   const handleOrderTransformFromEditor = useCallback(
-    () => setTransformedOrder({ id: rawOrder.id, text: Order.format(order) }),
+    () => setTransformedOrder({ id: rawOrder.id, text: order.format() }),
     [rawOrder, order]
   )
 
+  // function handleOrderPoolExport(o) {
+  //   handleRawOrderUpdate(o)
+  //   handleOrderTransformFromText(o)
+  //   setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
+  // }
+
   const handleOrderPoolExport = useCallback(
     (o) => {
-      const ord = new Order(o)
-
-      setOrder(ord)
-      setTransformedOrder({
-        id: o.id,
-        text: Order.format(ord),
-      })
+      handleRawOrderUpdate(o)
+      handleOrderTransformFromText(o)
       setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
     },
-    [rawOrderOrderContainerRef]
+    [handleRawOrderUpdate, handleOrderTransformFromText]
   )
 
   return (
@@ -157,7 +137,9 @@ export default function Confirmator() {
         handleResetClick={reset}
         orderPoolUrl="/confirmator/order-pool"
       />
-      <OrderPoolDialog path="/confirmator/order-pool" handleExport={handleOrderPoolExport} />
+      <Route path="/confirmator/order-pool">
+        <OrderPoolDialog handleExport={handleOrderPoolExport} />
+      </Route>
     </div>
   )
 }

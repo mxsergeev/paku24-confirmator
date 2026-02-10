@@ -5,7 +5,7 @@
 
   // Update the 'dockerComposeFile' list if you have more compose files or use different names.
   // The .devcontainer/docker-compose.yaml file contains any overrides you need/want to make.
-  "dockerComposeFile": ["docker-compose.yaml"],
+  "dockerComposeFile": ["../docker-compose.yaml", "docker-compose.yaml"],
 
   // The 'service' property is the name of the service for the container that VS Code should
   // use. Update this value and .devcontainer/docker-compose.yml to the real service name.
@@ -38,14 +38,13 @@
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "ms-azuretools.vscode-docker",
+        "Codeium.codeium",
         "HookyQR.JSDocTagComplete",
         "mikestead.dotenv",
         "eamodio.gitlens",
         "bierner.jsdoc-markdown-highlighting",
         "alefragnani.Bookmarks",
-        "Gruntfuggly.todo-tree",
-        "mk12.better-git-line-blame",
-        "GitHub.copilot-chat"
+        "Gruntfuggly.todo-tree"
       ]
     }
   }

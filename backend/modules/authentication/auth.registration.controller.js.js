@@ -3,9 +3,10 @@ const ms = require('ms')
 
 const User = require('../../models/user')
 const sendMail = require('../email/email.awsAPI')
+const { DOMAIN_NAME } = require('../../utils/config')
 const requestAccessMessage = require('./auth.registration.data.requestAccessMessage.json')
 const accessGrantedMessage = require('./auth.registration.data.accessGrantedMessage.json')
-const { DOMAIN_NAME, ACCESS_REQUESTED_EXPIRES_IN_DAYS } = require('../../utils/config')
+const { ACCESS_REQUESTED_EXPIRES_IN_DAYS } = require('../../utils/config')
 
 const {
   checkIfUserExists,
