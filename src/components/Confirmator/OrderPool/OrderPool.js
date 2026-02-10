@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { enqueueSnackbar } from 'notistack'
 import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 import IconButton from '@material-ui/core/IconButton'
@@ -14,11 +15,12 @@ const INBOX = 'inbox'
 const TRASHCAN = 'trashcan'
 
 function filterWithSearchText(values, search) {
-  return values.filter((value) => value.text.toLowerCase().includes(search?.toLowerCase().trim()))
+  // return values.filter((value) => value.text.toLowerCase().includes(search?.toLowerCase().trim()))
+  return values
 }
 
 function filterConfirmed(values, condition) {
-  return condition ? values.filter((value) => value?.confirmed === false) : values
+  return condition ? values.filter((value) => !value?.confirmedAt) : values
 }
 
 function makeSearch(val, bool, searchTarget) {
@@ -53,32 +55,36 @@ export default function OrderPool({ handleExport }) {
   const numberOfOrders = orders.length
   const numberOfUnconfirmedOrders = orders.filter((order) => !order.confirmed).length
 
-  useEffect(async () => {
-    setIsloading(true)
-    let ordersFromPool
-    try {
-      ordersFromPool =
-        currentTab === INBOX
-          ? await orderPoolAPI.get(pages[currentTab], {
-              forceUpdate: forceUpdate.hasToUpdate,
-            })
-          : await orderPoolAPI.get(pages[currentTab], {
-              deleted: true,
-              forceUpdate: forceUpdate.hasToUpdate,
-            })
+  useEffect(() => {
+    async function fetchData() {
+      setIsloading(true)
+      let ordersFromPool
+      try {
+        ordersFromPool =
+          currentTab === INBOX
+            ? await orderPoolAPI.get(pages[currentTab], {
+                forceUpdate: forceUpdate.hasToUpdate,
+              })
+            : await orderPoolAPI.get(pages[currentTab], {
+                deleted: true,
+                forceUpdate: forceUpdate.hasToUpdate,
+              })
 
-      setOrders(ordersFromPool)
+        setOrders(ordersFromPool)
 
-      const filteredOrders = makeSearch(
-        searchOptions[currentTab].searchText,
-        searchOptions[currentTab].showOnlyNotConfirmed,
-        ordersFromPool
-      )
-      setSearchResults(filteredOrders)
-      return setIsloading(false)
-    } catch (err) {
-      return err
+        const filteredOrders = makeSearch(
+          searchOptions[currentTab].searchText,
+          searchOptions[currentTab].showOnlyNotConfirmed,
+          ordersFromPool
+        )
+        setSearchResults(filteredOrders)
+        setIsloading(false)
+      } catch (err) {
+        enqueueSnackbar(err?.response?.data?.error || err.message, { variant: 'error' })
+        setIsloading(false)
+      }
     }
+    fetchData()
   }, [currentTab, forceUpdate.trigger, forceUpdate.hasToUpdate, pages, searchOptions])
 
   const handleLoadingMoreOrders = useCallback(async () => {

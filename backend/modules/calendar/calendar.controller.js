@@ -9,7 +9,7 @@ const { makeGoogleEventObjects } = require('./calendar.helpers')
 calendarRouter.use(authMW.authenticateAccessToken)
 
 calendarRouter.post('/', async (req, res, next) => {
-  const events = makeGoogleEventObjects(req.body.order, req.body.calendarEntries)
+  const events = makeGoogleEventObjects(req.body.order)
 
   try {
     await Promise.allSettled(events.map((ev) => addEventToCalendar(ev)))

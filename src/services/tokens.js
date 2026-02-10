@@ -9,4 +9,6 @@ async function refreshTokens() {
   await interceptor.axiosInstance.post(`${baseUrl}/is-new`)
 }
 
-export default { refreshTokens }
+const tokenService = { refreshTokens }
+
+export default tokenService

@@ -34,4 +34,6 @@ function setupInterceptor(externalActions) {
   )
 }
 
-export default { axiosInstance, setupInterceptor }
+const interceptor = { axiosInstance, setupInterceptor }
+
+export default interceptor

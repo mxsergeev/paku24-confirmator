@@ -9,7 +9,7 @@ services:
     volumes:
       - /app/node_modules
     expose:
-      - '3000'
+      - '3030'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     restart: unless-stopped

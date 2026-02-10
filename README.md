@@ -37,9 +37,17 @@ docker compose up
 
 - Install [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) VS Code extension.
 
-- Start development environment. Press `CTRL + P` and then type `>Dev Containers: Open folder in Container`.
+- Start development environment. Press `CTRL + P` and then type `>Dev Containers: Reopen in Container`.
 
 - Run `yarn dev`.
+
+### MongoDB
+
+The development environment includes a MongoDB container with a default admin user (`admin`/`password`) already created.
+
+### Confirmator user
+
+Login with `admin`/`1234` credentials.
 
 ### Google Calendar
 
@@ -48,28 +56,37 @@ This app adds events to the Google Calendar. You need to provide access to this 
 > Please, read the source as it may contain an updated version of the guide: [Node.js quickstart guide](https://developers.google.com/calendar/api/quickstart/nodejs).
 
 #### Enable the API
+
 Before using Google APIs, you need to turn them on in a Google Cloud project. You can turn on one or more APIs in a single Google Cloud project.
+
 - [In the Google Cloud console, enable the Google Calendar API](https://console.cloud.google.com/flows/enableapi?apiid=calendar-json.googleapis.com).
 
 #### Authorize credentials for a desktop application
+
 To authenticate as an end user and access user data in your app, you need to create one or more OAuth 2.0 Client IDs. A client ID is used to identify a single app to Google's OAuth servers. If your app runs on multiple platforms, you must create a separate client ID for each platform.
+
 1. In the Google Cloud console, go to **Menu** > **APIs & Services** > [**Credentials**](https://console.cloud.google.com/apis/credentials).
 2. Click **Create Credentials** > **OAuth client ID**.
 3. Click **Application type** > **Desktop app**.
 4. In the **Name** field, type a name for the credential. This name is only shown in the Google Cloud console.
 5. Click **Create**. The OAuth client created screen appears, showing your new Client ID and Client secret.
 6. Click **OK**. The newly created credential appears under **OAuth 2.0 Client IDs**.
-7. Save the downloaded JSON file as `calendar.google.credentials.json`, and move the file to `back/modules/calendar/`.
+7. Save the downloaded JSON file as `${NODE_ENV}.calendar.google.credentials.json`, and move the file to `credentials/`.
 
 #### Create a token
 
-In "back" directory, run a script, which will create the token needed for accessing Google APIs. You will need to log in or select the Google account to which you want to provide access. 
+Run a script, which will create the token needed for accessing Google APIs. You will need to log in or select the Google account to which you want to provide access.
 
-Authorization information will be stored in the file system, so the next time you run the project, you won't be prompted for authorization.
+Authorization information will be stored in the file system, so the next time you run the
+
+For example:
 
 ```
-yarn authorizeCalendarAccess
+NODE_ENV=development node backend/modules/calendar/authorize.js
 ```
+
+NOTE: When trying to authorize the app in Firefox, you may get some obscure errors. Try Chromium in that case.
+
 ### SMS Gateway
 
 This app sends SMS using the SemySMS Gateway. SMS Gateway is useful if you want to send SMS from your existing phone number, be able to view them on the phone, and receive replies.
@@ -86,7 +103,7 @@ Open the app, check the phone ID, and add it to `.env` file as `SEMYSMS_DEVICE_I
 
 #### Check that everything works properly
 
-Start the SemySMS Gateway service. Send a fake confirmation message to your own phone number from the paku24-confirmator app. 
+Start the SemySMS Gateway service. Send a fake confirmation message to your own phone number from the paku24-confirmator app.
 
 #### Purchase premium access
 
@@ -97,4 +114,3 @@ To get premium access, install the [SemySMS Pay app](https://play.google.com/sto
 ### AWS SES
 
 This app sends emails using AWS SES. You need to have an AWS account and set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to the `.env` file. AWS SES offers 62,000 Outbound Messages per month to any recipient when you call Amazon SES from an Amazon EC2 instance directly.
-
