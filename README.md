@@ -34,7 +34,7 @@ Internal tool for order management in Paku24.
 
 The application will start with the default values from the `.env.example` file, but for full functionality (SMS Gateway, AWS SES, Google Calendar), additional data is needed.
 
-Populate missing environment variable in the `.env` file.
+Populate missing environment variables in the `.env` file.
 
 ```
  # SMS gateway credentials
