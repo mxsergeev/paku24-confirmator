@@ -62,7 +62,7 @@
     "dev:server": "NODE_ENV=development yarn nodemon backend/index.js",
     "dev": "concurrently \"yarn dev:server\" \"yarn dev:ui\"",
     "build:ui": "rm -rf build && INLINE_RUNTIME_CHUNK=false NODE_ENV=production react-scripts build",
-    "ngrok": "../../ngrok http 3000 -host-header='localhost:3000'",
+    "ngrok": "../../ngrok http 3030 -host-header='localhost:3030'",
     "test": "NODE_ENV=test jest --verbose --runInBand",
     "test:ui": "react-scripts test",
     "authorizeCalendarAccess": "node backend/modules/calendar/authorize.js"

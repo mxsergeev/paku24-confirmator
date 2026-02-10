@@ -1,8 +1,7 @@
 # Development Dockerfile
-FROM node:16.20.2-bookworm-slim
-RUN apt-get update && apt-get install -y git
+FROM node:16.20.2-bookworm
 WORKDIR /app
-EXPOSE 3000 3001
+EXPOSE 3030 3031
 RUN chown -R node:node /app
 USER node
 COPY package.json yarn.lock ./
