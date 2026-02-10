@@ -9,13 +9,37 @@ services:
     volumes:
       - /app/node_modules
     expose:
-      - "3000"
+      - '3000'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     restart: unless-stopped
+    depends_on:
+      - mongodb
     networks:
       - web
+      - backend
+
+  mongodb:
+    image: mongo
+    restart: 'unless-stopped'
+    working_dir: /app
+    volumes:
+      # Persistent data volume
+      - mongodb_data:/data/db
+      # Init script
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - backend
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+
+volumes:
+  mongodb_data:
 
 networks:
+  backend:
   web:
-    external: true  
+    external: true
