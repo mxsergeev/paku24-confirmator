@@ -2,44 +2,38 @@
   {
     "id": "1",
     "name": "Pakettiauto ja kuljettaja",
-    "price": 50,
-    "priceXL": 50,
+    "pricePerHour": 50,
     "eventColor": "1"
   },
   {
     "id": "2",
     "name": "Pakettiauto ja muuttomies",
-    "price": 70,
-    "priceXL": 70,
+    "pricePerHour": 70,
     "eventColor": "7"
   },
   {
     "id": "3",
     "name": "Pakettiauto ja kaksi muuttomiestä",
-    "price": 90,
-    "priceXL": 90,
+    "pricePerHour": 90,
     "eventColor": "9"
   },
   {
     "id": "4",
     "name": "Pakettiauto, kantava kuljettaja ja kaksi kantajaa",
-    "price": 90,
-    "priceXL": 90,
+    "pricePerHour": 90,
     "eventColor": "9"
   },
   {
     "id": "5",
     "name": "Nouto/tyhjennyspalvelu yhdellä kantajalla",
-    "price": 70,
-    "priceXL": 70,
+    "pricePerHour": 70,
     "eventColor": "7",
     "hsy": true
   },
   {
     "id": "6",
     "name": "Nouto/tyhjennyspalvelu kahdella kantajalla",
-    "price": 90,
-    "priceXL": 90,
+    "pricePerHour": 90,
     "eventColor": "9",
     "hsy": true
   }
