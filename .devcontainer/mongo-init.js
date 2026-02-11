@@ -72,6 +72,7 @@ if (db.orders.countDocuments() === 0) {
         returnDate: ISODate('2026-02-15T14:00:00.000Z'),
       },
       price: 386.5,
+      boxesPrice: 71.5,
       address: {
         street: 'Kaivokselantie 4 C 70',
         index: '01610',

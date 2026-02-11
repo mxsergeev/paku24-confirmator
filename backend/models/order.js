@@ -42,6 +42,7 @@ const order = new mongoose.Schema({
   phone: String,
   comment: String,
   price: Number,
+  boxesPrice: Number,
   boxes: {
     deliveryDate: Date,
     returnDate: Date,
