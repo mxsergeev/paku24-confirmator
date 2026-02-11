@@ -38,6 +38,13 @@ class Order {
       fee: Number(paymentTypes[0].fee) || 0,
     },
     fees: [],
+    boxes: {
+      deliveryDate: new Date().toISOString(),
+      returnDate: new Date().toISOString(),
+      amount: 0,
+    },
+    boxesPrice: null,
+    price: null,
     address: {
       street: '',
       index: '',
@@ -56,52 +63,20 @@ class Order {
     name: '',
     email: '',
     phone: '',
-    boxes: {
-      deliveryDate: new Date().toISOString(),
-      returnDate: new Date().toISOString(),
-      amount: 0,
-    },
     comment: '',
   }
 
-  /**
-   * The most important keys to be included when transforming order to JSON. Useful for converting order to a plain object for APIs.
-   *
-   * Can be used in conjuction with `Object.keys(Order.EMPTY_ORDER)` if extra fiels are needed, but note that `Order.EMPTY_ORDER` doesn't include getter only properties so it shouldn't be used for that purpose standalone.
-   */
-  static ORDER_KEYS = [
-    'date',
-    'duration',
-    'service',
-    'paymentType',
-    'fees',
-    'price',
-    'address',
-    'extraAddresses',
-    'destination',
-    'name',
-    'email',
-    'phone',
-    'boxes',
-    // 'boxesPrice',
-    'comment',
-  ]
-
-  constructor(order) {
+  constructor(order = {}) {
     for (const key of Object.keys(Order.EMPTY_ORDER)) {
       this[key] = order[key] ?? Order.EMPTY_ORDER[key]
     }
 
-    this.date = new Date(order.date)
+    this.date = new Date(order.date || Order.EMPTY_ORDER.date)
   }
 
   get servicePrice() {
-    return this.service.pricePerHour * this.duration
+    return Number(this.service.pricePerHour) * Number(this.duration)
   }
-
-  // set service(service) {
-  //   this.servicePrice = service.pricePerHour * this.duration
-  // }
 
   get autoBoxesPrice() {
     const duration = dayjs(this.boxes.returnDate).diff(
@@ -120,18 +95,20 @@ class Order {
     return this.manualBoxesPrice ?? this.autoBoxesPrice
   }
 
-  set price(p) {
-    this.initialPrice = p
+  set boxesPrice(p) {
+    this.manualBoxesPrice = p
   }
 
   get autoPrice() {
-    return (
-      this.servicePrice + this.boxes.price + this.fees.reduce((acc, cur) => acc + cur.amount, 0)
-    )
+    return this.servicePrice + this.boxesPrice + this.fees.reduce((acc, cur) => acc + cur.amount, 0)
   }
 
   get price() {
     return this.manualPrice ?? this.autoPrice
+  }
+
+  set price(p) {
+    this.manualPrice = p
   }
 
   get autoFees() {
@@ -208,7 +185,7 @@ class Order {
   prepareForSending() {
     const prepared = {}
 
-    for (const key of [...Order.ORDER_KEYS, ...Object.keys(Order.EMPTY_ORDER)]) {
+    for (const key of Object.keys(Order.EMPTY_ORDER)) {
       if (key === 'date') {
         prepared.date = fromZonedTime(this.date).toISOString()
       }
@@ -410,6 +387,23 @@ class Order {
         transformed += `${f.amount}€\n`
       })
     }
+    if (options.boxes && order.boxes.amount > 0) {
+      const boxDelDateStr = dayjs(getDateInTz(order.boxes.deliveryDate)).format(
+        `DD-MM-YYYY ${order.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
+      )
+      const boxPickDateStr = dayjs(getDateInTz(order.boxes.returnDate)).format(
+        `DD-MM-YYYY ${order.boxes.returnDate.includes('T') ? 'HH:mm' : ''}`
+      )
+
+      transformed += 'MUUTTOLAATIKOT\n'
+      transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
+      transformed += `Määrä: ${order.boxes.amount} kpl\n`
+      transformed += `Hinta: ${order.boxesPrice}€\n`
+    }
+    if (options.price !== null) {
+      transformed += 'ARVIOITU HINTA\n'
+      transformed += `${order.price}€\n`
+    }
     if (options.address) {
       transformed += 'LÄHTÖPAIKKA\n'
       transformed += Order.addrStr(order.address)
@@ -435,20 +429,6 @@ class Order {
     if (options.phone) {
       transformed += 'PUHELIN\n'
       transformed += `${order.phone || '?'}\n`
-    }
-
-    if (options.boxes && order.boxes.amount > 0) {
-      const boxDelDateStr = dayjs(getDateInTz(order.boxes.deliveryDate)).format(
-        `DD-MM-YYYY ${order.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
-      )
-      const boxPickDateStr = dayjs(getDateInTz(order.boxes.returnDate)).format(
-        `DD-MM-YYYY ${order.boxes.returnDate.includes('T') ? 'HH:mm' : ''}`
-      )
-
-      transformed += 'MUUTTOLAATIKOT\n'
-      transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
-      transformed += `Määrä: ${order.boxes.amount} kpl\n`
-      transformed += `Hinta: ${order.boxesPrice}€\n`
     }
 
     if (options.comment) {

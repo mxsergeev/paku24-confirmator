@@ -48,19 +48,25 @@ export default function OrdersList({
   }
 
   function JSONOrder(jsonOrder) {
-    return Order.ORDER_KEYS.map((key, index) => {
+    const ignored = [
+      'initialPrice',
+      'manualPrice',
+      'distance',
+      'hsy',
+      'XL',
+      'initialFees',
+      'manualFees',
+      'manualBoxesPrice',
+      'eventColor',
+    ]
+    return Object.keys(Order.EMPTY_ORDER).map((key, index) => {
       let value = jsonOrder[key]
 
+      if (ignored.includes(key)) {
+        return null
+      }
+
       switch (key) {
-        case 'distance':
-        case 'hsy':
-        case 'XL':
-        case 'initialFees':
-        case 'manualFees':
-        case 'manualBoxesPrice':
-        case 'eventColor': {
-          return null
-        }
         case 'date': {
           value = dayjs(value).format('DD-MM-YYYY HH:mm')
           break

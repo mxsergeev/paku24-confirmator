@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from '@material-ui/core'
 import TextField from '@material-ui/core/TextField'
 import NativeSelect from '@material-ui/core/NativeSelect'
@@ -12,6 +12,10 @@ import paymentTypes from '../../data/paymentTypes.json'
 import Boxes from './Boxes'
 import Address from './Address'
 import FeeSelector from './Editor/FeeSelector'
+import {
+  parseAndFormatDecimalString,
+  sanitizeDecimalString,
+} from '../../helpers/decimalStringHelpers'
 
 export default function Editor({ order, handleChange }) {
   const margin = {
@@ -23,6 +27,18 @@ export default function Editor({ order, handleChange }) {
   }
 
   locale_en.weekStart = 1
+
+  const [manualPriceInput, setManualPriceInput] = useState(order?.manualPrice ?? order?.price ?? '')
+
+  useEffect(() => {
+    if (order.manualPrice != null) {
+      setManualPriceInput(String(order.manualPrice))
+    } else if (order.price != null) {
+      setManualPriceInput(String(order.price))
+    } else {
+      setManualPriceInput('')
+    }
+  }, [order.manualPrice, order.price])
 
   return (
     <div className="basic-flex" style={{ marginTop: '5px' }}>
@@ -191,6 +207,22 @@ export default function Editor({ order, handleChange }) {
         size="small"
       />
       <Boxes style={{ marginTop: margin.marginTop }} order={order} handleChange={handleChange} />
+      <TextField
+        fullWidth
+        style={margin}
+        className="flex-item"
+        name="price"
+        value={manualPriceInput}
+        onChange={(e) => setManualPriceInput(sanitizeDecimalString(e.target.value))}
+        onBlur={() => {
+          const { formatted, numeric } = parseAndFormatDecimalString(manualPriceInput)
+          setManualPriceInput(formatted)
+          handleChange('manualPrice', numeric)
+        }}
+        label="Price estimate"
+        variant="outlined"
+        size="small"
+      />
       <TextareaAutosize
         style={margin}
         className="flex-item textarea-2"
