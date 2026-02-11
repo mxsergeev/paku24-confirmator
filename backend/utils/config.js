@@ -1,11 +1,7 @@
 require('dotenv').config()
 
-const MONGODB_URI =
-  process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development'
-    ? process.env.DEV_MONGODB_URI
-    : process.env.MONGODB_URI
-
 const {
+  MONGODB_URI,
   BACKEND_PORT,
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,
