@@ -32,6 +32,7 @@ const order = new mongoose.Schema({
       _id: false,
       name: String,
       amount: Number,
+      comment: String,
     },
   ],
   address: addressSchema,

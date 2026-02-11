@@ -23,5 +23,9 @@
     "name": "paymentTypeFee",
     "label": "MAKSUTAPALISÄ",
     "amount": 5
+  },
+  {
+    "name": "stairsFee",
+    "label": "KERROSLISÄ"
   }
 ]
