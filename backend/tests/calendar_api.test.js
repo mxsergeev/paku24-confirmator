@@ -5,7 +5,7 @@ const app = require('../app')
 const api = supertest(app)
 
 const { exampleEvent, exampleCreatedEvent } = require('./test_helper')
-const { generateJWT } = require('../utils/middleware/authentication')
+const { generateJWT } = require('../modules/authentication/auth.middleware')
 
 const eventIds = []
 const at = generateJWT(

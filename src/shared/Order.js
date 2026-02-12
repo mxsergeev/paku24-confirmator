@@ -269,15 +269,17 @@ class Order {
       order.duration
     }h)`
 
-    const boxesDeliveryTitle = `${order.boxes.amount} ${Order.makeIcons(order).boxesDelivery} ${
-      order.boxes.deliveryDate.includes('T')
-        ? `${dayjs(order.boxes.deliveryDate).format('HH:mm')} `
+    const boxes = order.boxes || { amount: 0, deliveryDate: '', returnDate: '' }
+
+    const boxesDeliveryTitle = `${boxes.amount} ${Order.makeIcons(order).boxesDelivery} ${
+      boxes.deliveryDate && boxes.deliveryDate.includes('T')
+        ? `${dayjs(boxes.deliveryDate).format('HH:mm')} `
         : ''
     }`
 
-    const boxesPickupTitle = `NOUTO ${order.boxes.amount} ${Order.makeIcons(order).boxesPickup} ${
-      order.boxes.returnDate.includes('T')
-        ? `${dayjs(order.boxes.returnDate).format('HH:mm')} `
+    const boxesPickupTitle = `NOUTO ${boxes.amount} ${Order.makeIcons(order).boxesPickup} ${
+      boxes.returnDate && boxes.returnDate.includes('T')
+        ? `${dayjs(boxes.returnDate).format('HH:mm')} `
         : ''
     }`
 
@@ -387,7 +389,7 @@ class Order {
         transformed += `${f.amount}€\n`
       })
     }
-    if (options.boxes && order.boxes.amount > 0) {
+    if (options.boxes && order.boxes && order.boxes.amount > 0) {
       const boxDelDateStr = dayjs(getDateInTz(order.boxes.deliveryDate)).format(
         `DD-MM-YYYY ${order.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
       )
@@ -408,13 +410,18 @@ class Order {
       transformed += 'LÄHTÖPAIKKA\n'
       transformed += Order.addrStr(order.address)
     }
-    if (options.extraAddresses && order.extraAddresses.length > 0) {
+    if (options.extraAddresses && order.extraAddresses && order.extraAddresses.length > 0) {
       transformed += 'LISÄPYSÄHDYKSET\n'
       order.extraAddresses.forEach((a) => {
         transformed += Order.addrStr(a)
       })
     }
-    if (options.destination && order.destination.street.length > 5) {
+    if (
+      options.destination &&
+      order.destination &&
+      order.destination.street &&
+      order.destination.street.length > 5
+    ) {
       transformed += 'MÄÄRÄNPÄÄ\n'
       transformed += Order.addrStr(order.destination)
     }

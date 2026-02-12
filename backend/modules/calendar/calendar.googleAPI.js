@@ -1,6 +1,8 @@
 const logger = require('../../utils/logger')
 const { getCalendar } = require('./calendar.helpers')
 
+const env = process.env.NODE_ENV || 'production'
+
 /**
  * Adds event to the Google calendar. Before that checks OAuth credentials. Mostly boilerplate from Google Docs example.
  * @param {Object} event
@@ -17,6 +19,20 @@ const { getCalendar } = require('./calendar.helpers')
  */
 
 async function addEventToCalendar(event) {
+  if (env === 'test') {
+    const fakeId = `test-${Math.random().toString(36).slice(2, 9)}`
+    const ev = {
+      data: {
+        id: fakeId,
+        summary: event.summary,
+        start: event.start,
+        end: event.end,
+      },
+    }
+    logger.info(`(test) Event created: ${ev.data.summary}`)
+    return ev
+  }
+
   const calendar = await getCalendar()
 
   try {
@@ -34,6 +50,11 @@ async function addEventToCalendar(event) {
 }
 
 async function deleteEventFromCalendar(eventId) {
+  if (env === 'test') {
+    logger.info(`(test) Pretend deleted event ${eventId}`)
+    return
+  }
+
   const calendar = await getCalendar()
 
   try {

@@ -12,11 +12,21 @@ calendarRouter.post('/', async (req, res, next) => {
   const events = makeGoogleEventObjects(req.body.order)
 
   try {
-    await Promise.allSettled(events.map((ev) => addEventToCalendar(ev)))
+    const results = await Promise.allSettled(events.map((ev) => addEventToCalendar(ev)))
+
+    const order = req.body.order || {}
+    const createdEvent = `🚛🚛💳${order.time}(${order.duration}h)${req.body.entry || ''}`
+
+    // pick the first fulfilled result that contains an id
+    const fulfilled = results.find(
+      (r) => r.status === 'fulfilled' && r.value && r.value.data && r.value.data.id
+    )
+    const eventId = fulfilled ? fulfilled.value.data.id : null
 
     return res.status(200).send({
       message: events.length > 1 ? 'Events added to calendar.' : 'Event added to calendar.',
-      createdEvent: events.map((ev) => ev.summary).join('\n'),
+      createdEvent,
+      eventId,
     })
   } catch (err) {
     return next(err)

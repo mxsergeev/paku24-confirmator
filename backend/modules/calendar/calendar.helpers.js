@@ -142,7 +142,7 @@ function makeGoogleEventObjects(order) {
     },
   ]
 
-  if (order.boxes.amount > 0) {
+  if (order.boxes && order.boxes.amount > 0) {
     ;['deliveryDate', 'returnDate'].forEach((f) => {
       const dateStr = order.boxes[f]
 
