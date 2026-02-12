@@ -30,6 +30,12 @@ Internal tool for order management in Paku24.
 
    Login with username: `admin` and password: `1234`.
 
+   > If you can't login, the reason for that might be that containers did not initialize properly. In that case:
+   >
+   > - Press `CTRL/CMD + Shift + P` and then type `Dev Containers: Reopen folder locally`.
+   > - Then in terminal run `cd .devcontainer/ && docker compose down -v`,
+   > - and after that repeat steps 5 and 6.
+
 ## Optional steps
 
 The application will start with the default values from the `.env.example` file, but for full functionality (SMS Gateway, AWS SES, Google Calendar), additional data is needed.
