@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
-const authentication = require('../utils/middleware/authentication')
+const authentication = require('../modules/authentication/auth.middleware')
 const RefreshToken = require('../models/refreshToken')
-const newErrorWithCustomName = require('../utils/helpers/newErrorWithCustomName')
+const newErrorWithCustomName = require('../utils/newErrorWithCustomName')
 
 const {
   initialUsers,
@@ -36,7 +36,7 @@ describe('Authentication middleware', () => {
   describe('checkUser', () => {
     test('happy path', async () => {
       const user = initialUsers[0]
-      const mockReq = {
+      mockReq = {
         body: {
           username: user.username,
           password: 'password',
@@ -55,7 +55,7 @@ describe('Authentication middleware', () => {
 
     test('wrong password', async () => {
       const user = initialUsers[0]
-      const mockReq = {
+      mockReq = {
         body: {
           username: user.username,
           password: 'passwodr',
@@ -68,8 +68,7 @@ describe('Authentication middleware', () => {
     })
 
     test('no values', async () => {
-      const user = initialUsers[0]
-      const mockReq = {
+      mockReq = {
         body: {
           username: '',
           password: '',
@@ -89,7 +88,7 @@ describe('Authentication middleware', () => {
     afterEach(() => authentication.requests.delete(ip))
 
     test('password is correct', () => {
-      const mockReq = {
+      mockReq = {
         ip,
         passwordCorrect: true,
       }
@@ -104,7 +103,7 @@ describe('Authentication middleware', () => {
     })
 
     test('one failed attempt', () => {
-      const mockReq = {
+      mockReq = {
         ip,
         passwordCorrect: false,
       }
@@ -121,7 +120,7 @@ describe('Authentication middleware', () => {
     })
 
     test('three failed attempts', () => {
-      const mockReq = {
+      mockReq = {
         ip,
         passwordCorrect: false,
       }
@@ -131,8 +130,6 @@ describe('Authentication middleware', () => {
       // 2th failed attempt
       authentication.controlRequestFlow(mockReq, mockRes, mockNext)
 
-      const request = authentication.requests.get(ip)
-
       // 3th failed attempt
       expect(() => authentication.controlRequestFlow(mockReq, mockRes, mockNext)).toThrowError(
         newErrorWithCustomName('TooManyRequestsError')
@@ -140,7 +137,7 @@ describe('Authentication middleware', () => {
     })
 
     test('after three failed attempts, successful login with correct credentials', () => {
-      const mockReq = {
+      mockReq = {
         ip,
         passwordCorrect: false,
       }
@@ -165,7 +162,7 @@ describe('Authentication middleware', () => {
     const user = initialUsers[0]
 
     test('user and password are correct', async () => {
-      const mockReq = {
+      mockReq = {
         user,
         passwordCorrect: true,
       }
@@ -176,7 +173,7 @@ describe('Authentication middleware', () => {
     })
 
     test('invalid password', async () => {
-      const mockReq = {
+      mockReq = {
         user,
         passwordCorrect: false,
       }
@@ -187,7 +184,7 @@ describe('Authentication middleware', () => {
     })
 
     test('user is null', async () => {
-      const mockReq = {
+      mockReq = {
         user: null,
         passwordCorrect: false,
       }
@@ -201,7 +198,7 @@ describe('Authentication middleware', () => {
   describe('generateAccessToken', () => {
     const user = initialUsers[0]
     test('access token is generated', async () => {
-      const mockReq = { user }
+      mockReq = { user }
 
       const result = await authentication.generateAccessToken(mockReq, mockRes, mockNext)
 
@@ -210,7 +207,7 @@ describe('Authentication middleware', () => {
     })
 
     test('access token is not generated when tokens are fresh', async () => {
-      const mockReq = {
+      mockReq = {
         user,
         refreshTokenIsNew: true,
         accessToken: 'notrealtoken',
@@ -226,7 +223,7 @@ describe('Authentication middleware', () => {
   describe('generateRefreshToken', () => {
     const user = initialUsers[0]
     test('refresh token is generated for the first time', async () => {
-      const mockReq = { user }
+      mockReq = { user }
       const result = await authentication.generateRefreshToken(mockReq, mockRes, mockNext)
 
       expect(result).toBeUndefined()
@@ -250,7 +247,7 @@ describe('Authentication middleware', () => {
       const refreshTokenInDB = new RefreshToken(exampleRefreshToken)
       await refreshTokenInDB.save()
 
-      const mockReq = { user, refreshTokenInDB }
+      mockReq = { user, refreshTokenInDB }
       const result = await authentication.generateRefreshToken(mockReq, mockRes, mockNext)
 
       expect(result).toBeUndefined()
@@ -275,7 +272,7 @@ describe('Authentication middleware', () => {
     const user = initialUsers[0]
 
     test('access token authenticated', async () => {
-      const mockReq = {
+      mockReq = {
         user,
         cookies: { at: authentication.generateJWT(user) },
       }
@@ -289,7 +286,7 @@ describe('Authentication middleware', () => {
     })
 
     test('expired access token', async () => {
-      const mockReq = {
+      mockReq = {
         cookies: { at: authentication.generateJWT(user, { expiresIn: '1ms' }) },
       }
 
@@ -302,7 +299,7 @@ describe('Authentication middleware', () => {
 
     test('if path is "/is-new" new token is not generated', async () => {
       const at = authentication.generateJWT(user)
-      const mockReq = {
+      mockReq = {
         path: '/is-new',
         cookies: { at },
       }
@@ -422,7 +419,7 @@ describe('Authentication middleware', () => {
       await Promise.all([descendantToken.save(), ancestorToken.save()])
 
       const tokensInDBBeforeDeletion = await tokensInDB()
-      mockReq.refreshTokenInDB = descendantToken
+      mockReq = { refreshTokenInDB: descendantToken }
 
       const rslt = await authentication.updateOrDeleteOldToken(mockReq, mockRes, mockNext)
 

@@ -5,8 +5,6 @@ const app = require('../app')
 const api = supertest(app)
 const { initialUsers, initializeDB } = require('./test_helper')
 
-const User = require('../models/user')
-
 beforeEach(async () => {
   await initializeDB()
 })

@@ -1,5 +1,5 @@
-const { makeTerms } = require('../utils/email/helpers')
-const termsData = require('../utils/data/terms')
+const { makeTerms } = require('../modules/email/email.helpers')
+const termsData = require('../modules/email/email.data.terms')
 const { exampleOptions } = require('./test_helper')
 
 describe('makeTerms', () => {
