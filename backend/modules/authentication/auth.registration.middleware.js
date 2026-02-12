@@ -30,19 +30,25 @@ async function createUser(req, res, next) {
       .update(Date.now().toString() + name)
       .digest('base64')
 
+    const randomUsername = uniqueNamesGenerator({
+      dictionaries: [colors, animals],
+    })
+
     const user = new User({
       _id: mongoose.Types.ObjectId(),
+      username: randomUsername,
       name,
       email,
       requestToken,
       access: false,
       accessRequested: Date.now(),
     })
-
+    // eslint-disable-next-line no-console
     console.log('user', user)
 
     await user.save()
     req.requestToken = requestToken
+    req.randomUsername = randomUsername
 
     return next()
   } catch (err) {
@@ -63,7 +69,7 @@ async function checkUser(req, res, next) {
   return next(RequestTokenError)
 }
 
-async function generatePasswordAndUsername(req, res, next) {
+async function generatePassword(req, res, next) {
   try {
     const generatedPassword = passwordGenerator.generate({
       length: 8,
@@ -72,9 +78,6 @@ async function generatePasswordAndUsername(req, res, next) {
     const saltRounds = 10
     req.passwordHash = await bcrypt.hash(generatedPassword, saltRounds)
     req.generatedPassword = generatedPassword
-    req.randomUsername = uniqueNamesGenerator({
-      dictionaries: [colors, animals],
-    })
     return next()
   } catch (err) {
     return next(err)
@@ -103,6 +106,6 @@ module.exports = {
   checkIfUserExists,
   createUser,
   checkUser,
-  generatePasswordAndUsername,
+  generatePassword,
   updateUser,
 }

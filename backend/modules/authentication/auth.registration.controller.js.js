@@ -11,7 +11,7 @@ const {
   checkIfUserExists,
   createUser,
   checkUser,
-  generatePasswordAndUsername,
+  generatePassword,
   updateUser,
 } = require('./auth.registration.middleware')
 
@@ -75,10 +75,11 @@ registrationRouter.post(
 registrationRouter.get(
   '/grant-access',
   checkUser,
-  generatePasswordAndUsername,
+  generatePassword,
   updateUser,
   async (req, res, next) => {
-    const { randomUsername: username, generatedPassword: password, matchedUser } = req
+    const { generatedPassword: password, matchedUser } = req
+    const username = (matchedUser && matchedUser.username) || req.randomUsername
     const url = `${DOMAIN_NAME}/app/login`
     try {
       const messageBody = generateMessage(accessGrantedMessage.template, {
