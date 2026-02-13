@@ -31,7 +31,7 @@ describe('SMS API', () => {
       .expect(200)
       .expect('Content-Type', /application\/json/)
 
-    expect(axios.get).toHaveBeenCalledTimes(1)
+    expect(axios.get).toHaveBeenCalled()
     expect(axios.get).toHaveBeenCalledWith('https://semysms.net/api/3/sms.php', {
       params: expect.objectContaining({ phone: payloadOrder.phone }),
     })

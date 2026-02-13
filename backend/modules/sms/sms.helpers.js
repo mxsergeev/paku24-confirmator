@@ -110,7 +110,7 @@ function sendSMSWithGateway(phone, msg) {
     throw new Error('SMS Gateway configuration is missing')
   }
 
-  if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development') {
     return Promise.resolve({ success: true })
   }
 
