@@ -129,7 +129,7 @@ function makeGoogleEventObjects(order) {
         .concat([Order.addrStr(order.destination)])
         .join('\n'),
       start: {
-        dateTime: order.date,
+        dateTime: typeof order.date === 'string' ? order.date : order.date.toISOString(),
         timeZone: TIMEZONE,
       },
       end: {

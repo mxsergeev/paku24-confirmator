@@ -1,88 +1,59 @@
-const {
-  makeIcons,
-  makeColor,
-  makeGoogleEventObject,
-} = require('../modules/calendar/calendar.helpers')
+const { makeGoogleEventObjects } = require('../modules/calendar/calendar.helpers')
 const { exampleOrder, exampleOptions } = require('./test_helper')
-const colorsData = require('../modules/calendar/calendar.data.colors.json')
+const Order = require('../../src/shared/Order.js')
+const fees = require('../../src/data/fees.json')
+const paymentTypes = require('../../src/data/paymentTypes.json')
+const services = require('../../src/data/services.json')
+const dayjs = require('../../src/shared/dayjs.js')
 
 describe('makeIcons', () => {
   test('title created right', () => {
-    const title = makeIcons(exampleOrder, exampleOptions)
-    const title2 = makeIcons(
+    const title = Order.makeIcons(exampleOrder, exampleOptions)
+    const title2 = Order.makeIcons(
       {
         ...exampleOrder,
-        serviceName: 'Paku ja kaksi muuttomiestä',
-        paymentType: 'Lasku',
-        time: '11:00',
+        service: services.find((s) => s.id === '3'),
+        paymentType: paymentTypes.find((p) => p.id === '3'),
+        time: new Date('2021-04-22 11:00'),
         duration: 3,
       },
       { ...exampleOptions, XL: true, distance: 'outsideCapital' }
     )
-    const title3 = makeIcons(
+    const title3 = Order.makeIcons(
       {
         ...exampleOrder,
-        serviceName: 'Paku ja mies',
-        paymentType: 'Käteinen',
-        time: '21:00',
+        service: services.find((s) => s.id === '2'),
+        paymentType: paymentTypes.find((p) => p.id === '2'),
+        time: new Date('2021-04-22 21:00'),
         duration: 1,
-        fees: {
-          array: ['YÖLISÄ'],
-        },
+        fees: fees.filter((f) => f.name === 'nightFee'),
       },
       { ...exampleOptions, distance: 'fromCapitalToOutside' }
     )
 
-    expect(title).toBe('🚚💳17:00(2h)')
-    expect(title2).toBe('XL🚧🚛🚛📜11:00(3h)')
-    expect(title3).toBe('🌚🛒🎁21:00(1h)')
+    expect(title).toEqual({ boxesDelivery: '📦', boxesPickup: '📦', move: '🚚💳' })
+    expect(title2).toEqual({ boxesDelivery: '📦', boxesPickup: '📦', move: '🚛🚛📜' })
+    expect(title3).toEqual({ boxesDelivery: '📦', boxesPickup: '📦', move: '🌚🚛🎁' })
   })
 })
 
-describe('makeColor', () => {
-  test('color chosen right', () => {
-    const color = makeColor(exampleOrder, exampleOptions)
-    const color2 = makeColor(
-      {
-        ...exampleOrder,
-        serviceName: 'Paku ja kaksi muuttomiestä',
-      },
-      { ...exampleOptions, altColorPalette: true }
-    )
-    const color3 = makeColor(
-      {
-        ...exampleOrder,
-        serviceName: 'Paku ja mies',
-      },
-      exampleOptions
-    )
-
-    expect(color).toBe(colorsData['Paku ja kuski'])
-    expect(color2).toBe(colorsData.altColorPalette['Paku ja kaksi muuttomiestä'])
-    expect(color3).toBe(colorsData['Paku ja mies'])
-  })
-})
-
-describe('makeGoogleEventObject', () => {
+describe('makeGoogleEventObjects', () => {
   test('start date time and end date time of event object are correct', () => {
-    const title = makeIcons(exampleOrder, exampleOptions)
-    const color = makeColor(exampleOrder, exampleOptions)
-    const eventObject = makeGoogleEventObject({
-      title,
-      color,
-      date: exampleOrder.date.original,
-      duration: exampleOrder.duration,
-    })
-    const eventObject2 = makeGoogleEventObject({
-      title,
-      color,
-      date: new Date('2021-07-10 23:00'),
-      duration: 4,
-    })
+    const eventObject = makeGoogleEventObjects(exampleOrder)[0]
 
-    expect(eventObject.start.date).toBe(exampleOrder.date.original.toISOString())
-    expect(eventObject.end.date).toBe(new Date('2021-04-22 19:00').toISOString())
-    expect(eventObject2.start.date).toBe(new Date('2021-07-10 23:00').toISOString())
-    expect(eventObject2.end.date).toBe(new Date('2021-07-11 3:00').toISOString())
+    const d2 = new Date('2021-07-10 23:00')
+
+    const eventObject2 = makeGoogleEventObjects({
+      ...exampleOrder,
+      date: d2,
+      duration: 4,
+    })[0]
+
+    expect(eventObject.start.dateTime).toBe(exampleOrder.date.toISOString())
+    expect(eventObject.end.dateTime).toBe(
+      dayjs(exampleOrder.date).add(exampleOrder.duration, 'hour').toISOString()
+    )
+    expect(eventObject2.start.dateTime).toBe(d2.toISOString())
+    expect(eventObject2.end.dateTime).toBe(dayjs(d2).add(4, 'hour').toISOString())
   })
 })

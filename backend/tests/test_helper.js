@@ -73,7 +73,7 @@ const mockNext = jest.fn((param) => {
 const exampleOrder = {
   address: 'Raiviosuonmäki 2 E 68',
   comment: '',
-  date: '2026-03-02T20:00:00.000+00:00',
+  date: new Date('2026-03-02T20:00'),
   destination: '',
   duration: '2',
   email: 'themaximsergeev@gmail.com',
@@ -81,8 +81,12 @@ const exampleOrder = {
   name: 'Maxim Sergeev',
   paymentType: { id: '1', name: 'Maksukortti', fee: 0 },
   phone: '+358449747442',
-  serviceName: 'Paku ja kuski',
-  servicePrice: 30,
+  service: {
+    id: '1',
+    name: 'Paku ja kuski',
+    pricePerHour: 30,
+    price: 60,
+  },
   time: '17:00',
 }
 
