@@ -9,11 +9,11 @@ import {
   FormGroup,
   Chip,
 } from '@material-ui/core'
-import feesData from '../../../data/fees.json'
 
 import ResponsiveDialog from '../../ResponsiveDialog'
+import Order from '../../../shared/Order'
 
-export default function FeeSelector({ manualFees, autoFees, onChange, path = '' }) {
+export default function FeeSelector({ order, manualFees, autoFees, onChange, path = '' }) {
   const history = useHistory()
 
   return (
@@ -22,7 +22,7 @@ export default function FeeSelector({ manualFees, autoFees, onChange, path = '' 
 
       <ResponsiveDialog path={path}>
         <FormGroup>
-          {feesData.map((fee) => (
+          {Order.getAvailableFees(order).map((fee) => (
             <FormControlLabel
               key={fee.name}
               label={`${fee.label} (${fee.amount}€)`}

@@ -120,7 +120,7 @@ class Order {
 
     const weekEndFeeApplicable = dayOFWeek === 6 || dayOFWeek === 0
 
-    return fees.filter((f) => {
+    return Order.getAvailableFees(this).filter((f) => {
       switch (f.name) {
         case 'holidayFee': {
           // Currently not implemented
@@ -137,6 +137,9 @@ class Order {
         }
         case 'paymentTypeFee': {
           return this.paymentType.fee > 0
+        }
+        case 'stairsFee': {
+          return true
         }
         default: {
           return false
@@ -464,6 +467,14 @@ class Order {
     }
 
     return transformed
+  }
+
+  static getAvailableFees(order) {
+    const floorFees = []
+
+    const availableFees = fees.filter((f) => f.name !== 'stairsFee').concat(floorFees)
+
+    return availableFees
   }
 }
 
