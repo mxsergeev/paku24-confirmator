@@ -121,30 +121,32 @@ class Order {
     const weekEndFeeApplicable = dayOFWeek === 6 || dayOFWeek === 0
 
     return Order.getAvailableFees(this).filter((f) => {
-      switch (f.name) {
-        case 'holidayFee': {
-          // Currently not implemented
-          return false
-        }
-        case 'weekendFee': {
-          return weekEndFeeApplicable
-        }
-        case 'startOrEndOfMonthFee': {
-          return !weekEndFeeApplicable && endOfMonth.includes(dayOfMonth)
-        }
-        case 'nightFee': {
-          return hour < 8 || hour >= 20
-        }
-        case 'paymentTypeFee': {
-          return this.paymentType.fee > 0
-        }
-        case 'stairsFee': {
-          return true
-        }
-        default: {
-          return false
-        }
+      if (f.name === 'holidayFee') {
+        // Currently not implemented
+        return false
       }
+
+      if (f.name === 'weekendFee') {
+        return weekEndFeeApplicable
+      }
+
+      if (f.name === 'startOrEndOfMonthFee') {
+        return !weekEndFeeApplicable && endOfMonth.includes(dayOfMonth)
+      }
+
+      if (f.name === 'nightFee') {
+        return hour < 8 || hour >= 20
+      }
+
+      if (f.name === 'paymentTypeFee') {
+        return this.paymentType.fee > 0
+      }
+
+      if (f.name.startsWith('stairsFee')) {
+        return true
+      }
+
+      return false
     })
   }
 
@@ -470,7 +472,32 @@ class Order {
   }
 
   static getAvailableFees(order) {
+    // Floor fee calculation
+    const stairsFeeConfig = fees.find((f) => f.name === 'stairsFee')
+    if (!order || !order.service) return fees.filter((f) => f.name !== 'stairsFee')
+    const serviceObj = services.find((s) => String(s.id) === String(order.service.id))
+
+    const baseFee = Number(stairsFeeConfig?.baseFee)
+    const startFloor = Number(stairsFeeConfig?.startFloor)
+    const multiplier = Number(serviceObj?.multiplier)
     const floorFees = []
+
+    if (!isNaN(baseFee) && !isNaN(startFloor) && !isNaN(multiplier) && multiplier > 0) {
+      const addresses = [order.address, order.destination, ...(order.extraAddresses || [])]
+
+      addresses.forEach((address, index) => {
+        if (address.elevator || address.floor < startFloor) {
+          return
+        }
+
+        const floorsAbove = Number(address.floor) - startFloor
+        floorFees.push({
+          name: `stairsFee_${index}`,
+          label: `KERROSLISÄ ${address.street ? `(${address.street})` : ''}`,
+          amount: floorsAbove * baseFee * multiplier,
+        })
+      })
+    }
 
     const availableFees = fees.filter((f) => f.name !== 'stairsFee').concat(floorFees)
 

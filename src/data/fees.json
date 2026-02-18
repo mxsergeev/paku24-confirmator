@@ -26,6 +26,8 @@
   },
   {
     "name": "stairsFee",
-    "label": "KERROSLISÄ"
+    "label": "KERROSLISÄ",
+    "baseFee": 10,
+    "startFloor": 2
   }
 ]

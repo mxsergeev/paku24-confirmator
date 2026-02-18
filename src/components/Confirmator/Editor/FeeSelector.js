@@ -13,7 +13,7 @@ import {
 import ResponsiveDialog from '../../ResponsiveDialog'
 import Order from '../../../shared/Order'
 
-export default function FeeSelector({ order, manualFees, autoFees, onChange, path = '' }) {
+export default function FeeSelector({ order, onChange, path = '' }) {
   const history = useHistory()
 
   return (
@@ -30,17 +30,19 @@ export default function FeeSelector({ order, manualFees, autoFees, onChange, pat
                 <Checkbox
                   color="primary"
                   checked={
-                    manualFees ? manualFees.find((f) => f.name === fee.name) !== undefined : false
+                    order?.manualFees
+                      ? order.manualFees.find((f) => f.name === fee.name) !== undefined
+                      : false
                   }
                   onChange={(e) => {
                     if (e.target.checked) {
-                      const newManual = manualFees ? manualFees.concat(fee) : [fee]
+                      const newManual = order?.manualFees ? order.manualFees.concat(fee) : [fee]
                       onChange(newManual)
                       return
                     }
 
-                    if (!manualFees) return
-                    onChange(manualFees.filter((f) => f.name !== fee.name))
+                    if (!order?.manualFees) return
+                    onChange(order.manualFees.filter((f) => f.name !== fee.name))
                   }}
                 />
               }
@@ -48,7 +50,7 @@ export default function FeeSelector({ order, manualFees, autoFees, onChange, pat
           ))}
         </FormGroup>
 
-        {manualFees !== null && (
+        {order?.manualFees !== null && (
           <Box mt={1}>
             <Typography variant="caption" color="textSecondary">
               Suggested fees
@@ -62,8 +64,8 @@ export default function FeeSelector({ order, manualFees, autoFees, onChange, pat
               mt={0.5}
             >
               <Box display="flex" flexWrap="wrap" alignItems="center">
-                {autoFees && autoFees.length ? (
-                  autoFees.map((f) => (
+                {order?.autoFees && order.autoFees.length ? (
+                  order.autoFees.map((f) => (
                     <Chip
                       key={f.name}
                       label={`${f.label} (${f.amount}€)`}
