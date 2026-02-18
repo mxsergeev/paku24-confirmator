@@ -94,7 +94,7 @@ export default function Address({
               native
               value={value.floor ?? 0}
               onChange={(e) => {
-                onChange({ ...value, floor: e.target.value })
+                onChange({ ...value, floor: Number(e.target.value) })
                 closeMenu()
               }}
               inputProps={{
