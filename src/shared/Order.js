@@ -80,10 +80,18 @@ class Order {
   }
 
   get autoBoxesPrice() {
-    const duration = dayjs(this.boxes.returnDate).diff(
+    let duration = dayjs(this.boxes.returnDate).diff(
       dayjs(this.boxes.deliveryDate),
       boxesSettings.timeUnit
     )
+
+    if (duration < boxesSettings.minPeriod) {
+      duration = boxesSettings.minPeriod
+    }
+
+    if (isNaN(this.boxes.amount) || this.boxes.amount === 0) {
+      return 0
+    }
 
     return (
       this.boxes.amount * boxesSettings.price * duration +
@@ -93,7 +101,7 @@ class Order {
   }
 
   get boxesPrice() {
-    return this.manualBoxesPrice ?? this.autoBoxesPrice
+    return this.manualBoxesPrice ?? this.autoBoxesPrice ?? this.initialBoxesPrice
   }
 
   set boxesPrice(p) {

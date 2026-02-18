@@ -162,9 +162,13 @@ export default function Boxes({ order = {}, handleChange, style }) {
               name="amount"
               label="Amount"
               value={order.boxes.amount}
-              onChange={(e) =>
-                handleChange('boxes', { ...order.boxes, amount: Number(e.target.value) })
-              }
+              onChange={(e) => {
+                handleChange('boxes', {
+                  ...order.boxes,
+                  amount: Number(e.target.value),
+                })
+                handleChange('manualBoxesPrice', null)
+              }}
               variant="filled"
             >
               {boxesAmountOptions.map((o) => (
