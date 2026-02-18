@@ -31,14 +31,14 @@ export default function Editor({ order, handleChange }) {
   const [manualPriceInput, setManualPriceInput] = useState(order?.manualPrice ?? order?.price ?? '')
 
   useEffect(() => {
-    if (order.manualPrice != null) {
+    if (order.manualPrice != null && order.manualPrice !== order.autoPrice) {
       setManualPriceInput(String(order.manualPrice))
     } else if (order.price != null) {
       setManualPriceInput(String(order.price))
     } else {
       setManualPriceInput('')
     }
-  }, [order.manualPrice, order.price])
+  }, [order.manualPrice, order.autoPrice, order.price])
 
   return (
     <div className="basic-flex" style={{ marginTop: '5px' }}>

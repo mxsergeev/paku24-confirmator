@@ -22,6 +22,7 @@ class Order {
     eventColor: null,
     manualFees: null,
     manualBoxesPrice: null,
+    initialBoxesPrice: null,
     initialPrice: null,
     manualPrice: null,
 
@@ -30,7 +31,7 @@ class Order {
     service: {
       id: '1',
       name: services[0].name,
-      pricePerHour: Number(services[0].price),
+      pricePerHour: Number(services[0].pricePerHour),
     },
     paymentType: {
       id: '1',
@@ -66,7 +67,7 @@ class Order {
     comment: '',
   }
 
-  constructor(order = {}) {
+  constructor(order = Order.EMPTY_ORDER) {
     for (const key of Object.keys(Order.EMPTY_ORDER)) {
       this[key] = order[key] ?? Order.EMPTY_ORDER[key]
     }
@@ -96,7 +97,7 @@ class Order {
   }
 
   set boxesPrice(p) {
-    this.manualBoxesPrice = p
+    this.initialBoxesPrice = p
   }
 
   get autoPrice() {
@@ -104,11 +105,11 @@ class Order {
   }
 
   get price() {
-    return this.manualPrice ?? this.autoPrice
+    return this.manualPrice ?? this.autoPrice ?? this.initialPrice
   }
 
   set price(p) {
-    this.manualPrice = p
+    this.initialPrice = p
   }
 
   get autoFees() {
