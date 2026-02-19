@@ -2,9 +2,9 @@
 FROM node:24-bookworm
 WORKDIR /app
 EXPOSE 3030 3031
+COPY package.json yarn.lock ./
 RUN chown -R node:node /app
 USER node
-COPY package.json yarn.lock ./
 RUN yarn install
-COPY . .
+COPY --chown=node:node . .
 CMD [ "echo", "Development container started" ]
