@@ -30,19 +30,17 @@ export default function FeeSelector({ order, onChange, path = '' }) {
                 <Checkbox
                   color="primary"
                   checked={
-                    order?.manualFees
-                      ? order.manualFees.find((f) => f.name === fee.name) !== undefined
-                      : false
+                    order?.fees ? order.fees.find((f) => f.name === fee.name) !== undefined : false
                   }
                   onChange={(e) => {
                     if (e.target.checked) {
-                      const newManual = order?.manualFees ? order.manualFees.concat(fee) : [fee]
+                      const newManual = order?.fees ? order.fees.concat(fee) : [fee]
                       onChange(newManual)
                       return
                     }
 
-                    if (!order?.manualFees) return
-                    onChange(order.manualFees.filter((f) => f.name !== fee.name))
+                    if (!order?.fees) return
+                    onChange(order.fees.filter((f) => f.name !== fee.name))
                   }}
                 />
               }
@@ -50,49 +48,47 @@ export default function FeeSelector({ order, onChange, path = '' }) {
           ))}
         </FormGroup>
 
-        {order?.manualFees !== null && (
-          <Box mt={1}>
-            <Typography variant="caption" color="textSecondary">
-              Suggested fees
-            </Typography>
+        <Box mt={1}>
+          <Typography variant="caption" color="textSecondary">
+            Suggested fees
+          </Typography>
 
-            <Box
-              display="flex"
-              alignItems="center"
-              justifyContent="space-between"
-              flexWrap="wrap"
-              mt={0.5}
-            >
-              <Box display="flex" flexWrap="wrap" alignItems="center">
-                {order?.autoFees && order.autoFees.length ? (
-                  order.autoFees.map((f) => (
-                    <Chip
-                      key={f.name}
-                      label={`${f.label} (${f.amount}€)`}
-                      size="small"
-                      style={{ marginRight: 6, marginBottom: 6 }}
-                    />
-                  ))
-                ) : (
-                  <Typography variant="caption" color="textSecondary">
-                    —
-                  </Typography>
-                )}
-              </Box>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            flexWrap="wrap"
+            mt={0.5}
+          >
+            <Box display="flex" flexWrap="wrap" alignItems="center">
+              {order?.autoFees && order.autoFees.length ? (
+                order.autoFees.map((f) => (
+                  <Chip
+                    key={f.name}
+                    label={`${f.label} (${f.amount}€)`}
+                    size="small"
+                    style={{ marginRight: 6, marginBottom: 6 }}
+                  />
+                ))
+              ) : (
+                <Typography variant="caption" color="textSecondary">
+                  —
+                </Typography>
+              )}
+            </Box>
 
-              <Box>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="default"
-                  onClick={() => onChange(null)}
-                >
-                  Restore suggested
-                </Button>
-              </Box>
+            <Box>
+              <Button
+                size="small"
+                variant="outlined"
+                color="default"
+                onClick={() => onChange(null)}
+              >
+                Restore suggested
+              </Button>
             </Box>
           </Box>
-        )}
+        </Box>
       </ResponsiveDialog>
     </>
   )
