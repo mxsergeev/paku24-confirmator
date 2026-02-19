@@ -22,6 +22,7 @@ class Order {
     eventColor: null,
     manualFees: null,
     manualBoxesPrice: null,
+    initialFees: null,
     initialBoxesPrice: null,
     initialPrice: null,
     manualPrice: null,
@@ -160,11 +161,11 @@ class Order {
   }
 
   set fees(f) {
-    this.manualFees = f
+    this.initialFees = f
   }
 
   get fees() {
-    return this.manualFees ?? this.autoFees
+    return this.manualFees ?? this.autoFees ?? this.initialFees
   }
 
   get eventColor() {
