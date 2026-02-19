@@ -41,30 +41,31 @@
     "react-dom": "^17.0.1",
     "react-error-boundary": "^3.0.2",
     "react-router-dom": "^5.2.0",
-    "react-scripts": "4.0.0",
     "unique-names-generator": "^4.3.1",
     "validator": "^13.6.0",
     "web-vitals": "^0.2.4"
   },
   "devDependencies": {
     "@types/react": "^16.9.55",
+    "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "8.2.2",
     "cross-env": "^7.0.3",
     "jest": "26.6.0",
     "jsdoc": "^3.6.6",
     "nodemon": "^2.0.6",
     "prettier": "^2.2.1",
-    "supertest": "^6.1.3"
+    "supertest": "^6.1.3",
+    "vite": "^6.2.0"
   },
   "scripts": {
     "start": "NODE_ENV=production node backend/index.js",
-    "dev:ui": "BROWSER=none NODE_ENV=development react-scripts start",
+    "dev:ui": "vite",
     "dev:server": "NODE_ENV=development yarn nodemon backend/index.js",
     "dev": "concurrently \"yarn dev:server\" \"yarn dev:ui\"",
-    "build:ui": "rm -rf build && INLINE_RUNTIME_CHUNK=false NODE_ENV=production react-scripts build",
+    "build:ui": "vite build",
     "ngrok": "../../ngrok http 3030 -host-header='localhost:3030'",
     "test": "NODE_ENV=test jest --verbose --runInBand",
-    "test:ui": "react-scripts test",
+    "test:ui": "vitest",
     "authorizeCalendarAccess": "node backend/modules/calendar/authorize.js"
   },
   "jest": {

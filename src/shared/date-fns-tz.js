@@ -8,7 +8,7 @@
 
 const { zonedTimeToUtc, utcToZonedTime, formatInTimeZone } = require('date-fns-tz')
 
-const TIMEZONE = process.env.REACT_APP_TIMEZONE || 'Europe/Helsinki'
+const TIMEZONE = process.env.VITE_TIMEZONE || 'Europe/Helsinki'
 
 module.exports = {
   fromZonedTime: (date, tz = TIMEZONE) => zonedTimeToUtc(date, tz),
