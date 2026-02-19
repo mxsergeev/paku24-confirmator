@@ -23,10 +23,6 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'build',
       emptyOutDir: true,
-      commonjsOptions: {
-        include: [/src\//, /node_modules\//],
-        transformMixedEsModules: true,
-      },
     },
     define: {
       'process.env.VITE_TIMEZONE': JSON.stringify(env.VITE_TIMEZONE || 'Europe/Helsinki'),

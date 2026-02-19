@@ -1,6 +1,6 @@
-const { makeTerms } = require('../modules/email/email.helpers')
-const termsData = require('../modules/email/email.data.terms')
-const { exampleOptions } = require('./test_helper')
+import { makeTerms } from '../modules/email/email.helpers.js'
+import termsData from '../modules/email/email.data.terms.json' with { type: 'json' }
+import { exampleOptions } from './test_helper.js'
 
 describe('makeTerms', () => {
   test('terms created right', () => {

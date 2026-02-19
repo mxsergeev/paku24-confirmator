@@ -1,5 +1,5 @@
-const Order = require('../../models/order.js')
-const newErrorWithCustomName = require('../../utils/newErrorWithCustomName.js')
+import Order from '../../models/order.js'
+import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 
 async function getOrderById(id) {
   const order = await Order.findById(id)
@@ -44,7 +44,7 @@ async function updateOrder(id, updateData) {
   return order
 }
 
-module.exports = {
+export {
   getOrderById,
   updateOrder,
 }

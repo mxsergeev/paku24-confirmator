@@ -6,12 +6,10 @@
  * Re-exporting the functions using names from the newer version for easier future migration.
  */
 
-const { zonedTimeToUtc, utcToZonedTime, formatInTimeZone } = require('date-fns-tz')
+import { zonedTimeToUtc, utcToZonedTime, formatInTimeZone as _formatInTimeZone } from 'date-fns-tz'
 
 const TIMEZONE = process.env.VITE_TIMEZONE || 'Europe/Helsinki'
 
-module.exports = {
-  fromZonedTime: (date, tz = TIMEZONE) => zonedTimeToUtc(date, tz),
-  toZonedTime: (date, tz = TIMEZONE) => utcToZonedTime(date, tz),
-  formatInTimeZone: (date, formatStr, tz = TIMEZONE) => formatInTimeZone(date, tz, formatStr),
-}
+export const fromZonedTime = (date, tz = TIMEZONE) => zonedTimeToUtc(date, tz)
+export const toZonedTime = (date, tz = TIMEZONE) => utcToZonedTime(date, tz)
+export const formatInTimeZone = (date, formatStr, tz = TIMEZONE) => _formatInTimeZone(date, tz, formatStr)

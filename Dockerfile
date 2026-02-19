@@ -1,5 +1,5 @@
 # Production Dockerfile 
-FROM node:16.20.2-bookworm-slim AS base
+FROM node:24-bookworm-slim AS base
 WORKDIR /app
 EXPOSE 3030
 COPY package.json yarn.lock ./

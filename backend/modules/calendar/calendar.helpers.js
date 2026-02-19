@@ -1,11 +1,11 @@
-const { authenticate } = require('@google-cloud/local-auth')
-const { google } = require('googleapis')
-const path = require('path')
-const fs = require('fs').promises
-const colors = require('./calendar.data.colors.json')
-const Order = require('../../../src/shared/Order.js')
-const dayjs = require('../../../src/shared/dayjs.js')
-const { TIMEZONE } = require('../../utils/config.js')
+import { authenticate } from '@google-cloud/local-auth'
+import { google } from 'googleapis'
+import path from 'path'
+import { promises as fs } from 'fs'
+import colors from './calendar.data.colors.json' with { type: 'json' }
+import Order from '../../../src/shared/Order.js'
+import dayjs from '../../../src/shared/dayjs.js'
+import { TIMEZONE } from '../../utils/config.js'
 
 const env = process.env.NODE_ENV || 'production'
 
@@ -187,7 +187,7 @@ function makeGoogleEventObjects(order) {
   return events
 }
 
-module.exports = {
+export {
   authorize,
   getCalendar,
   makeGoogleEventObjects,

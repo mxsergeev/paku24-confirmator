@@ -1,16 +1,16 @@
 /* eslint-disable no-console */
-const { enqueueSnackbar } = require('notistack')
-const isJSON = require('validator/lib/isJSON')
-const fees = require('../data/fees.json')
-const services = require('../data/services.json')
-const TextOrder = require('./TextOrder')
-const paymentTypes = require('../data/paymentTypes.json')
-const distances = require('../data/distances.json')
-const boxesSettings = require('../data/boxes.json')
-const icons = require('../data/icons.json')
-const dayjs = require('./dayjs.js')
-const { isNode } = require('./isNode.js')
-const { toZonedTime, fromZonedTime } = require('./date-fns-tz.js')
+import { enqueueSnackbar } from 'notistack'
+import isJSON from 'validator/lib/isJSON.js'
+import fees from '../data/fees.json' with { type: 'json' }
+import services from '../data/services.json' with { type: 'json' }
+import TextOrder from './TextOrder.js'
+import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
+import distances from '../data/distances.json' with { type: 'json' }
+import boxesSettings from '../data/boxes.json' with { type: 'json' }
+import icons from '../data/icons.json' with { type: 'json' }
+import dayjs from './dayjs.js'
+import { isNode } from './isNode.js'
+import { toZonedTime, fromZonedTime } from './date-fns-tz.js'
 
 const getDateInTz = (d) => (isNode() ? toZonedTime(d) : d)
 
@@ -514,4 +514,4 @@ class Order {
   }
 }
 
-module.exports = Order
+export default Order

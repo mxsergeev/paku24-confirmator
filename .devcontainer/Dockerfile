@@ -1,5 +1,5 @@
 # Development Dockerfile
-FROM node:16.20.2-bookworm
+FROM node:24-bookworm
 WORKDIR /app
 EXPOSE 3030 3031
 RUN chown -R node:node /app

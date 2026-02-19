@@ -1,7 +1,7 @@
-const axios = require('axios')
-const termsData = require('../email/email.data.terms.json')
-const Order = require('../../../src/shared/Order.js')
-const { SEMYSMS_DEVICE_ID, SEMYSMS_API_TOKEN } = require('../../utils/config.js')
+import axios from 'axios'
+import termsData from '../email/email.data.terms.json' with { type: 'json' }
+import Order from '../../../src/shared/Order.js'
+import { SEMYSMS_DEVICE_ID, SEMYSMS_API_TOKEN } from '../../utils/config.js'
 
 const MAX_PARTS_PER_SEND = 3
 const GSM_7BIT_BASIC_CHARS =
@@ -142,7 +142,7 @@ function constructMessage(order) {
   return message
 }
 
-module.exports = {
+export {
   splitMessageIntoSegments,
   chunkMessageForSending,
   sendSmsInChunks,

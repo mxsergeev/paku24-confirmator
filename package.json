@@ -1,5 +1,6 @@
 {
   "name": "paku24-confirmator",
+  "type": "module",
   "version": "1.0.0",
   "main": "src/index.js",
   "license": "MIT",
@@ -50,7 +51,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "8.2.2",
     "cross-env": "^7.0.3",
-    "jest": "26.6.0",
+    "vitest": "^3.0.0",
     "jsdoc": "^3.6.6",
     "nodemon": "^2.0.6",
     "prettier": "^2.2.1",
@@ -64,23 +65,8 @@
     "dev": "concurrently \"yarn dev:server\" \"yarn dev:ui\"",
     "build:ui": "vite build",
     "ngrok": "../../ngrok http 3030 -host-header='localhost:3030'",
-    "test": "NODE_ENV=test jest --verbose --runInBand",
+    "test": "NODE_ENV=test vitest run --reporter verbose --sequence.concurrent false",
     "test:ui": "vitest",
     "authorizeCalendarAccess": "node backend/modules/calendar/authorize.js"
-  },
-  "jest": {
-    "testEnvironment": "node"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
   }
 }

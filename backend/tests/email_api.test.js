@@ -1,11 +1,11 @@
-const mongoose = require('mongoose')
-const supertest = require('supertest')
-const app = require('../app')
+import mongoose from 'mongoose'
+import supertest from 'supertest'
+import app from '../app.js'
 
 const api = supertest(app)
 
-const { orderDetails, exampleOptions } = require('./test_helper')
-const { generateJWT } = require('../modules/authentication/auth.middleware')
+import { orderDetails, exampleOptions } from './test_helper.js'
+import { generateJWT } from '../modules/authentication/auth.middleware.js'
 
 // access token
 const at = generateJWT(

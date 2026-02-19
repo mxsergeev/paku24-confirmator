@@ -1,9 +1,10 @@
-const mongoose = require('mongoose')
-const supertest = require('supertest')
-const app = require('../app')
+import mongoose from 'mongoose'
+import supertest from 'supertest'
+import app from '../app.js'
 
 const api = supertest(app)
-const { initialUsers, initializeDB } = require('./test_helper')
+
+import { initialUsers, initializeDB } from './test_helper.js'
 
 beforeEach(async () => {
   await initializeDB()

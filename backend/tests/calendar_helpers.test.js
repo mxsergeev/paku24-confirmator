@@ -1,10 +1,10 @@
-const { makeGoogleEventObjects } = require('../modules/calendar/calendar.helpers')
-const { exampleOrder, exampleOptions } = require('./test_helper')
-const Order = require('../../src/shared/Order.js')
-const fees = require('../../src/data/fees.json')
-const paymentTypes = require('../../src/data/paymentTypes.json')
-const services = require('../../src/data/services.json')
-const dayjs = require('../../src/shared/dayjs.js')
+import { makeGoogleEventObjects } from '../modules/calendar/calendar.helpers.js'
+import { exampleOrder, exampleOptions } from './test_helper.js'
+import Order from '../../src/shared/Order.js'
+import fees from '../../src/data/fees.json' with { type: 'json' }
+import paymentTypes from '../../src/data/paymentTypes.json' with { type: 'json' }
+import services from '../../src/data/services.json' with { type: 'json' }
+import dayjs from '../../src/shared/dayjs.js'
 
 describe('makeIcons', () => {
   test('title created right', () => {

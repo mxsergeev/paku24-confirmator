@@ -1,10 +1,12 @@
-const calendarRouter = require('express').Router()
+import express from 'express'
 
-const authMW = require('../authentication/auth.middleware')
+const calendarRouter = express.Router()
 
-const { addEventToCalendar, deleteEventFromCalendar } = require('./calendar.googleAPI')
+import * as authMW from '../authentication/auth.middleware.js'
 
-const { makeGoogleEventObjects } = require('./calendar.helpers')
+import { addEventToCalendar, deleteEventFromCalendar } from './calendar.googleAPI.js'
+
+import { makeGoogleEventObjects } from './calendar.helpers.js'
 
 calendarRouter.use(authMW.authenticateAccessToken)
 
@@ -42,4 +44,4 @@ calendarRouter.delete('/:eventId', (req, res, next) => {
     .catch((err) => next(err))
 })
 
-module.exports = calendarRouter
+export default calendarRouter

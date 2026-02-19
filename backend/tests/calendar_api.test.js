@@ -1,11 +1,11 @@
-const mongoose = require('mongoose')
-const supertest = require('supertest')
-const app = require('../app')
+import mongoose from 'mongoose'
+import supertest from 'supertest'
+import app from '../app.js'
 
 const api = supertest(app)
 
-const { exampleEvent, exampleCreatedEvent } = require('./test_helper')
-const { generateJWT } = require('../modules/authentication/auth.middleware')
+import { exampleEvent, exampleCreatedEvent } from './test_helper.js'
+import { generateJWT } from '../modules/authentication/auth.middleware.js'
 
 const eventIds = []
 const at = generateJWT(
