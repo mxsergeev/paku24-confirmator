@@ -1,4 +1,4 @@
-const termsData = require('./email.data.terms.json')
+import termsData from './email.data.terms.json' with { type: 'json' }
 
 /**
  * @param {object} order
@@ -13,4 +13,4 @@ function makeTerms(order) {
   return `${termsData[order.distance]}\n\n${termsData.defaultTerms}`
 }
 
-module.exports = { makeTerms }
+export { makeTerms }

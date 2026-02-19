@@ -1,5 +1,8 @@
-const tokenRouter = require('express').Router()
-const {
+import express from 'express'
+
+const tokenRouter = express.Router()
+
+import {
   controlRequestFlow,
   authenticateAccessToken,
   authenticateRefreshToken,
@@ -7,7 +10,7 @@ const {
   generateAccessToken,
   generateRefreshToken,
   setTokenCookies,
-} = require('./auth.middleware')
+} from './auth.middleware.js'
 
 tokenRouter.post(
   '/',
@@ -39,4 +42,4 @@ tokenRouter.post(
   }
 )
 
-module.exports = tokenRouter
+export default tokenRouter

@@ -1,7 +1,8 @@
-const mongoose = require('mongoose')
-const RefreshToken = require('../models/refreshToken')
-const User = require('../models/user')
-const config = require('../utils/config')
+import mongoose from 'mongoose'
+import RefreshToken from '../models/refreshToken.js'
+import User from '../models/user.js'
+import * as config from '../utils/config.js'
+import { vi } from 'vitest'
 
 const initialUsers = [
   {
@@ -64,7 +65,7 @@ function connectToDB() {
 // mock
 const res = {}
 
-const mockNext = jest.fn((param) => {
+const mockNext = vi.fn((param) => {
   if (param) {
     throw param
   }
@@ -170,7 +171,7 @@ const smsOrderPayload = {
   phone: '+358449747442',
 }
 
-module.exports = {
+export {
   initialUsers,
   usersInDB,
   tokensInDB,

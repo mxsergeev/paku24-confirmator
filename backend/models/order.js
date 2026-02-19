@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+import mongoose from 'mongoose'
 
 const addressSchema = new mongoose.Schema(
   {
@@ -79,4 +79,4 @@ order.set('toJSON', {
 
 const Order = mongoose.model('Order', order)
 
-module.exports = Order
+export default Order

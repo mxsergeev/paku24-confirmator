@@ -1,6 +1,6 @@
-const AWS = require('aws-sdk')
-const logger = require('../../utils/logger')
-const { SOURCE_EMAIL } = require('../../utils/config')
+import AWS from 'aws-sdk'
+import * as logger from '../../utils/logger.js'
+import { SOURCE_EMAIL } from '../../utils/config.js'
 
 AWS.config.update({ region: 'eu-north-1' })
 
@@ -50,4 +50,4 @@ function sendMail({ email, subject, body, html = false, sourceEmail = SOURCE_EMA
   return Promise.resolve()
 }
 
-module.exports = sendMail
+export default sendMail
