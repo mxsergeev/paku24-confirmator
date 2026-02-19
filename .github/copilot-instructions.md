@@ -18,7 +18,7 @@ Developer workflow and commands
 Environment & config
 
 - Use `.env` in project root. `.env.example` lists all required keys. Most important:
-  - `DEV_MONGODB_URI` / `MONGODB_URI` (DB)
+  - `MONGODB_URI`
   - `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `AT_EXPIRES_IN`, `RT_EXPIRES_IN`, `RT_REFRESH_AFTER_SEC` (auth)
   - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `SOURCE_EMAIL` (SES)
   - `SEMYSMS_DEVICE_ID` and `SEMYSMS_API_TOKEN` (SemySMS)
