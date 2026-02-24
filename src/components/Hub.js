@@ -30,6 +30,10 @@ export default function Hub() {
       >
         Statistics
       </Button>
+
+      <Button onClick={handleBlockClick} name="calendar" variant="contained" className="hub-block">
+        Calendar
+      </Button>
     </div>
   )
 }

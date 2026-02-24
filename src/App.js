@@ -13,6 +13,7 @@ import './App.css'
 import Footer from './components/Footer'
 import LoadingUntillDone from './components/LoadingUntillDone'
 import interceptor from './services/interceptor'
+import Calendar from './components/Calendar/Calendar'
 
 function ErrorFallback({ error }) {
   return (
@@ -103,6 +104,9 @@ function App() {
           </ProtectedRoute>
           <ProtectedRoute dependsOn={user} path="/statistics">
             <Statistics />
+          </ProtectedRoute>
+          <ProtectedRoute dependsOn={user} path="/calendar">
+            <Calendar />
           </ProtectedRoute>
           <ProtectedRoute dependsOn={user} exact path="/">
             <Hub />
