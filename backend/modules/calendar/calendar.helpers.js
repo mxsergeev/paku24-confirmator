@@ -2,7 +2,6 @@ import { authenticate } from '@google-cloud/local-auth'
 import { google } from 'googleapis'
 import path from 'path'
 import { promises as fs } from 'fs'
-import colors from './calendar.data.colors.json' with { type: 'json' }
 import Order from '../../../src/shared/Order.js'
 import dayjs from '../../../src/shared/dayjs.js'
 import { TIMEZONE } from '../../utils/config.js'
@@ -159,7 +158,7 @@ function makeGoogleEventObjects(order) {
       events.push({
         summary: entries[f].title,
         description: entries[f].description,
-        colorId: colors.boxes,
+        colorId: '1',
         location,
         start: dateStr.includes('T')
           ? {
@@ -187,8 +186,4 @@ function makeGoogleEventObjects(order) {
   return events
 }
 
-export {
-  authorize,
-  getCalendar,
-  makeGoogleEventObjects,
-}
+export { authorize, getCalendar, makeGoogleEventObjects }
