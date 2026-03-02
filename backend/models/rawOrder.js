@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+import mongoose from 'mongoose'
 
 const rawOrderSchema = new mongoose.Schema({
   text: String,
@@ -34,4 +34,4 @@ rawOrderSchema.set('toJSON', {
 
 const RawOrder = mongoose.model('RawOrder', rawOrderSchema)
 
-module.exports = RawOrder
+export default RawOrder

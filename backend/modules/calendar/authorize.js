@@ -1,5 +1,5 @@
-const { authorize } = require('./calendar.helpers')
-const logger = require('../../utils/logger')
+import { authorize } from './calendar.helpers.js'
+import * as logger from '../../utils/logger.js'
 
 authorize()
   .then(() => logger.info('New Google Calendar token saved or an existing token used.'))

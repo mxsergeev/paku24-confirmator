@@ -1,0 +1,165 @@
+.calendar {
+  margin: 16px 0;
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  padding: 20px 24px;
+}
+
+.fc-event {
+  cursor: pointer;
+}
+
+.fc-event-title {
+  white-space: normal;
+  word-break: break-word;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.fc-createOrderButton-button {
+  background-color: #e08141 !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.fc-createOrderButton-button:hover {
+  background-color: #ca7139 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.fc-createOrderButton-button:active {
+  background-color: #b46332 !important;
+}
+
+.calendar-fee-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 12px;
+  margin: 8px 0 0 0;
+  justify-content: flex-start;
+}
+
+.calendar-fee-item {
+  background: #f7f7fa;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 16px;
+  color: #333;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.calendar-dialog-title {
+  font-weight: 900;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  color: #222;
+  margin: 0;
+  padding: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.calendar-dialog-actions {
+  padding: 12px 16px !important;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.calendar-dialog-actions.MuiDialogActions-spacing > :not(:first-child) {
+  margin-left: 0;
+}
+
+.calendar-dialog-actions-group {
+  display: flex;
+  gap: 8px;
+  flex: 1 1 auto;
+}
+
+.calendar-dialog-button {
+  min-width: 120px;
+}
+
+@media (max-width: 600px) {
+  .calendar {
+    padding: 8px 2px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .fc-event-title {
+    font-size: 13px;
+    padding: 2px 2px;
+    border-radius: 3px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 2.8em;
+  }
+  .fc-header-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .fc-header-toolbar .fc-toolbar-chunk {
+    justify-content: center;
+    margin-bottom: 2px;
+  }
+  .fc-header-toolbar .fc-toolbar-chunk:not(:last-child) {
+    margin-bottom: 4px;
+  }
+  .fc-button {
+    min-width: 44px;
+    min-height: 36px;
+    font-size: 15px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin: 0 2px;
+  }
+  .fc-button-primary {
+    background: #f5f5f5;
+    color: #333;
+    border: 1px solid #ddd;
+  }
+  .fc-button-active,
+  .fc-button:active {
+    background: #e0e0e0;
+    color: #111;
+  }
+  .fc {
+    min-height: 70vh;
+    max-height: none;
+    overflow: visible !important;
+  }
+  .fc-scroller,
+  .fc-daygrid-body,
+  .fc-daygrid-body-natural {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .calendar-dialog-actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px 16px 16px;
+  }
+
+  .calendar-dialog-actions-group {
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .calendar-dialog-button {
+    width: 100%;
+  }
+}

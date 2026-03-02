@@ -1,4 +1,4 @@
-const RefreshToken = require('../../models/refreshToken')
+import RefreshToken from '../../models/refreshToken.js'
 
 /**
  * Deletes refresh token and clears cookies.
@@ -21,4 +21,4 @@ async function logout(req, res, token = undefined) {
   return res.clearCookie('at', options).clearCookie('rt', options)
 }
 
-module.exports = logout
+export default logout

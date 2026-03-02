@@ -1,6 +1,8 @@
-const loginRouter = require('express').Router()
+import express from 'express'
 
-const {
+const loginRouter = express.Router()
+
+import {
   filterRequestsWithExceededAttemptLimit,
   checkUser,
   controlRequestFlow,
@@ -9,7 +11,7 @@ const {
   generateRefreshToken,
   setTokenCookies,
   authenticateAccessToken,
-} = require('./auth.middleware')
+} from './auth.middleware.js'
 
 function sendUserInfo(req, res) {
   const { user } = req
@@ -36,4 +38,4 @@ loginRouter.post(
 
 loginRouter.post('/token', authenticateAccessToken, sendUserInfo)
 
-module.exports = loginRouter
+export default loginRouter

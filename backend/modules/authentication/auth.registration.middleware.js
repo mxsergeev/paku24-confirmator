@@ -1,11 +1,11 @@
-const crypto = require('crypto')
-const bcrypt = require('bcrypt')
-const passwordGenerator = require('generate-password')
-const { uniqueNamesGenerator, colors, animals } = require('unique-names-generator')
-const mongoose = require('mongoose')
+import crypto from 'crypto'
+import bcrypt from 'bcrypt'
+import passwordGenerator from 'generate-password'
+import { uniqueNamesGenerator, colors, animals } from 'unique-names-generator'
+import mongoose from 'mongoose'
 
-const User = require('../../models/user')
-const newErrorWithCustomName = require('../../utils/newErrorWithCustomName')
+import User from '../../models/user.js'
+import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 
 async function checkIfUserExists(req, res, next) {
   const { email } = req.body
@@ -102,7 +102,7 @@ async function updateUser(req, res, next) {
   }
 }
 
-module.exports = {
+export {
   checkIfUserExists,
   createUser,
   checkUser,

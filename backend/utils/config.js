@@ -1,4 +1,4 @@
-require('dotenv').config()
+import 'dotenv/config.js'
 
 const {
   MONGODB_URI = process.env.NODE_ENV === 'test'
@@ -21,10 +21,10 @@ const {
   ACCESS_REQUESTED_EXPIRES_IN_DAYS,
   DELETE_ORDERS_AFTER,
   DELETE_ORDERS_MARKED_FOR_DELETION_AFTER,
-  REACT_APP_TIMEZONE,
+  VITE_TIMEZONE,
 } = process.env
 
-module.exports = {
+export {
   BACKEND_PORT,
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,
@@ -43,5 +43,6 @@ module.exports = {
   ACCESS_REQUESTED_EXPIRES_IN_DAYS,
   DELETE_ORDERS_AFTER,
   DELETE_ORDERS_MARKED_FOR_DELETION_AFTER,
-  TIMEZONE: REACT_APP_TIMEZONE,
 }
+
+export const TIMEZONE = VITE_TIMEZONE

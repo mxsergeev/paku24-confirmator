@@ -8,4 +8,4 @@ function filterReqsBasedOnUrl(req, res, next) {
   return res.status(404)
 }
 
-module.exports = filterReqsBasedOnUrl
+export default filterReqsBasedOnUrl

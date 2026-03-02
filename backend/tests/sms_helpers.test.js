@@ -1,4 +1,4 @@
-const { chunkMessageForSending, sendSmsInChunks } = require('../modules/sms/sms.helpers')
+import { chunkMessageForSending, sendSmsInChunks } from '../modules/sms/sms.helpers.js'
 
 describe('SMS chunking helpers', () => {
   test('keeps multi-part GSM message within three-part batches', () => {

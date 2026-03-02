@@ -2,13 +2,13 @@
  * Shared dayjs instance with necessary plugins
  */
 
-const dayjs = require('dayjs')
-const utc = require('dayjs/plugin/utc')
-const isSameOrAfter = require('dayjs/plugin/isSameOrAfter')
-const isoWeek = require('dayjs/plugin/isoWeek')
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc.js'
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter.js'
+import isoWeek from 'dayjs/plugin/isoWeek.js'
 
 dayjs.extend(utc)
 dayjs.extend(isSameOrAfter)
 dayjs.extend(isoWeek)
 
-module.exports = dayjs
+export default dayjs

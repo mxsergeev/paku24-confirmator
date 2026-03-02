@@ -1,24 +1,24 @@
-const express = require('express')
-const path = require('path')
-const cors = require('cors')
-const cookieParser = require('cookie-parser')
-const helmet = require('helmet')
-const morgan = require('morgan')
-const mongoose = require('mongoose')
+import express from 'express'
+import path from 'path'
+import cors from 'cors'
+import cookieParser from 'cookie-parser'
+import helmet from 'helmet'
+import morgan from 'morgan'
+import mongoose from 'mongoose'
 
-const config = require('./utils/config.js')
-const logger = require('./utils/logger.js')
-const errorHandler = require('./utils/errorHandler.middleware.js')
-const filterReqsBasedOnUrl = require('./utils/filterReqsBasedOnUrl.middleware.js')
+import * as config from './utils/config.js'
+import * as logger from './utils/logger.js'
+import errorHandler from './utils/errorHandler.middleware.js'
+import filterReqsBasedOnUrl from './utils/filterReqsBasedOnUrl.middleware.js'
 
-const calendarRouter = require('./modules/calendar/calendar.controller.js')
-const emailRouter = require('./modules/email/email.controller.js')
-const orderPoolRouter = require('./modules/orderPool/orderPool.controller.js')
-const smsRouter = require('./modules/sms/sms.controller.js')
-const loginRouter = require('./modules/authentication/auth.login.controller.js')
-const logoutRouter = require('./modules/authentication/auth.logout.controller.js')
-const registrationRouter = require('./modules/authentication/auth.registration.controller.js.js')
-const tokenRouter = require('./modules/authentication/auth.token.controller.js')
+import calendarRouter from './modules/calendar/calendar.controller.js'
+import emailRouter from './modules/email/email.controller.js'
+import orderPoolRouter from './modules/orderPool/orderPool.controller.js'
+import smsRouter from './modules/sms/sms.controller.js'
+import loginRouter from './modules/authentication/auth.login.controller.js'
+import logoutRouter from './modules/authentication/auth.logout.controller.js'
+import registrationRouter from './modules/authentication/auth.registration.controller.js.js'
+import tokenRouter from './modules/authentication/auth.token.controller.js'
 
 mongoose
   .connect(config.MONGODB_URI, {
@@ -68,9 +68,9 @@ app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 app.use('/api/order-pool/', orderPoolRouter)
 
-app.use(express.static(path.join(__dirname, '..', 'build')))
+app.use(express.static(path.join(import.meta.dirname, '..', 'build')))
 app.get('/app*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', '/build/index.html'))
+  res.sendFile(path.join(import.meta.dirname, '..', '/build/index.html'))
 })
 
 app.use(errorHandler)
@@ -81,4 +81,4 @@ const unknownEndpoint = (req, res) => {
 
 app.use(unknownEndpoint)
 
-module.exports = app
+export default app

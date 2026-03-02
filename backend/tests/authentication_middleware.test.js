@@ -1,16 +1,16 @@
-const mongoose = require('mongoose')
-const authentication = require('../modules/authentication/auth.middleware')
-const RefreshToken = require('../models/refreshToken')
-const newErrorWithCustomName = require('../utils/newErrorWithCustomName')
+import mongoose from 'mongoose'
+import * as authentication from '../modules/authentication/auth.middleware.js'
+import RefreshToken from '../models/refreshToken.js'
+import newErrorWithCustomName from '../utils/newErrorWithCustomName.js'
 
-const {
+import {
   initialUsers,
   tokensInDB,
   initializeDB,
   connectToDB,
   mockNext,
   exampleRefreshToken,
-} = require('./test_helper')
+} from './test_helper.js'
 
 let mockReq
 let mockRes
@@ -22,10 +22,10 @@ beforeAll(async () => {
 beforeEach(async () => {
   mockReq = { cookies: {} }
   mockRes = {
-    send: jest.fn(function () {
+    send: vi.fn(function () {
       return this
     }),
-    clearCookie: jest.fn(function () {
+    clearCookie: vi.fn(function () {
       return this
     }),
   }

@@ -1,13 +1,17 @@
-const axios = require('axios')
-const mongoose = require('mongoose')
-const supertest = require('supertest')
-const app = require('../app')
-const { smsOrderPayload } = require('./test_helper')
-const { generateJWT } = require('../modules/authentication/auth.middleware')
+import axios from 'axios'
+import mongoose from 'mongoose'
+import supertest from 'supertest'
+import app from '../app.js'
+import { smsOrderPayload } from './test_helper.js'
+import { generateJWT } from '../modules/authentication/auth.middleware.js'
 
-jest.mock('axios', () => ({
-  get: jest.fn(),
-}))
+vi.mock('axios', () => {
+  return {
+    default: {
+      get: vi.fn(),
+    },
+  }
+})
 
 const api = supertest(app)
 const at = generateJWT(

@@ -1,4 +1,4 @@
-const logger = require('./logger')
+import * as logger from './logger.js'
 
 function errorHandler(err, req, res, next) {
   const errorsPass = {
@@ -63,4 +63,4 @@ function errorHandler(err, req, res, next) {
   return res.status(error?.status || 500).send({ error: error?.message || err.message })
 }
 
-module.exports = errorHandler
+export default errorHandler

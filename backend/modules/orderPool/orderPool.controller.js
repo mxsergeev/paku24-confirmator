@@ -1,47 +1,18 @@
-const isISO8601 = require('validator/lib/isISO8601')
+import isISO8601 from 'validator/lib/isISO8601.js'
 
-const orderPoolRouter = require('express').Router()
+import express from 'express'
 
-// const ms = require('ms')
-// const CronJob = require('cron').CronJob
+const orderPoolRouter = express.Router()
 
-const RawOrder = require('../../models/rawOrder.js')
-const {
+import RawOrder from '../../models/rawOrder.js'
+import {
   ORDER_POOL_KEY,
-  // ACCEPTED_HOSTNAME,
-  // DELETE_ORDERS_AFTER,
-  // DELETE_ORDERS_MARKED_FOR_DELETION_AFTER,
-} = require('../../utils/config.js')
-const newErrorWithCustomName = require('../../utils/newErrorWithCustomName.js')
-// const logger = require('../utils/logger')
-const authMW = require('../authentication/auth.middleware.js')
-const Order = require('../../models/order.js')
-const dayjs = require('../../../src/shared/dayjs.js')
-const { updateOrder, getOrderById } = require('./orderPool.service.js')
-
-// const job = new CronJob(
-//   '*/10 * * * * *',
-//   async function () {
-//     try {
-//       const response = await RawOrder.deleteMany({
-//         $or: [
-//           { date: { $lt: Date.now() - ms(DELETE_ORDERS_AFTER) } },
-//           {
-//             markedForDeletion: true,
-//             date: {
-//               $lt: Date.now() - ms(DELETE_ORDERS_MARKED_FOR_DELETION_AFTER),
-//             },
-//           },
-//         ],
-//       })
-//       console.log('Deleted documents:', response.deletedCount)
-//     } catch (err) {
-//       logger.error(err)
-//     }
-//   },
-//   null,
-//   'Europe/Helsinki'
-// )
+} from '../../utils/config.js'
+import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
+import * as authMW from '../authentication/auth.middleware.js'
+import Order from '../../models/order.js'
+import dayjs from '../../../src/shared/dayjs.js'
+import { updateOrder, getOrderById } from './orderPool.service.js'
 
 function checkKey(req, res, next) {
   // if (req.body.key === ORDER_POOL_KEY && req.hostname === ACCEPTED_HOSTNAME) {
@@ -220,4 +191,4 @@ orderPoolRouter.get('/confirmed-by-user/', async (req, res) => {
   return res.status(200).send({ confirmedOrders })
 })
 
-module.exports = orderPoolRouter
+export default orderPoolRouter

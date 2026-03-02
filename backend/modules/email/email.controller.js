@@ -1,7 +1,10 @@
-const emailRouter = require('express').Router()
-const sendMail = require('./email.awsAPI')
-const { makeTerms } = require('./email.helpers')
-const authMW = require('../authentication/auth.middleware')
+import express from 'express'
+
+const emailRouter = express.Router()
+
+import sendMail from './email.awsAPI.js'
+import { makeTerms } from './email.helpers.js'
+import * as authMW from '../authentication/auth.middleware.js'
 
 emailRouter.use(authMW.authenticateAccessToken)
 
@@ -24,4 +27,4 @@ emailRouter.post('/send-confirmation', (req, res, next) => {
     .catch((err) => next(err))
 })
 
-module.exports = emailRouter
+export default emailRouter

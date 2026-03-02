@@ -1,8 +1,8 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-control-regex */
 /* eslint-disable no-useless-escape */
-const services = require('../data/services.json')
-const paymentTypes = require('../data/paymentTypes.json')
+import services from '../data/services.json' with { type: 'json' }
+import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
 
 function cannotFind(name) {
   return `Cannot find ${name}`
@@ -281,4 +281,4 @@ class TextOrder {
   }
 }
 
-module.exports = TextOrder
+export default TextOrder

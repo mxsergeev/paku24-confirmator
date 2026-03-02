@@ -70,6 +70,21 @@ function add({ order, key }) {
   return interceptor.axiosInstance.post(`${baseUrl}/add`, { order, key }).then((res) => res?.data)
 }
 
-const orderPoolAPI = { get, getOrderById, confirm, remove, retrieve, getConfirmedOrders, add }
+function update(id, updateData) {
+  return interceptor.axiosInstance
+    .put(`${baseUrl_v2}/${id}`, { updateData })
+    .then((res) => res?.data)
+}
+
+const orderPoolAPI = {
+  get,
+  getOrderById,
+  confirm,
+  remove,
+  retrieve,
+  getConfirmedOrders,
+  add,
+  update,
+}
 
 export default orderPoolAPI

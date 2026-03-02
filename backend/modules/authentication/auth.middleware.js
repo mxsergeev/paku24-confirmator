@@ -1,22 +1,22 @@
 /* eslint-disable no-underscore-dangle */
-const util = require('util')
-const crypto = require('crypto')
-const jwt = require('jsonwebtoken')
-const bcrypt = require('bcrypt')
-const ms = require('ms')
-const User = require('../../models/user')
-const RefreshToken = require('../../models/refreshToken')
-const newErrorWithCustomName = require('../../utils/newErrorWithCustomName')
-const logout = require('./auth.helpers')
+import { promisify } from 'util'
+import crypto from 'crypto'
+import jwt from 'jsonwebtoken'
+import bcrypt from 'bcrypt'
+import ms from 'ms'
+import User from '../../models/user.js'
+import RefreshToken from '../../models/refreshToken.js'
+import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
+import logout from './auth.helpers.js'
 
-const randomBytes = util.promisify(crypto.randomBytes)
+const randomBytes = promisify(crypto.randomBytes)
 
-const {
+import {
   ACCESS_TOKEN_SECRET,
   AT_EXPIRES_IN,
   RT_EXPIRES_IN,
   RT_REFRESH_AFTER_SEC,
-} = require('../../utils/config')
+} from '../../utils/config.js'
 
 /**
  * ip, {
@@ -359,7 +359,7 @@ function setTokenCookies(req, res, next) {
   return next()
 }
 
-module.exports = {
+export {
   filterRequestsWithExceededAttemptLimit,
   checkUser,
   controlRequestFlow,
