@@ -33,7 +33,7 @@ export default function Calendar() {
           const serviceName = order.service?.name
           const colorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
           const color = colorId && calendarColors[colorId] ? calendarColors[colorId].hex : '#eee'
-          
+
           // Main order event
           if (order.date) {
             const eventTime = dayjs(order.date).format('HH:mm')
@@ -50,9 +50,9 @@ export default function Calendar() {
               },
             })
           }
-          
+
           // Box delivery event
-          if (order.boxes?.deliveryDate) {
+          if (order.boxes?.deliveryDate && Number(order.boxes?.amount) > 0) {
             const boxColorId = colorsData.boxes || '1'
             const boxColor = calendarColors[boxColorId] ? calendarColors[boxColorId].hex : '#7986cb'
             const deliveryTime = dayjs(order.boxes.deliveryDate).format('HH:mm')
@@ -67,9 +67,9 @@ export default function Calendar() {
               },
             })
           }
-          
+
           // Box return event
-          if (order.boxes?.returnDate) {
+          if (order.boxes?.returnDate && Number(order.boxes?.amount) > 0) {
             const boxColorId = colorsData.boxes || '1'
             const boxColor = calendarColors[boxColorId] ? calendarColors[boxColorId].hex : '#7986cb'
             const returnTime = dayjs(order.boxes.returnDate).format('HH:mm')
@@ -84,7 +84,7 @@ export default function Calendar() {
               },
             })
           }
-          
+
           return events
         })
         setEvents(calendarEvents)
