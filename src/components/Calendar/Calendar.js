@@ -125,8 +125,14 @@ export default function Calendar() {
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, multiMonthPlugin, interactionPlugin]}
         initialView="dayGridMonth"
+        customButtons={{
+          createOrderButton: {
+            text: 'New order',
+            click: () => history.push('/confirmator'),
+          },
+        }}
         headerToolbar={{
-          left: 'prev,next today',
+          left: 'prev,next today createOrderButton',
           center: 'title',
           right: 'dayGridMonth,timeGridWeek,listWeek,multiMonthYear',
         }}

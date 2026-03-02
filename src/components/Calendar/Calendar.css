@@ -17,6 +17,23 @@
   border-radius: 4px;
 }
 
+.fc-createOrderButton-button {
+  background-color: #e08141 !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.fc-createOrderButton-button:hover {
+  background-color: #ca7139 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.fc-createOrderButton-button:active {
+  background-color: #b46332 !important;
+}
+
 .calendar-fee-list {
   display: flex;
   flex-wrap: wrap;
