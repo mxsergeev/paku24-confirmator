@@ -129,18 +129,20 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
     const { orderId: realOrderId, eventType: parsedEventType } = parseBoxEventId(orderId)
     setEventType(parsedEventType)
 
-    orderPoolAPI
-      .getOrderById(realOrderId)
-      .then((data) => {
+    const fetchOrder = async () => {
+      try {
+        const data = await orderPoolAPI.getOrderById(realOrderId)
         if (!isMounted) return
         setOrder(data.order || data)
         setLoading(false)
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!isMounted) return
         setError(err.message || 'Error')
         setLoading(false)
-      })
+      }
+    }
+
+    fetchOrder()
 
     return () => {
       isMounted = false

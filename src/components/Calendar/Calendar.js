@@ -24,10 +24,9 @@ export default function Calendar() {
   useEffect(() => {
     let isMounted = true
 
-    orderPoolAPI
-      .get([1], { deleted: false })
-      .then((orders) => {
-        if (!isMounted) return
+    const fetchOrders = async () => {
+      try {
+        const orders = await orderPoolAPI.get([1], { deleted: false })
         const calendarEvents = orders.flatMap((order) => {
           const events = []
           const serviceName = order.service?.name
@@ -87,11 +86,16 @@ export default function Calendar() {
 
           return events
         })
+
+        if (!isMounted) return
         setEvents(calendarEvents)
-      })
-      .catch(() => {
-        if (isMounted) setEvents([])
-      })
+      } catch {
+        if (!isMounted) return
+        setEvents([])
+      }
+    }
+
+    fetchOrders()
 
     return () => {
       isMounted = false
