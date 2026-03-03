@@ -76,6 +76,10 @@ function update(id, updateData) {
     .then((res) => res?.data)
 }
 
+function deleteOrder(id) {
+  return interceptor.axiosInstance.delete(`${baseUrl}/delete/${id}`).then((res) => res?.data)
+}
+
 const orderPoolAPI = {
   get,
   getOrderById,
@@ -85,6 +89,7 @@ const orderPoolAPI = {
   getConfirmedOrders,
   add,
   update,
+  deleteOrder,
 }
 
 export default orderPoolAPI

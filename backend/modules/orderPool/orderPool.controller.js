@@ -134,8 +134,20 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
 orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    await RawOrder.findByIdAndUpdate({ _id: id }, { markedForDeletion: true })
-    return res.status(200).send({ message: 'Order marked for deletion' })
+    const order = await Order.findByIdAndUpdate(
+      { _id: id },
+      {
+        markedForDeletion: true,
+        deletedAt: new Date().toISOString(),
+      },
+      { new: true }
+    )
+
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' })
+    }
+
+    return res.status(200).send({ message: 'Order marked for deletion', order })
   } catch (err) {
     return next(err)
   }

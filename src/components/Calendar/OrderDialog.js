@@ -11,6 +11,7 @@ import CloseIcon from '@material-ui/icons/Close'
 import EmailIcon from '@material-ui/icons/Email'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 import EditIcon from '@material-ui/icons/Edit'
+import DeleteIcon from '@material-ui/icons/Delete'
 import { enqueueSnackbar } from 'notistack'
 import dayjs from 'dayjs'
 import './Calendar.css'
@@ -32,6 +33,8 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
   const [editOpen, setEditOpen] = useState(false)
   const [editableOrder, setEditableOrder] = useState(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const handleSendEmail = useCallback(async () => {
     if (!order?.email) {
@@ -119,6 +122,32 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
       setSavingEdit(false)
     }
   }, [orderId, editableOrder])
+
+  const handleDeleteClick = useCallback(() => {
+    setDeleteConfirmOpen(true)
+  }, [])
+
+  const handleDeleteConfirmClose = useCallback(() => {
+    setDeleteConfirmOpen(false)
+  }, [])
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!orderId) return
+    const { orderId: realOrderId } = parseBoxEventId(orderId)
+
+    try {
+      setDeleting(true)
+      const response = await orderPoolAPI.deleteOrder(realOrderId)
+      enqueueSnackbar(response.message || 'Order deleted.')
+      setDeleteConfirmOpen(false)
+      onClose()
+    } catch (err) {
+      if (err.message === 'logout') return
+      enqueueSnackbar(err.response?.data?.error || 'Delete failed.', { variant: 'error' })
+    } finally {
+      setDeleting(false)
+    }
+  }, [orderId, onClose])
 
   useEffect(() => {
     if (!open || !orderId) return
@@ -247,6 +276,16 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
           >
             Edit
           </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<DeleteIcon />}
+            onClick={handleDeleteClick}
+            disabled={!order || loading}
+            className="calendar-dialog-button"
+          >
+            Delete
+          </Button>
         </DialogActions>
       </Dialog>
       <Dialog
@@ -287,6 +326,36 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
             disabled={!editableOrder || savingEdit}
           >
             Save changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={handleDeleteConfirmClose}
+        PaperProps={{ style: { borderRadius: 16 } }}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <p>Are you sure you want to delete this order?</p>
+          <p style={{ fontSize: '0.875rem', color: '#666' }}>
+            This order will be marked as deleted but can be restored later.
+          </p>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleDeleteConfirmClose}
+            color="default"
+            disabled={deleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="secondary"
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
