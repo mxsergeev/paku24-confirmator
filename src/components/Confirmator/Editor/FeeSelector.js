@@ -1,5 +1,4 @@
-import React from 'react'
-import { useHistory } from 'react-router-dom'
+import React, { useState } from 'react'
 import {
   Box,
   Typography,
@@ -8,88 +7,69 @@ import {
   FormControlLabel,
   FormGroup,
   Chip,
+  Dialog,
+  DialogContent,
+  DialogActions,
+  useMediaQuery,
 } from '@material-ui/core'
+import { useTheme } from '@material-ui/core/styles'
 
-import ResponsiveDialog from '../../ResponsiveDialog'
 import Order from '../../../shared/Order'
 
-export default function FeeSelector({ order, onChange, path = '' }) {
-  const history = useHistory()
+export default function FeeSelector({ order, onChange }) {
+  const [openDialog, setOpenDialog] = useState(false)
+  const theme = useTheme()
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+
+  const handleOpen = () => setOpenDialog(true)
+  const handleClose = () => setOpenDialog(false)
 
   return (
     <>
-      <Button onClick={() => history.push(path)}>Fees</Button>
+      <Button onClick={handleOpen}>Fees</Button>
 
-      <ResponsiveDialog path={path}>
-        <FormGroup>
-          {Order.getAvailableFees(order).map((fee) => (
-            <FormControlLabel
-              key={fee.name}
-              label={`${fee.label} (${fee.amount}€)`}
-              control={
-                <Checkbox
-                  color="primary"
-                  checked={
-                    order?.fees ? order.fees.find((f) => f.name === fee.name) !== undefined : false
-                  }
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      const newManual = order?.fees ? order.fees.concat(fee) : [fee]
-                      onChange(newManual)
-                      return
+      <Dialog
+        fullScreen={fullScreen}
+        open={openDialog}
+        onClose={handleClose}
+        aria-labelledby="fee-dialog-title"
+      >
+        <DialogContent>
+          <FormGroup>
+            {Order.getAvailableFees(order).map((fee) => (
+              <FormControlLabel
+                key={fee.name}
+                label={`${fee.label} (${fee.amount}€)`}
+                control={
+                  <Checkbox
+                    color="primary"
+                    checked={
+                      order?.fees
+                        ? order.fees.find((f) => f.name === fee.name) !== undefined
+                        : false
                     }
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        const newManual = order?.fees ? order.fees.concat(fee) : [fee]
+                        onChange(newManual)
+                        return
+                      }
 
-                    if (!order?.fees) return
-                    onChange(order.fees.filter((f) => f.name !== fee.name))
-                  }}
-                />
-              }
-            />
-          ))}
-        </FormGroup>
-
-        <Box mt={1}>
-          <Typography variant="caption" color="textSecondary">
-            Suggested fees
-          </Typography>
-
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            flexWrap="wrap"
-            mt={0.5}
-          >
-            <Box display="flex" flexWrap="wrap" alignItems="center">
-              {order?.autoFees && order.autoFees.length ? (
-                order.autoFees.map((f) => (
-                  <Chip
-                    key={f.name}
-                    label={`${f.label} (${f.amount}€)`}
-                    size="small"
-                    style={{ marginRight: 6, marginBottom: 6 }}
+                      if (!order?.fees) return
+                      onChange(order.fees.filter((f) => f.name !== fee.name))
+                    }}
                   />
-                ))
-              ) : (
-                <Typography variant="caption" color="textSecondary">
-                  —
-                </Typography>
-              )}
-            </Box>
-
-            <Box>
-              <Button
-                size="small"
-                variant="outlined"
-                color="default"
-                onClick={() => onChange(null)}
-              >
-                Restore suggested
-              </Button>
-            </Box>
-          </Box>
-        </Box>
-      </ResponsiveDialog>
+                }
+              />
+            ))}
+          </FormGroup>
+        </DialogContent>
+        <DialogActions>
+          <Button style={{ backgroundColor: 'white' }} variant="text" onClick={handleClose}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }
