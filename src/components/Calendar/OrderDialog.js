@@ -20,6 +20,7 @@ import sendConfirmationEmail from '../../services/emailAPI'
 import sendSMS from '../../services/smsAPI'
 import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
+import OrderDialogDetails from './OrderDialogDetails'
 
 export default function OrderDialog({ open, onClose, orderId, iconsData }) {
   const [order, setOrder] = useState(null)
@@ -211,94 +212,7 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          {loading && <div>Loading...</div>}
-          {error && <div style={{ color: 'red' }}>{error}</div>}
-          {order &&
-            !loading &&
-            !error &&
-            (eventType === 'boxDelivery' || eventType === 'boxReturn') && (
-              <>
-                <p>
-                  <strong>Address:</strong> {order.address?.street}, {order.address?.index}{' '}
-                  {order.address?.city}
-                </p>
-                {order.boxes && (
-                  <>
-                    <p>
-                      <strong>Date:</strong>{' '}
-                      {eventType === 'boxDelivery'
-                        ? dayjs(order.boxes.deliveryDate).format('DD.MM.YYYY HH:mm')
-                        : dayjs(order.boxes.returnDate).format('DD.MM.YYYY HH:mm')}
-                    </p>
-                    <p>
-                      <strong>Boxes:</strong> {order.boxes.amount} kpl
-                    </p>
-                    <p>
-                      <strong>Price:</strong>{' '}
-                      {eventType === 'boxDelivery'
-                        ? order.boxes.deliveryPrice || 0
-                        : order.boxes.returnPrice || 0}
-                      €
-                    </p>
-                  </>
-                )}
-                {order.phone && order.phone.replace(/0/g, '') !== '' && (
-                  <p>
-                    <strong>Client number:</strong> {order.phone}
-                  </p>
-                )}
-              </>
-            )}
-          {order && !loading && !error && !eventType && (
-            <>
-              <p>
-                <strong>From:</strong> {order.address?.street}, {order.address?.index}{' '}
-                {order.address?.city}
-              </p>
-              {order.extraAddress && (
-                <p>
-                  <strong>Extra Address:</strong> {order.extraAddress}
-                </p>
-              )}
-              {order.destination && order.destination.street && (
-                <p>
-                  <strong>To:</strong> {order.destination.street}, {order.destination.index}{' '}
-                  {order.destination.city}
-                </p>
-              )}
-              <p>
-                <strong>Payment Type:</strong> {order.paymentType?.name || ''}
-              </p>
-              <p>
-                <strong>Total Price:</strong> {order.price || 0}€
-              </p>
-              {order.fees && Array.isArray(order.fees) && order.fees.length > 0 && (
-                <div>
-                  <strong>Fees:</strong>
-                  <ul className="calendar-fee-list">
-                    {order.fees.map((fee, index) => (
-                      <li key={index} className="calendar-fee-item">
-                        {fee.name}: {fee.amount}€
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {order.boxes && (
-                <p>
-                  <strong>Boxes:</strong> {order.boxes.amount} kpl, {order.boxesPrice}€
-                </p>
-              )}
-              <p>
-                <strong>Service:</strong> {order.service?.name || ''}
-              </p>
-              {order.phone && order.phone.replace(/0/g, '') !== '' && (
-                <p>
-                  <strong>Client number:</strong> {order.phone}
-                </p>
-              )}
-            </>
-          )}
+          <OrderDialogDetails loading={loading} error={error} order={order} eventType={eventType} />
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
           <div className="calendar-dialog-actions-group">
