@@ -1,10 +1,14 @@
 import React, { useCallback, useState } from 'react'
+import { Button } from '@material-ui/core'
+import { enqueueSnackbar } from 'notistack'
 import NewOrderButton from '../NewOrderButton'
 import OrderPoolOpenerButton from '../OrderPool/OrderPoolOpenerButton'
 import MessageBeforeButton from './MessageBeforeButton'
 import ConfirmationEmailSenderButton from './ConfirmationEmailSenderButton'
 import ConfirmationSMSSenderButton from './ConfirmationSMSSenderButton'
 import AddOrderToCalendarButton from './AddOrderToCalendarButton'
+import addEventToCalendar from '../../../services/calendarAPI'
+import orderPoolAPI from '../../../services/orderPoolAPI'
 import './OrderOperations.css'
 
 export default function MainOperationsPanel({
@@ -13,6 +17,8 @@ export default function MainOperationsPanel({
   transformedOrder,
   handleResetClick,
   orderPoolUrl,
+  hideOrderPool,
+  onClear,
 }) {
   const defaultStatuses = {
     email: {
@@ -33,6 +39,40 @@ export default function MainOperationsPanel({
   const changeStatus = useCallback((name, status, disable) => {
     setStatuses((prev) => ({ ...prev, [name]: { status, disable } }))
   }, [])
+
+  const handleNewOrderWithCalendar = useCallback(async () => {
+    if (!transformedOrder.text) {
+      enqueueSnackbar('Order is empty or not transformed', { variant: 'error' })
+      return
+    }
+
+    try {
+      changeStatus('calendar', 'Working', true)
+      const response = await addEventToCalendar({
+        order: order.prepareForSending(),
+      })
+      let oId = orderId
+
+      if (!oId) {
+        const { id } = await orderPoolAPI.add({
+          order: JSON.stringify(order.prepareForSending()),
+          key: 'supersecretorderpoolkey',
+        })
+        oId = id
+      }
+      await orderPoolAPI.confirm(oId)
+      changeStatus('calendar', 'Done', true)
+      enqueueSnackbar(`${response?.message}\n${response?.createdEvent}`)
+
+      // Reset after successful calendar addition
+      setStatuses(defaultStatuses)
+      handleResetClick()
+    } catch (err) {
+      if (err.message === 'logout') return
+      changeStatus('calendar', 'Error', false)
+      enqueueSnackbar(err.response?.data.error || err?.toString(), { variant: 'error' })
+    }
+  }, [order, orderId, transformedOrder.text, changeStatus, handleResetClick, defaultStatuses])
 
   function emailBlock() {
     const isDisabled = statuses.email.disable || !(order.email && transformedOrder.text)
@@ -80,21 +120,43 @@ export default function MainOperationsPanel({
       <div className="block">
         <NewOrderButton
           className="share-space"
-          handleClick={() => {
-            setStatuses(defaultStatuses)
-            handleResetClick()
-          }}
+          text={hideOrderPool ? 'Add order' : 'New order'}
+          handleClick={
+            hideOrderPool
+              ? handleNewOrderWithCalendar
+              : () => {
+                  setStatuses(defaultStatuses)
+                  handleResetClick()
+                }
+          }
         />
-        <OrderPoolOpenerButton className="share-space" orderPoolUrl={orderPoolUrl} />
-        <AddOrderToCalendarButton
-          className="width-25"
-          statusText={statuses.calendar.status}
-          isDisabled={isDisabled}
-          order={order}
-          orderId={orderId}
-          transformedOrderText={transformedOrder.text}
-          changeStatus={changeStatus}
-        />
+        {hideOrderPool && (
+          <Button
+            className="width-25"
+            variant="outlined"
+            size="small"
+            onClick={() => {
+              setStatuses(defaultStatuses)
+              onClear && onClear()
+            }}
+          >
+            Clear
+          </Button>
+        )}
+        {!hideOrderPool && (
+          <OrderPoolOpenerButton className="share-space" orderPoolUrl={orderPoolUrl} />
+        )}
+        {!hideOrderPool && (
+          <AddOrderToCalendarButton
+            className="width-25"
+            statusText={statuses.calendar.status}
+            isDisabled={isDisabled}
+            order={order}
+            orderId={orderId}
+            transformedOrderText={transformedOrder.text}
+            changeStatus={changeStatus}
+          />
+        )}
       </div>
     )
   }

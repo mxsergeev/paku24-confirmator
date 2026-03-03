@@ -155,6 +155,7 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
               transformedOrder={transformedOrder}
               handleResetClick={handleComplete}
               hideOrderPool={true}
+              onClear={reset}
             />
           </div>
         </div>
