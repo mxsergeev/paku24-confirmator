@@ -22,6 +22,37 @@ export default function Calendar() {
   const history = useHistory()
   const location = useLocation()
   const match = useRouteMatch()
+  const isMobile = window.innerWidth <= 600
+  const mobileCalendarProps = isMobile
+    ? {
+        slotMinTime: '00:00:00',
+        slotMaxTime: '24:00:00',
+      }
+    : {}
+  const views = {
+    timeGridWeek: {
+      height: 'auto',
+      contentHeight: 'auto',
+      expandRows: false,
+    },
+    listWeek: {
+      height: 'auto',
+      contentHeight: 'auto',
+    },
+    multiMonthYear: {
+      height: 'auto',
+      contentHeight: 'auto',
+    },
+    ...(isMobile
+      ? {
+          dayGridMonth: {
+            height: '95dvh',
+            contentHeight: '100%',
+            expandRows: true,
+          },
+        }
+      : {}),
+  }
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -133,6 +164,7 @@ export default function Calendar() {
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, multiMonthPlugin, interactionPlugin]}
         initialView="dayGridMonth"
+        views={views}
         customButtons={{
           createOrderButton: {
             text: 'New order',
@@ -148,13 +180,7 @@ export default function Calendar() {
         eventContent={renderEventContent}
         firstDay={1}
         eventClick={handleEventClick}
-        {...(window.innerWidth <= 600
-          ? {
-              slotMinTime: '00:00:00',
-              slotMaxTime: '24:00:00',
-              height: 'auto',
-            }
-          : {})}
+        {...mobileCalendarProps}
       />
       <Route path={`${match.path}/order/:orderId`}>
         {({ match: orderMatch }) => (
