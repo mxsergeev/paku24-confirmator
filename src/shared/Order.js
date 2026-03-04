@@ -194,6 +194,10 @@ class Order {
     this.hsy = Boolean(this.service.hsy)
   }
 
+  get time() {
+    return dayjs(this.date).format('HH:mm')
+  }
+
   /**
    * Transform into a plain object suitable for sending to backend or external APIs.
    */
@@ -214,6 +218,9 @@ class Order {
         prepared[key] = this[key]
       }
     }
+
+    // Add computed time field for backend use
+    prepared.time = this.time
 
     return prepared
   }
