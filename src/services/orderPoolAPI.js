@@ -67,7 +67,9 @@ function getConfirmedOrders(period, options = { onlyCount: true }) {
 }
 
 function add({ order, key }) {
-  return interceptor.axiosInstance.post(`${baseUrl}/add`, { order, key }).then((res) => res?.data)
+  return interceptor.axiosInstance
+    .post(`${baseUrl}/v2/add`, { order, key })
+    .then((res) => res?.data)
 }
 
 function update(id, updateData) {

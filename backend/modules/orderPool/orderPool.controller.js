@@ -5,9 +5,7 @@ import express from 'express'
 const orderPoolRouter = express.Router()
 
 import RawOrder from '../../models/rawOrder.js'
-import {
-  ORDER_POOL_KEY,
-} from '../../utils/config.js'
+import { ORDER_POOL_KEY } from '../../utils/config.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import * as authMW from '../authentication/auth.middleware.js'
 import Order from '../../models/order.js'
@@ -40,17 +38,20 @@ orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
 
 orderPoolRouter.post('/v2/add', checkKey, async (req, res, next) => {
   try {
+    // req.body.order is a JSON string, parse it first
+    const orderData = typeof req.body.order === 'string' 
+      ? JSON.parse(req.body.order) 
+      : req.body.order
+
     const receivedOrder = new Order({
       receivedAt: new Date().toISOString(),
-      ...req.body.order,
+      ...orderData,
     })
 
     await receivedOrder.save()
 
     return res.status(200).send({ message: 'Order added to the pool.', id: receivedOrder._id })
   } catch (err) {
-    console.log('err', err)
-
     return next(err)
   }
 })

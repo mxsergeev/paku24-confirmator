@@ -56,7 +56,7 @@ export default function MainOperationsPanel({
       if (!oId) {
         const { id } = await orderPoolAPI.add({
           order: JSON.stringify(order.prepareForSending()),
-          key: 'supersecretorderpoolkey',
+          key: import.meta.env.VITE_ORDER_POOL_KEY,
         })
         oId = id
       }
