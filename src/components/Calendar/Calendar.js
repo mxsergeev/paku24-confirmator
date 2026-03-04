@@ -163,6 +163,7 @@ export default function Calendar() {
             onClose={closeModal}
             orderId={orderMatch?.params?.orderId || null}
             iconsData={iconsData}
+            onOrderChanged={fetchOrders}
           />
         )}
       </Route>

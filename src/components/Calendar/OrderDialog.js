@@ -23,7 +23,7 @@ import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
 import OrderDialogDetails from './OrderDialogDetails'
 
-export default function OrderDialog({ open, onClose, orderId, iconsData }) {
+export default function OrderDialog({ open, onClose, orderId, iconsData, onOrderChanged }) {
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -115,6 +115,7 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
       enqueueSnackbar(response.message || 'Changes saved.')
       setEditOpen(false)
       setEditableOrder(null)
+      if (onOrderChanged) onOrderChanged()
     } catch (err) {
       if (err.message === 'logout') return
       enqueueSnackbar(err.response?.data?.error || 'Save failed.', { variant: 'error' })
@@ -140,6 +141,7 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
       const response = await orderPoolAPI.deleteOrder(realOrderId)
       enqueueSnackbar(response.message || 'Order deleted.')
       setDeleteConfirmOpen(false)
+      if (onOrderChanged) onOrderChanged()
       onClose()
     } catch (err) {
       if (err.message === 'logout') return
