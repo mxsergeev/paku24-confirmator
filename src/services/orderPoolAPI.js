@@ -44,7 +44,7 @@ async function getOrderById(id) {
 }
 
 function confirm(id) {
-  return interceptor.axiosInstance.put(`${baseUrl}/confirm/${id}`).then((res) => res?.data)
+  return interceptor.axiosInstance.put(`${baseUrl_v2}/confirm/${id}`).then((res) => res?.data)
   // .catch((err) => console.log(err))
 }
 
@@ -54,7 +54,7 @@ async function remove(id) {
 }
 
 async function retrieve(id) {
-  const response = await interceptor.axiosInstance.put(`${baseUrl}/retrieve/${id}`)
+  const response = await interceptor.axiosInstance.put(`${baseUrl_v2}/retrieve/${id}`)
   return response?.data
 }
 
@@ -66,8 +66,10 @@ function getConfirmedOrders(period, options = { onlyCount: true }) {
     .then((res) => res.data)
 }
 
-function add({ order, key }) {
-  return interceptor.axiosInstance.post(`${baseUrl}/add`, { order, key }).then((res) => res?.data)
+function add({ order }) {
+  return interceptor.axiosInstance
+    .post(`${baseUrl}/v2/add`, { order })
+    .then((res) => res?.data)
 }
 
 function update(id, updateData) {

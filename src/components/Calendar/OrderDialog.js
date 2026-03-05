@@ -11,6 +11,7 @@ import CloseIcon from '@material-ui/icons/Close'
 import EmailIcon from '@material-ui/icons/Email'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 import EditIcon from '@material-ui/icons/Edit'
+import DeleteIcon from '@material-ui/icons/Delete'
 import { enqueueSnackbar } from 'notistack'
 import dayjs from 'dayjs'
 import './Calendar.css'
@@ -20,8 +21,9 @@ import sendConfirmationEmail from '../../services/emailAPI'
 import sendSMS from '../../services/smsAPI'
 import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
+import OrderDialogDetails from './OrderDialogDetails'
 
-export default function OrderDialog({ open, onClose, orderId, iconsData }) {
+export default function OrderDialog({ open, onClose, orderId, iconsData, onOrderChanged }) {
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -31,6 +33,8 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
   const [editOpen, setEditOpen] = useState(false)
   const [editableOrder, setEditableOrder] = useState(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const handleSendEmail = useCallback(async () => {
     if (!order?.email) {
@@ -111,6 +115,7 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
       enqueueSnackbar(response.message || 'Changes saved.')
       setEditOpen(false)
       setEditableOrder(null)
+      if (onOrderChanged) onOrderChanged()
     } catch (err) {
       if (err.message === 'logout') return
       enqueueSnackbar(err.response?.data?.error || 'Save failed.', { variant: 'error' })
@@ -118,6 +123,33 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
       setSavingEdit(false)
     }
   }, [orderId, editableOrder])
+
+  const handleDeleteClick = useCallback(() => {
+    setDeleteConfirmOpen(true)
+  }, [])
+
+  const handleDeleteConfirmClose = useCallback(() => {
+    setDeleteConfirmOpen(false)
+  }, [])
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!orderId) return
+    const { orderId: realOrderId } = parseBoxEventId(orderId)
+
+    try {
+      setDeleting(true)
+      const response = await orderPoolAPI.remove(realOrderId)
+      enqueueSnackbar(response.message || 'Order deleted.')
+      setDeleteConfirmOpen(false)
+      if (onOrderChanged) onOrderChanged()
+      onClose()
+    } catch (err) {
+      if (err.message === 'logout') return
+      enqueueSnackbar(err.response?.data?.error || 'Delete failed.', { variant: 'error' })
+    } finally {
+      setDeleting(false)
+    }
+  }, [orderId, onClose])
 
   useEffect(() => {
     if (!open || !orderId) return
@@ -129,18 +161,20 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
     const { orderId: realOrderId, eventType: parsedEventType } = parseBoxEventId(orderId)
     setEventType(parsedEventType)
 
-    orderPoolAPI
-      .getOrderById(realOrderId)
-      .then((data) => {
+    const fetchOrder = async () => {
+      try {
+        const data = await orderPoolAPI.getOrderById(realOrderId)
         if (!isMounted) return
         setOrder(data.order || data)
         setLoading(false)
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!isMounted) return
         setError(err.message || 'Error')
         setLoading(false)
-      })
+      }
+    }
+
+    fetchOrder()
 
     return () => {
       isMounted = false
@@ -209,94 +243,7 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          {loading && <div>Loading...</div>}
-          {error && <div style={{ color: 'red' }}>{error}</div>}
-          {order &&
-            !loading &&
-            !error &&
-            (eventType === 'boxDelivery' || eventType === 'boxReturn') && (
-              <>
-                <p>
-                  <strong>Address:</strong> {order.address?.street}, {order.address?.index}{' '}
-                  {order.address?.city}
-                </p>
-                {order.boxes && (
-                  <>
-                    <p>
-                      <strong>Date:</strong>{' '}
-                      {eventType === 'boxDelivery'
-                        ? dayjs(order.boxes.deliveryDate).format('DD.MM.YYYY HH:mm')
-                        : dayjs(order.boxes.returnDate).format('DD.MM.YYYY HH:mm')}
-                    </p>
-                    <p>
-                      <strong>Boxes:</strong> {order.boxes.amount} kpl
-                    </p>
-                    <p>
-                      <strong>Price:</strong>{' '}
-                      {eventType === 'boxDelivery'
-                        ? order.boxes.deliveryPrice || 0
-                        : order.boxes.returnPrice || 0}
-                      €
-                    </p>
-                  </>
-                )}
-                {order.phone && order.phone.replace(/0/g, '') !== '' && (
-                  <p>
-                    <strong>Client number:</strong> {order.phone}
-                  </p>
-                )}
-              </>
-            )}
-          {order && !loading && !error && !eventType && (
-            <>
-              <p>
-                <strong>From:</strong> {order.address?.street}, {order.address?.index}{' '}
-                {order.address?.city}
-              </p>
-              {order.extraAddress && (
-                <p>
-                  <strong>Extra Address:</strong> {order.extraAddress}
-                </p>
-              )}
-              {order.destination && order.destination.street && (
-                <p>
-                  <strong>To:</strong> {order.destination.street}, {order.destination.index}{' '}
-                  {order.destination.city}
-                </p>
-              )}
-              <p>
-                <strong>Payment Type:</strong> {order.paymentType?.name || ''}
-              </p>
-              <p>
-                <strong>Total Price:</strong> {order.price || 0}€
-              </p>
-              {order.fees && Array.isArray(order.fees) && order.fees.length > 0 && (
-                <div>
-                  <strong>Fees:</strong>
-                  <ul className="calendar-fee-list">
-                    {order.fees.map((fee, index) => (
-                      <li key={index} className="calendar-fee-item">
-                        {fee.name}: {fee.amount}€
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {order.boxes && (
-                <p>
-                  <strong>Boxes:</strong> {order.boxes.amount} kpl, {order.boxesPrice}€
-                </p>
-              )}
-              <p>
-                <strong>Service:</strong> {order.service?.name || ''}
-              </p>
-              {order.phone && order.phone.replace(/0/g, '') !== '' && (
-                <p>
-                  <strong>Client number:</strong> {order.phone}
-                </p>
-              )}
-            </>
-          )}
+          <OrderDialogDetails loading={loading} error={error} order={order} eventType={eventType} />
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
           <div className="calendar-dialog-actions-group">
@@ -330,6 +277,16 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
             className="calendar-dialog-button"
           >
             Edit
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<DeleteIcon />}
+            onClick={handleDeleteClick}
+            disabled={!order || loading}
+            className="calendar-dialog-button"
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
@@ -371,6 +328,36 @@ export default function OrderDialog({ open, onClose, orderId, iconsData }) {
             disabled={!editableOrder || savingEdit}
           >
             Save changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={handleDeleteConfirmClose}
+        PaperProps={{ style: { borderRadius: 16 } }}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <p>Are you sure you want to delete this order?</p>
+          <p style={{ fontSize: '0.875rem', color: '#666' }}>
+            This order will be marked as deleted but can be restored later.
+          </p>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleDeleteConfirmClose}
+            color="default"
+            disabled={deleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="secondary"
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

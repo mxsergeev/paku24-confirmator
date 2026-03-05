@@ -87,6 +87,61 @@
   min-width: 120px;
 }
 
+.calendar-new-order-dialog-paper {
+  width: fit-content;
+  max-width: min(760px, calc(100vw - 64px));
+  min-width: 0;
+  margin: 0;
+  border-radius: 16px !important;
+  overflow: visible;
+}
+
+.calendar-new-order-dialog-title {
+  position: relative;
+  padding: 12px 48px 8px 16px !important;
+}
+
+.calendar-new-order-dialog-title-text {
+  margin: 0 0 0 8px;
+}
+
+.calendar-new-order-dialog-close {
+  position: absolute !important;
+  top: 8px;
+  right: 8px;
+}
+
+.calendar-new-order-dialog-content {
+  padding-top: 8px !important;
+  overflow: visible;
+}
+
+.calendar-new-order-dialog-content-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.calendar-new-order-flex-container {
+  margin: 0;
+  margin-bottom: 32px;
+  max-width: 740px;
+}
+
+.fc
+  :is(.fc-timegrid, .fc-list, .fc-multimonth)
+  :is(.fc-scroller, .fc-scroller-liquid, .fc-scroller-liquid-absolute) {
+  max-height: none !important;
+  overflow: visible !important;
+  position: static !important;
+}
+
+.fc
+  :is(.fc-timegrid, .fc-list, .fc-multimonth)
+  :is(.fc-view-outer, .fc-view-harness, .fc-view-harness-active) {
+  height: auto !important;
+  overflow: visible !important;
+}
+
 @media (max-width: 600px) {
   .calendar {
     padding: 8px 2px;
@@ -98,20 +153,39 @@
     padding: 2px 2px;
     border-radius: 3px;
     display: -webkit-box;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
     max-height: 2.8em;
+    white-space: normal !important;
+    line-height: 1.4;
+  }
+  :is(.fc-daygrid-event, .fc-daygrid-block-event, .fc-daygrid-dot-event) .fc-event-main {
+    white-space: normal !important;
+  }
+  :is(.fc-daygrid-event, .fc-daygrid-block-event, .fc-daygrid-dot-event) .fc-event-title,
+  .fc-event-title > span {
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal !important;
   }
   .fc-header-toolbar {
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     gap: 8px;
     padding: 4px 0;
   }
   .fc-header-toolbar .fc-toolbar-chunk {
+    display: flex;
     justify-content: center;
+    align-items: center;
+    width: 100%;
     margin-bottom: 2px;
   }
   .fc-header-toolbar .fc-toolbar-chunk:not(:last-child) {
@@ -140,11 +214,19 @@
     max-height: none;
     overflow: visible !important;
   }
-  .fc-scroller,
+  .fc .fc-view-harness,
+  .fc .fc-daygrid,
+  .fc .fc-daygrid-body,
+  .fc .fc-daygrid-body table,
+  .fc .fc-daygrid[role='grid'] {
+    height: 100% !important;
+    min-height: 0;
+  }
   .fc-daygrid-body,
   .fc-daygrid-body-natural {
     max-height: none !important;
     overflow: visible !important;
+    position: static !important;
   }
 
   .calendar-dialog-actions {
@@ -161,5 +243,15 @@
 
   .calendar-dialog-button {
     width: 100%;
+  }
+
+  .calendar-new-order-dialog-paper {
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0;
+  }
+
+  .calendar-new-order-flex-container {
+    max-width: 100%;
   }
 }

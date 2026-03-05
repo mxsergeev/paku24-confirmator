@@ -194,6 +194,10 @@ class Order {
     this.hsy = Boolean(this.service.hsy)
   }
 
+  get time() {
+    return dayjs(this.date).format('HH:mm')
+  }
+
   /**
    * Transform into a plain object suitable for sending to backend or external APIs.
    */
@@ -203,8 +207,7 @@ class Order {
     for (const key of Object.keys(Order.EMPTY_ORDER)) {
       if (key === 'date') {
         prepared.date = fromZonedTime(this.date).toISOString()
-      }
-      if (key === 'boxes') {
+      } else if (key === 'boxes') {
         prepared.boxes = {
           ...this.boxes,
           deliveryDate: fromZonedTime(new Date(this.boxes.deliveryDate)).toISOString(),
@@ -214,6 +217,9 @@ class Order {
         prepared[key] = this[key]
       }
     }
+
+    // Add computed time field for backend use
+    prepared.time = this.time
 
     return prepared
   }

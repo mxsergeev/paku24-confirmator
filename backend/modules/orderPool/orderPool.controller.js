@@ -5,9 +5,7 @@ import express from 'express'
 const orderPoolRouter = express.Router()
 
 import RawOrder from '../../models/rawOrder.js'
-import {
-  ORDER_POOL_KEY,
-} from '../../utils/config.js'
+import { ORDER_POOL_KEY } from '../../utils/config.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import * as authMW from '../authentication/auth.middleware.js'
 import Order from '../../models/order.js'
@@ -21,6 +19,13 @@ function checkKey(req, res, next) {
   }
   const OrderPoolKeyError = newErrorWithCustomName('OrderPoolKeyError')
   return next(OrderPoolKeyError)
+}
+
+function checkKeyOrAuth(req, res, next) {
+  if (req.body.key === ORDER_POOL_KEY) {
+    return next()
+  }
+  return authMW.authenticateAccessToken(req, res, next)
 }
 
 orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
@@ -38,19 +43,22 @@ orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
   }
 })
 
-orderPoolRouter.post('/v2/add', checkKey, async (req, res, next) => {
+orderPoolRouter.post('/v2/add', checkKeyOrAuth, async (req, res, next) => {
   try {
+    // req.body.order is a JSON string, parse it first
+    const orderData = typeof req.body.order === 'string' 
+      ? JSON.parse(req.body.order) 
+      : req.body.order
+
     const receivedOrder = new Order({
       receivedAt: new Date().toISOString(),
-      ...req.body.order,
+      ...orderData,
     })
 
     await receivedOrder.save()
 
     return res.status(200).send({ message: 'Order added to the pool.', id: receivedOrder._id })
   } catch (err) {
-    console.log('err', err)
-
     return next(err)
   }
 })
@@ -121,6 +129,8 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
 
     if (deleted === 'true') {
       match.deletedAt = { $exists: true }
+    } else {
+      match.deletedAt = { $exists: false }
     }
 
     const ordersInPool = await Order.find(match).skip(skip).limit(limit).sort({ _id: -1 })
@@ -134,19 +144,77 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
 orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    await RawOrder.findByIdAndUpdate({ _id: id }, { markedForDeletion: true })
-    return res.status(200).send({ message: 'Order marked for deletion' })
+    const order = await Order.findByIdAndUpdate(
+      { _id: id },
+      {
+        deletedAt: new Date().toISOString(),
+      },
+      { new: true }
+    )
+
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' })
+    }
+
+    return res.status(200).send({ message: 'Order marked for deletion', order })
   } catch (err) {
     return next(err)
   }
 })
 
-// RESTORE (not retrieve)
+// RESTORE - clears deletedAt to un-delete an Order
+orderPoolRouter.put('/v2/retrieve/:id', async (req, res, next) => {
+  const { id } = req.params
+  try {
+    const order = await Order.findByIdAndUpdate(
+      { _id: id },
+      { $unset: { deletedAt: '' } },
+      { new: true }
+    )
+
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' })
+    }
+
+    return res.status(200).send({ message: 'Order retrieved', order })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+// Legacy restore alias
 orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    await RawOrder.findByIdAndUpdate({ _id: id }, { markedForDeletion: false })
-    return res.status(200).send({ message: 'Order retrieved' })
+    const order = await Order.findByIdAndUpdate(
+      { _id: id },
+      { $unset: { deletedAt: '' } },
+      { new: true }
+    )
+
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' })
+    }
+
+    return res.status(200).send({ message: 'Order retrieved', order })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+orderPoolRouter.put('/v2/confirm/:id', async (req, res, next) => {
+  const { id } = req.params
+  try {
+    await Order.findByIdAndUpdate(
+      { _id: id },
+      {
+        confirmed: true,
+        confirmedBy: req.user.id,
+        confirmedAt: new Date().toISOString(),
+      }
+    )
+
+    return res.status(200).send({ message: 'Order confirmed' })
   } catch (err) {
     return next(err)
   }
@@ -155,7 +223,7 @@ orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
 orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    await RawOrder.findByIdAndUpdate(
+    await Order.findByIdAndUpdate(
       { _id: id },
       {
         confirmed: true,
@@ -178,9 +246,9 @@ orderPoolRouter.get('/confirmed-by-user/', async (req, res) => {
     ? req.query.periodTo
     : dayjs().add(1, 'month').startOf('month')
 
-  const confirmedOrders = await RawOrder.find({
+  const confirmedOrders = await Order.find({
     confirmed: true,
-    markedForDeletion: false,
+    deletedAt: { $exists: false },
     confirmedBy: req.user.id,
     confirmedAt: {
       $gte: periodFrom,

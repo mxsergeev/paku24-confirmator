@@ -581,46 +581,46 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.27.3.tgz#0eaf705c941a218a43dba8e09f1df1d6cd2f1f17"
   integrity sha512-4uJGhsxuptu3OcpVAzli+/gWusVGwZZHTlS63hh++ehExkVT8SgiEf7/uC/PclrPPkLhZqGgCTjd0VWLo6xMqA==
 
-"@fullcalendar/core@^6.1.20":
-  version "6.1.20"
-  resolved "https://registry.yarnpkg.com/@fullcalendar/core/-/core-6.1.20.tgz#e4cfa767a9b8b7dad015b33fcb8acb0fac986a85"
-  integrity sha512-1cukXLlePFiJ8YKXn/4tMKsy0etxYLCkXk8nUCFi11nRONF2Ba2CD5b21/ovtOO2tL6afTJfwmc1ed3HG7eB1g==
+"@fullcalendar/core@7.0.0-rc.0":
+  version "7.0.0-rc.0"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/core/-/core-7.0.0-rc.0.tgz#60b61326cbb3d7ac1e4bdd47d59669a84d8c5158"
+  integrity sha512-sYdQ+Pb7xMyVrWBVarynSEEssPjbdKBRhAgnIuDVK8QhetS/VY4d/PfkGH3341eYoJ2AyZirQ8hWE8s64cLmmg==
   dependencies:
-    preact "~10.12.1"
+    preact "~10.23.1"
 
-"@fullcalendar/daygrid@^6.1.20", "@fullcalendar/daygrid@~6.1.20":
-  version "6.1.20"
-  resolved "https://registry.yarnpkg.com/@fullcalendar/daygrid/-/daygrid-6.1.20.tgz#fcf33af4ea908b46fd755414278341811e01bdf8"
-  integrity sha512-AO9vqhkLP77EesmJzuU+IGXgxNulsA8mgQHynclJ8U70vSwAVnbcLG9qftiTAFSlZjiY/NvhE7sflve6cJelyQ==
+"@fullcalendar/daygrid@7.0.0-rc.0":
+  version "7.0.0-rc.0"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/daygrid/-/daygrid-7.0.0-rc.0.tgz#e166f540b16a527ea80d9933a6a33dac872a39f4"
+  integrity sha512-Nccd2AxCiMuE+G6eqzniehBGZy0LQqzf8KgfXSgfDrg6v4PDV13sqSo1db7rxVeyLVnb0KQX8pv2zcZ1Cwugag==
 
-"@fullcalendar/interaction@^6.1.20":
-  version "6.1.20"
-  resolved "https://registry.yarnpkg.com/@fullcalendar/interaction/-/interaction-6.1.20.tgz#a73a53af5f93ac261f864b025ae80201609f1cd7"
-  integrity sha512-p6txmc5txL0bMiPaJxe2ip6o0T384TyoD2KGdsU6UjZ5yoBlaY+dg7kxfnYKpYMzEJLG58n+URrHr2PgNL2fyA==
+"@fullcalendar/interaction@7.0.0-rc.0":
+  version "7.0.0-rc.0"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/interaction/-/interaction-7.0.0-rc.0.tgz#7ed0fe18be61ff9dca7cb0d163e41871dda0ed2f"
+  integrity sha512-LmzG0NGGqEgkcpqVh+IH7Axolsj9rdchQaI1EI7SWNMgYUiq3JTkAnR6wTIAg2+ngjklWIZOddf7E3+8eKIU4Q==
 
-"@fullcalendar/list@^6.1.20":
-  version "6.1.20"
-  resolved "https://registry.yarnpkg.com/@fullcalendar/list/-/list-6.1.20.tgz#d218906f0c50e1a7232a176df2426269f8601319"
-  integrity sha512-7Hzkbb7uuSqrXwTyD0Ld/7SwWNxPD6SlU548vtkIpH55rZ4qquwtwYdMPgorHos5OynHA4OUrZNcH51CjrCf2g==
+"@fullcalendar/list@7.0.0-rc.0":
+  version "7.0.0-rc.0"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/list/-/list-7.0.0-rc.0.tgz#8f5e79a8255943856fbc16e3c5b950ca7d544bef"
+  integrity sha512-UGWA3kLNktDlmbgc7Wf6PFCGUX26bADGp4OoZUAKHqltrtsvm2dPLtzbIDg5z3IgI3jsyVvljd21EoEEgfr8Yw==
 
-"@fullcalendar/multimonth@^6.1.20":
-  version "6.1.20"
-  resolved "https://registry.yarnpkg.com/@fullcalendar/multimonth/-/multimonth-6.1.20.tgz#1d6add6285222751324868de1cb02371f4ad2330"
-  integrity sha512-rMMiPBA71lUJ1DV/0ckPtN4/G4LozkkDKoG7/CbmTYqFJiMRskM/1WpilhtRn4iUdNe03V5K7ofFQRs0wo4ZtQ==
+"@fullcalendar/multimonth@7.0.0-rc.0":
+  version "7.0.0-rc.0"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/multimonth/-/multimonth-7.0.0-rc.0.tgz#d8349625e72f861c86d8f383e7afda74838ea030"
+  integrity sha512-fozBhzfF3/nrRLhHVcsvxUGK+dVMY6QJFzsSUJtZig0Xjaw0DCxpcSPDXhHDaJmX1Zaa+fDPZ3zsMvB5Ir3X0Q==
   dependencies:
-    "@fullcalendar/daygrid" "~6.1.20"
+    "@fullcalendar/daygrid" "7.0.0-rc.0"
 
-"@fullcalendar/react@^6.1.20":
-  version "6.1.20"
-  resolved "https://registry.yarnpkg.com/@fullcalendar/react/-/react-6.1.20.tgz#7f2a8ede416364ab3b426c8e7c6739ec0ec476d0"
-  integrity sha512-1w0pZtceaUdfAnxMSCGHCQalhi+mR1jOe76sXzyAXpcPz/Lf0zHSdcGK/U2XpZlnQgQtBZW+d+QBnnzVQKCxAA==
+"@fullcalendar/react@7.0.0-rc.0":
+  version "7.0.0-rc.0"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/react/-/react-7.0.0-rc.0.tgz#1e6c6876766c7fcd27d7842d1ed824313f5af2cf"
+  integrity sha512-vce0pHbRt0v2X8D3EmOhcIE/RJytBfrUz4U698CBX5ucnoMZNqqYG+gKL3/IrCO2fpWg3P4YfH1FgiSpTp/Mrw==
 
-"@fullcalendar/timegrid@^6.1.20":
-  version "6.1.20"
-  resolved "https://registry.yarnpkg.com/@fullcalendar/timegrid/-/timegrid-6.1.20.tgz#929813235375c2fa3b387691ef5b1dcbb7b86dde"
-  integrity sha512-4H+/MWbz3ntA50lrPif+7TsvMeX3R1GSYjiLULz0+zEJ7/Yfd9pupZmAwUs/PBpA6aAcFmeRr0laWfcz1a9V1A==
+"@fullcalendar/timegrid@7.0.0-rc.0":
+  version "7.0.0-rc.0"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/timegrid/-/timegrid-7.0.0-rc.0.tgz#517b8c3a6d911480ba1e37ffc70317640ff6f5bb"
+  integrity sha512-O7FKvs2bxY3FjWZqV6M2n3LiqO82+86gYMgGEAipNMIgApJEeiTEP0HfW6fgRjGmTyCnHFf+ZPuu0XFDpgBRhg==
   dependencies:
-    "@fullcalendar/daygrid" "~6.1.20"
+    "@fullcalendar/daygrid" "7.0.0-rc.0"
 
 "@google-cloud/local-auth@2.1.0":
   version "2.1.0"
@@ -4497,10 +4497,10 @@ postcss@^8.5.3, postcss@^8.5.6:
     picocolors "^1.1.1"
     source-map-js "^1.2.1"
 
-preact@~10.12.1:
-  version "10.12.1"
-  resolved "https://registry.yarnpkg.com/preact/-/preact-10.12.1.tgz#8f9cb5442f560e532729b7d23d42fd1161354a21"
-  integrity sha512-l8386ixSsBdbreOAkqtrwqHwdvR35ID8c3rKPa8lCWuO86dBi32QWHV4vfsZK1utLLFMvw+Z5Ad4XLkZzchscg==
+preact@~10.23.1:
+  version "10.23.2"
+  resolved "https://registry.yarnpkg.com/preact/-/preact-10.23.2.tgz#52deec92796ae0f0cc6b034d9c66e0fbc1b837dc"
+  integrity sha512-kKYfePf9rzKnxOAKDpsWhg/ysrHPqT+yQ7UW4JjdnqjFIeNUnNcEJvhuA8fDenxAGWzUqtd51DfVg7xp/8T9NA==
 
 prelude-ls@~1.1.2:
   version "1.1.2"
@@ -5429,6 +5429,18 @@ tar@^6.1.11:
     minizlib "^2.1.1"
     mkdirp "^1.0.3"
     yallist "^4.0.0"
+
+temporal-polyfill@^0.3.0:
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/temporal-polyfill/-/temporal-polyfill-0.3.0.tgz#7fe90e913ac5ec8e0d508fb50d04dd7a74cec23e"
+  integrity sha512-qNsTkX9K8hi+FHDfHmf22e/OGuXmfBm9RqNismxBrnSmZVJKegQ+HYYXT+R7Ha8F/YSm2Y34vmzD4cxMu2u95g==
+  dependencies:
+    temporal-spec "0.3.0"
+
+temporal-spec@0.3.0:
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/temporal-spec/-/temporal-spec-0.3.0.tgz#8c4210c575fb28ba0a1c2e02ad68d1be5956a11f"
+  integrity sha512-n+noVpIqz4hYgFSMOSiINNOUOMFtV5cZQNCmmszA6GiVFVRt3G7AqVyhXjhCSmowvQn+NsGn+jMDMKJYHd3bSQ==
 
 text-table@^0.2.0:
   version "0.2.0"

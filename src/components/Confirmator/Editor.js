@@ -233,11 +233,7 @@ export default function Editor({ order, handleChange }) {
         placeholder="Additional information."
         onChange={(e) => handleChange(e.target.name, e.target.value)}
       />
-      <FeeSelector
-        order={order}
-        onChange={(fees) => handleChange('manualFees', fees)}
-        path="/confirmator/fees"
-      />
+      <FeeSelector order={order} onChange={(fees) => handleChange('manualFees', fees)} />
     </div>
   )
 }
