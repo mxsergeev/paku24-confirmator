@@ -138,7 +138,7 @@ export default function OrderDialog({ open, onClose, orderId, iconsData, onOrder
 
     try {
       setDeleting(true)
-      const response = await orderPoolAPI.deleteOrder(realOrderId)
+      const response = await orderPoolAPI.remove(realOrderId)
       enqueueSnackbar(response.message || 'Order deleted.')
       setDeleteConfirmOpen(false)
       if (onOrderChanged) onOrderChanged()

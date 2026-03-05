@@ -207,8 +207,7 @@ class Order {
     for (const key of Object.keys(Order.EMPTY_ORDER)) {
       if (key === 'date') {
         prepared.date = fromZonedTime(this.date).toISOString()
-      }
-      if (key === 'boxes') {
+      } else if (key === 'boxes') {
         prepared.boxes = {
           ...this.boxes,
           deliveryDate: fromZonedTime(new Date(this.boxes.deliveryDate)).toISOString(),

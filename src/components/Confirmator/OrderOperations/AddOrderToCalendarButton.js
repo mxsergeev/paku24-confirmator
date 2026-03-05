@@ -28,7 +28,6 @@ export default function AddOrderToCalendarButton({
       if (!oId) {
         const { id } = await orderPoolAPI.add({
           order: JSON.stringify(order.prepareForSending()),
-          key: import.meta.env.VITE_ORDER_POOL_KEY,
         })
         oId = id
       }
