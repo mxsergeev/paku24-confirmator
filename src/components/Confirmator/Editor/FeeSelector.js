@@ -1,13 +1,11 @@
 import React, { useState } from 'react'
 import {
-  Box,
-  Typography,
   Button,
   Checkbox,
   FormControlLabel,
   FormGroup,
-  Chip,
   Dialog,
+  DialogTitle,
   DialogContent,
   DialogActions,
   useMediaQuery,
@@ -34,6 +32,7 @@ export default function FeeSelector({ order, onChange }) {
         onClose={handleClose}
         aria-labelledby="fee-dialog-title"
       >
+        <DialogTitle id="fee-dialog-title">Select Fees</DialogTitle>
         <DialogContent>
           <FormGroup>
             {Order.getAvailableFees(order).map((fee) => (
