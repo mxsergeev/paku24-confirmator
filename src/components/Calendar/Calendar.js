@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Route, useHistory, useLocation, useRouteMatch } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import OrderDialog from './OrderDialog'
 import NewOrderDialog from './NewOrderDialog'
 import dayjs from 'dayjs'
@@ -12,16 +13,27 @@ import interactionPlugin from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import listPlugin from '@fullcalendar/list'
 import multiMonthPlugin from '@fullcalendar/multimonth'
-import orderPoolAPI from '../../services/orderPoolAPI'
 import iconsData from '../../data/icons.json'
+import { useCalendarOrders } from '../../hooks/useCalendarOrders'
 import './Calendar.css'
 
 export default function Calendar() {
-  const [events, setEvents] = useState([])
+  const calendarRef = useRef(null)
+  const [dateRange, setDateRange] = useState(() => {
+    // Initialize with current month + tails
+    const now = dayjs()
+    const from = now.startOf('month').subtract(7, 'days')
+    const to = now.endOf('month').add(7, 'days')
+    return {
+      from: from.toISOString(),
+      to: to.toISOString(),
+    }
+  })
   const [newOrderOpen, setNewOrderOpen] = useState(false)
   const history = useHistory()
   const location = useLocation()
   const match = useRouteMatch()
+  const queryClient = useQueryClient()
   const isMobile = window.innerWidth <= 600
   const mobileCalendarProps = isMobile
     ? {
@@ -54,75 +66,82 @@ export default function Calendar() {
       : {}),
   }
 
-  const fetchOrders = useCallback(async () => {
-    try {
-      const orders = await orderPoolAPI.get([1], { deleted: false })
-      const calendarEvents = orders.flatMap((order) => {
-        const events = []
-        const serviceName = order.service?.name
-        const colorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
-        const color = colorId && calendarColors[colorId] ? calendarColors[colorId].hex : '#eee'
+  const { data: orders = [], isLoading } = useCalendarOrders(dateRange?.from, dateRange?.to, false)
 
-        if (order.date) {
-          const eventTime = dayjs(order.date).format('HH:mm')
-          events.push({
-            id: order.id,
-            title: `${getOrderIcons(order, iconsData)} ${
-              order.address ? `${eventTime}(${order.duration}h) ${order.name}` : ''
-            }`,
-            start: order.date,
-            extendedProps: {
-              color,
-              eventType: 'order',
-              orderId: order.id,
-            },
-          })
-        }
+  // Update dateRange when calendar view or dates change
+  useEffect(() => {
+    const api = calendarRef.current?.getApi?.()
+    if (!api) return
 
-        if (order.boxes?.deliveryDate && Number(order.boxes?.amount) > 0) {
-          const boxColorId = colorsData.boxes || '1'
-          const boxColor = calendarColors[boxColorId] ? calendarColors[boxColorId].hex : '#7986cb'
-          const deliveryTime = dayjs(order.boxes.deliveryDate).format('HH:mm')
-          events.push({
-            id: `${order.id}-box-delivery`,
-            title: getBoxEventTitle(order, 'boxDelivery', deliveryTime, iconsData),
-            start: order.boxes.deliveryDate,
-            extendedProps: {
-              color: boxColor,
-              eventType: 'boxDelivery',
-              orderId: order.id,
-            },
-          })
-        }
+    const view = api.view
+    if (!view) return
 
-        if (order.boxes?.returnDate && Number(order.boxes?.amount) > 0) {
-          const boxColorId = colorsData.boxes || '1'
-          const boxColor = calendarColors[boxColorId] ? calendarColors[boxColorId].hex : '#7986cb'
-          const returnTime = dayjs(order.boxes.returnDate).format('HH:mm')
-          events.push({
-            id: `${order.id}-box-return`,
-            title: getBoxEventTitle(order, 'boxReturn', returnTime, iconsData),
-            start: order.boxes.returnDate,
-            extendedProps: {
-              color: boxColor,
-              eventType: 'boxReturn',
-              orderId: order.id,
-            },
-          })
-        }
-
-        return events
-      })
-
-      setEvents(calendarEvents)
-    } catch {
-      setEvents([])
-    }
+    setDateRange({
+      from: view.activeStart.toISOString(),
+      to: view.activeEnd.toISOString(),
+    })
   }, [])
 
-  useEffect(() => {
-    fetchOrders()
-  }, [fetchOrders])
+  const events = useMemo(() => {
+    if (!orders?.length) return []
+
+    return orders.flatMap((order) => {
+      const events = []
+      const serviceName = order.service?.name
+      const colorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
+      const color = colorId && calendarColors[colorId] ? calendarColors[colorId].hex : '#eee'
+
+      if (order.date) {
+        const eventTime = dayjs(order.date).format('HH:mm')
+        events.push({
+          id: order.id,
+          title: `${getOrderIcons(order, iconsData)} ${
+            order.address ? `${eventTime}(${order.duration}h) ${order.name}` : ''
+          }`,
+          start: order.date,
+          extendedProps: {
+            color,
+            eventType: 'order',
+            orderId: order.id,
+          },
+        })
+      }
+
+      if (order.boxes?.deliveryDate && Number(order.boxes?.amount) > 0) {
+        const boxColorId = colorsData.boxes || '1'
+        const boxColor = calendarColors[boxColorId] ? calendarColors[boxColorId].hex : '#7986cb'
+        const deliveryTime = dayjs(order.boxes.deliveryDate).format('HH:mm')
+        events.push({
+          id: `${order.id}-box-delivery`,
+          title: getBoxEventTitle(order, 'boxDelivery', deliveryTime, iconsData),
+          start: order.boxes.deliveryDate,
+          extendedProps: {
+            color: boxColor,
+            eventType: 'boxDelivery',
+            orderId: order.id,
+          },
+        })
+      }
+
+      if (order.boxes?.returnDate && Number(order.boxes?.amount) > 0) {
+        const boxColorId = colorsData.boxes || '1'
+        const boxColor = calendarColors[boxColorId] ? calendarColors[boxColorId].hex : '#7986cb'
+        const returnTime = dayjs(order.boxes.returnDate).format('HH:mm')
+        events.push({
+          id: `${order.id}-box-return`,
+          title: getBoxEventTitle(order, 'boxReturn', returnTime, iconsData),
+          start: order.boxes.returnDate,
+          extendedProps: {
+            color: boxColor,
+            eventType: 'boxReturn',
+            orderId: order.id,
+          },
+        })
+      }
+
+      return events
+    })
+  }, [orders])
 
   function renderEventContent(eventInfo) {
     const bgColor = eventInfo.event.extendedProps.color
@@ -154,14 +173,15 @@ export default function Calendar() {
     setNewOrderOpen(false)
   }
 
-  async function handleNewOrderCreated() {
+  function handleNewOrderCreated() {
     setNewOrderOpen(false)
-    await fetchOrders()
+    queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
   }
 
   return (
     <div className="calendar">
       <FullCalendar
+        ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, multiMonthPlugin, interactionPlugin]}
         initialView="dayGridMonth"
         views={views}
@@ -180,6 +200,15 @@ export default function Calendar() {
         eventContent={renderEventContent}
         firstDay={1}
         eventClick={handleEventClick}
+        datesSet={() => {
+          const api = calendarRef.current?.getApi?.()
+          if (api?.view) {
+            setDateRange({
+              from: api.view.activeStart.toISOString(),
+              to: api.view.activeEnd.toISOString(),
+            })
+          }
+        }}
         {...mobileCalendarProps}
       />
       <Route path={`${match.path}/order/:orderId`}>
@@ -189,7 +218,6 @@ export default function Calendar() {
             onClose={closeModal}
             orderId={orderMatch?.params?.orderId || null}
             iconsData={iconsData}
-            onOrderChanged={fetchOrders}
           />
         )}
       </Route>
