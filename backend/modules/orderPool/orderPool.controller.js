@@ -122,20 +122,20 @@ orderPoolRouter.get('/', async (req, res, next) => {
 
 orderPoolRouter.get('/v2/', async (req, res, next) => {
   try {
-    const { deleted } = req.query
-    const { skip, limit } = howMuchToGet(req.query.pages)
+    const { from, to, deleted } = req.query
 
-    const match = {}
-
-    if (deleted === 'true') {
-      match.deletedAt = { $exists: true }
-    } else {
-      match.deletedAt = { $exists: false }
+    const match = {
+      $or: [
+        { date: { $gte: from, $lte: to } },
+        { 'boxes.deliveryDate': { $gte: from, $lte: to } },
+        { 'boxes.returnDate': { $gte: from, $lte: to } },
+      ],
+      deletedAt: { $exists: deleted === 'true' },
     }
 
-    const ordersInPool = await Order.find(match).skip(skip).limit(limit).sort({ _id: -1 })
+    const ordersInPool = await Order.find(match).sort({ _id: -1 })
 
-    return res.status(200).send({ orders: ordersInPool, limitPerPage: 20 })
+    return res.status(200).send({ orders: ordersInPool })
   } catch (err) {
     return next(err)
   }
