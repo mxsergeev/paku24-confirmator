@@ -43,6 +43,16 @@ async function getOrderById(id) {
   return interceptor.axiosInstance.get(`${baseUrl_v2}/${id}`).then((res) => res?.data)
 }
 
+async function getByRange(from, to, deleted = false) {
+  const query = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&deleted=${deleted}`
+  const url = `${baseUrl_v2}/?${query}`
+
+  return interceptor.axiosInstance.get(url).then((res) => {
+    const { orders } = res?.data
+    return orders
+  })
+}
+
 function confirm(id) {
   return interceptor.axiosInstance.put(`${baseUrl_v2}/confirm/${id}`).then((res) => res?.data)
   // .catch((err) => console.log(err))
@@ -81,6 +91,7 @@ function update(id, updateData) {
 const orderPoolAPI = {
   get,
   getOrderById,
+  getByRange,
   confirm,
   remove,
   retrieve,
