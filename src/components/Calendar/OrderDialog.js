@@ -13,6 +13,7 @@ import TextsmsIcon from '@material-ui/icons/Textsms'
 import EditIcon from '@material-ui/icons/Edit'
 import DeleteIcon from '@material-ui/icons/Delete'
 import { enqueueSnackbar } from 'notistack'
+import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import './Calendar.css'
 import { getOrderIcons, parseBoxEventId, getBoxEventTitle } from './helpers'
@@ -23,7 +24,8 @@ import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
 import OrderDialogDetails from './OrderDialogDetails'
 
-export default function OrderDialog({ open, onClose, orderId, iconsData, onOrderChanged }) {
+export default function OrderDialog({ open, onClose, orderId, iconsData }) {
+  const queryClient = useQueryClient()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -115,14 +117,14 @@ export default function OrderDialog({ open, onClose, orderId, iconsData, onOrder
       enqueueSnackbar(response.message || 'Changes saved.')
       setEditOpen(false)
       setEditableOrder(null)
-      if (onOrderChanged) onOrderChanged()
+      queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
     } catch (err) {
       if (err.message === 'logout') return
       enqueueSnackbar(err.response?.data?.error || 'Save failed.', { variant: 'error' })
     } finally {
       setSavingEdit(false)
     }
-  }, [orderId, editableOrder])
+  }, [orderId, editableOrder, queryClient])
 
   const handleDeleteClick = useCallback(() => {
     setDeleteConfirmOpen(true)
@@ -141,7 +143,7 @@ export default function OrderDialog({ open, onClose, orderId, iconsData, onOrder
       const response = await orderPoolAPI.remove(realOrderId)
       enqueueSnackbar(response.message || 'Order deleted.')
       setDeleteConfirmOpen(false)
-      if (onOrderChanged) onOrderChanged()
+      queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
       onClose()
     } catch (err) {
       if (err.message === 'logout') return
@@ -149,7 +151,7 @@ export default function OrderDialog({ open, onClose, orderId, iconsData, onOrder
     } finally {
       setDeleting(false)
     }
-  }, [orderId, onClose])
+  }, [orderId, onClose, queryClient])
 
   useEffect(() => {
     if (!open || !orderId) return
@@ -344,11 +346,7 @@ export default function OrderDialog({ open, onClose, orderId, iconsData, onOrder
           </p>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={handleDeleteConfirmClose}
-            color="default"
-            disabled={deleting}
-          >
+          <Button onClick={handleDeleteConfirmClose} color="default" disabled={deleting}>
             Cancel
           </Button>
           <Button
