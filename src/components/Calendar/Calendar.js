@@ -208,10 +208,11 @@ export default function Calendar() {
       <Route path={`${match.path}/order/:orderId`}>
         {({ match: orderMatch }) => (
           <OrderDialog
+            // TODO: optimize by controlling open state inside OrderDialog instead of relying on route match
             open={Boolean(orderMatch)}
             onClose={closeModal}
+            // TODO: optimize by passing order data directly instead of refetching in dialog
             orderId={orderMatch?.params?.orderId || null}
-            iconsData={iconsData}
           />
         )}
       </Route>
