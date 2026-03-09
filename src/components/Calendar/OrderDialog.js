@@ -25,7 +25,7 @@ import Editor from '../Confirmator/Editor'
 import OrderDialogDetails from './OrderDialogDetails'
 import iconsData from '../../data/icons.json'
 
-export default function OrderDialog({ open, onClose, orderId }) {
+export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
   const queryClient = useQueryClient()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -38,6 +38,7 @@ export default function OrderDialog({ open, onClose, orderId }) {
   const [savingEdit, setSavingEdit] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const isOpen = Boolean(orderId)
 
   const handleSendEmail = useCallback(async () => {
     if (!order?.email) {
@@ -155,14 +156,25 @@ export default function OrderDialog({ open, onClose, orderId }) {
   }, [orderId, onClose, queryClient])
 
   useEffect(() => {
-    if (!open || !orderId) return
+    if (!isOpen || !orderId) return
     setLoading(true)
     setError(null)
-    setOrder(null)
     let isMounted = true
 
     const { orderId: realOrderId, eventType: parsedEventType } = parseBoxEventId(orderId)
     setEventType(parsedEventType)
+
+    const initialOrderId = initialOrder?.id || initialOrder?._id
+    const hasMatchingInitialOrder =
+      initialOrder && String(initialOrderId) === String(realOrderId)
+
+    if (hasMatchingInitialOrder) {
+      setOrder(initialOrder)
+      setLoading(false)
+      return
+    }
+
+    setOrder(null)
 
     const fetchOrder = async () => {
       try {
@@ -182,12 +194,12 @@ export default function OrderDialog({ open, onClose, orderId }) {
     return () => {
       isMounted = false
     }
-  }, [open, orderId])
+  }, [isOpen, orderId, initialOrder])
 
   return (
     <>
       <Dialog
-        open={open}
+        open={isOpen}
         onClose={onClose}
         fullWidth={window.innerWidth > 600}
         maxWidth={window.innerWidth > 600 ? 'sm' : false}

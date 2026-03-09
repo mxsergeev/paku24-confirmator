@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
-import { Route, useHistory, useLocation, useRouteMatch } from 'react-router-dom'
+import { useHistory, useLocation, useRouteMatch } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import OrderDialog from './OrderDialog'
 import NewOrderDialog from './NewOrderDialog'
 import dayjs from 'dayjs'
-import { getOrderIcons, getBoxEventTitle } from './helpers'
+import { getOrderIcons, getBoxEventTitle, parseBoxEventId } from './helpers'
 import colorsData from './calendar.data.colors.json'
 import calendarColors from '../../data/colors.json'
 import FullCalendar from '@fullcalendar/react'
@@ -27,6 +27,7 @@ export default function Calendar() {
   const history = useHistory()
   const location = useLocation()
   const match = useRouteMatch()
+  const orderRouteMatch = useRouteMatch(`${match.path}/order/:orderId`)
   const queryClient = useQueryClient()
   const isMobile = window.innerWidth <= 600
   const mobileCalendarProps = isMobile
@@ -75,6 +76,12 @@ export default function Calendar() {
   }, [])
 
   const { data: orders = [], isLoading } = useCalendarOrders(dateRange?.from, dateRange?.to, false)
+  const selectedOrderId = orderRouteMatch?.params?.orderId || null
+  const selectedOrder = useMemo(() => {
+    if (!selectedOrderId || !orders.length) return null
+    const { orderId: realOrderId } = parseBoxEventId(selectedOrderId)
+    return orders.find((order) => String(order.id || order._id) === String(realOrderId)) || null
+  }, [selectedOrderId, orders])
 
   const events = useMemo(() => {
     if (!orders?.length) return []
@@ -205,17 +212,7 @@ export default function Calendar() {
         }}
         {...mobileCalendarProps}
       />
-      <Route path={`${match.path}/order/:orderId`}>
-        {({ match: orderMatch }) => (
-          <OrderDialog
-            // TODO: optimize by controlling open state inside OrderDialog instead of relying on route match
-            open={Boolean(orderMatch)}
-            onClose={closeModal}
-            // TODO: optimize by passing order data directly instead of refetching in dialog
-            orderId={orderMatch?.params?.orderId || null}
-          />
-        )}
-      </Route>
+      <OrderDialog onClose={closeModal} orderId={selectedOrderId} initialOrder={selectedOrder} />
       <NewOrderDialog
         open={newOrderOpen}
         onClose={handleNewOrderClose}
