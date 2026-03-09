@@ -45,10 +45,8 @@ orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
 
 orderPoolRouter.post('/v2/add', checkKeyOrAuth, async (req, res, next) => {
   try {
-    // req.body.order is a JSON string, parse it first
-    const orderData = typeof req.body.order === 'string' 
-      ? JSON.parse(req.body.order) 
-      : req.body.order
+    const orderData =
+      typeof req.body.order === 'string' ? JSON.parse(req.body.order) : req.body.order
 
     const receivedOrder = new Order({
       receivedAt: new Date().toISOString(),
