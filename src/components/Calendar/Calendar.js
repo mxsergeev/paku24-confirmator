@@ -19,15 +19,9 @@ import './Calendar.css'
 
 export default function Calendar() {
   const calendarRef = useRef(null)
-  const [dateRange, setDateRange] = useState(() => {
-    // Initialize with current month + tails
-    const now = dayjs()
-    const from = now.startOf('month').subtract(7, 'days')
-    const to = now.endOf('month').add(7, 'days')
-    return {
-      from: from.toISOString(),
-      to: to.toISOString(),
-    }
+  const [dateRange, setDateRange] = useState({
+    from: null,
+    to: null,
   })
   const [newOrderOpen, setNewOrderOpen] = useState(false)
   const history = useHistory()
@@ -66,9 +60,7 @@ export default function Calendar() {
       : {}),
   }
 
-  const { data: orders = [], isLoading } = useCalendarOrders(dateRange?.from, dateRange?.to, false)
-
-  // Update dateRange when calendar view or dates change
+  // Set initial date range after calendar API is available
   useEffect(() => {
     const api = calendarRef.current?.getApi?.()
     if (!api) return
@@ -81,6 +73,8 @@ export default function Calendar() {
       to: view.activeEnd.toISOString(),
     })
   }, [])
+
+  const { data: orders = [], isLoading } = useCalendarOrders(dateRange?.from, dateRange?.to, false)
 
   const events = useMemo(() => {
     if (!orders?.length) return []
