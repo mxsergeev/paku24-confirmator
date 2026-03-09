@@ -166,8 +166,8 @@ export default function OrderDialog({ open, onClose, orderId }) {
 
     const fetchOrder = async () => {
       try {
-        const data = await orderPoolAPI.getOrderById(realOrderId)
         if (!isMounted) return
+        const data = await orderPoolAPI.getOrderById(realOrderId)
         setOrder(data.order || data)
         setLoading(false)
       } catch (err) {
