@@ -6,6 +6,5 @@ export function useCalendarOrders(from, to, deleted = false) {
     queryKey: ['calendar-orders', from, to, deleted],
     queryFn: () => orderPoolAPI.getByRange(from, to, deleted),
     enabled: !!from && !!to,
-    staleTime: 1000 * 60 * 5, // 5 minutes
   })
 }
