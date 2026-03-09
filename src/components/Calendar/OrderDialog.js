@@ -23,8 +23,9 @@ import sendSMS from '../../services/smsAPI'
 import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
 import OrderDialogDetails from './OrderDialogDetails'
+import iconsData from '../../data/icons.json'
 
-export default function OrderDialog({ open, onClose, orderId, iconsData }) {
+export default function OrderDialog({ open, onClose, orderId }) {
   const queryClient = useQueryClient()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(false)
