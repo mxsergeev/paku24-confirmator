@@ -20,7 +20,7 @@ export function getOrderIcons(order, iconsData) {
 }
 
 /**
- * Parse box event ID to extract real order ID and event type
+ * Parse calendar event ID and return order ID and event type
  * @param {string} eventId - Event ID (e.g., "12345-box-delivery" or "12345")
  * @returns {{ orderId: string, eventType: string | null }} - Real order ID and event type
  */
