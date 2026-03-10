@@ -43,7 +43,7 @@ async function getOrderById(id) {
   return interceptor.axiosInstance.get(`${baseUrl_v2}/${id}`).then((res) => res?.data)
 }
 
-async function getByRange(from, to, deleted = false) {
+async function getByRange({ from, to, deleted = false } = {}) {
   const query = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&deleted=${deleted}`
   const url = `${baseUrl_v2}/?${query}`
 

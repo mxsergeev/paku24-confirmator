@@ -75,11 +75,11 @@ export default function Calendar() {
     })
   }, [])
 
-  const { data: orders = [], isLoading, isStale, refetch } = useCalendarOrders(
-    dateRange?.from,
-    dateRange?.to,
-    false
-  )
+  const { data: orders = [], isLoading, isStale, refetch } = useCalendarOrders({
+    from: dateRange?.from,
+    to: dateRange?.to,
+    deleted: false,
+  })
   const selectedOrderId = orderRouteMatch?.params?.orderId || null
   const selectedOrder = useMemo(() => {
     if (!selectedOrderId || !orders.length) return null
