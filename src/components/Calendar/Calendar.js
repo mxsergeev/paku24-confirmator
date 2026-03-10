@@ -75,7 +75,11 @@ export default function Calendar() {
     })
   }, [])
 
-  const { data: orders = [], isLoading } = useCalendarOrders(dateRange?.from, dateRange?.to, false)
+  const { data: orders = [], isLoading, isStale, refetch } = useCalendarOrders(
+    dateRange?.from,
+    dateRange?.to,
+    false
+  )
   const selectedOrderId = orderRouteMatch?.params?.orderId || null
   const selectedOrder = useMemo(() => {
     if (!selectedOrderId || !orders.length) return null
@@ -191,11 +195,19 @@ export default function Calendar() {
             text: 'New order',
             click: handleNewOrderOpen,
           },
+          refreshOrdersButton: {
+            text: '⟳',
+            click: () => {
+              if (isStale) {
+                refetch()
+              }
+            },
+          },
         }}
         headerToolbar={{
           left: 'prev,next today createOrderButton',
           center: 'title',
-          right: 'dayGridMonth,timeGridWeek,listWeek,multiMonthYear',
+          right: 'refreshOrdersButton dayGridMonth,timeGridWeek,listWeek,multiMonthYear',
         }}
         events={events}
         eventContent={renderEventContent}
