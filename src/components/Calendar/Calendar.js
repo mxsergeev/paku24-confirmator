@@ -197,11 +197,7 @@ export default function Calendar() {
           },
           refreshOrdersButton: {
             text: '⟳',
-            click: () => {
-              if (isStale) {
-                refetch()
-              }
-            },
+            click: refetch,
           },
         }}
         headerToolbar={{

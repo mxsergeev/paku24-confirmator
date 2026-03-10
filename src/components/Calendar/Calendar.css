@@ -44,6 +44,7 @@
   min-width: 44px;
   padding: 0 0 4px 0;
   margin: 0;
+  transition: transform 0.08s ease, opacity 0.12s ease;
 }
 
 .fc-refreshOrdersButton-button:hover,
@@ -51,6 +52,20 @@
 .fc-refreshOrdersButton-button:active {
   background-color: #fff !important;
   color: #2c3e50 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.fc-refreshOrdersButton-button:active {
+  transform: scale(0.9);
+  opacity: 0.7;
+}
+
+.fc-refreshOrdersButton-button.fc-button-active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .calendar-fee-list {
