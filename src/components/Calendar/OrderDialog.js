@@ -210,7 +210,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent className="calendar-dialog-details-content">
           <OrderDialogDetails order={order} eventType={eventType} />
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
