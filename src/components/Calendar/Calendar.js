@@ -75,7 +75,7 @@ export default function Calendar() {
     })
   }, [])
 
-  const { data: orders = [], isLoading, isStale, refetch } = useCalendarOrders({
+  const { data: orders = [], refetch } = useCalendarOrders({
     from: dateRange?.from,
     to: dateRange?.to,
     deleted: false,
@@ -84,7 +84,7 @@ export default function Calendar() {
   const selectedOrder = useMemo(() => {
     if (!selectedOrderId || !orders.length) return null
     const { orderId: realOrderId } = parseBoxEventId(selectedOrderId)
-    return orders.find((order) => String(order.id || order._id) === String(realOrderId)) || null
+    return orders.find((order) => String(order.id) === String(realOrderId)) || null
   }, [selectedOrderId, orders])
 
   const events = useMemo(() => {
@@ -220,7 +220,9 @@ export default function Calendar() {
         }}
         {...mobileCalendarProps}
       />
-      <OrderDialog onClose={closeModal} orderId={selectedOrderId} initialOrder={selectedOrder} />
+      {selectedOrderId && (
+        <OrderDialog onClose={closeModal} eventId={selectedOrderId} order={selectedOrder} />
+      )}
       <NewOrderDialog
         open={newOrderOpen}
         onClose={handleNewOrderClose}

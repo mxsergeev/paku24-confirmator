@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -25,12 +25,9 @@ import Editor from '../Confirmator/Editor'
 import OrderDialogDetails from './OrderDialogDetails'
 import iconsData from '../../data/icons.json'
 
-export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
+export default function OrderDialog({ onClose, eventId, order: incomingOrder = null }) {
   const queryClient = useQueryClient()
   const [order, setOrder] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [eventType, setEventType] = useState(null)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [sendingSMS, setSendingSMS] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -38,7 +35,12 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
   const [savingEdit, setSavingEdit] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const isOpen = Boolean(orderId)
+  const { orderId, eventType } = useMemo(() => parseBoxEventId(eventId), [eventId])
+  const isDesktop = window.innerWidth > 600
+
+  if (!eventId) {
+    return null
+  }
 
   const handleSendEmail = useCallback(async () => {
     if (!order?.email) {
@@ -88,10 +90,10 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
   }, [order])
 
   const handleEdit = useCallback(() => {
-    if (!orderId || !order) return
+    if (!order) return
     setEditableOrder(new Order(order))
     setEditOpen(true)
-  }, [orderId, order])
+  }, [order])
 
   const handleEditClose = useCallback(() => {
     setEditOpen(false)
@@ -109,12 +111,11 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
 
   const handleSaveChanges = useCallback(async () => {
     if (!orderId || !editableOrder) return
-    const { orderId: realOrderId } = parseBoxEventId(orderId)
 
     try {
       setSavingEdit(true)
       const updateData = new Order(editableOrder).prepareForSending()
-      const response = await orderPoolAPI.update(realOrderId, updateData)
+      const response = await orderPoolAPI.update(orderId, updateData)
       setOrder(response.order || response)
       enqueueSnackbar(response.message || 'Changes saved.')
       setEditOpen(false)
@@ -126,7 +127,7 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
     } finally {
       setSavingEdit(false)
     }
-  }, [orderId, editableOrder, queryClient])
+  }, [editableOrder, orderId, queryClient])
 
   const handleDeleteClick = useCallback(() => {
     setDeleteConfirmOpen(true)
@@ -138,11 +139,10 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!orderId) return
-    const { orderId: realOrderId } = parseBoxEventId(orderId)
 
     try {
       setDeleting(true)
-      const response = await orderPoolAPI.remove(realOrderId)
+      const response = await orderPoolAPI.remove(orderId)
       enqueueSnackbar(response.message || 'Order deleted.')
       setDeleteConfirmOpen(false)
       queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
@@ -153,58 +153,41 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
     } finally {
       setDeleting(false)
     }
-  }, [orderId, onClose, queryClient])
+  }, [onClose, orderId, queryClient])
 
   useEffect(() => {
-    if (!isOpen || !orderId) return
-    setLoading(true)
-    setError(null)
-    let isMounted = true
+    setOrder(incomingOrder || null)
+  }, [incomingOrder])
 
-    const { orderId: realOrderId, eventType: parsedEventType } = parseBoxEventId(orderId)
-    setEventType(parsedEventType)
-
-    const initialOrderId = initialOrder?.id || initialOrder?._id
-    const hasMatchingInitialOrder =
-      initialOrder && String(initialOrderId) === String(realOrderId)
-
-    if (hasMatchingInitialOrder) {
-      setOrder(initialOrder)
-      setLoading(false)
-      return
-    }
-
-    setOrder(null)
-
-    const fetchOrder = async () => {
-      try {
-        if (!isMounted) return
-        const data = await orderPoolAPI.getOrderById(realOrderId)
-        setOrder(data.order || data)
-        setLoading(false)
-      } catch (err) {
-        if (!isMounted) return
-        setError(err.message || 'Error')
-        setLoading(false)
-      }
-    }
-
-    fetchOrder()
-
-    return () => {
-      isMounted = false
-    }
-  }, [isOpen, orderId, initialOrder])
+  const title = order
+    ? eventType === 'boxDelivery'
+      ? getBoxEventTitle(
+          order,
+          'boxDelivery',
+          order.boxes?.deliveryDate ? dayjs(order.boxes.deliveryDate).format('HH:mm') : '',
+          iconsData
+        )
+      : eventType === 'boxReturn'
+      ? getBoxEventTitle(
+          order,
+          'boxReturn',
+          order.boxes?.returnDate ? dayjs(order.boxes.returnDate).format('HH:mm') : '',
+          iconsData
+        )
+      : `${getOrderIcons(order, iconsData)} ${
+          order.date ? dayjs(order.date).format('HH:mm') : ''
+        }(${order.duration}h) ${order.name}`
+    : 'Order not found in current range'
 
   return (
     <>
       <Dialog
-        open={isOpen}
+        open
         onClose={onClose}
-        fullWidth={window.innerWidth > 600}
-        maxWidth={window.innerWidth > 600 ? 'sm' : false}
+        fullWidth={isDesktop}
+        maxWidth={isDesktop ? 'sm' : false}
         PaperProps={
-          window.innerWidth > 600
+          isDesktop
             ? { style: { borderRadius: 16 } }
             : {
                 style: {
@@ -218,37 +201,7 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
         }
       >
         <DialogTitle style={{ position: 'relative', paddingRight: 48 }}>
-          <h3 className="calendar-dialog-title">
-            {order ? (
-              eventType === 'boxDelivery' ? (
-                getBoxEventTitle(
-                  order,
-                  'boxDelivery',
-                  order.boxes?.deliveryDate ? dayjs(order.boxes.deliveryDate).format('HH:mm') : '',
-                  iconsData
-                )
-              ) : eventType === 'boxReturn' ? (
-                getBoxEventTitle(
-                  order,
-                  'boxReturn',
-                  order.boxes?.returnDate ? dayjs(order.boxes.returnDate).format('HH:mm') : '',
-                  iconsData
-                )
-              ) : (
-                <>
-                  {getOrderIcons(order, iconsData)}{' '}
-                  {order.date ? dayjs(order.date).format('HH:mm') : ''}({order.duration}h){' '}
-                  {order.name}
-                </>
-              )
-            ) : loading ? (
-              'Loading...'
-            ) : error ? (
-              'Error'
-            ) : (
-              ''
-            )}
-          </h3>
+          <h3 className="calendar-dialog-title">{title}</h3>
           <IconButton
             aria-label="close"
             onClick={onClose}
@@ -258,7 +211,7 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          <OrderDialogDetails loading={loading} error={error} order={order} eventType={eventType} />
+          <OrderDialogDetails order={order} eventType={eventType} />
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
           <div className="calendar-dialog-actions-group">
@@ -267,7 +220,7 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
               color="primary"
               startIcon={<EmailIcon />}
               onClick={handleSendEmail}
-              disabled={!order || !order.email || loading || sendingEmail}
+              disabled={!order || !order.email || sendingEmail}
               className="calendar-dialog-button"
             >
               Email
@@ -277,7 +230,7 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
               color="primary"
               startIcon={<TextsmsIcon />}
               onClick={handleSendSMS}
-              disabled={!order || !order.phone || loading || sendingSMS}
+              disabled={!order || !order.phone || sendingSMS}
               className="calendar-dialog-button"
             >
               SMS
@@ -288,7 +241,7 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
             color="default"
             startIcon={<EditIcon />}
             onClick={handleEdit}
-            disabled={!order || loading}
+            disabled={!order}
             className="calendar-dialog-button"
           >
             Edit
@@ -298,7 +251,7 @@ export default function OrderDialog({ onClose, orderId, initialOrder = null }) {
             color="secondary"
             startIcon={<DeleteIcon />}
             onClick={handleDeleteClick}
-            disabled={!order || loading}
+            disabled={!order}
             className="calendar-dialog-button"
           >
             Delete
