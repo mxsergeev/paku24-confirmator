@@ -27,6 +27,7 @@ async function updateOrder(id, updateData) {
     'comment',
     'price',
     'boxes',
+    'invoiceNumber',
   ]
 
   const order = await Order.findById(id)
@@ -44,7 +45,4 @@ async function updateOrder(id, updateData) {
   return order
 }
 
-export {
-  getOrderById,
-  updateOrder,
-}
+export { getOrderById, updateOrder }
