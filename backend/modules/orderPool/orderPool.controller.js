@@ -11,6 +11,7 @@ import * as authMW from '../authentication/auth.middleware.js'
 import Order from '../../models/order.js'
 import dayjs from '../../../src/shared/dayjs.js'
 import { updateOrder, getOrderById } from './orderPool.service.js'
+import { buildStableInvoiceNumber } from '../../utils/invoiceNumber.js'
 
 function checkKey(req, res, next) {
   // if (req.body.key === ORDER_POOL_KEY && req.hostname === ACCEPTED_HOSTNAME) {
@@ -51,6 +52,7 @@ orderPoolRouter.post('/v2/add', checkKeyOrAuth, async (req, res, next) => {
     const receivedOrder = new Order({
       receivedAt: new Date().toISOString(),
       ...orderData,
+      invoiceNumber: buildStableInvoiceNumber(orderData, orderData.invoiceNumber),
     })
 
     await receivedOrder.save()
