@@ -273,8 +273,8 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
               SMS
             </Button>
             <Button
-              variant="outlined"
-              color="default"
+              variant="contained"
+              style={{ backgroundColor: '#e08141', color: 'white' }}
               onClick={handleReceiptOpen}
               disabled={!order}
               className="calendar-dialog-button"
