@@ -12,6 +12,7 @@ import EmailIcon from '@material-ui/icons/Email'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 import EditIcon from '@material-ui/icons/Edit'
 import DeleteIcon from '@material-ui/icons/Delete'
+import { useHistory } from 'react-router-dom'
 import { enqueueSnackbar } from 'notistack'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -23,9 +24,11 @@ import sendSMS from '../../services/smsAPI'
 import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
 import OrderDialogDetails from './OrderDialogDetails'
+import ReceiptEditDialog, { buildReceiptDraftFromOrder } from './ReceiptEditDialog'
 import iconsData from '../../data/icons.json'
 
 export default function OrderDialog({ onClose, eventId, order: incomingOrder = null }) {
+  const history = useHistory()
   const queryClient = useQueryClient()
   const [order, setOrder] = useState(null)
   const [sendingEmail, setSendingEmail] = useState(false)
@@ -35,6 +38,8 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
   const [savingEdit, setSavingEdit] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [receiptOpen, setReceiptOpen] = useState(false)
+  const [receiptDraft, setReceiptDraft] = useState(null)
   const { orderId, eventType } = useMemo(() => parseBoxEventId(eventId), [eventId])
   const isDesktop = window.innerWidth > 600
 
@@ -155,6 +160,38 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
     }
   }, [onClose, orderId, queryClient])
 
+  const handleReceiptOpen = useCallback(() => {
+    if (!order) return
+    setReceiptDraft(buildReceiptDraftFromOrder(order))
+    setReceiptOpen(true)
+  }, [order])
+
+  const handleReceiptClose = useCallback(() => {
+    setReceiptOpen(false)
+  }, [])
+
+  const handleReceiptPageOpen = useCallback(
+    (draft) => {
+      if (!orderId) {
+        enqueueSnackbar('Order id is missing.', { variant: 'warning' })
+        return
+      }
+
+      if (!draft?.customerEmail) {
+        enqueueSnackbar('Email is required for receipt.', { variant: 'warning' })
+        return
+      }
+
+      setReceiptDraft(draft)
+      setReceiptOpen(false)
+      history.push(`/calendar/receipt/${orderId}`, {
+        fromCalendar: true,
+        receiptDraft: draft,
+      })
+    },
+    [history, orderId]
+  )
+
   useEffect(() => {
     setOrder(incomingOrder || null)
   }, [incomingOrder])
@@ -235,6 +272,15 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
             >
               SMS
             </Button>
+            <Button
+              variant="outlined"
+              color="default"
+              onClick={handleReceiptOpen}
+              disabled={!order}
+              className="calendar-dialog-button"
+            >
+              Receipt
+            </Button>
           </div>
           <Button
             variant="outlined"
@@ -258,6 +304,13 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
           </Button>
         </DialogActions>
       </Dialog>
+      <ReceiptEditDialog
+        open={receiptOpen}
+        onClose={handleReceiptClose}
+        onOpenReceiptPage={handleReceiptPageOpen}
+        order={order}
+        initialDraft={receiptDraft}
+      />
       <Dialog
         open={editOpen}
         onClose={handleEditClose}

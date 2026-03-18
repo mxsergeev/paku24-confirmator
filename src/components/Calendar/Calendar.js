@@ -3,6 +3,7 @@ import { useHistory, useLocation, useRouteMatch } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import OrderDialog from './OrderDialog'
 import NewOrderDialog from './NewOrderDialog'
+import ReceiptPage from './ReceiptPage'
 import dayjs from 'dayjs'
 import { getOrderIcons, getBoxEventTitle, parseBoxEventId } from './helpers'
 import colorsData from './calendar.data.colors.json'
@@ -28,6 +29,7 @@ export default function Calendar() {
   const location = useLocation()
   const match = useRouteMatch()
   const orderRouteMatch = useRouteMatch(`${match.path}/order/:orderId`)
+  const receiptRouteMatch = useRouteMatch(`${match.path}/receipt/:orderId`)
   const queryClient = useQueryClient()
   const isMobile = window.innerWidth <= 600
   const mobileCalendarProps = isMobile
@@ -181,6 +183,15 @@ export default function Calendar() {
   function handleNewOrderCreated() {
     setNewOrderOpen(false)
     queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+  }
+
+  if (receiptRouteMatch?.params?.orderId) {
+    return (
+      <ReceiptPage
+        orderId={receiptRouteMatch.params.orderId}
+        initialDraft={location.state?.receiptDraft || null}
+      />
+    )
   }
 
   return (
