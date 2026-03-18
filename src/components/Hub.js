@@ -13,14 +13,14 @@ export default function Hub() {
 
   return (
     <div className="hub">
-      <Button
+      {/* <Button
         onClick={handleBlockClick}
         name="confirmator"
         variant="contained"
         className="hub-block"
       >
         Confirmator
-      </Button>
+      </Button> */}
 
       <Button
         onClick={handleBlockClick}
