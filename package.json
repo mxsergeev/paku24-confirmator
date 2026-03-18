@@ -41,6 +41,7 @@
     "helmet": "7",
     "http-proxy-middleware": "2.0.6",
     "jsonwebtoken": "^8.5.1",
+    "jspdf": "^4.2.0",
     "mongoose": "^5.11.11",
     "morgan": "^1.10.0",
     "ms": "^2.1.3",
