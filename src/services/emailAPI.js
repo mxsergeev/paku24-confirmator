@@ -11,3 +11,8 @@ export default async function sendConfirmationEmail(params) {
   const response = await interceptor.axiosInstance.post(`${baseUrl}/send-confirmation`, params)
   return response.data
 }
+
+export async function sendReceiptEmail(params = {}) {
+  const response = await interceptor.axiosInstance.post(`${baseUrl}/send-receipt`, params)
+  return response.data
+}
