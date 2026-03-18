@@ -67,6 +67,10 @@ const order = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
+  invoiceNumber: {
+    type: String,
+    default: null,
+  },
 })
 
 order.set('toJSON', {
