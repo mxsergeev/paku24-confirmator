@@ -2,7 +2,12 @@ import React from 'react'
 import Button from '@material-ui/core/Button'
 import TransformIcon from '@material-ui/icons/Transform'
 
-export default function TransformButton({ handleClick, text = 'Transform', ...rest }) {
+export default function TransformButton({
+  handleClick,
+  text = 'Transform',
+  icon: Icon = TransformIcon,
+  ...rest
+}) {
   return (
     <Button
       className="button-one-third flex-item"
@@ -12,7 +17,7 @@ export default function TransformButton({ handleClick, text = 'Transform', ...re
       onClick={() => handleClick()}
       {...rest}
     >
-      <TransformIcon />
+      <Icon />
       {text}
     </Button>
   )

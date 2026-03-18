@@ -70,21 +70,6 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
     setTransformedOrder((prev) => ({ ...prev, text: transO }))
   }, [])
 
-  const handleOrderTransformFromText = useCallback(
-    (o = rawOrder) => {
-      Order.setupOrderFromText(o.text)
-        .then((orderFromText) => {
-          setOrder(orderFromText)
-          return setTransformedOrder({
-            id: o.id,
-            text: Order.format(orderFromText),
-          })
-        })
-        .catch((err) => enqueueSnackbar(err.message, { variant: 'error' }))
-    },
-    [rawOrder]
-  )
-
   const handleOrderTransformFromEditor = useCallback(
     () => setTransformedOrder({ id: rawOrder.id, text: Order.format(order) }),
     [rawOrder, order]
@@ -138,9 +123,8 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
 
             <TransformPanel
               elementRef={transformedOrderContainerRef}
-              transformDisabled={!rawOrder.text}
               copyDisabled={!transformedOrder.text}
-              handleOrderTransformFromText={handleOrderTransformFromText}
+              onClear={reset}
               handleOrderTransformFromEditor={handleOrderTransformFromEditor}
             />
 
@@ -158,7 +142,6 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
               transformedOrder={transformedOrder}
               handleResetClick={handleComplete}
               hideOrderPool={true}
-              onClear={reset}
             />
           </div>
         </div>

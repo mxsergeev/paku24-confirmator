@@ -18,7 +18,6 @@ export default function MainOperationsPanel({
   handleResetClick,
   orderPoolUrl,
   hideOrderPool,
-  onClear,
 }) {
   const defaultStatuses = {
     email: {
@@ -129,19 +128,6 @@ export default function MainOperationsPanel({
                 }
           }
         />
-        {hideOrderPool && (
-          <Button
-            className="width-25"
-            variant="outlined"
-            size="small"
-            onClick={() => {
-              setStatuses(defaultStatuses)
-              onClear && onClear()
-            }}
-          >
-            Clear
-          </Button>
-        )}
         {!hideOrderPool && (
           <OrderPoolOpenerButton className="share-space" orderPoolUrl={orderPoolUrl} />
         )}
