@@ -315,8 +315,20 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
         open={editOpen}
         onClose={handleEditClose}
         fullWidth
-        maxWidth="md"
-        PaperProps={{ style: { borderRadius: 16 } }}
+        maxWidth={isDesktop ? 'md' : false}
+        PaperProps={
+          isDesktop
+            ? { style: { borderRadius: 16 } }
+            : {
+                style: {
+                  width: '100vw',
+                  maxWidth: '100vw',
+                  margin: 0,
+                  borderRadius: 16,
+                  minHeight: 'auto',
+                },
+              }
+        }
       >
         <DialogTitle style={{ position: 'relative', paddingRight: 48 }}>
           <h3 className="calendar-dialog-title">Edit order</h3>
@@ -333,15 +345,6 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
           <Button
-            variant="outlined"
-            color="default"
-            onClick={handleEditClose}
-            className="calendar-dialog-button"
-            disabled={savingEdit}
-          >
-            Cancel
-          </Button>
-          <Button
             variant="contained"
             color="primary"
             onClick={handleSaveChanges}
@@ -349,6 +352,15 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
             disabled={!editableOrder || savingEdit}
           >
             Save changes
+          </Button>
+          <Button
+            variant="outlined"
+            color="default"
+            onClick={handleEditClose}
+            className="calendar-dialog-button"
+            disabled={savingEdit}
+          >
+            Cancel
           </Button>
         </DialogActions>
       </Dialog>
