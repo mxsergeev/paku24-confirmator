@@ -102,7 +102,7 @@ function toLabelCase(text) {
     })
 }
 
-function resolveFeeDisplayName(order, fee) {
+export function resolveFeeDisplayName(order, fee) {
   const feeName = String(fee?.name || '')
   const baseName = getFeeBaseName(feeName)
 
@@ -113,9 +113,10 @@ function resolveFeeDisplayName(order, fee) {
 
   if (baseName === STAIRS_FEE_BASE_NAME) {
     const address = getAddressForStairsFee(order, feeName)
-    const street = String(address?.street || '').trim()
-    const baseLabel = toLabelCase(DEFAULT_FEE_LABELS[baseName] || 'Lisämaksu')
-    return street ? `${baseLabel} (${street})` : baseLabel
+    const floorCount = getStairsFloorCount(order, feeName)
+    return toLabelCase(
+      `${DEFAULT_FEE_LABELS[baseName] || baseName} (${address?.street || ''}, ${floorCount} floors)`
+    )
   }
 
   const resolvedLabel =

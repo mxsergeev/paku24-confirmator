@@ -1,13 +1,20 @@
 import React from 'react'
 import dayjs from 'dayjs'
+import { resolveFeeDisplayName } from './ReceiptPage'
 
 export default function OrderDialogDetails({ order, eventType }) {
-  const hasClientNumber = !!(order?.phone && order.phone.replace(/0/g, '') !== '')
+  const hasClientNumber = !!(order?.phone !== '')
+  const hasBoxes = Number(order?.boxes?.amount) > 0
   const isBoxEvent = eventType === 'boxDelivery' || eventType === 'boxReturn'
   const showRegularOrder = order && !isBoxEvent
+  const isMobile = window.innerWidth <= 600
+  const hasExtraAddresses =
+    order?.extraAddresses && Array.isArray(order.extraAddresses) && order.extraAddresses.length > 0
+
+  console.log('OrderDialogDetails render', { order })
 
   const boxRows =
-    order?.boxes && isBoxEvent
+    order?.boxes && isBoxEvent && hasBoxes
       ? [
           {
             label: 'Date',
@@ -32,20 +39,25 @@ export default function OrderDialogDetails({ order, eventType }) {
     ? [
         {
           label: 'From',
-          value: `${order.address?.street}, ${order.address?.index} ${order.address?.city}`,
+          value: `${order.address?.street} (${order.address?.floor} floor), ${order.address?.index} ${order.address?.city}`,
         },
-        order.extraAddress && {
-          label: 'Extra Address',
-          value: order.extraAddress,
+        hasExtraAddresses && {
+          label: 'Extra Addresses',
+          value: order.extraAddresses.map((addr) => (
+            <div
+              key={addr.id}
+              style={!isMobile ? { marginBottom: '4px', marginTop: '-2px' } : {}}
+            >{`${addr.street} (${addr.floor} floor), ${addr.index} ${addr.city}`}</div>
+          )),
         },
         order.destination &&
           order.destination.street && {
             label: 'To',
-            value: `${order.destination.street}, ${order.destination.index} ${order.destination.city}`,
+            value: `${order.destination.street} (${order.destination?.floor} floor), ${order.destination.index} ${order.destination.city}`,
           },
         { label: 'Payment Type', value: order.paymentType?.name || '' },
         { label: 'Total Price', value: `${order.price || 0}€` },
-        order.boxes && {
+        hasBoxes && {
           label: 'Boxes',
           value: `${order.boxes.amount} kpl, ${order.boxesPrice}€`,
         },
@@ -85,24 +97,35 @@ export default function OrderDialogDetails({ order, eventType }) {
               <span className="order-dialog-details__value">{row.value}</span>
             </div>
           ))}
-          {order.fees && Array.isArray(order.fees) && order.fees.length > 0 && (
-            <div className="order-dialog-details__fees-section">
-              <span className="order-dialog-details__label">Fees</span>
-              <ul className="calendar-fee-list">
-                {order.fees.map((fee, index) => (
-                  <li key={index} className="calendar-fee-item">
-                    {fee.name}: {fee.amount}€
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
           {hasClientNumber && (
             <div className="order-dialog-details__row">
               <span className="order-dialog-details__label">Client number</span>
               <span className="order-dialog-details__value">{order.phone}</span>
             </div>
           )}
+          {order.fees && Array.isArray(order.fees) && order.fees.length > 0 && (
+            <div className="order-dialog-details__fees-section">
+              <span className="order-dialog-details__label">Fees</span>
+              <ul className="calendar-fee-list">
+                {order.fees.map((fee, index) => {
+                  const label = resolveFeeDisplayName(order, fee)
+                  return (
+                    <li key={index} className="calendar-fee-item">
+                      {label}: {fee.amount}€
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+          <div className="order-dialog-details__section">
+            {order.comment && (
+              <div className="order-dialog-details__row">
+                <span className="order-dialog-details__label">Comment</span>
+                <span className="order-dialog-details__value">{order.comment}</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
