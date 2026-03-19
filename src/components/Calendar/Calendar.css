@@ -483,6 +483,12 @@
   margin-top: 30px;
 }
 
+.receipt-company-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .receipt-logo {
   display: block;
   max-width: 230px;
@@ -506,12 +512,12 @@
   align-content: start;
 }
 
-.receipt-meta-grid .left {
+.receipt-meta-grid .right {
   justify-self: end;
 }
 
 .receipt-info {
-  --receipt-info-target-height: 780px;
+  --receipt-info-target-height: 700px;
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
@@ -818,5 +824,4 @@
   .receipt-info-service--last td {
     padding-bottom: calc(6px + var(--receipt-last-service-extra-padding, 0px));
   }
-
 }

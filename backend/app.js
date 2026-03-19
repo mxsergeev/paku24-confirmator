@@ -35,6 +35,7 @@ mongoose
   })
 
 const app = express()
+const REQUEST_BODY_LIMIT = '15mb'
 
 app.set('trust proxy', 'loopback')
 
@@ -49,7 +50,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: REQUEST_BODY_LIMIT }))
+app.use(express.urlencoded({ extended: true, limit: REQUEST_BODY_LIMIT }))
 app.use(cookieParser())
 
 app.get('/', (req, res) => {

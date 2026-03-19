@@ -8,7 +8,7 @@ import feesConfig from '../../data/fees.json'
 import receiptLogo from '../../assets/laskuLogo.png'
 import { buildReceiptDraftFromOrder } from './ReceiptEditDialog'
 import { buildStableInvoiceNumber, formatDateForReceipt } from './receiptData.helpers'
-import { downloadReceiptPdf, makeReceiptPdfBase64 } from './receiptPdf'
+import { jsPDF } from 'jspdf'
 import './Calendar.css'
 
 const ALV_FACTOR = 1.255
@@ -135,6 +135,23 @@ function mergeReceiptData(order, draft = null) {
     invoiceDate: formatDateForReceipt(draftData.invoiceDate, defaultInvoiceDate),
     dueDate: formatDateForReceipt(draftData.dueDate, defaultDueDate),
   }
+}
+
+function buildPdfFromPage(page) {
+  const width = Math.ceil(page.scrollWidth)
+  const height = Math.ceil(page.scrollHeight)
+
+  const doc = new jsPDF({
+    orientation: 'p',
+    format: [width, height],
+  })
+
+  return new Promise((resolve) => {
+    doc.html(page, {
+      autoPaging: false,
+      callback: () => resolve(doc),
+    })
+  })
 }
 
 export default function ReceiptPage({ orderId, initialDraft = null }) {
@@ -330,45 +347,59 @@ export default function ReceiptPage({ orderId, initialDraft = null }) {
     }
   }, [recalcLastServicePadding, lastServiceExtraPadding])
 
-  const handleDownload = useCallback(async () => {
-    if (!receipt) return
-    const fileName = `receipt-${receipt.invoiceNumber || 'document'}.pdf`
-    try {
-      await downloadReceiptPdf(receipt, fileName, receiptRows, totals)
-    } catch (err) {
-      enqueueSnackbar('Failed to create receipt PDF.', { variant: 'error' })
-    }
-  }, [receipt, receiptRows, totals])
-
   const handleSend = useCallback(async () => {
     if (!receipt?.customerEmail) {
       enqueueSnackbar('Email is missing in receipt data.', { variant: 'warning' })
       return
     }
 
+    const page = document.querySelector('#cart-receipt')
+    if (!page) {
+      enqueueSnackbar('Receipt page is not ready to export.', { variant: 'warning' })
+      return
+    }
+
     try {
       setSending(true)
-      const pdfBase64 = await makeReceiptPdfBase64(receipt, receiptRows, totals)
+      const doc = await buildPdfFromPage(page)
+      const pdfBase64 = doc.output('datauristring')
       const fileName = `receipt-${receipt.invoiceNumber || 'document'}.pdf`
 
       const response = await sendReceiptEmail({
         email: receipt.customerEmail,
         pdfBase64,
         fileName,
-        subject: `Receipt ${receipt.invoiceNumber || ''}`.trim(),
-        body: 'Please find your receipt attached.',
+        subject: `${receipt.isInvoice ? 'Invoice' : 'Receipt'} ${
+          receipt.invoiceNumber || ''
+        }`.trim(),
+        body: `Please find your ${receipt.isInvoice ? 'invoice' : 'receipt'} attached.`,
       })
 
-      enqueueSnackbar(response.message || 'Receipt email sent.')
+      enqueueSnackbar(
+        response.message || `${receipt.isInvoice ? 'Invoice' : 'Receipt'} email sent.`
+      )
     } catch (err) {
       if (err.message === 'logout') return
-      enqueueSnackbar(err.response?.data?.error || 'Failed to send receipt email.', {
-        variant: 'error',
-      })
+      enqueueSnackbar(
+        err.response?.data?.error ||
+          `Failed to send ${receipt.isInvoice ? 'invoice' : 'receipt'} email.`,
+        {
+          variant: 'error',
+        }
+      )
     } finally {
       setSending(false)
     }
-  }, [receipt, receiptRows, totals])
+  }, [receipt])
+
+  const handleDownloadFromCart = useCallback(() => {
+    const page = document.querySelector('#cart-receipt')
+    if (!page || !receipt) return
+
+    const name = `${receipt.isInvoice ? 'Invoice' : 'Receipt'} ${receipt.invoiceNumber}.pdf`
+
+    buildPdfFromPage(page).then((doc) => doc.save(name))
+  }, [receipt])
 
   if (loading) {
     return (
@@ -385,7 +416,7 @@ export default function ReceiptPage({ orderId, initialDraft = null }) {
   return (
     <section className="receipt-page-wrap">
       <div className="receipt-page-toolbar">
-        <Button variant="contained" color="primary" onClick={handleDownload}>
+        <Button variant="contained" color="primary" onClick={handleDownloadFromCart}>
           Download
         </Button>
         <Button variant="contained" color="primary" onClick={handleSend} disabled={sending}>
@@ -393,19 +424,19 @@ export default function ReceiptPage({ orderId, initialDraft = null }) {
         </Button>
       </div>
 
-      <article className="receipt-document">
+      <article className="receipt-document" id="cart-receipt">
         <header className="receipt-document-head">
-          <div>
-            <img
-              className="receipt-logo"
-              src={receiptLogo}
-              alt="Logo"
-              width="250px"
-            />
-            <p>Y-tunnus 2485335-8</p>
-            <p>Puh. 0451797930</p>
-            <p>Luutnantinpolku 2 A 17</p>
-            <p>00420 Helsinki</p>
+          <div className="receipt-company-block">
+            <div>
+              <img className="receipt-logo" src={receiptLogo} alt="Logo" width="250px" />
+            </div>
+            <div className="receipt-company-info-block">
+              <p>Y-tunnus 2485335-8</p>
+              <p>Puh. 0451797930</p>
+              <p>E-mail: asiakaspalvelu@paku24.fi</p>
+              <p>Luutnantinpolku 2 A 17</p>
+              <p>00420 Helsinki</p>
+            </div>
           </div>
           <div className="receipt-title-block">
             {isInvoice && <h3 className="receipt-title">LASKU</h3>}
@@ -413,28 +444,29 @@ export default function ReceiptPage({ orderId, initialDraft = null }) {
           </div>
           <div className="receipt-meta-grid">
             <span>Sivu</span>
-            <span className="left">1/1</span>
-            <span>Laskunro</span>
-            <span className="left">{receipt.invoiceNumber}</span>
+            <span className="right">1/1</span>
+            {isInvoice && <span>Laskunro</span>}
+            {!isInvoice && <span>Kuittinro</span>}
+            <span className="right">{receipt.invoiceNumber}</span>
             <span>Ajalta</span>
-            <span className="left">{receipt.serviceDate}</span>
+            <span className="right">{receipt.serviceDate}</span>
             <span>Päiväys</span>
-            <span className="left">{receipt.invoiceDate}</span>
+            <span className="right">{receipt.invoiceDate}</span>
 
             {isInvoice && (
               <>
                 <span>Eräpäivä</span>
-                <span className="left">{receipt.dueDate}</span>
+                <span className="right">{receipt.dueDate}</span>
                 <span>Toimitapa</span>
-                <span className="left">Posti</span>
+                <span className="right">Posti</span>
                 <span>Huomatusaika</span>
-                <span className="left">8 pv</span>
+                <span className="right">8 pv</span>
                 <span>Maksuehto</span>
-                <span className="left">14 pv</span>
+                <span className="right">14 pv</span>
                 <span>Viivätyskorko</span>
-                <span className="left">8 %</span>
+                <span className="right">8 %</span>
                 <span>Laskulisä</span>
-                <span className="left">5 €</span>
+                <span className="right">5 €</span>
               </>
             )}
           </div>
@@ -502,26 +534,6 @@ export default function ReceiptPage({ orderId, initialDraft = null }) {
               </td>
             </tr>
 
-            <tr className="receipt-company-info">
-              <td colSpan="3">
-                <div>
-                  <div className="receipt-company-unit">
-                    <span>Pankkiyhteys:</span>
-                    <span>FI85 3939 0065 1979 23</span>
-                  </div>
-                  <div className="receipt-company-unit">
-                    <span>Yhteyshenkilö:</span>
-                    <span>Paku24</span>
-                  </div>
-                  <div className="receipt-company-unit">
-                    <span>E-mail:</span>
-                    <span>asiakaspalvelu@paku24.fi</span>
-                  </div>
-                </div>
-              </td>
-              <td colSpan="3"></td>
-            </tr>
-
             <tr className="receipt-bank-row">
               <td colSpan="6" className="receipt-bank-wrapper" ref={bankWrapperRef}>
                 <table className="receipt-bank-table" ref={bankTableRef}>
@@ -535,34 +547,39 @@ export default function ReceiptPage({ orderId, initialDraft = null }) {
                   <tbody>
                     <tr>
                       <td className="receipt-bank-cell receipt-bank-cell--no-top receipt-bank-cell--no-left">
-                        <div>Saajan tilinro</div>
-                        <div>Mottagarens kontonummer</div>
+                        <div style={{ visibility: !isInvoice ? 'hidden' : 'visible' }}>
+                          Saajan tilinro
+                        </div>
+                        <div style={{ visibility: !isInvoice ? 'hidden' : 'visible' }}>
+                          Mottagarens kontonummer
+                        </div>
                       </td>
                       <td className="receipt-bank-cell receipt-bank-cell--no-top">
-                        <div>FI85 3939 0065 1979 23</div>
+                        <div style={{ visibility: !isInvoice ? 'hidden' : 'visible' }}>
+                          FI85 3939 0065 1979 23
+                        </div>
                       </td>
                       <td
                         rowSpan="3"
                         colSpan="3"
                         className="receipt-bank-cell receipt-bank-cell--no-top receipt-bank-cell--no-right"
                       >
-                        {isInvoice && (
-                          <>
-                            <div className="receipt-bank-info">
-                              <div className="bold">Tilisiirto Girering</div>
-                              <div>
-                                Maksu välitetään saajalle vain Suomessa kotimaan kontonummer
-                                maksujenvälityksen yleisten ehtojen mukaisesti ja vain maksajan
-                                ilmoittaman tilinron perusteella.
-                              </div>
-                              <div>
-                                Saaja Paku24 tmi Betalning förmedlas endast till mottagare i Finland
-                                Mottagare enligt Allmänna villkor för inrikes betalningförmedling
-                                och endas till det kontonummer betalaren angivit.
-                              </div>
-                            </div>
-                          </>
-                        )}
+                        <div
+                          style={{ visibility: !isInvoice ? 'hidden' : 'visible' }}
+                          className="receipt-bank-info"
+                        >
+                          <div className="bold">Tilisiirto Girering</div>
+                          <div>
+                            Maksu välitetään saajalle vain Suomessa kotimaan kontonummer
+                            maksujenvälityksen yleisten ehtojen mukaisesti ja vain maksajan
+                            ilmoittaman tilinron perusteella.
+                          </div>
+                          <div>
+                            Saaja Paku24 tmi Betalning förmedlas endast till mottagare i Finland
+                            Mottagare enligt Allmänna villkor för inrikes betalningförmedling och
+                            endas till det kontonummer betalaren angivit.
+                          </div>
+                        </div>
                       </td>
                     </tr>
 
@@ -592,11 +609,11 @@ export default function ReceiptPage({ orderId, initialDraft = null }) {
                         <div>Allekirjoitus</div>
                         <div>Underskrift</div>
                       </td>
-                      <td className="receipt-bank-cell">
-                        <div>Viesti</div>
-                      </td>
+                      <td className="receipt-bank-cell">{isInvoice && <div>Viesti</div>}</td>
                       <td colSpan="2" className="receipt-bank-cell receipt-bank-cell--no-right">
-                        <div className="receipt-customer-name">{receipt.customerName}</div>
+                        {isInvoice && (
+                          <div className="receipt-customer-name">{receipt.customerName}</div>
+                        )}
                       </td>
                     </tr>
 
