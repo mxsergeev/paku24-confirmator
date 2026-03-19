@@ -13,7 +13,7 @@ import {
   sanitizeDecimalString,
   parseAndFormatDecimalString,
 } from '../../helpers/decimalStringHelpers'
-import { toDateInputValue } from './receiptData.helpers'
+import { buildStableInvoiceNumber, toDateInputValue } from './receiptData.helpers'
 
 function formatAddressForReceipt(address) {
   if (!address) return ''
@@ -44,7 +44,7 @@ export function buildReceiptDraftFromOrder(order = {}) {
     serviceHours: safeOrder.duration || '',
     unitPrice: safeOrder.service?.pricePerHour || '',
     dueDate,
-    invoiceNumber: safeOrder.invoiceNumber || '',
+    invoiceNumber: buildStableInvoiceNumber(safeOrder, safeOrder.invoiceNumber),
   }
 }
 
