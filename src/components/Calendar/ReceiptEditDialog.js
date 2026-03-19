@@ -64,6 +64,7 @@ export default function ReceiptEditDialog({
   }, [initialDraft, order])
   const [draft, setDraft] = useState(baseDraft)
   const [totalInput, setTotalInput] = useState(baseDraft.totalAmount || '')
+  const isDesktop = window.innerWidth > 600
 
   useEffect(() => {
     setDraft(baseDraft)
@@ -98,8 +99,20 @@ export default function ReceiptEditDialog({
       open={open}
       onClose={onClose}
       fullWidth
-      maxWidth="sm"
-      PaperProps={{ className: 'receipt-edit-dialog-paper', style: { borderRadius: 16 } }}
+      maxWidth={isDesktop ? 'sm' : false}
+      PaperProps={
+        isDesktop
+          ? { style: { borderRadius: 16 } }
+          : {
+              style: {
+                width: '100vw',
+                maxWidth: '100vw',
+                margin: 0,
+                borderRadius: 16,
+                minHeight: 'auto',
+              },
+            }
+      }
     >
       <DialogTitle style={{ position: 'relative', paddingRight: 48 }}>
         <h3 className="calendar-dialog-title">Receipt data</h3>
@@ -171,20 +184,20 @@ export default function ReceiptEditDialog({
       </DialogContent>
       <DialogActions className="calendar-dialog-actions">
         <Button
-          variant="outlined"
-          color="default"
-          onClick={onClose}
-          className="calendar-dialog-button"
-        >
-          Close
-        </Button>
-        <Button
           variant="contained"
           color="primary"
           onClick={handleOpenPage}
           className="calendar-dialog-button"
         >
           Open page
+        </Button>
+        <Button
+          variant="outlined"
+          color="default"
+          onClick={onClose}
+          className="calendar-dialog-button"
+        >
+          Close
         </Button>
       </DialogActions>
     </Dialog>
