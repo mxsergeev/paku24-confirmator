@@ -58,3 +58,22 @@ export function formatDateForReceipt(value, fallback) {
 
   return fallback
 }
+
+export function normalizeDocumentType(value) {
+  return String(value || '').toLowerCase() === 'invoice' ? 'invoice' : 'receipt'
+}
+
+export function resolveDocumentType(value, fallbackValue = 'receipt') {
+  const fallback = normalizeDocumentType(fallbackValue)
+  const normalized = String(value || '').toLowerCase()
+  return normalized === 'invoice' || normalized === 'receipt' ? normalized : fallback
+}
+
+export function normalizeReceiptDraft(draft, fallbackDocumentType = 'receipt') {
+  if (!draft || typeof draft !== 'object' || Array.isArray(draft)) return null
+
+  return {
+    ...draft,
+    documentType: resolveDocumentType(draft.documentType, fallbackDocumentType),
+  }
+}

@@ -7,7 +7,12 @@ import { sendReceiptEmail } from '../../services/emailAPI'
 import feesConfig from '../../data/fees.json'
 import receiptLogo from '../../assets/laskuLogo.png'
 import { buildReceiptDraftFromOrder } from './ReceiptEditDialog'
-import { buildStableInvoiceNumber, formatDateForReceipt } from './receiptData.helpers'
+import {
+  buildStableInvoiceNumber,
+  formatDateForReceipt,
+  normalizeDocumentType,
+  normalizeReceiptDraft,
+} from './receiptData.helpers'
 import { jsPDF } from 'jspdf'
 import './Calendar.css'
 
@@ -154,7 +159,7 @@ function buildPdfFromPage(page) {
   })
 }
 
-export default function ReceiptPage({ orderId, initialDraft = null }) {
+export default function ReceiptPage({ orderId, initialDraft = null, documentType = null }) {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [order, setOrder] = useState(null)
@@ -182,25 +187,38 @@ export default function ReceiptPage({ orderId, initialDraft = null }) {
     loadOrder()
   }, [loadOrder])
 
+  const safeInitialDraft = useMemo(() => normalizeReceiptDraft(initialDraft), [initialDraft])
+  const safeDocumentType = useMemo(
+    () => (documentType == null ? null : normalizeDocumentType(documentType)),
+    [documentType]
+  )
+
   const receipt = useMemo(() => {
     if (!order) return null
 
-    const mergedReceipt = mergeReceiptData(order, initialDraft)
+    const mergedReceipt = mergeReceiptData(order, safeInitialDraft)
+    const fallbackType = order?.paymentType?.id === '3' ? 'invoice' : 'receipt'
+    const resolvedDocumentType = normalizeDocumentType(
+      safeDocumentType || mergedReceipt?.documentType || fallbackType
+    )
+    const isInvoice = resolvedDocumentType === 'invoice'
 
     const unitBruttoPrice = num(order?.service?.pricePerHour || mergedReceipt.unitPrice)
     const unitAlvPrice = roundMoney(unitBruttoPrice - unitBruttoPrice / ALV_FACTOR)
 
     return {
       ...mergedReceipt,
+      documentType: resolvedDocumentType,
+      isInvoice,
       paymentTypeId: order?.paymentType?.id,
       alvRate: formatMoney(unitAlvPrice),
       serviceName: mergedReceipt.serviceName || order?.service?.name || '',
       serviceHours: mergedReceipt.serviceHours || order?.duration || '-',
       unitPrice: formatMoney(unitBruttoPrice),
     }
-  }, [initialDraft, order])
+  }, [order, safeDocumentType, safeInitialDraft])
 
-  const isInvoice = order?.paymentType?.id === '3'
+  const isInvoice = receipt?.isInvoice || false
 
   const receiptRows = useMemo(() => {
     if (!receipt || !order) return []

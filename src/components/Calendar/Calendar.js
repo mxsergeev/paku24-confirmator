@@ -190,6 +190,7 @@ export default function Calendar() {
       <ReceiptPage
         orderId={receiptRouteMatch.params.orderId}
         initialDraft={location.state?.receiptDraft || null}
+        documentType={location.state?.documentType || null}
       />
     )
   }

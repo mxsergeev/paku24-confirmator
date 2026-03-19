@@ -25,7 +25,25 @@ import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
 import OrderDialogDetails from './OrderDialogDetails'
 import ReceiptEditDialog, { buildReceiptDraftFromOrder } from './ReceiptEditDialog'
+import { normalizeDocumentType, normalizeReceiptDraft } from './receiptData.helpers'
 import iconsData from '../../data/icons.json'
+
+const DOCUMENT_TYPES = {
+  RECEIPT: 'receipt',
+  INVOICE: 'invoice',
+}
+
+const DOCUMENT_BUTTON_STYLES = {
+  active: {
+    backgroundColor: '#b5622d',
+    color: 'white',
+    boxShadow: '0 0 0 2px rgba(181, 98, 45, 0.35) inset',
+  },
+  inactive: {
+    backgroundColor: '#e08141',
+    color: 'white',
+  },
+}
 
 export default function OrderDialog({ onClose, eventId, order: incomingOrder = null }) {
   const history = useHistory()
@@ -40,6 +58,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
   const [deleting, setDeleting] = useState(false)
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [receiptDraft, setReceiptDraft] = useState(null)
+  const [receiptDocumentType, setReceiptDocumentType] = useState('receipt')
   const { orderId, eventType } = useMemo(() => parseBoxEventId(eventId), [eventId])
   const isDesktop = window.innerWidth > 600
 
@@ -160,11 +179,20 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
     }
   }, [onClose, orderId, queryClient])
 
-  const handleReceiptOpen = useCallback(() => {
-    if (!order) return
-    setReceiptDraft(buildReceiptDraftFromOrder(order))
-    setReceiptOpen(true)
-  }, [order])
+  const handleReceiptOpen = useCallback(
+    (documentType) => {
+      if (!order) return
+      const nextDocumentType = normalizeDocumentType(documentType)
+
+      setReceiptDocumentType(nextDocumentType)
+      setReceiptDraft({
+        ...buildReceiptDraftFromOrder(order),
+        documentType: nextDocumentType,
+      })
+      setReceiptOpen(true)
+    },
+    [order]
+  )
 
   const handleReceiptClose = useCallback(() => {
     setReceiptOpen(false)
@@ -177,19 +205,28 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
         return
       }
 
-      if (!draft?.customerEmail) {
+      const nextDocumentType = normalizeDocumentType(receiptDocumentType)
+      const safeDraft = normalizeReceiptDraft(draft, nextDocumentType)
+
+      if (!safeDraft) {
+        enqueueSnackbar('Receipt data is invalid.', { variant: 'warning' })
+        return
+      }
+
+      if (!safeDraft.customerEmail) {
         enqueueSnackbar('Email is required for receipt.', { variant: 'warning' })
         return
       }
 
-      setReceiptDraft(draft)
+      setReceiptDraft(safeDraft)
       setReceiptOpen(false)
       history.push(`/calendar/receipt/${orderId}`, {
         fromCalendar: true,
-        receiptDraft: draft,
+        documentType: nextDocumentType,
+        receiptDraft: safeDraft,
       })
     },
-    [history, orderId]
+    [history, orderId, receiptDocumentType]
   )
 
   useEffect(() => {
@@ -274,12 +311,29 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
             </Button>
             <Button
               variant="contained"
-              style={{ backgroundColor: '#e08141', color: 'white' }}
-              onClick={handleReceiptOpen}
+              style={
+                receiptDocumentType === DOCUMENT_TYPES.RECEIPT
+                  ? DOCUMENT_BUTTON_STYLES.active
+                  : DOCUMENT_BUTTON_STYLES.inactive
+              }
+              onClick={() => handleReceiptOpen(DOCUMENT_TYPES.RECEIPT)}
               disabled={!order}
               className="calendar-dialog-button"
             >
               Receipt
+            </Button>
+            <Button
+              variant="contained"
+              style={
+                receiptDocumentType === DOCUMENT_TYPES.INVOICE
+                  ? DOCUMENT_BUTTON_STYLES.active
+                  : DOCUMENT_BUTTON_STYLES.inactive
+              }
+              onClick={() => handleReceiptOpen(DOCUMENT_TYPES.INVOICE)}
+              disabled={!order}
+              className="calendar-dialog-button"
+            >
+              Invoice
             </Button>
           </div>
           <Button

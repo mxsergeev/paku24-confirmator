@@ -14,6 +14,7 @@ import {
   parseAndFormatDecimalString,
 } from '../../helpers/decimalStringHelpers'
 import { buildStableInvoiceNumber, toDateInputValue } from './receiptData.helpers'
+import { normalizeReceiptDraft, resolveDocumentType } from './receiptData.helpers'
 
 function formatAddressForReceipt(address) {
   if (!address) return ''
@@ -55,13 +56,18 @@ export default function ReceiptEditDialog({
   order,
   initialDraft = null,
 }) {
+  const fallbackDocumentType = order?.paymentType?.id === '3' ? 'invoice' : 'receipt'
+
   const baseDraft = useMemo(() => {
-    const draft = initialDraft || buildReceiptDraftFromOrder(order)
+    const draft =
+      normalizeReceiptDraft(initialDraft, fallbackDocumentType) || buildReceiptDraftFromOrder(order)
+
     return {
       ...draft,
+      documentType: resolveDocumentType(draft?.documentType, fallbackDocumentType),
       dueDate: toDateInputValue(draft?.dueDate),
     }
-  }, [initialDraft, order])
+  }, [fallbackDocumentType, initialDraft, order])
   const [draft, setDraft] = useState(baseDraft)
   const [totalInput, setTotalInput] = useState(baseDraft.totalAmount || '')
   const isDesktop = window.innerWidth > 600
@@ -89,6 +95,7 @@ export default function ReceiptEditDialog({
   const handleOpenPage = () => {
     onOpenReceiptPage({
       ...draft,
+      documentType: resolveDocumentType(draft?.documentType, fallbackDocumentType),
       totalAmount: totalInput,
     })
   }
@@ -115,7 +122,9 @@ export default function ReceiptEditDialog({
       }
     >
       <DialogTitle style={{ position: 'relative', paddingRight: 48 }}>
-        <h3 className="calendar-dialog-title">Receipt data</h3>
+        <h3 className="calendar-dialog-title">
+          {draft?.documentType === 'invoice' ? 'Invoice data' : 'Receipt data'}
+        </h3>
         <IconButton
           aria-label="close"
           onClick={onClose}
@@ -173,7 +182,7 @@ export default function ReceiptEditDialog({
           InputLabelProps={{ shrink: true }}
         />
         <TextField
-          label="Invoice Number"
+          label={draft?.documentType === 'invoice' ? 'Invoice Number' : 'Receipt Number'}
           fullWidth
           variant="outlined"
           margin="dense"
