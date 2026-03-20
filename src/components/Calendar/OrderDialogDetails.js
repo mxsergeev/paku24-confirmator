@@ -3,15 +3,14 @@ import dayjs from 'dayjs'
 import { resolveFeeDisplayName } from './ReceiptPage'
 
 export default function OrderDialogDetails({ order, eventType }) {
-  const hasClientNumber = !!(order?.phone !== '')
+  const hasClientNumber = Boolean(order?.phone)
   const hasBoxes = Number(order?.boxes?.amount) > 0
   const isBoxEvent = eventType === 'boxDelivery' || eventType === 'boxReturn'
   const showRegularOrder = order && !isBoxEvent
   const isMobile = window.innerWidth <= 600
   const hasExtraAddresses =
     order?.extraAddresses && Array.isArray(order.extraAddresses) && order.extraAddresses.length > 0
-
-  console.log('OrderDialogDetails render', { order })
+  const hasClientEmail = Boolean(order?.email)
 
   const boxRows =
     order?.boxes && isBoxEvent && hasBoxes
@@ -101,6 +100,12 @@ export default function OrderDialogDetails({ order, eventType }) {
             <div className="order-dialog-details__row">
               <span className="order-dialog-details__label">Client number</span>
               <span className="order-dialog-details__value">{order.phone}</span>
+            </div>
+          )}
+          {hasClientEmail && (
+            <div className="order-dialog-details__row">
+              <span className="order-dialog-details__label">Client email</span>
+              <span className="order-dialog-details__value">{order.email}</span>
             </div>
           )}
           {order.fees && Array.isArray(order.fees) && order.fees.length > 0 && (

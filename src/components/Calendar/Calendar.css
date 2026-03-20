@@ -100,20 +100,54 @@
 }
 
 .calendar-dialog-title {
-  font-weight: 900;
-  font-size: 1.75rem;
-  line-height: 1.2;
-  color: #222;
+  font-weight: 800;
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  line-height: 1.35;
+  color: #1f2937;
   margin: 0;
   padding: 0;
-  display: inline-block;
-  vertical-align: middle;
+  display: block;
+  max-width: calc(100% - 42px);
+}
+
+.calendar-order-dialog-paper {
+  border-radius: 18px !important;
+  border: 1px solid #ebeef2;
+  box-shadow: 0 16px 44px rgba(20, 28, 45, 0.16) !important;
+  overflow: hidden;
+}
+
+.calendar-order-dialog-paper--narrow {
+  width: min(540px, calc(100vw - 32px));
+}
+
+.calendar-order-dialog-title-wrap {
+  position: relative;
+  padding: 18px 48px 10px 20px !important;
+  border-bottom: 1px solid #f1f4f8;
+  background: linear-gradient(180deg, #fbfcfe 0%, #f6f8fb 100%);
+}
+
+.calendar-order-dialog-close {
+  position: absolute !important;
+  top: 10px;
+  right: 10px;
+  color: #6b7280 !important;
+  transition: color 0.2s ease, transform 0.15s ease;
+}
+
+.calendar-order-dialog-close:hover {
+  color: #111827 !important;
+  transform: scale(1.06);
 }
 
 .calendar-dialog-actions {
-  padding: 12px 16px !important;
+  padding: 12px 16px 14px !important;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid #f1f4f8;
+  background: #fcfdff;
 }
 
 .calendar-dialog-actions.MuiDialogActions-spacing > :not(:first-child) {
@@ -122,18 +156,81 @@
 
 .calendar-dialog-actions-group {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
   flex: 1 1 auto;
 }
 
+.calendar-dialog-actions-secondary {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
 .calendar-dialog-button {
-  min-width: 120px;
+  min-width: 96px;
+  border-radius: 10px !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em;
+  box-shadow: none !important;
+}
+
+.calendar-dialog-button--accent {
+  background: linear-gradient(120deg, #ef8e4f 0%, #e67e3f 100%) !important;
+  color: #ffffff !important;
+}
+
+.calendar-dialog-button--accent:hover {
+  background: linear-gradient(120deg, #e67e3f 0%, #d56f35 100%) !important;
+}
+
+.calendar-dialog-button--document {
+  border: 1px solid #d8dee7 !important;
+  color: #374151 !important;
+  background: #fff !important;
+}
+
+.calendar-dialog-button--document-active {
+  border-color: #d97735 !important;
+  color: #9a4e1e !important;
+  background: #fff2e7 !important;
+}
+
+.calendar-dialog-button--quiet {
+  color: #4b5563 !important;
+}
+
+.calendar-dialog-button--quiet:hover {
+  background: #f3f4f6 !important;
+}
+
+.calendar-dialog-button--danger {
+  color: #b42318 !important;
+}
+
+.calendar-dialog-button--danger:hover {
+  background: #fef3f2 !important;
+}
+
+.calendar-dialog-button--danger-fill {
+  background: #cf4425 !important;
+  color: #fff !important;
+}
+
+.calendar-dialog-button--danger-fill:hover {
+  background: #b9381c !important;
+}
+
+.calendar-dialog-actions--compact {
+  justify-content: flex-end;
 }
 
 .calendar-dialog-details-content {
-  padding: 24px 16px !important;
+  padding: 16px 20px 18px !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
     'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background: #ffffff;
 }
 
 .order-dialog-details {
@@ -150,11 +247,11 @@
 
 .order-dialog-details__row {
   display: grid;
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 120px 1fr;
   gap: 16px;
   align-items: flex-start;
-  padding: 14px 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .order-dialog-details__row:last-child {
@@ -162,28 +259,34 @@
 }
 
 .order-dialog-details__label {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: #666;
+  font-weight: 700;
+  font-size: 0.76rem;
+  color: #6b7280;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
   line-height: 1.4;
 }
 
 .order-dialog-details__value {
   font-weight: 500;
-  font-size: 0.95rem;
-  color: #1a1a1a;
+  font-size: 0.94rem;
+  color: #111827;
   line-height: 1.5;
   word-break: break-word;
 }
 
 .order-dialog-details__fees-section {
-  padding: 14px 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.calendar-dialog-muted-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
 }
 
 .order-dialog-details__fees-section:last-child {
@@ -273,7 +376,26 @@
     font-size: 14px;
   }
   .calendar-dialog-details-content {
-    padding: 16px 12px !important;
+    padding: 12px 14px 14px !important;
+  }
+  .calendar-order-dialog-title-wrap {
+    padding: 14px 44px 10px 14px !important;
+  }
+  .calendar-dialog-title {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+  .calendar-dialog-actions {
+    padding: 10px 12px 12px !important;
+    gap: 8px;
+  }
+  .calendar-dialog-actions-group,
+  .calendar-dialog-actions-secondary {
+    width: 100%;
+  }
+  .calendar-dialog-button {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
   }
   .order-dialog-details__row {
     grid-template-columns: 1fr;

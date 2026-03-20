@@ -33,18 +33,6 @@ const DOCUMENT_TYPES = {
   INVOICE: 'invoice',
 }
 
-const DOCUMENT_BUTTON_STYLES = {
-  active: {
-    backgroundColor: '#b5622d',
-    color: 'white',
-    boxShadow: '0 0 0 2px rgba(181, 98, 45, 0.35) inset',
-  },
-  inactive: {
-    backgroundColor: '#e08141',
-    color: 'white',
-  },
-}
-
 export default function OrderDialog({ onClose, eventId, order: incomingOrder = null }) {
   const history = useHistory()
   const queryClient = useQueryClient()
@@ -260,9 +248,10 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
         onClose={onClose}
         fullWidth={isDesktop}
         maxWidth={isDesktop ? 'sm' : false}
+        className="calendar-order-dialog"
         PaperProps={
           isDesktop
-            ? { style: { borderRadius: 16 } }
+            ? { className: 'calendar-order-dialog-paper' }
             : {
                 style: {
                   width: '100vw',
@@ -274,13 +263,9 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
               }
         }
       >
-        <DialogTitle style={{ position: 'relative', paddingRight: 48 }}>
+        <DialogTitle className="calendar-order-dialog-title-wrap">
           <h3 className="calendar-dialog-title">{title}</h3>
-          <IconButton
-            aria-label="close"
-            onClick={onClose}
-            style={{ position: 'absolute', top: 8, right: 8 }}
-          >
+          <IconButton aria-label="close" onClick={onClose} className="calendar-order-dialog-close">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -295,9 +280,9 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
               startIcon={<EmailIcon />}
               onClick={handleSendEmail}
               disabled={!order || !order.email || sendingEmail}
-              className="calendar-dialog-button"
+              className="calendar-dialog-button calendar-dialog-button--accent"
             >
-              Email
+              {sendingEmail ? 'Sending...' : 'Email'}
             </Button>
             <Button
               variant="contained"
@@ -305,57 +290,57 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
               startIcon={<TextsmsIcon />}
               onClick={handleSendSMS}
               disabled={!order || !order.phone || sendingSMS}
-              className="calendar-dialog-button"
+              className="calendar-dialog-button calendar-dialog-button--accent"
             >
-              SMS
+              {sendingSMS ? 'Sending...' : 'SMS'}
             </Button>
             <Button
-              variant="contained"
-              style={
-                receiptDocumentType === DOCUMENT_TYPES.RECEIPT
-                  ? DOCUMENT_BUTTON_STYLES.active
-                  : DOCUMENT_BUTTON_STYLES.inactive
-              }
+              variant="outlined"
               onClick={() => handleReceiptOpen(DOCUMENT_TYPES.RECEIPT)}
               disabled={!order}
-              className="calendar-dialog-button"
+              className={`calendar-dialog-button calendar-dialog-button--document ${
+                receiptDocumentType === DOCUMENT_TYPES.RECEIPT
+                  ? 'calendar-dialog-button--document-active'
+                  : ''
+              }`}
             >
               Receipt
             </Button>
             <Button
-              variant="contained"
-              style={
-                receiptDocumentType === DOCUMENT_TYPES.INVOICE
-                  ? DOCUMENT_BUTTON_STYLES.active
-                  : DOCUMENT_BUTTON_STYLES.inactive
-              }
+              variant="outlined"
               onClick={() => handleReceiptOpen(DOCUMENT_TYPES.INVOICE)}
               disabled={!order}
-              className="calendar-dialog-button"
+              className={`calendar-dialog-button calendar-dialog-button--document ${
+                receiptDocumentType === DOCUMENT_TYPES.INVOICE
+                  ? 'calendar-dialog-button--document-active'
+                  : ''
+              }`}
             >
               Invoice
             </Button>
           </div>
-          <Button
-            variant="outlined"
-            color="default"
-            startIcon={<EditIcon />}
-            onClick={handleEdit}
-            disabled={!order}
-            className="calendar-dialog-button"
-          >
-            Edit
-          </Button>
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<DeleteIcon />}
-            onClick={handleDeleteClick}
-            disabled={!order}
-            className="calendar-dialog-button"
-          >
-            Delete
-          </Button>
+          <div className="calendar-dialog-actions-secondary">
+            <Button
+              variant="text"
+              color="default"
+              startIcon={<EditIcon />}
+              onClick={handleEdit}
+              disabled={!order}
+              className="calendar-dialog-button calendar-dialog-button--quiet"
+            >
+              Edit
+            </Button>
+            <Button
+              variant="text"
+              color="secondary"
+              startIcon={<DeleteIcon />}
+              onClick={handleDeleteClick}
+              disabled={!order}
+              className="calendar-dialog-button calendar-dialog-button--danger"
+            >
+              Delete
+            </Button>
+          </div>
         </DialogActions>
       </Dialog>
       <ReceiptEditDialog
@@ -370,9 +355,10 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
         onClose={handleEditClose}
         fullWidth
         maxWidth={isDesktop ? 'md' : false}
+        className="calendar-order-dialog"
         PaperProps={
           isDesktop
-            ? { style: { borderRadius: 16 } }
+            ? { className: 'calendar-order-dialog-paper' }
             : {
                 style: {
                   width: '100vw',
@@ -384,12 +370,12 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
               }
         }
       >
-        <DialogTitle style={{ position: 'relative', paddingRight: 48 }}>
+        <DialogTitle className="calendar-order-dialog-title-wrap">
           <h3 className="calendar-dialog-title">Edit order</h3>
           <IconButton
             aria-label="close"
             onClick={handleEditClose}
-            style={{ position: 'absolute', top: 8, right: 8 }}
+            className="calendar-order-dialog-close"
           >
             <CloseIcon />
           </IconButton>
@@ -421,17 +407,27 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
       <Dialog
         open={deleteConfirmOpen}
         onClose={handleDeleteConfirmClose}
-        PaperProps={{ style: { borderRadius: 16 } }}
+        className="calendar-order-dialog"
+        PaperProps={{
+          className: 'calendar-order-dialog-paper calendar-order-dialog-paper--narrow',
+        }}
       >
-        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogTitle className="calendar-order-dialog-title-wrap">
+          <h3 className="calendar-dialog-title">Confirm deletion</h3>
+        </DialogTitle>
         <DialogContent>
           <p>Are you sure you want to delete this order?</p>
-          <p style={{ fontSize: '0.875rem', color: '#666' }}>
+          <p className="calendar-dialog-muted-text">
             This order will be marked as deleted but can be restored later.
           </p>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteConfirmClose} color="default" disabled={deleting}>
+        <DialogActions className="calendar-dialog-actions calendar-dialog-actions--compact">
+          <Button
+            onClick={handleDeleteConfirmClose}
+            color="default"
+            disabled={deleting}
+            className="calendar-dialog-button"
+          >
             Cancel
           </Button>
           <Button
@@ -439,6 +435,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
             color="secondary"
             variant="contained"
             disabled={deleting}
+            className="calendar-dialog-button calendar-dialog-button--danger-fill"
           >
             {deleting ? 'Deleting...' : 'Delete'}
           </Button>
