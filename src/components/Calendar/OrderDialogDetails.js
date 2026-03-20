@@ -21,7 +21,7 @@ export default function OrderDialogDetails({ order, eventType }) {
                 ? dayjs(order.boxes.deliveryDate).format('DD.MM.YYYY HH:mm')
                 : dayjs(order.boxes.returnDate).format('DD.MM.YYYY HH:mm'),
           },
-          { label: 'Boxes', value: `${order.boxes.amount} kpl` },
+          { label: 'Boxes', value: `${order.boxes.amount} pcs` },
           {
             label: 'Price',
             value: `${
@@ -40,7 +40,7 @@ export default function OrderDialogDetails({ order, eventType }) {
           value: `${order.address?.street} (${order.address?.floor} floor), ${order.address?.index} ${order.address?.city}`,
         },
         hasExtraAddresses && {
-          label: 'Extra Addresses',
+          label: 'Additional addresses',
           value: order.extraAddresses.map((addr) => (
             <div
               key={addr.id}
@@ -54,10 +54,10 @@ export default function OrderDialogDetails({ order, eventType }) {
             value: `${order.destination.street} (${order.destination?.floor} floor), ${order.destination.index} ${order.destination.city}`,
           },
         { label: 'Payment Type', value: order.paymentType?.name || '' },
-        { label: 'Total Price', value: `${order.price || 0}€` },
+        { label: 'Total price', value: `${order.price || 0}€` },
         hasBoxes && {
           label: 'Boxes',
-          value: `${order.boxes.amount} kpl, ${order.boxesPrice}€`,
+          value: `${order.boxes.amount} pcs, ${order.boxesPrice}€`,
         },
         { label: 'Service', value: order.service?.name || '' },
       ].filter(Boolean)
@@ -81,7 +81,7 @@ export default function OrderDialogDetails({ order, eventType }) {
           ))}
           {hasClientNumber && (
             <div className="order-dialog-details__row">
-              <span className="order-dialog-details__label">Client number</span>
+              <span className="order-dialog-details__label">Client phone</span>
               <span className="order-dialog-details__value">{order.phone}</span>
             </div>
           )}
@@ -97,7 +97,7 @@ export default function OrderDialogDetails({ order, eventType }) {
           ))}
           {hasClientNumber && (
             <div className="order-dialog-details__row">
-              <span className="order-dialog-details__label">Client number</span>
+              <span className="order-dialog-details__label">Client phone</span>
               <span className="order-dialog-details__value">{order.phone}</span>
             </div>
           )}

@@ -8,6 +8,7 @@ import {
   Button,
   TextField,
 } from '@material-ui/core'
+import useMediaQuery from '@material-ui/core/useMediaQuery'
 import CloseIcon from '@material-ui/icons/Close'
 import {
   sanitizeDecimalString,
@@ -70,7 +71,7 @@ export default function ReceiptEditDialog({
   }, [fallbackDocumentType, initialDraft, order])
   const [draft, setDraft] = useState(baseDraft)
   const [totalInput, setTotalInput] = useState(baseDraft.totalAmount || '')
-  const isDesktop = window.innerWidth > 600
+  const isDesktop = useMediaQuery('(min-width:601px)')
 
   useEffect(() => {
     setDraft(baseDraft)

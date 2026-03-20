@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogTitle, IconButton } from '@material-ui/core'
+import useMediaQuery from '@material-ui/core/useMediaQuery'
 import CloseIcon from '@material-ui/icons/Close'
 import { enqueueSnackbar } from 'notistack'
 import { useQueryClient } from '@tanstack/react-query'
@@ -18,7 +19,7 @@ import Order from '../../shared/Order'
 
 export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   const queryClient = useQueryClient()
-  const isMobile = window.innerWidth <= 600
+  const isMobile = useMediaQuery('(max-width:600px)')
   const [rawOrder, setRawOrder] = useState({ text: '', id: null })
   const [transformedOrder, setTransformedOrder] = useState({
     text: '',

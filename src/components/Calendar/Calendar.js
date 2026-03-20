@@ -86,7 +86,8 @@ export default function Calendar() {
   const isInitialLoading = hasDateRange && isLoading
   const isRefreshing = hasDateRange && isFetching && !isLoading
   const hasNoOrders = hasDateRange && !isInitialLoading && !isError && orders.length === 0
-  const errorMessage = error?.response?.data?.error || error?.message || 'Could not load orders.'
+  const errorMessage =
+    error?.response?.data?.error || error?.message || 'We could not load orders for this period.'
   const selectedOrderId = orderRouteMatch?.params?.orderId || null
   const selectedOrder = useMemo(() => {
     if (!selectedOrderId || !orders.length) return null
@@ -241,7 +242,9 @@ export default function Calendar() {
         }}
         buttonHints={{
           createOrderButton: 'Create a new order',
-          refreshOrdersButton: isRefreshing ? 'Refreshing orders' : 'Refresh orders',
+          refreshOrdersButton: isRefreshing
+            ? 'Refreshing the current order list'
+            : 'Refresh orders for the current view',
         }}
         {...mobileCalendarProps}
       />
@@ -261,9 +264,9 @@ export default function Calendar() {
         >
           <p className="calendar-status-panel-title">
             {isError
-              ? 'Orders are unavailable right now'
+              ? 'Orders are unavailable'
               : hasNoOrders
-              ? 'No orders in this date range'
+              ? 'No orders in this time range'
               : isRefreshing
               ? 'Refreshing orders'
               : 'Loading orders'}
@@ -272,10 +275,10 @@ export default function Calendar() {
             {isError
               ? errorMessage
               : hasNoOrders
-              ? 'Try another period or create a new order to start your schedule.'
+              ? 'Try a different date range or create a new order.'
               : isRefreshing
-              ? 'Latest updates are being applied to this view.'
-              : 'Preparing your schedule view.'}
+              ? 'Applying the latest updates to this calendar.'
+              : 'Preparing your calendar view.'}
           </p>
         </div>
       )}

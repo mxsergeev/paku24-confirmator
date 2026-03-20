@@ -7,6 +7,7 @@ import {
   IconButton,
   Button,
 } from '@material-ui/core'
+import useMediaQuery from '@material-ui/core/useMediaQuery'
 import CloseIcon from '@material-ui/icons/Close'
 import EmailIcon from '@material-ui/icons/Email'
 import TextsmsIcon from '@material-ui/icons/Textsms'
@@ -48,7 +49,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
   const [receiptDraft, setReceiptDraft] = useState(null)
   const [receiptDocumentType, setReceiptDocumentType] = useState('receipt')
   const { orderId, eventType } = useMemo(() => parseBoxEventId(eventId), [eventId])
-  const isDesktop = window.innerWidth > 600
+  const isDesktop = useMediaQuery('(min-width:601px)')
 
   if (!eventId) {
     return null
@@ -56,14 +57,16 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
 
   const handleSendEmail = useCallback(async () => {
     if (!order?.email) {
-      enqueueSnackbar('Email is missing.', { variant: 'warning' })
+      enqueueSnackbar('Add client email before sending.', { variant: 'warning' })
       return
     }
 
     const transformedOrderText = Order.format(new Order(order))
 
     if (!transformedOrderText) {
-      enqueueSnackbar('Order details are missing.', { variant: 'warning' })
+      enqueueSnackbar('Order details are incomplete. Check required fields.', {
+        variant: 'warning',
+      })
       return
     }
 
@@ -74,10 +77,12 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
         order,
         email: order.email,
       })
-      enqueueSnackbar(response.message || 'Email sent.')
+      enqueueSnackbar(response.message || 'Email sent to client.')
     } catch (err) {
       if (err.message === 'logout') return
-      enqueueSnackbar(err.response?.data?.error || 'Email send failed.', { variant: 'error' })
+      enqueueSnackbar(err.response?.data?.error || 'Could not send email. Please try again.', {
+        variant: 'error',
+      })
     } finally {
       setSendingEmail(false)
     }
@@ -85,17 +90,19 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
 
   const handleSendSMS = useCallback(async () => {
     if (!order?.phone) {
-      enqueueSnackbar('Phone number is missing.', { variant: 'warning' })
+      enqueueSnackbar('Add client phone number before sending.', { variant: 'warning' })
       return
     }
 
     try {
       setSendingSMS(true)
       const response = await sendSMS({ order: new Order(order).prepareForSending() })
-      enqueueSnackbar(response.message || 'SMS sent.')
+      enqueueSnackbar(response.message || 'SMS sent to client.')
     } catch (err) {
       if (err.message === 'logout') return
-      enqueueSnackbar(err.response?.data?.error || 'SMS send failed.', { variant: 'error' })
+      enqueueSnackbar(err.response?.data?.error || 'Could not send SMS. Please try again.', {
+        variant: 'error',
+      })
     } finally {
       setSendingSMS(false)
     }
@@ -129,13 +136,15 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
       const updateData = new Order(editableOrder).prepareForSending()
       const response = await orderPoolAPI.update(orderId, updateData)
       setOrder(response.order || response)
-      enqueueSnackbar(response.message || 'Changes saved.')
+      enqueueSnackbar(response.message || 'Order changes saved.')
       setEditOpen(false)
       setEditableOrder(null)
       queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
     } catch (err) {
       if (err.message === 'logout') return
-      enqueueSnackbar(err.response?.data?.error || 'Save failed.', { variant: 'error' })
+      enqueueSnackbar(err.response?.data?.error || 'Could not save changes. Please try again.', {
+        variant: 'error',
+      })
     } finally {
       setSavingEdit(false)
     }
@@ -155,13 +164,15 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
     try {
       setDeleting(true)
       const response = await orderPoolAPI.remove(orderId)
-      enqueueSnackbar(response.message || 'Order deleted.')
+      enqueueSnackbar(response.message || 'Order marked as deleted.')
       setDeleteConfirmOpen(false)
       queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
       onClose()
     } catch (err) {
       if (err.message === 'logout') return
-      enqueueSnackbar(err.response?.data?.error || 'Delete failed.', { variant: 'error' })
+      enqueueSnackbar(err.response?.data?.error || 'Could not delete order. Please try again.', {
+        variant: 'error',
+      })
     } finally {
       setDeleting(false)
     }
@@ -189,7 +200,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
   const handleReceiptPageOpen = useCallback(
     (draft) => {
       if (!orderId) {
-        enqueueSnackbar('Order id is missing.', { variant: 'warning' })
+        enqueueSnackbar('Order ID is missing.', { variant: 'warning' })
         return
       }
 
@@ -197,12 +208,14 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
       const safeDraft = normalizeReceiptDraft(draft, nextDocumentType)
 
       if (!safeDraft) {
-        enqueueSnackbar('Receipt data is invalid.', { variant: 'warning' })
+        enqueueSnackbar('Receipt details are invalid. Review required fields.', {
+          variant: 'warning',
+        })
         return
       }
 
       if (!safeDraft.customerEmail) {
-        enqueueSnackbar('Email is required for receipt.', { variant: 'warning' })
+        enqueueSnackbar('Add client email to create a receipt.', { variant: 'warning' })
         return
       }
 
@@ -239,7 +252,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
       : `${getOrderIcons(order, iconsData)} ${
           order.date ? dayjs(order.date).format('HH:mm') : ''
         }(${order.duration}h) ${order.name}`
-    : 'Order not found in current range'
+    : 'Order not found in this calendar view'
 
   return (
     <>
@@ -282,7 +295,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
               disabled={!order || !order.email || sendingEmail}
               className="calendar-dialog-button calendar-dialog-button--accent"
             >
-              {sendingEmail ? 'Sending...' : 'Email'}
+              {sendingEmail ? 'Sending...' : 'Send email'}
             </Button>
             <Button
               variant="contained"
@@ -292,7 +305,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
               disabled={!order || !order.phone || sendingSMS}
               className="calendar-dialog-button calendar-dialog-button--accent"
             >
-              {sendingSMS ? 'Sending...' : 'SMS'}
+              {sendingSMS ? 'Sending...' : 'Send SMS'}
             </Button>
             <Button
               variant="outlined"
@@ -304,7 +317,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
                   : ''
               }`}
             >
-              Receipt
+              Create receipt
             </Button>
             <Button
               variant="outlined"
@@ -316,7 +329,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
                   : ''
               }`}
             >
-              Invoice
+              Create invoice
             </Button>
           </div>
           <div className="calendar-dialog-actions-secondary">
@@ -413,12 +426,12 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
         }}
       >
         <DialogTitle className="calendar-order-dialog-title-wrap">
-          <h3 className="calendar-dialog-title">Confirm deletion</h3>
+          <h3 className="calendar-dialog-title">Delete this order?</h3>
         </DialogTitle>
         <DialogContent>
-          <p>Are you sure you want to delete this order?</p>
+          <p>This will remove the order from active planning.</p>
           <p className="calendar-dialog-muted-text">
-            This order will be marked as deleted but can be restored later.
+            You can still restore it later from deleted orders.
           </p>
         </DialogContent>
         <DialogActions className="calendar-dialog-actions calendar-dialog-actions--compact">
