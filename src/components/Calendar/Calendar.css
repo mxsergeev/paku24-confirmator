@@ -9,12 +9,17 @@
   --calendar-text-primary: #1f2937;
   --calendar-text-secondary: #4b5563;
   --calendar-text-muted: #6b7280;
+  --calendar-text-white: #ffffff;
   --calendar-border-soft: #e4e7ec;
   --calendar-border-strong: #d4d9e1;
   --calendar-accent: #e08141;
   --calendar-accent-hover: #ca7139;
   --calendar-accent-active: #b46332;
   --calendar-accent-soft: #fff2e7;
+  --calendar-accent-text-dark: #9a4e1e;
+  --calendar-danger-soft: #fdf2f0;
+  --calendar-danger-border: #f3c6bf;
+  --calendar-danger-text-dark: #7d2a1e;
   --calendar-danger: #b42318;
   --calendar-danger-fill: #cf4425;
   --calendar-danger-fill-hover: #b9381c;
@@ -65,26 +70,26 @@
 
 .calendar-status-panel--loading,
 .calendar-status-panel--refreshing {
-  border-color: #dbe2ea;
+  border-color: var(--calendar-border-soft);
   background: var(--calendar-bg-surface-muted);
 }
 
 .calendar-status-panel--empty {
   border-color: var(--calendar-border-soft);
-  background: #fbfcfd;
+  background: var(--calendar-bg-surface-soft);
 }
 
 .calendar-status-panel--error {
-  border-color: #f3c6bf;
-  background: #fdf2f0;
+  border-color: var(--calendar-danger-border);
+  background: var(--calendar-danger-soft);
 }
 
 .calendar-status-panel--error .calendar-status-panel-title {
-  color: #912018;
+  color: var(--calendar-danger-fill);
 }
 
 .calendar-status-panel--error .calendar-status-panel-text {
-  color: #7d2a1e;
+  color: var(--calendar-danger-text-dark);
 }
 
 .fc-event {
@@ -106,7 +111,18 @@
   letter-spacing: 0.01em;
   min-height: 40px;
   padding: 0 14px !important;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fc-createOrderButton-button:hover {
+  background-color: var(--calendar-accent-hover) !important;
+  box-shadow: 0 4px 8px rgba(224, 129, 65, 0.2);
+}
+
+.fc-createOrderButton-button:active {
+  background-color: var(--calendar-accent-active) !important;
+  box-shadow: 0 2px 4px rgba(180, 99, 50, 0.15);
 }
 
 .fc-createOrderButton-button:hover {
@@ -163,6 +179,12 @@
   outline-offset: 2px;
 }
 
+.calendar-dialog-button:disabled,
+.fc-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .calendar-fee-list {
   display: flex;
   flex-wrap: wrap;
@@ -174,7 +196,7 @@
 
 .calendar-fee-item {
   background: var(--calendar-bg-surface-muted);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--calendar-border-soft);
   border-radius: var(--calendar-radius-sm);
   padding: var(--calendar-space-xs) var(--calendar-space-sm);
   font-size: 0.875rem;
@@ -185,12 +207,12 @@
   align-items: center;
   margin: 0;
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .calendar-fee-item:hover {
-  background: #f3f6fa;
-  border-color: #d1d5db;
+  background: var(--calendar-bg-surface-soft);
+  border-color: var(--calendar-border-strong);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
@@ -207,7 +229,7 @@
 
 .calendar-order-dialog-paper {
   border-radius: 18px !important;
-  border: 1px solid #ebeef2;
+  border: 1px solid var(--calendar-border-soft);
   box-shadow: var(--calendar-shadow-dialog) !important;
   overflow: hidden;
 }
@@ -219,7 +241,7 @@
 .calendar-order-dialog-title-wrap {
   position: relative;
   padding: 18px 48px 10px 20px !important;
-  border-bottom: 1px solid #f1f4f8;
+  border-bottom: 1px solid var(--calendar-border-soft);
   background: var(--calendar-bg-surface-muted);
 }
 
@@ -233,7 +255,13 @@
 
 .calendar-order-dialog-close:hover {
   color: var(--calendar-text-primary) !important;
-  transform: scale(1.06);
+  transform: scale(1.08);
+}
+
+.calendar-order-dialog-close:focus-visible {
+  outline: 2px solid var(--calendar-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .calendar-dialog-actions {
@@ -241,7 +269,7 @@
   justify-content: space-between;
   gap: var(--calendar-space-sm);
   flex-wrap: wrap;
-  border-top: 1px solid #f1f4f8;
+  border-top: 1px solid var(--calendar-border-soft);
   background: var(--calendar-bg-surface-soft);
 }
 
@@ -262,7 +290,7 @@
   flex: 0 0 auto;
   align-items: flex-start;
   padding-left: var(--calendar-space-xs);
-  border-left: 1px solid #eceff3;
+  border-left: 1px solid var(--calendar-border-soft);
 }
 
 .calendar-dialog-button {
@@ -276,7 +304,7 @@
 
 .calendar-dialog-button--accent {
   background: var(--calendar-accent) !important;
-  color: #ffffff !important;
+  color: var(--calendar-text-white) !important;
 }
 
 .calendar-dialog-button--accent:hover {
@@ -291,7 +319,7 @@
 
 .calendar-dialog-button--document-active {
   border-color: var(--calendar-accent) !important;
-  color: #9a4e1e !important;
+  color: var(--calendar-accent-text-dark) !important;
   background: var(--calendar-accent-soft) !important;
 }
 
@@ -300,7 +328,7 @@
 }
 
 .calendar-dialog-button--quiet:hover {
-  background: #f3f4f6 !important;
+  background: var(--calendar-bg-surface-muted) !important;
 }
 
 .calendar-dialog-button--danger {
@@ -308,12 +336,12 @@
 }
 
 .calendar-dialog-button--danger:hover {
-  background: #fef3f2 !important;
+  background: var(--calendar-danger-soft) !important;
 }
 
 .calendar-dialog-button--danger-fill {
   background: var(--calendar-danger-fill) !important;
-  color: #fff !important;
+  color: var(--calendar-text-white) !important;
 }
 
 .calendar-dialog-button--danger-fill:hover {
@@ -405,14 +433,14 @@
 .order-dialog-details__loading {
   text-align: center;
   padding: 24px;
-  color: #999;
+  color: var(--calendar-text-muted);
   font-size: 0.95rem;
 }
 
 .order-dialog-details__error {
-  background: #fee;
-  border-left: 3px solid #e08;
-  color: #c00;
+  background: var(--calendar-danger-soft);
+  border-left: 3px solid var(--calendar-danger-border);
+  color: var(--calendar-danger-text-dark);
   padding: 12px 16px;
   border-radius: 4px;
   font-size: 0.9rem;
@@ -572,9 +600,9 @@
   }
   .fc-button {
     min-width: 44px;
-    min-height: 36px;
+    min-height: 44px;
     font-size: 15px;
-    padding: 6px var(--calendar-space-sm);
+    padding: 8px var(--calendar-space-sm);
     border-radius: 6px;
     margin: 0;
   }
@@ -590,7 +618,7 @@
   }
   .fc-refreshOrdersButton-button {
     font-size: 0.82rem !important;
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 9px !important;
   }
 
