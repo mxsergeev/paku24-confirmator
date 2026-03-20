@@ -14,8 +14,12 @@ import {
   sanitizeDecimalString,
   parseAndFormatDecimalString,
 } from '../../helpers/decimalStringHelpers'
-import { buildStableInvoiceNumber, toDateInputValue } from './receiptData.helpers'
-import { normalizeReceiptDraft, resolveDocumentType } from './receiptData.helpers'
+import {
+  buildStableInvoiceNumber,
+  toDateInputValue,
+  normalizeReceiptDraft,
+  resolveDocumentType,
+} from './receiptData.helpers'
 
 function formatAddressForReceipt(address) {
   if (!address) return ''
@@ -103,38 +107,30 @@ export default function ReceiptEditDialog({
 
   return (
     <Dialog
-      className="receipt-edit-dialog"
+      className="calendar-order-dialog receipt-edit-dialog"
       open={open}
       onClose={onClose}
       fullWidth
       maxWidth={isDesktop ? 'sm' : false}
-      PaperProps={
-        isDesktop
-          ? { style: { borderRadius: 16 } }
-          : {
-              style: {
-                width: '100vw',
-                maxWidth: '100vw',
-                margin: 0,
-                borderRadius: 16,
-                minHeight: 'auto',
-              },
-            }
-      }
+      PaperProps={{
+        className: isDesktop
+          ? 'calendar-order-dialog-paper receipt-edit-dialog-paper'
+          : 'calendar-order-dialog-paper receipt-edit-dialog-paper receipt-edit-dialog-paper--mobile',
+      }}
     >
-      <DialogTitle style={{ position: 'relative', paddingRight: 48 }}>
+      <DialogTitle className="calendar-order-dialog-title-wrap receipt-edit-dialog-title-wrap">
         <h3 className="calendar-dialog-title">
           {draft?.documentType === 'invoice' ? 'Invoice data' : 'Receipt data'}
         </h3>
         <IconButton
-          aria-label="close"
+          aria-label="Close document details dialog"
           onClick={onClose}
-          style={{ position: 'absolute', top: 8, right: 8 }}
+          className="calendar-order-dialog-close"
         >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
-      <DialogContent className="receipt-edit-dialog-content">
+      <DialogContent className="calendar-dialog-details-content receipt-edit-dialog-content">
         <TextField
           label="Name"
           fullWidth
@@ -199,7 +195,7 @@ export default function ReceiptEditDialog({
           onClick={handleOpenPage}
           className="calendar-dialog-button"
         >
-          Open page
+          Open document
         </Button>
         <Button
           variant="outlined"

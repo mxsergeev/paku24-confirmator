@@ -690,13 +690,26 @@
   }
 }
 
+.receipt-edit-dialog-paper--mobile {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  margin: 0 !important;
+  border-radius: 16px !important;
+  min-height: auto;
+}
+
 .bold {
   font-weight: 700;
 }
 
 .receipt-edit-dialog-content {
   display: grid;
-  gap: 10px;
+  gap: var(--calendar-space-xs);
+}
+
+.receipt-edit-dialog-content .MuiFormControl-root {
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .receipt-page-wrap {
