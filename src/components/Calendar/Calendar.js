@@ -23,6 +23,7 @@ const SHOW_DELETED_ORDERS_STORAGE_KEY = 'calendar-show-deleted-orders'
 const CALENDAR_VIEW_STORAGE_KEY = 'calendar-selected-view'
 const DEFAULT_CALENDAR_VIEW = 'dayGridMonth'
 const AVAILABLE_CALENDAR_VIEWS = ['dayGridMonth', 'timeGridWeek', 'listWeek', 'multiMonthYear']
+const isOrderDeleted = (order) => Boolean(order?.markedForDeletion || order?.deletedAt)
 
 export default function Calendar() {
   const calendarWrapRef = useRef(null)
@@ -47,6 +48,7 @@ export default function Calendar() {
     }
   })
   const [toolbarPortalNode, setToolbarPortalNode] = useState(null)
+  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date())
   const [dateRange, setDateRange] = useState({
     from: null,
     to: null,
@@ -101,6 +103,11 @@ export default function Calendar() {
       from: view.activeStart.toISOString(),
       to: view.activeEnd.toISOString(),
     })
+
+    const visibleDate = api.getDate?.()
+    if (visibleDate instanceof Date && !Number.isNaN(visibleDate.getTime())) {
+      setCurrentCalendarDate(visibleDate)
+    }
   }, [])
 
   useEffect(() => {
@@ -166,6 +173,7 @@ export default function Calendar() {
     deleted: showDeletedOrders ? null : false,
   })
   const hasDateRange = Boolean(dateRange?.from && dateRange?.to)
+  const isMonthViewActive = calendarView === 'dayGridMonth'
   const isInitialLoading = hasDateRange && isLoading
   const isRefreshing = hasDateRange && isFetching && !isLoading
   const hasNoOrders = hasDateRange && !isInitialLoading && !isError && orders.length === 0
@@ -178,6 +186,40 @@ export default function Calendar() {
     return orders.find((order) => String(order.id) === String(realOrderId)) || null
   }, [selectedOrderId, orders])
 
+  const currentMonthSummary = useMemo(() => {
+    if (!(currentCalendarDate instanceof Date) || Number.isNaN(currentCalendarDate.getTime())) {
+      return { total: 0, services: [] }
+    }
+
+    const targetYear = currentCalendarDate.getFullYear()
+    const targetMonth = currentCalendarDate.getMonth()
+    const serviceCounter = {}
+    let total = 0
+
+    orders.forEach((order) => {
+      if (!order?.date) return
+
+      if (isOrderDeleted(order)) return
+
+      const orderDate = new Date(order.date)
+      if (Number.isNaN(orderDate.getTime())) return
+
+      const matchesCurrentMonth =
+        orderDate.getFullYear() === targetYear && orderDate.getMonth() === targetMonth
+
+      if (!matchesCurrentMonth) return
+
+      const serviceName = order.service?.name || 'Uncategorized'
+      total += 1
+      serviceCounter[serviceName] = (serviceCounter[serviceName] || 0) + 1
+    })
+
+    return {
+      total,
+      services: Object.entries(serviceCounter).sort((a, b) => b[1] - a[1]),
+    }
+  }, [orders, currentCalendarDate])
+
   const events = useMemo(() => {
     if (!orders?.length) return []
 
@@ -185,7 +227,7 @@ export default function Calendar() {
       const events = []
       const serviceName = order.service?.name
       const colorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
-      const isDeletedOrder = Boolean(order.markedForDeletion || order.deletedAt)
+      const isDeletedOrder = isOrderDeleted(order)
       const deletedOrderColor = '#d93025'
       const color = isDeletedOrder
         ? deletedOrderColor
@@ -339,6 +381,11 @@ export default function Calendar() {
               from: api.view.activeStart.toISOString(),
               to: api.view.activeEnd.toISOString(),
             })
+
+            const visibleDate = api.getDate?.()
+            if (visibleDate instanceof Date && !Number.isNaN(visibleDate.getTime())) {
+              setCurrentCalendarDate(visibleDate)
+            }
           }
         }}
         buttonHints={{
@@ -364,6 +411,27 @@ export default function Calendar() {
           </label>,
           toolbarPortalNode
         )}
+      {isMonthViewActive && hasDateRange && !isInitialLoading && !isError && (
+        <div className="calendar-month-summary" role="status" aria-live="polite">
+          <div className="calendar-month-summary-header">
+            <p className="calendar-month-summary-title">Total orders</p>
+            <p className="calendar-month-summary-total">{currentMonthSummary.total}</p>
+          </div>
+
+          {currentMonthSummary.services.length > 0 ? (
+            <ul className="calendar-month-summary-list">
+              {currentMonthSummary.services.map(([serviceName, serviceCount]) => (
+                <li className="calendar-month-summary-item" key={serviceName}>
+                  <span className="calendar-month-summary-service-name">{serviceName}</span>
+                  <span className="calendar-month-summary-service-count">{serviceCount}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="calendar-month-summary-empty">No orders in this month yet.</p>
+          )}
+        </div>
+      )}
       {(isInitialLoading || isError || hasNoOrders || isRefreshing) && (
         <div
           className={`calendar-status-panel ${
