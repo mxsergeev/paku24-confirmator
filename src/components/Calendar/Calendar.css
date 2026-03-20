@@ -1,17 +1,45 @@
+.calendar,
+.calendar-order-dialog,
+.calendar-new-order-dialog-paper,
+.receipt-page-wrap {
+  --calendar-font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  --calendar-bg-surface: #ffffff;
+  --calendar-bg-surface-muted: #f8fafc;
+  --calendar-bg-surface-soft: #fcfdff;
+  --calendar-text-primary: #1f2937;
+  --calendar-text-secondary: #4b5563;
+  --calendar-text-muted: #6b7280;
+  --calendar-border-soft: #e4e7ec;
+  --calendar-border-strong: #d4d9e1;
+  --calendar-accent: #e08141;
+  --calendar-accent-hover: #ca7139;
+  --calendar-accent-active: #b46332;
+  --calendar-accent-soft: #fff2e7;
+  --calendar-danger: #b42318;
+  --calendar-danger-fill: #cf4425;
+  --calendar-danger-fill-hover: #b9381c;
+  --calendar-radius-sm: 8px;
+  --calendar-radius-md: 10px;
+  --calendar-radius-lg: 12px;
+  --calendar-shadow-soft: 0 2px 8px rgba(17, 24, 39, 0.08);
+  --calendar-shadow-dialog: 0 16px 44px rgba(20, 28, 45, 0.16);
+}
+
 .calendar {
   margin: 16px 0;
   width: 100%;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  border-radius: var(--calendar-radius-lg);
+  box-shadow: var(--calendar-shadow-soft);
   padding: 20px 24px;
+  font-family: var(--calendar-font-family);
 }
 
 .calendar-status-panel {
   margin-top: 10px;
-  border-radius: 10px;
-  border: 1px solid #e4e7ec;
+  border-radius: var(--calendar-radius-md);
+  border: 1px solid var(--calendar-border-soft);
   padding: 10px 12px;
-  background: #f8fafc;
+  background: var(--calendar-bg-surface-muted);
 }
 
 .calendar-status-panel-title {
@@ -19,24 +47,24 @@
   font-weight: 700;
   font-size: 0.95rem;
   line-height: 1.35;
-  color: #1f2937;
+  color: var(--calendar-text-primary);
 }
 
 .calendar-status-panel-text {
   margin: 4px 0 0;
   font-size: 0.9rem;
   line-height: 1.4;
-  color: #4b5563;
+  color: var(--calendar-text-secondary);
 }
 
 .calendar-status-panel--loading,
 .calendar-status-panel--refreshing {
   border-color: #dbe2ea;
-  background: #f8fafc;
+  background: var(--calendar-bg-surface-muted);
 }
 
 .calendar-status-panel--empty {
-  border-color: #e4e7ec;
+  border-color: var(--calendar-border-soft);
   background: #fbfcfd;
 }
 
@@ -65,7 +93,7 @@
 }
 
 .fc-createOrderButton-button {
-  background-color: #e08141 !important;
+  background-color: var(--calendar-accent) !important;
   color: white !important;
   border: none !important;
   font-weight: 700;
@@ -76,18 +104,18 @@
 }
 
 .fc-createOrderButton-button:hover {
-  background-color: #ca7139 !important;
+  background-color: var(--calendar-accent-hover) !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .fc-createOrderButton-button:active {
-  background-color: #b46332 !important;
+  background-color: var(--calendar-accent-active) !important;
 }
 
 .fc-refreshOrdersButton-button {
-  background-color: #ffffff !important;
-  color: #374151 !important;
-  border: 1px solid #d4d9e1 !important;
+  background-color: var(--calendar-bg-surface) !important;
+  color: var(--calendar-text-secondary) !important;
+  border: 1px solid var(--calendar-border-strong) !important;
   font-size: 0.9rem !important;
   font-weight: 600 !important;
   line-height: 1.2 !important;
@@ -102,7 +130,7 @@
 .fc-refreshOrdersButton-button:focus,
 .fc-refreshOrdersButton-button:active {
   background-color: #f6f8fb !important;
-  color: #1f2937 !important;
+  color: var(--calendar-text-primary) !important;
   border: 1px solid #c6cfdb !important;
   outline: none !important;
   box-shadow: none !important;
@@ -123,6 +151,12 @@
   border-radius: 8px;
 }
 
+.fc-toolbar .fc-button:focus-visible,
+.calendar-dialog-button:focus-visible {
+  outline: 2px solid var(--calendar-accent);
+  outline-offset: 2px;
+}
+
 .calendar-fee-list {
   display: flex;
   flex-wrap: wrap;
@@ -133,12 +167,12 @@
 }
 
 .calendar-fee-item {
-  background: linear-gradient(135deg, #f8fafb 0%, #f3f5f7 100%);
+  background: var(--calendar-bg-surface-muted);
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: var(--calendar-radius-sm);
   padding: 8px 12px;
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--calendar-text-secondary);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   list-style: none;
   display: inline-flex;
@@ -149,7 +183,7 @@
 }
 
 .calendar-fee-item:hover {
-  background: linear-gradient(135deg, #f0f4f9 0%, #eef2f5 100%);
+  background: #f3f6fa;
   border-color: #d1d5db;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
@@ -158,7 +192,7 @@
   font-weight: 800;
   font-size: clamp(1.05rem, 1.8vw, 1.35rem);
   line-height: 1.35;
-  color: #1f2937;
+  color: var(--calendar-text-primary);
   margin: 0;
   padding: 0;
   display: block;
@@ -168,7 +202,7 @@
 .calendar-order-dialog-paper {
   border-radius: 18px !important;
   border: 1px solid #ebeef2;
-  box-shadow: 0 16px 44px rgba(20, 28, 45, 0.16) !important;
+  box-shadow: var(--calendar-shadow-dialog) !important;
   overflow: hidden;
 }
 
@@ -180,19 +214,19 @@
   position: relative;
   padding: 18px 48px 10px 20px !important;
   border-bottom: 1px solid #f1f4f8;
-  background: linear-gradient(180deg, #fbfcfe 0%, #f6f8fb 100%);
+  background: var(--calendar-bg-surface-muted);
 }
 
 .calendar-order-dialog-close {
   position: absolute !important;
   top: 10px;
   right: 10px;
-  color: #6b7280 !important;
+  color: var(--calendar-text-muted) !important;
   transition: color 0.2s ease, transform 0.15s ease;
 }
 
 .calendar-order-dialog-close:hover {
-  color: #111827 !important;
+  color: var(--calendar-text-primary) !important;
   transform: scale(1.06);
 }
 
@@ -202,7 +236,7 @@
   gap: 12px;
   flex-wrap: wrap;
   border-top: 1px solid #f1f4f8;
-  background: #fcfdff;
+  background: var(--calendar-bg-surface-soft);
 }
 
 .calendar-dialog-actions.MuiDialogActions-spacing > :not(:first-child) {
@@ -224,7 +258,7 @@
 
 .calendar-dialog-button {
   min-width: 96px;
-  border-radius: 10px !important;
+  border-radius: var(--calendar-radius-md) !important;
   text-transform: none !important;
   font-weight: 600 !important;
   letter-spacing: 0.01em;
@@ -232,28 +266,28 @@
 }
 
 .calendar-dialog-button--accent {
-  background: linear-gradient(120deg, #ef8e4f 0%, #e67e3f 100%) !important;
+  background: var(--calendar-accent) !important;
   color: #ffffff !important;
 }
 
 .calendar-dialog-button--accent:hover {
-  background: linear-gradient(120deg, #e67e3f 0%, #d56f35 100%) !important;
+  background: var(--calendar-accent-hover) !important;
 }
 
 .calendar-dialog-button--document {
-  border: 1px solid #d8dee7 !important;
-  color: #374151 !important;
-  background: #fff !important;
+  border: 1px solid var(--calendar-border-strong) !important;
+  color: var(--calendar-text-secondary) !important;
+  background: var(--calendar-bg-surface) !important;
 }
 
 .calendar-dialog-button--document-active {
-  border-color: #d97735 !important;
+  border-color: var(--calendar-accent) !important;
   color: #9a4e1e !important;
-  background: #fff2e7 !important;
+  background: var(--calendar-accent-soft) !important;
 }
 
 .calendar-dialog-button--quiet {
-  color: #4b5563 !important;
+  color: var(--calendar-text-secondary) !important;
 }
 
 .calendar-dialog-button--quiet:hover {
@@ -261,7 +295,7 @@
 }
 
 .calendar-dialog-button--danger {
-  color: #b42318 !important;
+  color: var(--calendar-danger) !important;
 }
 
 .calendar-dialog-button--danger:hover {
@@ -269,12 +303,12 @@
 }
 
 .calendar-dialog-button--danger-fill {
-  background: #cf4425 !important;
+  background: var(--calendar-danger-fill) !important;
   color: #fff !important;
 }
 
 .calendar-dialog-button--danger-fill:hover {
-  background: #b9381c !important;
+  background: var(--calendar-danger-fill-hover) !important;
 }
 
 .calendar-dialog-actions--compact {
@@ -283,9 +317,8 @@
 
 .calendar-dialog-details-content {
   padding: 16px 20px 18px !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  background: #ffffff;
+  font-family: var(--calendar-font-family);
+  background: var(--calendar-bg-surface);
 }
 
 .order-dialog-details {
@@ -316,7 +349,7 @@
 .order-dialog-details__label {
   font-weight: 700;
   font-size: 0.76rem;
-  color: #6b7280;
+  color: var(--calendar-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   line-height: 1.4;
@@ -325,7 +358,7 @@
 .order-dialog-details__value {
   font-weight: 500;
   font-size: 0.94rem;
-  color: #111827;
+  color: var(--calendar-text-primary);
   line-height: 1.5;
   word-break: break-word;
 }
@@ -341,7 +374,11 @@
 .calendar-dialog-muted-text {
   margin: 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--calendar-text-muted);
+}
+
+.order-dialog-details__extra-address {
+  margin: -2px 0 4px;
 }
 
 .order-dialog-details__fees-section:last-child {
@@ -462,6 +499,9 @@
   }
   .order-dialog-details__value {
     font-size: 0.9rem;
+  }
+  .order-dialog-details__extra-address {
+    margin: 0;
   }
   .calendar-fee-list {
     gap: 6px;

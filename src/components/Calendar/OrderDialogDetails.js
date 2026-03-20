@@ -7,7 +7,6 @@ export default function OrderDialogDetails({ order, eventType }) {
   const hasBoxes = Number(order?.boxes?.amount) > 0
   const isBoxEvent = eventType === 'boxDelivery' || eventType === 'boxReturn'
   const showRegularOrder = order && !isBoxEvent
-  const isMobile = window.innerWidth <= 600
   const hasExtraAddresses =
     order?.extraAddresses && Array.isArray(order.extraAddresses) && order.extraAddresses.length > 0
   const hasClientEmail = Boolean(order?.email)
@@ -45,7 +44,7 @@ export default function OrderDialogDetails({ order, eventType }) {
           value: order.extraAddresses.map((addr) => (
             <div
               key={addr.id}
-              style={!isMobile ? { marginBottom: '4px', marginTop: '-2px' } : {}}
+              className="order-dialog-details__extra-address"
             >{`${addr.street} (${addr.floor} floor), ${addr.index} ${addr.city}`}</div>
           )),
         },
