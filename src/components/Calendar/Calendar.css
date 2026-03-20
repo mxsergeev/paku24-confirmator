@@ -173,6 +173,79 @@
   border-radius: 8px;
 }
 
+.fc .fc-header-toolbar {
+  flex-wrap: wrap;
+  row-gap: var(--calendar-space-xs);
+}
+
+.calendar-toolbar-bottom-row {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--calendar-space-2xs);
+  border-top: 1px solid var(--calendar-border-soft);
+}
+
+.calendar-toolbar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--calendar-space-xs);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--calendar-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.calendar-toolbar-toggle-label {
+  line-height: 1.2;
+}
+
+.calendar-toolbar-toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.calendar-toolbar-toggle-slider {
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #d3d9e3;
+  border: 1px solid #c3ccd9;
+  position: relative;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.calendar-toolbar-toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.2);
+  transition: transform 0.18s ease;
+}
+
+.calendar-toolbar-toggle-input:checked + .calendar-toolbar-toggle-slider {
+  background: #e8584b;
+  border-color: #d93025;
+}
+
+.calendar-toolbar-toggle-input:checked + .calendar-toolbar-toggle-slider::after {
+  transform: translateX(18px);
+}
+
+.calendar-toolbar-toggle-input:focus-visible + .calendar-toolbar-toggle-slider {
+  outline: 2px solid var(--calendar-accent);
+  outline-offset: 2px;
+}
+
 .fc-toolbar .fc-button:focus-visible,
 .calendar-dialog-button:focus-visible {
   outline: 2px solid var(--calendar-accent);
@@ -597,6 +670,10 @@
   }
   .fc-toolbar-end {
     padding-right: 0;
+  }
+  .calendar-toolbar-bottom-row {
+    justify-content: flex-start;
+    padding-top: var(--calendar-space-xs);
   }
   .fc-button {
     min-width: 44px;

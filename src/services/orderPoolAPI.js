@@ -44,7 +44,10 @@ async function getOrderById(id) {
 }
 
 async function getByRange({ from, to, deleted = false } = {}) {
-  const query = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&deleted=${deleted}`
+  const baseQuery = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+  const deletedQuery =
+    deleted === null || typeof deleted === 'undefined' ? '' : `&deleted=${deleted}`
+  const query = `${baseQuery}${deletedQuery}`
   const url = `${baseUrl_v2}/?${query}`
 
   return interceptor.axiosInstance.get(url).then((res) => {
@@ -77,9 +80,7 @@ function getConfirmedOrders(period, options = { onlyCount: true }) {
 }
 
 function add({ order }) {
-  return interceptor.axiosInstance
-    .post(`${baseUrl}/v2/add`, { order })
-    .then((res) => res?.data)
+  return interceptor.axiosInstance.post(`${baseUrl}/v2/add`, { order }).then((res) => res?.data)
 }
 
 function update(id, updateData) {

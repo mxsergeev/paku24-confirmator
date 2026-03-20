@@ -124,13 +124,20 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
   try {
     const { from, to, deleted } = req.query
 
+    const deletedFilter =
+      deleted === 'true'
+        ? { deletedAt: { $exists: true } }
+        : deleted === 'false'
+        ? { deletedAt: { $exists: false } }
+        : {}
+
     const match = {
       $or: [
         { date: { $gte: from, $lte: to } },
         { 'boxes.deliveryDate': { $gte: from, $lte: to } },
         { 'boxes.returnDate': { $gte: from, $lte: to } },
       ],
-      deletedAt: { $exists: deleted === 'true' },
+      ...deletedFilter,
     }
 
     const ordersInPool = await Order.find(match).sort({ _id: -1 })

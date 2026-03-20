@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useHistory, useLocation, useRouteMatch } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import OrderDialog from './OrderDialog'
@@ -18,8 +19,34 @@ import iconsData from '../../data/icons.json'
 import { useCalendarOrders } from '../../hooks/useCalendarOrders'
 import './Calendar.css'
 
+const SHOW_DELETED_ORDERS_STORAGE_KEY = 'calendar-show-deleted-orders'
+const CALENDAR_VIEW_STORAGE_KEY = 'calendar-selected-view'
+const DEFAULT_CALENDAR_VIEW = 'dayGridMonth'
+const AVAILABLE_CALENDAR_VIEWS = ['dayGridMonth', 'timeGridWeek', 'listWeek', 'multiMonthYear']
+
 export default function Calendar() {
+  const calendarWrapRef = useRef(null)
   const calendarRef = useRef(null)
+  const [showDeletedOrders, setShowDeletedOrders] = useState(() => {
+    if (typeof window === 'undefined') return false
+
+    try {
+      return window.localStorage.getItem(SHOW_DELETED_ORDERS_STORAGE_KEY) === 'true'
+    } catch {
+      return false
+    }
+  })
+  const [calendarView, setCalendarView] = useState(() => {
+    if (typeof window === 'undefined') return DEFAULT_CALENDAR_VIEW
+
+    try {
+      const savedView = window.localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY)
+      return AVAILABLE_CALENDAR_VIEWS.includes(savedView) ? savedView : DEFAULT_CALENDAR_VIEW
+    } catch {
+      return DEFAULT_CALENDAR_VIEW
+    }
+  })
+  const [toolbarPortalNode, setToolbarPortalNode] = useState(null)
   const [dateRange, setDateRange] = useState({
     from: null,
     to: null,
@@ -63,7 +90,6 @@ export default function Calendar() {
       : {}),
   }
 
-  // Set initial date range after calendar API is available
   useEffect(() => {
     const api = calendarRef.current?.getApi?.()
     if (!api) return
@@ -77,10 +103,67 @@ export default function Calendar() {
     })
   }, [])
 
+  useEffect(() => {
+    const calendarWrap = calendarWrapRef.current
+    if (!calendarWrap) return undefined
+
+    let frameId = null
+    let portalNode = null
+    let attempts = 0
+
+    const attachPortalNode = () => {
+      const toolbar = calendarWrap.querySelector('.fc .fc-header-toolbar')
+
+      if (toolbar) {
+        portalNode = document.createElement('div')
+        portalNode.className = 'calendar-toolbar-bottom-row'
+        toolbar.appendChild(portalNode)
+        setToolbarPortalNode(portalNode)
+        return
+      }
+
+      if (attempts < 30) {
+        attempts += 1
+        frameId = window.requestAnimationFrame(attachPortalNode)
+      }
+    }
+
+    attachPortalNode()
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId)
+      }
+      if (portalNode?.parentNode) {
+        portalNode.parentNode.removeChild(portalNode)
+      }
+      setToolbarPortalNode(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      window.localStorage.setItem(
+        SHOW_DELETED_ORDERS_STORAGE_KEY,
+        showDeletedOrders ? 'true' : 'false'
+      )
+    } catch {}
+  }, [showDeletedOrders])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      window.localStorage.setItem(CALENDAR_VIEW_STORAGE_KEY, calendarView)
+    } catch {}
+  }, [calendarView])
+
   const { data: orders = [], refetch, isLoading, isFetching, isError, error } = useCalendarOrders({
     from: dateRange?.from,
     to: dateRange?.to,
-    deleted: false,
+    deleted: showDeletedOrders ? null : false,
   })
   const hasDateRange = Boolean(dateRange?.from && dateRange?.to)
   const isInitialLoading = hasDateRange && isLoading
@@ -102,7 +185,13 @@ export default function Calendar() {
       const events = []
       const serviceName = order.service?.name
       const colorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
-      const color = colorId && calendarColors[colorId] ? calendarColors[colorId].hex : '#eee'
+      const isDeletedOrder = Boolean(order.markedForDeletion || order.deletedAt)
+      const deletedOrderColor = '#d93025'
+      const color = isDeletedOrder
+        ? deletedOrderColor
+        : colorId && calendarColors[colorId]
+        ? calendarColors[colorId].hex
+        : '#eee'
 
       if (order.date) {
         const eventTime = dayjs(order.date).format('HH:mm')
@@ -122,7 +211,11 @@ export default function Calendar() {
 
       if (order.boxes?.deliveryDate && Number(order.boxes?.amount) > 0) {
         const boxColorId = colorsData.boxes || '1'
-        const boxColor = calendarColors[boxColorId] ? calendarColors[boxColorId].hex : '#7986cb'
+        const boxColor = isDeletedOrder
+          ? deletedOrderColor
+          : calendarColors[boxColorId]
+          ? calendarColors[boxColorId].hex
+          : '#7986cb'
         const deliveryTime = dayjs(order.boxes.deliveryDate).format('HH:mm')
         events.push({
           id: `${order.id}-box-delivery`,
@@ -138,7 +231,11 @@ export default function Calendar() {
 
       if (order.boxes?.returnDate && Number(order.boxes?.amount) > 0) {
         const boxColorId = colorsData.boxes || '1'
-        const boxColor = calendarColors[boxColorId] ? calendarColors[boxColorId].hex : '#7986cb'
+        const boxColor = isDeletedOrder
+          ? deletedOrderColor
+          : calendarColors[boxColorId]
+          ? calendarColors[boxColorId].hex
+          : '#7986cb'
         const returnTime = dayjs(order.boxes.returnDate).format('HH:mm')
         events.push({
           id: `${order.id}-box-return`,
@@ -202,11 +299,11 @@ export default function Calendar() {
   }
 
   return (
-    <div className="calendar">
+    <div className="calendar" ref={calendarWrapRef}>
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, multiMonthPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
+        initialView={calendarView}
         views={views}
         customButtons={{
           createOrderButton: {
@@ -231,7 +328,11 @@ export default function Calendar() {
         eventContent={renderEventContent}
         firstDay={1}
         eventClick={handleEventClick}
-        datesSet={() => {
+        datesSet={(dateInfo) => {
+          if (dateInfo?.view?.type && dateInfo.view.type !== calendarView) {
+            setCalendarView(dateInfo.view.type)
+          }
+
           const api = calendarRef.current?.getApi?.()
           if (api?.view) {
             setDateRange({
@@ -248,6 +349,21 @@ export default function Calendar() {
         }}
         {...mobileCalendarProps}
       />
+      {toolbarPortalNode &&
+        createPortal(
+          <label className="calendar-toolbar-toggle" htmlFor="calendar-show-deleted-orders">
+            <span className="calendar-toolbar-toggle-label">Show deleted</span>
+            <input
+              id="calendar-show-deleted-orders"
+              className="calendar-toolbar-toggle-input"
+              type="checkbox"
+              checked={showDeletedOrders}
+              onChange={(event) => setShowDeletedOrders(event.target.checked)}
+            />
+            <span className="calendar-toolbar-toggle-slider" aria-hidden="true" />
+          </label>,
+          toolbarPortalNode
+        )}
       {(isInitialLoading || isError || hasNoOrders || isRefreshing) && (
         <div
           className={`calendar-status-panel ${
