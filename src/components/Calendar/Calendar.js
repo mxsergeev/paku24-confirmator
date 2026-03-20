@@ -77,11 +77,16 @@ export default function Calendar() {
     })
   }, [])
 
-  const { data: orders = [], refetch } = useCalendarOrders({
+  const { data: orders = [], refetch, isLoading, isFetching, isError, error } = useCalendarOrders({
     from: dateRange?.from,
     to: dateRange?.to,
     deleted: false,
   })
+  const hasDateRange = Boolean(dateRange?.from && dateRange?.to)
+  const isInitialLoading = hasDateRange && isLoading
+  const isRefreshing = hasDateRange && isFetching && !isLoading
+  const hasNoOrders = hasDateRange && !isInitialLoading && !isError && orders.length === 0
+  const errorMessage = error?.response?.data?.error || error?.message || 'Could not load orders.'
   const selectedOrderId = orderRouteMatch?.params?.orderId || null
   const selectedOrder = useMemo(() => {
     if (!selectedOrderId || !orders.length) return null
@@ -204,18 +209,22 @@ export default function Calendar() {
         views={views}
         customButtons={{
           createOrderButton: {
-            text: 'New order',
+            text: 'Create order',
             click: handleNewOrderOpen,
           },
           refreshOrdersButton: {
-            text: '⟳',
-            click: refetch,
+            text: isRefreshing ? 'Refreshing...' : 'Refresh',
+            click: () => {
+              if (!isFetching) {
+                refetch()
+              }
+            },
           },
         }}
         headerToolbar={{
-          left: 'prev,next today createOrderButton',
+          left: 'createOrderButton prev,next today',
           center: 'title',
-          right: 'refreshOrdersButton dayGridMonth,timeGridWeek,listWeek,multiMonthYear',
+          right: 'dayGridMonth,timeGridWeek,listWeek,multiMonthYear refreshOrdersButton',
         }}
         events={events}
         eventContent={renderEventContent}
@@ -230,8 +239,46 @@ export default function Calendar() {
             })
           }
         }}
+        buttonHints={{
+          createOrderButton: 'Create a new order',
+          refreshOrdersButton: isRefreshing ? 'Refreshing orders' : 'Refresh orders',
+        }}
         {...mobileCalendarProps}
       />
+      {(isInitialLoading || isError || hasNoOrders || isRefreshing) && (
+        <div
+          className={`calendar-status-panel ${
+            isError
+              ? 'calendar-status-panel--error'
+              : hasNoOrders
+              ? 'calendar-status-panel--empty'
+              : isRefreshing
+              ? 'calendar-status-panel--refreshing'
+              : 'calendar-status-panel--loading'
+          }`}
+          role={isError ? 'alert' : 'status'}
+          aria-live={isError ? 'assertive' : 'polite'}
+        >
+          <p className="calendar-status-panel-title">
+            {isError
+              ? 'Orders are unavailable right now'
+              : hasNoOrders
+              ? 'No orders in this date range'
+              : isRefreshing
+              ? 'Refreshing orders'
+              : 'Loading orders'}
+          </p>
+          <p className="calendar-status-panel-text">
+            {isError
+              ? errorMessage
+              : hasNoOrders
+              ? 'Try another period or create a new order to start your schedule.'
+              : isRefreshing
+              ? 'Latest updates are being applied to this view.'
+              : 'Preparing your schedule view.'}
+          </p>
+        </div>
+      )}
       {selectedOrderId && (
         <OrderDialog onClose={closeModal} eventId={selectedOrderId} order={selectedOrder} />
       )}
