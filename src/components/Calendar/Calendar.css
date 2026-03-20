@@ -23,22 +23,28 @@
   --calendar-radius-lg: 12px;
   --calendar-shadow-soft: 0 2px 8px rgba(17, 24, 39, 0.08);
   --calendar-shadow-dialog: 0 16px 44px rgba(20, 28, 45, 0.16);
+  --calendar-space-2xs: 4px;
+  --calendar-space-xs: 8px;
+  --calendar-space-sm: 12px;
+  --calendar-space-md: 16px;
+  --calendar-space-lg: 24px;
+  --calendar-space-xl: 32px;
 }
 
 .calendar {
-  margin: 16px 0;
+  margin: var(--calendar-space-md) 0;
   width: 100%;
   border-radius: var(--calendar-radius-lg);
   box-shadow: var(--calendar-shadow-soft);
-  padding: 20px 24px;
+  padding: var(--calendar-space-md) var(--calendar-space-lg);
   font-family: var(--calendar-font-family);
 }
 
 .calendar-status-panel {
-  margin-top: 10px;
+  margin-top: var(--calendar-space-sm);
   border-radius: var(--calendar-radius-md);
   border: 1px solid var(--calendar-border-soft);
-  padding: 10px 12px;
+  padding: var(--calendar-space-sm);
   background: var(--calendar-bg-surface-muted);
 }
 
@@ -51,7 +57,7 @@
 }
 
 .calendar-status-panel-text {
-  margin: 4px 0 0;
+  margin: var(--calendar-space-2xs) 0 0;
   font-size: 0.9rem;
   line-height: 1.4;
   color: var(--calendar-text-secondary);
@@ -160,7 +166,7 @@
 .calendar-fee-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--calendar-space-xs);
   padding: 0;
   margin: 0;
   justify-content: flex-start;
@@ -170,7 +176,7 @@
   background: var(--calendar-bg-surface-muted);
   border: 1px solid #e5e7eb;
   border-radius: var(--calendar-radius-sm);
-  padding: 8px 12px;
+  padding: var(--calendar-space-xs) var(--calendar-space-sm);
   font-size: 0.875rem;
   color: var(--calendar-text-secondary);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -231,9 +237,9 @@
 }
 
 .calendar-dialog-actions {
-  padding: 12px 16px 14px !important;
+  padding: var(--calendar-space-sm) var(--calendar-space-md) 14px !important;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--calendar-space-sm);
   flex-wrap: wrap;
   border-top: 1px solid #f1f4f8;
   background: var(--calendar-bg-surface-soft);
@@ -246,14 +252,17 @@
 .calendar-dialog-actions-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--calendar-space-xs);
   flex: 1 1 auto;
 }
 
 .calendar-dialog-actions-secondary {
   display: flex;
-  gap: 6px;
+  gap: var(--calendar-space-xs);
   flex: 0 0 auto;
+  align-items: flex-start;
+  padding-left: var(--calendar-space-xs);
+  border-left: 1px solid #eceff3;
 }
 
 .calendar-dialog-button {
@@ -316,7 +325,7 @@
 }
 
 .calendar-dialog-details-content {
-  padding: 16px 20px 18px !important;
+  padding: var(--calendar-space-md) 20px 18px !important;
   font-family: var(--calendar-font-family);
   background: var(--calendar-bg-surface);
 }
@@ -324,7 +333,7 @@
 .order-dialog-details {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: var(--calendar-space-xs);
 }
 
 .order-dialog-details__section {
@@ -333,12 +342,16 @@
   gap: 0;
 }
 
+.order-dialog-details__section + .order-dialog-details__section {
+  margin-top: var(--calendar-space-sm);
+}
+
 .order-dialog-details__row {
   display: grid;
   grid-template-columns: 120px 1fr;
-  gap: 16px;
-  align-items: flex-start;
-  padding: 12px 0;
+  gap: var(--calendar-space-md);
+  align-items: center;
+  padding: var(--calendar-space-sm) 0;
   border-bottom: 1px solid #f3f4f6;
 }
 
@@ -352,7 +365,7 @@
   color: var(--calendar-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .order-dialog-details__value {
@@ -364,11 +377,11 @@
 }
 
 .order-dialog-details__fees-section {
-  padding: 12px 0;
+  padding: var(--calendar-space-sm) 0;
   border-bottom: 1px solid #f3f4f6;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--calendar-space-xs);
 }
 
 .calendar-dialog-muted-text {
@@ -463,7 +476,7 @@
 
 @media (max-width: 600px) {
   .calendar {
-    padding: 8px 2px;
+    padding: var(--calendar-space-xs) var(--calendar-space-2xs);
     border-radius: 6px;
     font-size: 14px;
   }
@@ -478,8 +491,8 @@
     line-height: 1.35;
   }
   .calendar-dialog-actions {
-    padding: 10px 12px 12px !important;
-    gap: 8px;
+    padding: var(--calendar-space-xs) var(--calendar-space-sm) var(--calendar-space-sm) !important;
+    gap: var(--calendar-space-xs);
   }
   .calendar-dialog-actions-group,
   .calendar-dialog-actions-secondary {
@@ -504,10 +517,10 @@
     margin: 0;
   }
   .calendar-fee-list {
-    gap: 6px;
+    gap: var(--calendar-space-xs);
   }
   .calendar-fee-item {
-    padding: 6px 10px;
+    padding: 6px var(--calendar-space-sm);
     font-size: 0.8rem;
   }
   .fc-event-title {
@@ -539,16 +552,17 @@
   }
   .fc-header-toolbar {
     flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 0;
+    align-items: stretch;
+    gap: var(--calendar-space-xs);
+    padding: var(--calendar-space-2xs) 0;
   }
   .fc-header-toolbar .fc-toolbar-chunk {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
     width: 100%;
-    margin-bottom: 2px;
+    margin-bottom: var(--calendar-space-2xs);
+    gap: var(--calendar-space-2xs);
   }
   .fc-header-toolbar .fc-toolbar-chunk:not(:last-child) {
     margin-bottom: 4px;
@@ -560,9 +574,9 @@
     min-width: 44px;
     min-height: 36px;
     font-size: 15px;
-    padding: 6px 10px;
+    padding: 6px var(--calendar-space-sm);
     border-radius: 6px;
-    margin: 0 2px;
+    margin: 0;
   }
   .fc-button-primary {
     background: #f5f5f5;
@@ -581,8 +595,8 @@
   }
 
   .calendar-status-panel {
-    margin-top: 8px;
-    padding: 9px 10px;
+    margin-top: var(--calendar-space-xs);
+    padding: var(--calendar-space-xs) var(--calendar-space-sm);
   }
 
   .calendar-status-panel-title {
@@ -612,16 +626,18 @@
     position: static !important;
   }
 
-  .calendar-dialog-actions {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 8px 16px 16px;
-  }
-
   .calendar-dialog-actions-group {
     flex-direction: row;
-    gap: 8px;
+    gap: var(--calendar-space-xs);
     width: 100%;
+  }
+
+  .calendar-dialog-actions-secondary {
+    width: 100%;
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid #eceff3;
+    padding-top: var(--calendar-space-xs);
   }
 
   .calendar-dialog-button {
