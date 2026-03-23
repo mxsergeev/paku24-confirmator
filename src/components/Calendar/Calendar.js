@@ -227,7 +227,11 @@ export default function Calendar() {
     return orders.flatMap((order) => {
       const events = []
       const serviceName = order.service?.name
-      const colorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
+      const customColorIdRaw = order?.eventColor ?? order?.color ?? null
+      const customColorId = customColorIdRaw == null ? null : String(customColorIdRaw)
+      const serviceColorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
+      const colorId =
+        customColorId && calendarColors[customColorId] ? customColorId : serviceColorId
       const isDeletedOrder = isOrderDeleted(order)
       const deletedOrderColor = '#d93025'
       const color = isDeletedOrder

@@ -46,6 +46,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
   const [savingEdit, setSavingEdit] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [changingEventColor, setChangingEventColor] = useState(false)
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [receiptDraft, setReceiptDraft] = useState(null)
   const [receiptDocumentType, setReceiptDocumentType] = useState('receipt')
@@ -144,6 +145,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
     try {
       setSavingEdit(true)
       const updateData = new Order(editableOrder).prepareForSending()
+      updateData.eventColor = editableOrder?.color ?? null
       const response = await orderPoolAPI.update(orderId, updateData)
       setOrder(response.order || response)
       enqueueSnackbar(response.message || 'Order changes saved.')
@@ -187,6 +189,80 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
       setDeleting(false)
     }
   }, [onClose, orderId, queryClient])
+
+  const handleEventColorChange = useCallback(
+    async (eventColor) => {
+      if (!orderId || !order) return
+
+      const nextEventColor = eventColor || null
+      const currentEventColor = order?.eventColor ?? order?.color ?? null
+
+      if (nextEventColor === currentEventColor) {
+        return
+      }
+
+      const previousOrder = order
+      const previousCalendarOrdersCache = queryClient.getQueriesData({
+        queryKey: ['calendar-orders'],
+      })
+
+      const applyOrderColorInCache = (orderPatch) => {
+        queryClient.setQueriesData({ queryKey: ['calendar-orders'] }, (cachedOrders) => {
+          if (!Array.isArray(cachedOrders)) return cachedOrders
+
+          return cachedOrders.map((cachedOrder) => {
+            if (String(cachedOrder?.id) !== String(orderId)) {
+              return cachedOrder
+            }
+
+            return {
+              ...cachedOrder,
+              ...orderPatch,
+            }
+          })
+        })
+      }
+
+      try {
+        setChangingEventColor(true)
+
+        const nextOrder = new Order(order)
+        nextOrder.eventColor = nextEventColor
+
+        setOrder(new Order(nextOrder))
+        applyOrderColorInCache({ color: nextEventColor, eventColor: nextEventColor })
+
+        const updateData = new Order(nextOrder).prepareForSending()
+        updateData.eventColor = nextEventColor
+        const response = await orderPoolAPI.update(orderId, updateData)
+
+        const resolvedOrder = new Order(response?.order || response || nextOrder)
+
+        setOrder(resolvedOrder)
+        applyOrderColorInCache({
+          color: resolvedOrder?.color ?? null,
+          eventColor: resolvedOrder?.eventColor ?? null,
+        })
+        enqueueSnackbar(response?.message || 'Event color updated.', { variant: 'success' })
+        queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+      } catch (err) {
+        setOrder(previousOrder)
+        previousCalendarOrdersCache.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+        if (err.message === 'logout') return
+        enqueueSnackbar(
+          err.response?.data?.error || 'Could not update event color. Please try again.',
+          {
+            variant: 'error',
+          }
+        )
+      } finally {
+        setChangingEventColor(false)
+      }
+    },
+    [order, orderId, queryClient]
+  )
 
   const handleReceiptOpen = useCallback(
     (documentType) => {
@@ -250,7 +326,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
   )
 
   useEffect(() => {
-    setOrder(incomingOrder || null)
+    setOrder(incomingOrder ? new Order(incomingOrder) : null)
   }, [incomingOrder])
 
   const title = order
@@ -302,7 +378,12 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
           </IconButton>
         </DialogTitle>
         <DialogContent className="calendar-dialog-details-content">
-          <OrderDialogDetails order={order} eventType={eventType} />
+          <OrderDialogDetails
+            order={order}
+            eventType={eventType}
+            onEventColorChange={handleEventColorChange}
+            changingEventColor={changingEventColor}
+          />
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
           <div className="calendar-dialog-actions-group">

@@ -27,6 +27,7 @@ async function updateOrder(id, updateData) {
     'comment',
     'price',
     'boxes',
+    'eventColor',
     'invoiceNumber',
   ]
 

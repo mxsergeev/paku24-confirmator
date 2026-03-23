@@ -1,8 +1,17 @@
 import React from 'react'
+import FormControl from '@material-ui/core/FormControl'
+import MenuItem from '@material-ui/core/MenuItem'
+import Select from '@material-ui/core/Select'
 import dayjs from 'dayjs'
 import { resolveFeeDisplayName } from './ReceiptPage'
+import colors from '../../data/colors.json'
 
-export default function OrderDialogDetails({ order, eventType }) {
+export default function OrderDialogDetails({
+  order,
+  eventType,
+  onEventColorChange,
+  changingEventColor = false,
+}) {
   const hasClientNumber = Boolean(order?.phone)
   const hasBoxes = Number(order?.boxes?.amount) > 0
   const isBoxEvent = eventType === 'boxDelivery' || eventType === 'boxReturn'
@@ -10,6 +19,11 @@ export default function OrderDialogDetails({ order, eventType }) {
   const hasExtraAddresses =
     order?.extraAddresses && Array.isArray(order.extraAddresses) && order.extraAddresses.length > 0
   const hasClientEmail = Boolean(order?.email)
+  const selectedEventColorId = (() => {
+    const colorId = order?.eventColor ?? order?.color ?? ''
+    const normalized = colorId == null ? '' : String(colorId)
+    return colors[normalized] ? normalized : ''
+  })()
 
   const boxRows =
     order?.boxes && isBoxEvent && hasBoxes
@@ -139,6 +153,47 @@ export default function OrderDialogDetails({ order, eventType }) {
                 <span className="order-dialog-details__value">{order.comment}</span>
               </div>
             )}
+          </div>
+          <div className="order-dialog-details__row">
+            <span className="order-dialog-details__label">Event color</span>
+            <span className="order-dialog-details__value">
+              <FormControl size="small" variant="outlined">
+                <Select
+                  value={selectedEventColorId}
+                  onChange={(event) => onEventColorChange?.(event.target.value || null)}
+                  disabled={!order || changingEventColor}
+                  displayEmpty
+                  renderValue={(value) => {
+                    if (!value || !colors[value]) {
+                      return 'Default by service'
+                    }
+
+                    return (
+                      <>
+                        <span
+                          style={{ backgroundColor: colors[value].hex }}
+                          className="color-option"
+                        >
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        </span>{' '}
+                        {colors[value].name}
+                      </>
+                    )
+                  }}
+                >
+                  <MenuItem value="">Default by service</MenuItem>
+                  {Object.entries(colors).map(([colorId, colorData]) => (
+                    <MenuItem key={colorId} value={colorId}>
+                      <span
+                        style={{ backgroundColor: colorData.hex, marginRight: '0.5rem' }}
+                        className="color-option"
+                      />
+                      {colorData.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </span>
           </div>
         </div>
       )}

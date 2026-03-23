@@ -44,6 +44,7 @@ const order = new mongoose.Schema({
   comment: String,
   price: Number,
   boxesPrice: Number,
+  eventColor: String,
   boxes: {
     deliveryDate: Date,
     returnDate: Date,
