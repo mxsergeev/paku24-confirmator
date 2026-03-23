@@ -232,10 +232,19 @@ export default function Calendar() {
       const serviceColorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
       const colorId =
         customColorId && calendarColors[customColorId] ? customColorId : serviceColorId
+      const isCanceled = Boolean(order?.canceledAt)
       const isDeletedOrder = isOrderDeleted(order)
-      const deletedOrderColor = '#d93025'
+      const deletedOrderColor = '#3937375d'
+      const deletedIcon = '❗️'
+      const notConfirmedIcon = '❓'
+      const isConfirmedOrder = Boolean(order?.confirmedAt)
+      const addIcon = isDeletedOrder ? deletedIcon : !isConfirmedOrder ? notConfirmedIcon : ''
       const color = isDeletedOrder
         ? deletedOrderColor
+        : !isConfirmedOrder
+        ? '#dedddd'
+        : isCanceled
+        ? '#616161'
         : colorId && calendarColors[colorId]
         ? calendarColors[colorId].hex
         : '#eee'
@@ -244,7 +253,7 @@ export default function Calendar() {
         const eventTime = dayjs(order.date).format('HH:mm')
         events.push({
           id: order.id,
-          title: `${getOrderIcons(order, iconsData)} ${
+          title: `${addIcon}${getOrderIcons(order, iconsData)} ${
             order.address ? `${eventTime}(${order.duration}h) ${order.name}` : ''
           }`,
           start: order.date,
