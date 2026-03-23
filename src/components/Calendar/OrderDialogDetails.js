@@ -35,6 +35,8 @@ export default function OrderDialogDetails({ order, eventType }) {
 
   const regularRows = order
     ? [
+        { label: 'Service', value: order.service?.name || '' },
+        { label: 'Payment Type', value: order.paymentType?.name || '' },
         {
           label: 'From',
           value: `${order.address?.street} (${order.address?.floor} floor), ${order.address?.index} ${order.address?.city}`,
@@ -53,13 +55,11 @@ export default function OrderDialogDetails({ order, eventType }) {
             label: 'To',
             value: `${order.destination.street} (${order.destination?.floor} floor), ${order.destination.index} ${order.destination.city}`,
           },
-        { label: 'Payment Type', value: order.paymentType?.name || '' },
-        { label: 'Total price', value: `${order.price || 0}€` },
         hasBoxes && {
           label: 'Boxes',
           value: `${order.boxes.amount} pcs, ${order.boxesPrice}€`,
         },
-        { label: 'Service', value: order.service?.name || '' },
+        { label: 'Total price', value: `${order.price || 0}€` },
       ].filter(Boolean)
     : []
 
@@ -89,12 +89,22 @@ export default function OrderDialogDetails({ order, eventType }) {
       )}
       {showRegularOrder && (
         <div className="order-dialog-details__section">
+          <div className="order-dialog-details__row">
+            <span className="order-dialog-details__label">Date</span>
+            <span className="order-dialog-details__value">
+              {dayjs(order.date).format('DD.MM.YYYY HH:mm')}
+            </span>
+          </div>
           {regularRows.map((row) => (
             <div key={row.label} className="order-dialog-details__row">
               <span className="order-dialog-details__label">{row.label}</span>
               <span className="order-dialog-details__value">{row.value}</span>
             </div>
           ))}
+          <div className="order-dialog-details__row">
+            <span className="order-dialog-details__label">Client name</span>
+            <span className="order-dialog-details__value">{order.name}</span>
+          </div>
           {hasClientNumber && (
             <div className="order-dialog-details__row">
               <span className="order-dialog-details__label">Client phone</span>
