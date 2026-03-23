@@ -481,7 +481,7 @@ export default function Calendar() {
         </div>
       )}
       {selectedOrderId && (
-        <OrderDialog onClose={closeModal} eventId={selectedOrderId} order={selectedOrder} />
+        <OrderDialog onClose={closeModal} eventId={selectedOrderId} order={selectedOrder} onOrderUpdate={refetch} />
       )}
       <NewOrderDialog
         open={newOrderOpen}

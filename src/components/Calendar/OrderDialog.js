@@ -13,6 +13,7 @@ import EmailIcon from '@material-ui/icons/Email'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 import EditIcon from '@material-ui/icons/Edit'
 import DeleteIcon from '@material-ui/icons/Delete'
+import CheckIcon from '@material-ui/icons/Check'
 import { useHistory } from 'react-router-dom'
 import { enqueueSnackbar } from 'notistack'
 import { useQueryClient } from '@tanstack/react-query'
@@ -35,7 +36,12 @@ const DOCUMENT_TYPES = {
   INVOICE: 'invoice',
 }
 
-export default function OrderDialog({ onClose, eventId, order: incomingOrder = null }) {
+export default function OrderDialog({
+  onClose,
+  eventId,
+  order: incomingOrder = null,
+  onOrderUpdate,
+}) {
   const history = useHistory()
   const queryClient = useQueryClient()
   const [order, setOrder] = useState(null)
@@ -50,6 +56,7 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [receiptDraft, setReceiptDraft] = useState(null)
   const [receiptDocumentType, setReceiptDocumentType] = useState('receipt')
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const { orderId, eventType } = useMemo(() => parseBoxEventId(eventId), [eventId])
   const isDesktop = useMediaQuery('(min-width:601px)')
 
@@ -109,6 +116,24 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
       setSendingSMS(false)
     }
   }, [order])
+
+  const handleConfirm = useCallback(async () => {
+    if (!order?.id) return
+
+    try {
+      await orderPoolAPI.confirm(order.id)
+      setOrder((prevOrder) =>
+        prevOrder ? new Order({ ...prevOrder, confirmedAt: new Date().toISOString() }) : prevOrder
+      )
+      if (onOrderUpdate) {
+        onOrderUpdate()
+      }
+    } catch (err) {
+      enqueueSnackbar('Failed to confirm order. Please try again.', { variant: 'error' })
+    } finally {
+      setConfirmDialogOpen(false)
+    }
+  }, [order, onOrderUpdate])
 
   const handleEdit = useCallback(() => {
     if (!order) return
@@ -349,6 +374,16 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
         }(${order.duration}h) ${order.name}`
     : 'Order not found in this calendar view'
 
+  const isConfirmedOrder = Boolean(order?.confirmedAt)
+
+  const handleConfirmDialogOpen = () => {
+    setConfirmDialogOpen(true)
+  }
+
+  const handleConfirmDialogClose = () => {
+    setConfirmDialogOpen(false)
+  }
+
   return (
     <>
       <Dialog
@@ -433,6 +468,18 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
             </Button>
           </div>
           <div className="calendar-dialog-actions-secondary">
+            {!isConfirmedOrder && (
+              <Button
+                variant="text"
+                color="default"
+                disabled={!order}
+                startIcon={<CheckIcon />}
+                className="calendar-dialog-button"
+                onClick={handleConfirmDialogOpen}
+              >
+                Confirm order
+              </Button>
+            )}
             <Button
               variant="text"
               color="default"
@@ -454,6 +501,24 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
               Delete
             </Button>
           </div>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={handleConfirmDialogClose}
+        className="calendar-order-dialog"
+      >
+        <DialogTitle>Confirm Order</DialogTitle>
+        <DialogContent>
+          <p>Are you sure you want to confirm this order?</p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmDialogClose} color="default">
+            Cancel
+          </Button>
+          <Button onClick={handleConfirm} color="primary" variant="contained">
+            Confirm
+          </Button>
         </DialogActions>
       </Dialog>
       <ReceiptEditDialog

@@ -73,6 +73,20 @@ class Order {
       this[key] = order[key] ?? Order.EMPTY_ORDER[key]
     }
 
+    // Preserve identifiers and backend metadata that are not part of EMPTY_ORDER.
+    this.id = order.id ?? order._id ?? null
+    this._id = order._id ?? null
+    this.confirmed = Boolean(order.confirmed)
+    this.confirmedBy = order.confirmedBy ?? null
+    this.receivedAt = order.receivedAt ?? null
+    this.deletedAt = order.deletedAt ?? null
+    this.markedForDeletion = Boolean(order.markedForDeletion)
+    this.invoiceNumber = order.invoiceNumber ?? null
+
+    if (order.confirmedAt) {
+      this.confirmedAt = order.confirmedAt
+    }
+
     this.date = new Date(order.date || Order.EMPTY_ORDER.date)
   }
 
