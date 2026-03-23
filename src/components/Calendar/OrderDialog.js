@@ -385,12 +385,13 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
       <Dialog
         open={editOpen}
         onClose={handleEditClose}
-        fullWidth
-        maxWidth={isDesktop ? 'md' : false}
+        scroll="body"
+        fullWidth={false}
+        maxWidth={false}
         className="calendar-order-dialog"
         PaperProps={
           isDesktop
-            ? { className: 'calendar-order-dialog-paper' }
+            ? { className: 'calendar-order-dialog-paper calendar-new-order-dialog-paper' }
             : {
                 style: {
                   width: '100vw',
@@ -412,9 +413,15 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent>
-          <Editor order={editableOrder} handleChange={handleEditChange} />
-          {editableOrder && <OrderSettings order={editableOrder} handleChange={handleEditChange} />}
+        <DialogContent className="calendar-new-order-dialog-content">
+          <div className="calendar-new-order-dialog-content-wrap">
+            <div className="calendar-new-order-flex-container">
+              <Editor order={editableOrder} handleChange={handleEditChange} />
+              {editableOrder && (
+                <OrderSettings order={editableOrder} handleChange={handleEditChange} />
+              )}
+            </div>
+          </div>
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
           <Button
