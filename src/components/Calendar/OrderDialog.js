@@ -24,7 +24,7 @@ import sendConfirmationEmail from '../../services/emailAPI'
 import sendSMS from '../../services/smsAPI'
 import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
-import TransformedOrderContainer from '../Confirmator/OrderContainers/TransformedOrderContainer'
+import OrderSettings from '../Confirmator/OrderSettings'
 import OrderDialogDetails from './OrderDialogDetails'
 import ReceiptEditDialog, { buildReceiptDraftFromOrder } from './ReceiptEditDialog'
 import { normalizeDocumentType, normalizeReceiptDraft } from './receiptData.helpers'
@@ -111,7 +111,16 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
 
   const handleEdit = useCallback(() => {
     if (!order) return
-    setEditableOrder(new Order(order))
+
+    const normalizedOrder = new Order(order)
+    normalizedOrder.extraAddresses = (normalizedOrder.extraAddresses || []).map(
+      (address, index) => ({
+        ...address,
+        id: address?.id || `${Date.now()}-${index}`,
+      })
+    )
+
+    setEditableOrder(new Order(normalizedOrder))
     setEditOpen(true)
   }, [order])
 
@@ -404,7 +413,8 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          {editableOrder && <Editor order={editableOrder} handleChange={handleEditChange} />}
+          <Editor order={editableOrder} handleChange={handleEditChange} />
+          {editableOrder && <OrderSettings order={editableOrder} handleChange={handleEditChange} />}
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
           <Button

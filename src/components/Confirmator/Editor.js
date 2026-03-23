@@ -31,14 +31,18 @@ export default function Editor({ order, handleChange }) {
   const [manualPriceInput, setManualPriceInput] = useState(order?.manualPrice ?? order?.price ?? '')
 
   useEffect(() => {
-    if (order.manualPrice != null && order.manualPrice !== order.autoPrice) {
+    if (order?.manualPrice != null && order.manualPrice !== order.autoPrice) {
       setManualPriceInput(String(order.manualPrice))
-    } else if (order.price != null) {
+    } else if (order?.price != null) {
       setManualPriceInput(String(order.price))
     } else {
       setManualPriceInput('')
     }
-  }, [order.manualPrice, order.autoPrice, order.price])
+  }, [order?.manualPrice, order?.autoPrice, order?.price])
+
+  if (!order) {
+    return null
+  }
 
   return (
     <div className="basic-flex" style={{ marginTop: '5px' }}>
@@ -50,8 +54,8 @@ export default function Editor({ order, handleChange }) {
             minutesStep={5}
             style={marginLeftRight}
             className="time-duration"
-            value={order.date}
-            onChange={(v) => handleChange('date', new Date(v))}
+            value={order?.date ?? null}
+            onChange={(v) => handleChange?.('date', new Date(v))}
             DialogProps={{ disableScrollLock: true }}
           />
         </MuiPickersUtilsProvider>
@@ -60,8 +64,8 @@ export default function Editor({ order, handleChange }) {
           className="time-duration"
           style={{ ...marginLeftRight, paddingLeft: 10 }}
           name="duration"
-          value={order?.duration}
-          onChange={(e) => handleChange(e.target.name, e.target.value)}
+          value={order?.duration ?? ''}
+          onChange={(e) => handleChange?.(e.target.name, e.target.value)}
         >
           <option value={1}>1h</option>
           <option value={1.5}>1.5h</option>
@@ -89,9 +93,9 @@ export default function Editor({ order, handleChange }) {
         style={marginLeftRight}
         className="flex-item"
         name="service"
-        value={order.service.id}
+        value={order?.service?.id ?? ''}
         onChange={(e) =>
-          handleChange(
+          handleChange?.(
             'service',
             services.find((s) => s.id === e.target.value)
           )
@@ -108,9 +112,9 @@ export default function Editor({ order, handleChange }) {
         style={marginLeftRight}
         className="flex-item"
         name="paymentType"
-        value={order?.paymentType.id}
+        value={order?.paymentType?.id ?? ''}
         onChange={(e) =>
-          handleChange(
+          handleChange?.(
             'paymentType',
             paymentTypes.find((p) => p.id === e.target.value)
           )
@@ -124,7 +128,7 @@ export default function Editor({ order, handleChange }) {
       </NativeSelect>
       <Address
         value={order?.address}
-        onChange={(address) => handleChange('address', address)}
+        onChange={(address) => handleChange?.('address', address)}
         style={{
           marginTop: '0.25rem',
           marginBottom: order?.extraAddresses?.length > 0 ? '1rem' : 0,
@@ -136,7 +140,7 @@ export default function Editor({ order, handleChange }) {
           value={a}
           showRemove
           onChange={(address) =>
-            handleChange(
+            handleChange?.(
               'extraAddresses',
               address.removeId
                 ? order.extraAddresses.filter((addr) => addr.id !== address.removeId)
@@ -150,8 +154,8 @@ export default function Editor({ order, handleChange }) {
         size="small"
         style={{ color: 'gray' }}
         onClick={() =>
-          handleChange('extraAddresses', [
-            ...order.extraAddresses,
+          handleChange?.('extraAddresses', [
+            ...(order.extraAddresses || []),
             {
               id: Date.now().toString(),
               street: '',
@@ -168,7 +172,7 @@ export default function Editor({ order, handleChange }) {
 
       <Address
         value={order?.destination}
-        onChange={(address) => handleChange('destination', address)}
+        onChange={(address) => handleChange?.('destination', address)}
       />
       <TextField
         fullWidth
@@ -176,8 +180,8 @@ export default function Editor({ order, handleChange }) {
         style={margin}
         className="flex-item"
         name="name"
-        value={order?.name}
-        onChange={(e) => handleChange(e.target.name, e.target.value)}
+        value={order?.name ?? ''}
+        onChange={(e) => handleChange?.(e.target.name, e.target.value)}
         label="Name"
         variant="outlined"
         size="small"
@@ -187,8 +191,8 @@ export default function Editor({ order, handleChange }) {
         style={margin}
         className="flex-item"
         name="email"
-        value={order?.email}
-        onChange={(e) => handleChange(e.target.name, e.target.value)}
+        value={order?.email ?? ''}
+        onChange={(e) => handleChange?.(e.target.name, e.target.value)}
         type="email"
         label="Email"
         variant="outlined"
@@ -200,8 +204,8 @@ export default function Editor({ order, handleChange }) {
         className="flex-item"
         required
         name="phone"
-        value={order?.phone}
-        onChange={(e) => handleChange(e.target.name, e.target.value)}
+        value={order?.phone ?? ''}
+        onChange={(e) => handleChange?.(e.target.name, e.target.value)}
         label="Phonenumber"
         variant="outlined"
         size="small"
@@ -217,7 +221,7 @@ export default function Editor({ order, handleChange }) {
         onBlur={() => {
           const { formatted, numeric } = parseAndFormatDecimalString(manualPriceInput)
           setManualPriceInput(formatted)
-          handleChange('manualPrice', numeric)
+          handleChange?.('manualPrice', numeric)
         }}
         label="Price estimate"
         variant="outlined"
@@ -229,11 +233,11 @@ export default function Editor({ order, handleChange }) {
         rowsMin={3}
         cols={27}
         name="comment"
-        value={order?.comment}
+        value={order?.comment ?? ''}
         placeholder="Additional information."
-        onChange={(e) => handleChange(e.target.name, e.target.value)}
+        onChange={(e) => handleChange?.(e.target.name, e.target.value)}
       />
-      <FeeSelector order={order} onChange={(fees) => handleChange('manualFees', fees)} />
+      <FeeSelector order={order} onChange={(fees) => handleChange?.('manualFees', fees)} />
     </div>
   )
 }
