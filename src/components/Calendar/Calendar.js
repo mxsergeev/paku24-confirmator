@@ -174,6 +174,7 @@ export default function Calendar() {
   })
   const hasDateRange = Boolean(dateRange?.from && dateRange?.to)
   const isMonthViewActive = calendarView === 'dayGridMonth'
+  const isHasOrders = orders.length > 0
   const isInitialLoading = hasDateRange && isLoading
   const isRefreshing = hasDateRange && isFetching && !isLoading
   const hasNoOrders = hasDateRange && !isInitialLoading && !isError && orders.length === 0
@@ -411,7 +412,7 @@ export default function Calendar() {
           </label>,
           toolbarPortalNode
         )}
-      {isMonthViewActive && hasDateRange && !isInitialLoading && !isError && (
+      {isMonthViewActive && hasDateRange && !isInitialLoading && !isError && isHasOrders && (
         <div className="calendar-month-summary" role="status" aria-live="polite">
           <div className="calendar-month-summary-header">
             <p className="calendar-month-summary-title">Total orders</p>
