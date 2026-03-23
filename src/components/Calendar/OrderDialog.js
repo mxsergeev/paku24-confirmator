@@ -221,11 +221,20 @@ export default function OrderDialog({ onClose, eventId, order: incomingOrder = n
 
       setReceiptDraft(safeDraft)
       setReceiptOpen(false)
-      history.push(`/calendar/receipt/${orderId}`, {
+      const receiptUrl = `/calendar/receipt/${orderId}`
+      const receiptState = {
         fromCalendar: true,
         documentType: nextDocumentType,
         receiptDraft: safeDraft,
-      })
+      }
+      const newWindow = window.open(receiptUrl, '_blank')
+      if (newWindow) {
+        newWindow.state = receiptState
+      } else {
+        enqueueSnackbar('Failed to open new tab. Please check your browser settings.', {
+          variant: 'error',
+        })
+      }
     },
     [history, orderId, receiptDocumentType]
   )
