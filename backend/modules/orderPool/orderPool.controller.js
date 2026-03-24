@@ -245,6 +245,23 @@ orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
   }
 })
 
+orderPoolRouter.put('/v2/cancel/:id', async (req, res, next) => {
+  const { id } = req.params
+  try {
+    const order = await Order.findByIdAndUpdate(
+      { _id: id },
+      {
+        canceledAt: new Date().toISOString(),
+      },
+      { new: true }
+    )
+
+    return res.status(200).send({ order, message: 'Order canceled' })
+  } catch (err) {
+    return next(err)
+  }
+})
+
 orderPoolRouter.get('/confirmed-by-user/', async (req, res) => {
   const periodFrom = isISO8601(req.query.periodFrom)
     ? req.query.periodFrom

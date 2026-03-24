@@ -61,6 +61,10 @@ function confirm(id) {
   // .catch((err) => console.log(err))
 }
 
+function cancel(id) {
+  return interceptor.axiosInstance.put(`${baseUrl_v2}/cancel/${id}`).then((res) => res?.data)
+}
+
 async function remove(id) {
   const response = await interceptor.axiosInstance.delete(`${baseUrl}/delete/${id}`)
   return response?.data
@@ -94,6 +98,7 @@ const orderPoolAPI = {
   getOrderById,
   getByRange,
   confirm,
+  cancel,
   remove,
   retrieve,
   getConfirmedOrders,
