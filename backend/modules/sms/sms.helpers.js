@@ -142,10 +142,19 @@ function constructMessage(order) {
   return message
 }
 
+function constructCancellationMessage(order) {
+  const clientName = order?.name || 'Arvoisa asiakas'
+
+  const message = `${clientName}, varaus on peruutettu. Kysy lisätietoja.`
+
+  return message
+}
+
 export {
   splitMessageIntoSegments,
   chunkMessageForSending,
   sendSmsInChunks,
   sendSMSWithGateway,
   constructMessage,
+  constructCancellationMessage,
 }

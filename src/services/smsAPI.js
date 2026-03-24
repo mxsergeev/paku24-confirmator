@@ -11,3 +11,8 @@ export default async function sendSMS(params) {
   const response = await interceptor.axiosInstance.post(baseUrl, params)
   return response.data
 }
+
+export async function sendCancellationSMS(params) {
+  const response = await interceptor.axiosInstance.post(`${baseUrl}/cancellation`, params)
+  return response.data
+}
