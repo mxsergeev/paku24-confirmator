@@ -16,3 +16,8 @@ export async function sendReceiptEmail(params = {}) {
   const response = await interceptor.axiosInstance.post(`${baseUrl}/send-receipt`, params)
   return response.data
 }
+
+export async function sendCancellationEmail(params = {}) {
+  const response = await interceptor.axiosInstance.post(`${baseUrl}/send-cancellation`, params)
+  return response.data
+}

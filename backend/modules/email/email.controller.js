@@ -46,4 +46,26 @@ emailRouter.post('/send-receipt', (req, res, next) => {
     .catch((err) => next(err))
 })
 
+emailRouter.post('/send-cancellation', (req, res, next) => {
+  const { order, email } = req.body
+
+  const targetEmail = (order && order.email) || email
+  const clientName = (order && order.name) || 'Valued customer'
+
+  if (!targetEmail) {
+    return res.status(400).send({ error: 'Email address is required.' })
+  }
+
+  const subject = 'VARAUKSEN PERUUTUS'
+  const body = `Arvoisa ${clientName},\n\nVariauksesi on peruutettu.\n\nMikäli sinulla on kysymyksiä, ole yhteydessä meihin.\n\nYstävällisin terveisin`
+
+  sendMail({
+    email: targetEmail,
+    subject,
+    body,
+  })
+    .then(() => res.status(200).send({ message: `Cancellation email sent to ${targetEmail}.` }))
+    .catch((err) => next(err))
+})
+
 export default emailRouter
