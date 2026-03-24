@@ -21,8 +21,8 @@ import dayjs from 'dayjs'
 import './Calendar.css'
 import { getOrderIcons, parseBoxEventId, getBoxEventTitle } from './helpers'
 import orderPoolAPI from '../../services/orderPoolAPI'
-import sendConfirmationEmail from '../../services/emailAPI'
-import sendSMS from '../../services/smsAPI'
+import sendConfirmationEmail, { sendCancellationEmail } from '../../services/emailAPI'
+import sendSMS, { sendCancellationSMS } from '../../services/smsAPI'
 import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
 import OrderSettings from '../Confirmator/OrderSettings'
@@ -57,6 +57,10 @@ export default function OrderDialog({
   const [receiptDraft, setReceiptDraft] = useState(null)
   const [receiptDocumentType, setReceiptDocumentType] = useState('receipt')
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false) // Dialog for canceling order
+  const [canceling, setCanceling] = useState(false) // Loading state for cancel request
+  const [messageType, setMessageType] = useState(null) // 'email' or 'sms'
+  const [showMessageOptions, setShowMessageOptions] = useState(false) // Управляет отображением кнопок выбора email/SMS
   const { orderId, eventType } = useMemo(() => parseBoxEventId(eventId), [eventId])
   const isDesktop = useMediaQuery('(min-width:601px)')
 
@@ -384,6 +388,95 @@ export default function OrderDialog({
     setConfirmDialogOpen(false)
   }
 
+  const isCanceledOrder = Boolean(order?.canceledAt)
+
+  const handleCancelConfirmOpen = useCallback(() => {
+    setCancelConfirmOpen(true)
+    setShowMessageOptions(false)
+    setMessageType(null)
+  }, [])
+
+  const handleCancelConfirmClose = useCallback(() => {
+    setCancelConfirmOpen(false)
+    setShowMessageOptions(false)
+    setMessageType(null)
+  }, [])
+
+  const handleCancelConfirmDirect = useCallback(async () => {
+    if (!orderId || !order) return
+
+    try {
+      setCanceling(true)
+      const response = await orderPoolAPI.cancel(orderId)
+      const updatedOrder = response.order || response
+      setOrder(new Order(updatedOrder))
+      enqueueSnackbar(response.message || 'Order canceled successfully.')
+      setCancelConfirmOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+      if (onOrderUpdate) {
+        onOrderUpdate(updatedOrder)
+      }
+    } catch (err) {
+      if (err.message === 'logout') return
+      enqueueSnackbar(err.response?.data?.error || 'Could not cancel order. Please try again.', {
+        variant: 'error',
+      })
+    } finally {
+      setCanceling(false)
+    }
+  }, [orderId, order, queryClient, onOrderUpdate])
+
+  const handleCancelConfirmAndSendMessage = useCallback(
+    async (messageTypeToSend) => {
+      if (!orderId || !order) return
+
+      try {
+        setCanceling(true)
+        // First cancel the order
+        const response = await orderPoolAPI.cancel(orderId)
+        const updatedOrder = response.order || response
+        setOrder(new Order(updatedOrder))
+
+        // Then send message if needed
+        if (messageTypeToSend === 'email' && order?.email) {
+          try {
+            await sendCancellationEmail({
+              order,
+              email: order.email,
+            })
+          } catch (err) {
+            console.error('Could not send cancellation email:', err)
+          }
+        } else if (messageTypeToSend === 'sms' && order?.phone) {
+          try {
+            await sendCancellationSMS({ order })
+          } catch (err) {
+            console.error('Could not send cancellation SMS:', err)
+          }
+        }
+
+        enqueueSnackbar(response.message || 'Order canceled and message sent.')
+        setCancelConfirmOpen(false)
+        setShowMessageOptions(false)
+        queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+        if (onOrderUpdate) {
+          onOrderUpdate(updatedOrder)
+        }
+      } catch (error) {
+        if (error.message === 'logout') return
+        enqueueSnackbar(
+          error.response?.data?.error || 'Failed to complete action. Please try again.',
+          {
+            variant: 'error',
+          }
+        )
+      } finally {
+        setCanceling(false)
+      }
+    },
+    [orderId, order, queryClient, onOrderUpdate]
+  )
+
   return (
     <>
       <Dialog
@@ -490,16 +583,30 @@ export default function OrderDialog({
             >
               Edit
             </Button>
-            <Button
-              variant="text"
-              color="secondary"
-              startIcon={<DeleteIcon />}
-              onClick={handleDeleteClick}
-              disabled={!order}
-              className="calendar-dialog-button calendar-dialog-button--danger"
-            >
-              Delete
-            </Button>
+            {(!isConfirmedOrder || isCanceledOrder) && (
+              <Button
+                variant="text"
+                color="secondary"
+                startIcon={<DeleteIcon />}
+                onClick={handleDeleteClick}
+                disabled={!order}
+                className="calendar-dialog-button calendar-dialog-button--danger"
+              >
+                Delete
+              </Button>
+            )}
+            {isConfirmedOrder && !isCanceledOrder && (
+              <Button
+                variant="text"
+                color="secondary"
+                startIcon={<DeleteIcon />}
+                onClick={handleCancelConfirmOpen}
+                disabled={!order || canceling}
+                className="calendar-dialog-button calendar-dialog-button--danger"
+              >
+                {canceling ? 'Canceling...' : 'Cancel order'}
+              </Button>
+            )}
           </div>
         </DialogActions>
       </Dialog>
@@ -625,6 +732,87 @@ export default function OrderDialog({
           >
             {deleting ? 'Deleting...' : 'Delete'}
           </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={cancelConfirmOpen}
+        onClose={handleCancelConfirmClose}
+        className="calendar-order-dialog"
+        PaperProps={{
+          className: 'calendar-order-dialog-paper calendar-order-dialog-paper--narrow',
+        }}
+      >
+        <DialogTitle className="calendar-order-dialog-title-wrap">
+          <h3 className="calendar-dialog-title">Cancel this order?</h3>
+        </DialogTitle>
+        <DialogContent>
+          <p>Are you sure you want to cancel this order?</p>
+          {!showMessageOptions && (
+            <p className="calendar-dialog-muted-text">
+              You can notify the client via email or SMS.
+            </p>
+          )}
+        </DialogContent>
+        <DialogActions className="calendar-dialog-actions calendar-dialog-actions--compact">
+          <Button
+            onClick={handleCancelConfirmClose}
+            color="default"
+            disabled={canceling}
+            className="calendar-dialog-button"
+          >
+            Keep order
+          </Button>
+          {!showMessageOptions ? (
+            <>
+              <Button
+                onClick={handleCancelConfirmDirect}
+                color="secondary"
+                variant="contained"
+                disabled={canceling}
+                className="calendar-dialog-button calendar-dialog-button--danger-fill"
+              >
+                {canceling ? 'Canceling...' : 'Cancel only'}
+              </Button>
+              <Button
+                onClick={() => setShowMessageOptions(true)}
+                color="secondary"
+                variant="outlined"
+                disabled={canceling}
+                className="calendar-dialog-button"
+              >
+                Cancel & notify
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                onClick={() => setShowMessageOptions(false)}
+                color="default"
+                disabled={canceling}
+                className="calendar-dialog-button"
+              >
+                Back
+              </Button>
+              <Button
+                onClick={() => handleCancelConfirmAndSendMessage('email')}
+                color="primary"
+                variant="contained"
+                disabled={!order?.email || canceling}
+                className="calendar-dialog-button"
+              >
+                {canceling ? 'Sending...' : 'Send email & cancel'}
+              </Button>
+              <Button
+                onClick={() => handleCancelConfirmAndSendMessage('sms')}
+                color="primary"
+                variant="contained"
+                disabled={!order?.phone || canceling}
+                className="calendar-dialog-button"
+              >
+                {canceling ? 'Sending...' : 'Send SMS & cancel'}
+              </Button>
+            </>
+          )}
         </DialogActions>
       </Dialog>
     </>
