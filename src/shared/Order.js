@@ -66,6 +66,7 @@ class Order {
     email: '',
     phone: '',
     comment: '',
+    canceledAt: null,
   }
 
   constructor(order = Order.EMPTY_ORDER) {
@@ -85,6 +86,10 @@ class Order {
 
     if (order.confirmedAt) {
       this.confirmedAt = order.confirmedAt
+    }
+
+    if (order.canceledAt) {
+      this.canceledAt = order.canceledAt
     }
 
     this.date = new Date(order.date || Order.EMPTY_ORDER.date)
@@ -234,6 +239,10 @@ class Order {
 
     // Add computed time field for backend use
     prepared.time = this.time
+
+    if (this.canceledAt) {
+      prepared.canceledAt = this.canceledAt;
+    }
 
     return prepared
   }

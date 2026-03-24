@@ -72,6 +72,7 @@ const order = new mongoose.Schema({
     type: String,
     default: null,
   },
+  canceledAt: Date,
 })
 
 order.set('toJSON', {
