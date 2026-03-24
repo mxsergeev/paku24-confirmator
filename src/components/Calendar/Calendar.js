@@ -189,13 +189,14 @@ export default function Calendar() {
 
   const currentMonthSummary = useMemo(() => {
     if (!(currentCalendarDate instanceof Date) || Number.isNaN(currentCalendarDate.getTime())) {
-      return { total: 0, services: [] }
+      return { total: 0, canceled: 0, services: [] }
     }
 
     const targetYear = currentCalendarDate.getFullYear()
     const targetMonth = currentCalendarDate.getMonth()
     const serviceCounter = {}
     let total = 0
+    let canceled = 0
 
     orders.forEach((order) => {
       if (!order?.date) return
@@ -210,13 +211,20 @@ export default function Calendar() {
 
       if (!matchesCurrentMonth) return
 
-      const serviceName = order.service?.name || 'Uncategorized'
       total += 1
+      const isCanceledOrder = Boolean(order?.isCanceled || order?.canceledAt)
+      if (isCanceledOrder) {
+        canceled += 1
+        return
+      }
+
+      const serviceName = order.service?.name || 'Uncategorized'
       serviceCounter[serviceName] = (serviceCounter[serviceName] || 0) + 1
     })
 
     return {
       total,
+      canceled,
       services: Object.entries(serviceCounter).sort((a, b) => b[1] - a[1]),
     }
   }, [orders, currentCalendarDate])
@@ -432,8 +440,14 @@ export default function Calendar() {
             <p className="calendar-month-summary-total">{currentMonthSummary.total}</p>
           </div>
 
-          {currentMonthSummary.services.length > 0 ? (
+          {currentMonthSummary.canceled > 0 || currentMonthSummary.services.length > 0 ? (
             <ul className="calendar-month-summary-list">
+              <li className="calendar-month-summary-item" key="canceled-orders">
+                <span className="calendar-month-summary-service-name">Canceled orders</span>
+                <span className="calendar-month-summary-service-count">
+                  {currentMonthSummary.canceled}
+                </span>
+              </li>
               {currentMonthSummary.services.map(([serviceName, serviceCount]) => (
                 <li className="calendar-month-summary-item" key={serviceName}>
                   <span className="calendar-month-summary-service-name">{serviceName}</span>
@@ -481,7 +495,12 @@ export default function Calendar() {
         </div>
       )}
       {selectedOrderId && (
-        <OrderDialog onClose={closeModal} eventId={selectedOrderId} order={selectedOrder} onOrderUpdate={refetch} />
+        <OrderDialog
+          onClose={closeModal}
+          eventId={selectedOrderId}
+          order={selectedOrder}
+          onOrderUpdate={refetch}
+        />
       )}
       <NewOrderDialog
         open={newOrderOpen}
