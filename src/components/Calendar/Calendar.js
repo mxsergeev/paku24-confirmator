@@ -440,24 +440,20 @@ export default function Calendar() {
             <p className="calendar-month-summary-total">{currentMonthSummary.total}</p>
           </div>
 
-          {currentMonthSummary.canceled > 0 || currentMonthSummary.services.length > 0 ? (
-            <ul className="calendar-month-summary-list">
-              <li className="calendar-month-summary-item" key="canceled-orders">
-                <span className="calendar-month-summary-service-name">Canceled orders</span>
-                <span className="calendar-month-summary-service-count">
-                  {currentMonthSummary.canceled}
-                </span>
-              </li>
-              {currentMonthSummary.services.map(([serviceName, serviceCount]) => (
-                <li className="calendar-month-summary-item" key={serviceName}>
-                  <span className="calendar-month-summary-service-name">{serviceName}</span>
-                  <span className="calendar-month-summary-service-count">{serviceCount}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="calendar-month-summary-empty">No orders in this month yet.</p>
+          {currentMonthSummary.canceled > 0 && (
+            <li className="calendar-month-summary-item" key="canceled-orders">
+              <span className="calendar-month-summary-service-name">Canceled orders</span>
+              <span className="calendar-month-summary-service-count">
+                {currentMonthSummary.canceled}
+              </span>
+            </li>
           )}
+          {currentMonthSummary.services.map(([serviceName, serviceCount]) => (
+            <li className="calendar-month-summary-item" key={serviceName}>
+              <span className="calendar-month-summary-service-name">{serviceName}</span>
+              <span className="calendar-month-summary-service-count">{serviceCount}</span>
+            </li>
+          ))}
         </div>
       )}
       {(isInitialLoading || isError || hasNoOrders || isRefreshing) && (
