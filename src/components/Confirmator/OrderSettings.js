@@ -5,9 +5,8 @@ import FormControlLabel from '@material-ui/core/FormControlLabel'
 import Checkbox from '@material-ui/core/Checkbox'
 import Radio from '@material-ui/core/Radio'
 import RadioGroup from '@material-ui/core/RadioGroup'
-import Select from '@material-ui/core/Select'
-import MenuItem from '@material-ui/core/MenuItem'
 import colors from '../../data/colors.json'
+import ColorSelector from '../common/ColorSelector'
 
 export default function CheckboxGroup(props) {
   const { handleChange, order } = props
@@ -50,30 +49,7 @@ export default function CheckboxGroup(props) {
         <div className="color-selector">
           <div>Event color</div>
 
-          <Select
-            variant="filled"
-            name="eventColor"
-            value={order?.eventColor}
-            onChange={(e) => handleChange(e.target.name, e.target.value)}
-            label="Event color"
-            renderValue={(value) => (
-              <>
-                <span style={{ backgroundColor: colors[value].hex }} className="color-option">
-                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                </span>
-              </>
-            )}
-          >
-            {Object.entries(colors).map(([colorId, colorData]) => (
-              <MenuItem key={colorId} value={colorId}>
-                <span
-                  style={{ backgroundColor: colorData.hex, marginRight: '0.5rem' }}
-                  className="color-option"
-                />
-                {colorData.name}
-              </MenuItem>
-            ))}
-          </Select>
+          <ColorSelector value={order?.eventColor} onChange={handleChange} colors={colors} />
         </div>
 
         <FormControlLabel

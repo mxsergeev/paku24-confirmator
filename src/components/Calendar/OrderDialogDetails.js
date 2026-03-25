@@ -1,10 +1,8 @@
 import React from 'react'
-import FormControl from '@material-ui/core/FormControl'
-import MenuItem from '@material-ui/core/MenuItem'
-import Select from '@material-ui/core/Select'
 import dayjs from 'dayjs'
 import { resolveFeeDisplayName } from './ReceiptPage'
 import colors from '../../data/colors.json'
+import ColorSelector from '../common/ColorSelector'
 
 export default function OrderDialogDetails({
   order,
@@ -157,42 +155,11 @@ export default function OrderDialogDetails({
           <div className="order-dialog-details__row">
             <span className="order-dialog-details__label">Event color</span>
             <span className="order-dialog-details__value">
-              <FormControl size="small" variant="outlined">
-                <Select
-                  value={selectedEventColorId}
-                  onChange={(event) => onEventColorChange?.(event.target.value || null)}
-                  disabled={!order || changingEventColor}
-                  displayEmpty
-                  renderValue={(value) => {
-                    if (!value || !colors[value]) {
-                      return 'Default by service'
-                    }
-
-                    return (
-                      <>
-                        <span
-                          style={{ backgroundColor: colors[value].hex }}
-                          className="color-option"
-                        >
-                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        </span>{' '}
-                        {colors[value].name}
-                      </>
-                    )
-                  }}
-                >
-                  <MenuItem value="">Default by service</MenuItem>
-                  {Object.entries(colors).map(([colorId, colorData]) => (
-                    <MenuItem key={colorId} value={colorId}>
-                      <span
-                        style={{ backgroundColor: colorData.hex, marginRight: '0.5rem' }}
-                        className="color-option"
-                      />
-                      {colorData.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <ColorSelector
+                value={selectedEventColorId}
+                onChange={(name, value) => onEventColorChange?.(value || null)}
+                colors={colors}
+              />
             </span>
           </div>
         </div>

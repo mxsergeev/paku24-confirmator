@@ -60,7 +60,7 @@ export default function OrderDialog({
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false) // Dialog for canceling order
   const [canceling, setCanceling] = useState(false) // Loading state for cancel request
   const [messageType, setMessageType] = useState(null) // 'email' or 'sms'
-  const [showMessageOptions, setShowMessageOptions] = useState(false) // Управляет отображением кнопок выбора email/SMS
+  const [showMessageOptions, setShowMessageOptions] = useState(false) // controls visibility of email/SMS buttons
   const { orderId, eventType } = useMemo(() => parseBoxEventId(eventId), [eventId])
   const isDesktop = useMediaQuery('(min-width:601px)')
 
@@ -175,6 +175,16 @@ export default function OrderDialog({
       setSavingEdit(true)
       const updateData = new Order(editableOrder).prepareForSending()
       updateData.eventColor = editableOrder?.color ?? null
+
+      // Update cache logic for all changes
+      const cachedOrder = queryClient.getQueryData(['calendar-orders', orderId])
+      if (cachedOrder) {
+        queryClient.setQueryData(['calendar-orders', orderId], {
+          ...cachedOrder,
+          ...updateData,
+        })
+      }
+
       const response = await orderPoolAPI.update(orderId, updateData)
       setOrder(response.order || response)
       enqueueSnackbar(response.message || 'Order changes saved.')
@@ -223,46 +233,27 @@ export default function OrderDialog({
     async (eventColor) => {
       if (!orderId || !order) return
 
-      const nextEventColor = eventColor || null
-      const currentEventColor = order?.eventColor ?? order?.color ?? null
-
-      if (nextEventColor === currentEventColor) {
-        return
-      }
-
-      const previousOrder = order
-      const previousCalendarOrdersCache = queryClient.getQueriesData({
-        queryKey: ['calendar-orders'],
-      })
-
-      const applyOrderColorInCache = (orderPatch) => {
-        queryClient.setQueriesData({ queryKey: ['calendar-orders'] }, (cachedOrders) => {
-          if (!Array.isArray(cachedOrders)) return cachedOrders
-
-          return cachedOrders.map((cachedOrder) => {
-            if (String(cachedOrder?.id) !== String(orderId)) {
-              return cachedOrder
-            }
-
-            return {
-              ...cachedOrder,
-              ...orderPatch,
-            }
-          })
-        })
-      }
+      const previousOrder = new Order(order) // Save the current order state
+      const previousCalendarOrdersCache = queryClient
+        .getQueriesData(['calendar-orders'])
+        .map((query) => [query[0], query[1]]) // Ensure it's an array of [queryKey, data] pairs
 
       try {
         setChangingEventColor(true)
 
+        // Validate eventColor before proceeding
+        if (!eventColor || typeof eventColor !== 'string') {
+          throw new Error('Invalid event color provided.')
+        }
+
         const nextOrder = new Order(order)
-        nextOrder.eventColor = nextEventColor
+        nextOrder.eventColor = eventColor
 
         setOrder(new Order(nextOrder))
-        applyOrderColorInCache({ color: nextEventColor, eventColor: nextEventColor })
+        applyOrderColorInCache({ color: eventColor, eventColor })
 
         const updateData = new Order(nextOrder).prepareForSending()
-        updateData.eventColor = nextEventColor
+        updateData.eventColor = eventColor
         const response = await orderPoolAPI.update(orderId, updateData)
 
         const resolvedOrder = new Order(response?.order || response || nextOrder)
@@ -275,13 +266,15 @@ export default function OrderDialog({
         enqueueSnackbar(response?.message || 'Event color updated.', { variant: 'success' })
         queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
       } catch (err) {
-        setOrder(previousOrder)
+        setOrder(previousOrder) // Restore the previous order state
         previousCalendarOrdersCache.forEach(([queryKey, data]) => {
-          queryClient.setQueryData(queryKey, data)
+          queryClient.setQueryData(queryKey, data) // Restore the cache state
         })
         if (err.message === 'logout') return
         enqueueSnackbar(
-          err.response?.data?.error || 'Could not update event color. Please try again.',
+          err.response?.data?.error ||
+            err.message ||
+            'Could not update event color. Please try again.',
           {
             variant: 'error',
           }
@@ -475,6 +468,24 @@ export default function OrderDialog({
       }
     },
     [orderId, order, queryClient, onOrderUpdate]
+  )
+
+  const applyOrderColorInCache = useCallback(
+    ({ color, eventColor }) => {
+      if (!color || !eventColor) return
+
+      const cachedOrders = queryClient.getQueriesData(['calendar-orders'])
+      cachedOrders.forEach(([queryKey, data]) => {
+        if (data?.id === order?.id) {
+          queryClient.setQueryData(queryKey, {
+            ...data,
+            color,
+            eventColor,
+          })
+        }
+      })
+    },
+    [queryClient, order]
   )
 
   return (
