@@ -4,15 +4,25 @@ import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 import axios from 'axios'
 import Notification from './Notification'
+import { useMediaQuery } from '@material-ui/core'
 
 export default function Register() {
-  const background = {
-    width: '95%',
-    padding: 20,
-    margin: '0 auto',
-    backgroundColor: 'lightgrey',
-    borderBottom: '4px solid darkgrey',
-  }
+  const isDesktop = useMediaQuery('(min-width: 600px)')
+  const background = isDesktop
+    ? {
+        width: '95%',
+        margin: '0 auto',
+        padding: 20,
+        backgroundColor: 'lightgrey',
+        borderBottom: '4px solid darkgrey',
+      }
+    : {
+        width: '100%',
+        margin: '0 auto',
+        padding: 20,
+        backgroundColor: 'lightgrey',
+        borderBottom: '4px solid darkgrey',
+      }
 
   const flexItem = {
     marginBottom: '7px',
@@ -63,7 +73,11 @@ export default function Register() {
   }
 
   return (
-    <div style={{ margin: '30px 5px' }}>
+    <div
+      style={
+        isDesktop ? { margin: '30px auto', width: '800px' } : { margin: '30px auto', width: '100%' }
+      }
+    >
       <div style={background}>
         <div style={formContainer}>
           REQUEST ACCESS
