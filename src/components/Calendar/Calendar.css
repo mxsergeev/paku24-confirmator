@@ -68,6 +68,12 @@
   .fc-header-toolbar {
     padding: 4px 6px !important;
   }
+
+  /* hide native prev/next arrows on very small screens; navigation is by swipe */
+  .fc .fc-prev-button,
+  .fc .fc-next-button {
+    display: none !important;
+  }
 }
 
 /* Fix: remove unexpected left offset for toolbar sections on small screens */

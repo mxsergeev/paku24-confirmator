@@ -208,6 +208,60 @@ export default function Calendar() {
     } catch {}
   }, [showDeletedOrders])
 
+  // Mobile: enable swipe left/right to navigate calendar (prev/next)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!calendarWrapRef.current) return
+
+    const isMobileView = window.innerWidth <= 600
+    if (!isMobileView) return
+
+    const el = calendarWrapRef.current
+    const api = calendarRef.current?.getApi?.()
+    if (!api || !el) return
+
+    let startX = 0
+    let startY = 0
+    let tracking = false
+
+    const onTouchStart = (e) => {
+      if (!e.touches || e.touches.length !== 1) return
+      startX = e.touches[0].clientX
+      startY = e.touches[0].clientY
+      tracking = true
+    }
+
+    const onTouchEnd = (e) => {
+      if (!tracking) return
+      tracking = false
+      const touch = e.changedTouches && e.changedTouches[0]
+      if (!touch) return
+      const dx = touch.clientX - startX
+      const dy = touch.clientY - startY
+      // horizontal swipe should be larger than vertical movement and pass threshold
+      const threshold = 40
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > threshold) {
+        if (dx < 0) {
+          try {
+            api.next()
+          } catch (err) {}
+        } else {
+          try {
+            api.prev()
+          } catch (err) {}
+        }
+      }
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchend', onTouchEnd)
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
 
