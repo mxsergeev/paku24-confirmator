@@ -89,7 +89,7 @@ export default function Calendar() {
     ...(isMobile
       ? {
           dayGridMonth: {
-            height: '95dvh',
+            height: 'auto',
             contentHeight: '100%',
             expandRows: true,
           },

@@ -731,7 +731,6 @@
 .calendar .fc .fc-daygrid-body,
 .calendar .fc .fc-daygrid-body-natural,
 .calendar .fc :is(.fc-scroller, .fc-scroller-liquid, .fc-scroller-liquid-absolute) {
-  min-height: 80% !important;
   overflow: auto !important;
   position: relative !important;
 }
@@ -751,7 +750,9 @@
     padding: var(--calendar-space-xs) var(--calendar-space-2xs);
     border-radius: 6px;
     font-size: 14px;
-    min-height: 90vh !important;
+  }
+  .fc {
+    min-height: 40vh !important;
   }
   .calendar-dialog-details-content {
     padding: 12px 14px 14px !important;
