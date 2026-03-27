@@ -49,6 +49,7 @@
 .calendar {
   margin: var(--calendar-space-md) 0;
   width: 100%;
+  margin: 0.5rem auto;
   border-radius: var(--calendar-radius-lg);
   box-shadow: var(--calendar-shadow-soft);
   padding: var(--calendar-space-md) var(--calendar-space-lg);
@@ -655,19 +656,38 @@
   max-width: 740px;
 }
 
+/* Calendar scroller / view override: enforce max-height and enable scrolling.
+   Placed at the end to win the cascade against earlier rules and inline styles. */
+.fc .fc-view-harness-active .fc-scroller,
+.fc .fc-view-harness-active .fc-view-outer,
 .fc
   :is(.fc-timegrid, .fc-list, .fc-multimonth)
-  :is(.fc-scroller, .fc-scroller-liquid, .fc-scroller-liquid-absolute) {
-  max-height: none !important;
-  overflow: visible !important;
-  position: static !important;
+  :is(.fc-scroller, .fc-scroller-liquid, .fc-scroller-liquid-absolute, .fc-view-outer, .fc-view-harness-active) {
+  overflow: auto !important;
+  position: relative !important;
 }
 
-.fc
-  :is(.fc-timegrid, .fc-list, .fc-multimonth)
-  :is(.fc-view-outer, .fc-view-harness, .fc-view-harness-active) {
+/* More specific: override global .fc min-height and daygrid body rules by scoping under .calendar */
+.calendar .fc,
+.calendar .fc .fc-view-harness,
+.calendar .fc .fc-view-outer,
+.calendar .fc .fc-view-harness-active,
+.calendar .fc .fc-daygrid-body,
+.calendar .fc .fc-daygrid-body-natural,
+.calendar .fc :is(.fc-scroller, .fc-scroller-liquid, .fc-scroller-liquid-absolute) {
+  min-height: 80% !important;
+  overflow: auto !important;
+  position: relative !important;
+}
+
+/* Ensure tables inside daygrid don't force container height */
+.calendar .fc .fc-daygrid-body table,
+.calendar .fc .fc-daygrid[role='grid'] {
   height: auto !important;
-  overflow: visible !important;
+}
+
+.fc-flex-row {
+  max-height: 14vh !important;
 }
 
 @media (max-width: 600px) {
@@ -675,6 +695,7 @@
     padding: var(--calendar-space-xs) var(--calendar-space-2xs);
     border-radius: 6px;
     font-size: 14px;
+    min-height: 90vh !important;
   }
   .calendar-dialog-details-content {
     padding: 12px 14px 14px !important;
@@ -721,30 +742,24 @@
   }
   .fc-event-title {
     font-size: 13px;
-    padding: 2px 2px;
+    padding: 2px 6px;
     border-radius: 3px;
-    display: -webkit-box;
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    display: block;
+    white-space: nowrap !important;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-height: 2.8em;
-    white-space: normal !important;
-    line-height: 1.4;
+    line-height: 1.1;
+    max-width: 100%;
   }
   :is(.fc-daygrid-event, .fc-daygrid-block-event, .fc-daygrid-dot-event) .fc-event-main {
     white-space: normal !important;
   }
   :is(.fc-daygrid-event, .fc-daygrid-block-event, .fc-daygrid-dot-event) .fc-event-title,
   .fc-event-title > span {
-    display: -webkit-box;
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    display: block;
+    white-space: nowrap !important;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: normal !important;
   }
   .fc-header-toolbar {
     flex-direction: column;
@@ -828,18 +843,13 @@
   .calendar-status-panel-text {
     font-size: 0.84rem;
   }
-  .fc {
-    min-height: 70vh;
-    max-height: none;
-    overflow: visible !important;
-  }
+
   .fc .fc-view-harness,
   .fc .fc-daygrid,
   .fc .fc-daygrid-body,
   .fc .fc-daygrid-body table,
   .fc .fc-daygrid[role='grid'] {
     height: 100% !important;
-    min-height: 0;
   }
   .fc-daygrid-body,
   .fc-daygrid-body-natural {

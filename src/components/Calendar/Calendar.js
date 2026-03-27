@@ -68,6 +68,11 @@ export default function Calendar() {
       }
     : {}
   const views = {
+    dayGridMonth: {
+      height: 'auto',
+      contentHeight: 'auto',
+      expandRows: false,
+    },
     timeGridWeek: {
       height: 'auto',
       contentHeight: 'auto',
