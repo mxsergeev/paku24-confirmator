@@ -745,6 +745,10 @@
   max-height: 14vh !important;
 }
 
+.calendar.calendar--week-view .fc-flex-row {
+  max-height: none !important;
+}
+
 @media (max-width: 600px) {
   .calendar {
     padding: var(--calendar-space-xs) var(--calendar-space-2xs);

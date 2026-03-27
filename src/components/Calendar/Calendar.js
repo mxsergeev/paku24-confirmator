@@ -466,7 +466,10 @@ export default function Calendar() {
   }
 
   return (
-    <div className="calendar" ref={calendarWrapRef}>
+    <div
+      className={`calendar ${calendarView === 'timeGridWeek' ? 'calendar--week-view' : ''}`}
+      ref={calendarWrapRef}
+    >
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, multiMonthPlugin, interactionPlugin]}
