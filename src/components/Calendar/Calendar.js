@@ -128,8 +128,52 @@ export default function Calendar() {
 
       if (toolbar) {
         portalNode = document.createElement('div')
-        portalNode.className = 'calendar-toolbar-bottom-row'
-        toolbar.appendChild(portalNode)
+        // Try to place the portal right after the Refresh button. Fallback to appending to toolbar.
+        portalNode.className = 'calendar-toolbar-toggle-wrapper'
+        const refreshButton =
+          toolbar.querySelector('.fc-refreshOrdersButton-button') ||
+          toolbar.querySelector('.fc-button')
+        try {
+          if (refreshButton && refreshButton.parentNode) {
+            refreshButton.insertAdjacentElement('afterend', portalNode)
+          } else {
+            toolbar.appendChild(portalNode)
+          }
+        } catch (e) {
+          toolbar.appendChild(portalNode)
+        }
+        // On mobile, move the Create Order button next to Refresh for compact layout
+        try {
+          const isMobile = window.innerWidth <= 600
+          if (isMobile) {
+            const createBtn = toolbar.querySelector('.fc-createOrderButton-button')
+            const refreshBtn = toolbar.querySelector('.fc-refreshOrdersButton-button')
+            if (createBtn && refreshBtn) {
+              refreshBtn.insertAdjacentElement('beforebegin', createBtn)
+            }
+
+            // Move view buttons to left of navigation arrows (prev/today/next)
+            try {
+              const prevBtn = toolbar.querySelector('.fc-prev-button')
+              const insertBeforeEl = prevBtn || toolbar.querySelector('.fc-button')
+              const viewSelectors = [
+                '.fc-dayGridMonth-button',
+                '.fc-timeGridWeek-button',
+                '.fc-listWeek-button',
+                '.fc-multiMonthYear-button',
+              ]
+              if (insertBeforeEl) {
+                viewSelectors.forEach((sel) => {
+                  const btn = toolbar.querySelector(sel)
+                  if (btn) {
+                    insertBeforeEl.parentNode.insertBefore(btn, insertBeforeEl)
+                  }
+                })
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
+
         setToolbarPortalNode(portalNode)
         return
       }
@@ -389,9 +433,9 @@ export default function Calendar() {
           },
         }}
         headerToolbar={{
-          left: 'createOrderButton prev,next today',
+          left: 'dayGridMonth,timeGridWeek,listWeek,multiMonthYear prev,next today',
           center: 'title',
-          right: 'dayGridMonth,timeGridWeek,listWeek,multiMonthYear refreshOrdersButton',
+          right: 'createOrderButton refreshOrdersButton',
         }}
         events={events}
         eventContent={renderEventContent}

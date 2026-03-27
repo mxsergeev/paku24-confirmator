@@ -46,6 +46,49 @@
   --calendar-space-xl: 32px;
 }
 
+@media (max-width: 600px) {
+  /* Reduce prominent button sizes on small screens to avoid oversized controls */
+  .fc-createOrderButton-button {
+    min-width: 36px !important;
+    min-height: 36px !important;
+    padding: 6px 8px !important;
+    border-radius: 8px;
+    font-size: 13px !important;
+  }
+
+  .fc-refreshOrdersButton-button {
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 6px 8px !important;
+    border-radius: 8px;
+    font-size: 13px !important;
+  }
+
+  /* Slightly tighter header padding on very small screens */
+  .fc-header-toolbar {
+    padding: 4px 6px !important;
+  }
+}
+
+/* Fix: remove unexpected left offset for toolbar sections on small screens */
+@media (max-width: 600px) {
+  .fc .fc-toolbar-section,
+  .fc-header-toolbar .fc-toolbar-chunk {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .fc .fc-toolbar-section:first-child {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  /* Ensure toolbar container has no extra inset */
+  .fc-header-toolbar {
+    padding-left: 0 !important;
+  }
+}
+
 .calendar {
   margin: var(--calendar-space-md) 0;
   width: 100%;
@@ -280,6 +323,13 @@
   justify-content: flex-end;
   padding-top: var(--calendar-space-2xs);
   border-top: 1px solid var(--calendar-border-soft);
+}
+
+/* Wrapper used when inserting toggle next to the Refresh button */
+.calendar-toolbar-toggle-wrapper {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
 }
 
 .calendar-toolbar-toggle {
@@ -742,7 +792,7 @@
   }
   .fc-event-title {
     font-size: 13px;
-    padding: 2px 6px;
+    padding: 2px 4px;
     border-radius: 3px;
     display: block;
     white-space: nowrap !important;
@@ -762,21 +812,35 @@
     text-overflow: ellipsis;
   }
   .fc-header-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--calendar-space-xs);
-    padding: var(--calendar-space-2xs) 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 0;
   }
   .fc-header-toolbar .fc-toolbar-chunk {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
-    width: 100%;
-    margin-bottom: var(--calendar-space-2xs);
-    gap: var(--calendar-space-2xs);
+    width: auto;
+    margin-bottom: 0;
+    gap: 6px;
   }
-  .fc-header-toolbar .fc-toolbar-chunk:not(:last-child) {
-    margin-bottom: 4px;
+  .fc-header-toolbar .fc-toolbar-chunk:nth-child(2) {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  /* Ensure consistent left alignment when toolbar wraps to multiple rows */
+  .fc-header-toolbar .fc-toolbar-chunk {
+    box-sizing: border-box;
+    padding: 0 6px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .fc-header-toolbar .fc-toolbar-chunk:nth-child(2) {
+    justify-content: center;
+    width: 100%;
   }
   .fc-toolbar-end {
     padding-right: 0;
@@ -786,12 +850,12 @@
     padding-top: var(--calendar-space-xs);
   }
   .fc-button {
-    min-width: 44px;
-    min-height: 44px;
-    font-size: 15px;
-    padding: 8px var(--calendar-space-sm);
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 13px;
+    padding: 6px 8px;
     border-radius: 6px;
-    margin: 0;
+    margin: 0 6px 0 0;
   }
   .fc-button-primary {
     background: #f5f5f5;
@@ -805,8 +869,14 @@
   }
   .fc-refreshOrdersButton-button {
     font-size: 0.82rem !important;
-    min-height: 44px;
-    padding: 0 9px !important;
+    min-height: 36px;
+    padding: 0 8px !important;
+  }
+
+  .calendar-toolbar-toggle-wrapper {
+    margin-left: 6px;
+    display: inline-flex;
+    align-items: center;
   }
 
   .calendar-status-panel {
@@ -884,6 +954,88 @@
 
   .calendar-new-order-flex-container {
     max-width: 100%;
+  }
+
+  /* Mobile polish: sticky compact toolbar, rounded icon-like buttons, clearer event chips */
+  .fc-header-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95));
+    padding: 6px 8px;
+    border-bottom: 1px solid #eef2f6;
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.06);
+  }
+
+  .fc-header-toolbar .fc-toolbar-chunk {
+    gap: 6px;
+  }
+
+  /* Make buttons compact and round for easier tapping */
+  .fc-button {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 6px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+  }
+
+  /* Give the prominent actions a slightly larger hit area */
+  .fc-createOrderButton-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 10px !important;
+    border-radius: 10px;
+  }
+
+  .fc-refreshOrdersButton-button {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0 8px !important;
+    border-radius: 8px;
+  }
+
+  /* Tidy up the calendar grid: reduce cell paddings and make events more chip-like */
+  .fc-daygrid-day-frame {
+    padding: 6px !important;
+    min-height: 82px;
+  }
+
+  .fc-daygrid-event,
+  .fc-daygrid-block-event,
+  .fc-daygrid-dot-event {
+    border-radius: 8px;
+    padding: 4px 6px !important;
+    margin: 2px 0 !important;
+    font-size: 13px !important;
+    line-height: 1.1 !important;
+  }
+
+  /* Ensure long event titles are gracefully truncated */
+  .fc-event-title,
+  .fc-event-title > span {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: block;
+    max-width: 100%;
+  }
+
+  /* Slightly increase contrast for day numbers and reduce visual noise */
+  .fc .fc-daygrid-day-top {
+    color: var(--calendar-text-secondary);
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+
+  /* Group refresh + toggle visually */
+  .calendar-toolbar-toggle-wrapper {
+    margin-left: 6px;
+    padding-left: 6px;
+    border-left: 1px solid #eef3f8;
   }
 }
 
