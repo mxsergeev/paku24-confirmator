@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import TextsmsIcon from '@material-ui/icons/Textsms'
-import sendSMS from '../../../services/smsAPI'
+import sendSMS, { sendCancellationSMS } from '../../../services/smsAPI'
 import CustomButton from './CustomButton'
 
 const SMS = 'sms'
@@ -17,7 +17,10 @@ export default function ConfirmationSMSSenderButton({
     try {
       if (order.phone) {
         changeStatus(SMS, 'Working', true)
-        const response = await sendSMS({ order: order.prepareForSending() })
+        const isCanceled = Boolean(order?.canceledAt)
+        const response = isCanceled
+          ? await sendCancellationSMS({ order: order.prepareForSending() })
+          : await sendSMS({ order: order.prepareForSending() })
         changeStatus(SMS, 'Done', true)
         enqueueSnackbar(`${response.message}`)
       }

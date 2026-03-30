@@ -85,11 +85,18 @@ export default function OrderDialog({
 
     try {
       setSendingEmail(true)
-      const response = await sendConfirmationEmail({
-        orderDetails: transformedOrderText,
-        order,
-        email: order.email,
-      })
+      const isCanceled = Boolean(order?.canceledAt)
+      let response
+      if (isCanceled) {
+        response = await sendCancellationEmail({ order, email: order.email })
+      } else {
+        response = await sendConfirmationEmail({
+          orderDetails: transformedOrderText,
+          order,
+          email: order.email,
+        })
+      }
+
       enqueueSnackbar(response.message || 'Email sent to client.')
     } catch (err) {
       if (err.message === 'logout') return
@@ -109,7 +116,13 @@ export default function OrderDialog({
 
     try {
       setSendingSMS(true)
-      const response = await sendSMS({ order: new Order(order).prepareForSending() })
+      const isCanceled = Boolean(order?.canceledAt)
+      let response
+      if (isCanceled) {
+        response = await sendCancellationSMS({ order: new Order(order).prepareForSending() })
+      } else {
+        response = await sendSMS({ order: new Order(order).prepareForSending() })
+      }
       enqueueSnackbar(response.message || 'SMS sent to client.')
     } catch (err) {
       if (err.message === 'logout') return
