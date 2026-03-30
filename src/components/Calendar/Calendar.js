@@ -380,13 +380,17 @@ export default function Calendar() {
         const boxColorId = colorsData.boxes || '1'
         const boxColor = isDeletedOrder
           ? deletedOrderColor
+          : !isConfirmedOrder
+          ? '#dedddd'
+          : isCanceled
+          ? '#616161'
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
           : '#7986cb'
         const deliveryTime = dayjs(order.boxes.deliveryDate).format('HH:mm')
         events.push({
           id: `${order.id}-box-delivery`,
-          title: getBoxEventTitle(order, 'boxDelivery', deliveryTime, iconsData),
+          title: `${addIcon}${getBoxEventTitle(order, 'boxDelivery', deliveryTime, iconsData)}`,
           start: order.boxes.deliveryDate,
           extendedProps: {
             color: boxColor,
@@ -400,13 +404,17 @@ export default function Calendar() {
         const boxColorId = colorsData.boxes || '1'
         const boxColor = isDeletedOrder
           ? deletedOrderColor
+          : !isConfirmedOrder
+          ? '#dedddd'
+          : isCanceled
+          ? '#616161'
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
           : '#7986cb'
         const returnTime = dayjs(order.boxes.returnDate).format('HH:mm')
         events.push({
           id: `${order.id}-box-return`,
-          title: getBoxEventTitle(order, 'boxReturn', returnTime, iconsData),
+          title: `${addIcon}${getBoxEventTitle(order, 'boxReturn', returnTime, iconsData)}`,
           start: order.boxes.returnDate,
           extendedProps: {
             color: boxColor,
