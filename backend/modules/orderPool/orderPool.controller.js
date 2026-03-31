@@ -123,6 +123,19 @@ orderPoolRouter.put('/v2/:id', async (req, res, next) => {
 
 orderPoolRouter.use(authMW.authenticateAccessToken)
 
+// Update event color (from ColorSelector) - debounced PATCH from frontend
+orderPoolRouter.patch('/v2/:id/color', async (req, res, next) => {
+  const { id } = req.params
+  const { eventColor } = req.body
+  try {
+    const order = await updateOrderColor(id, eventColor)
+    if (!order) return res.status(404).send({ error: 'Order not found' })
+    return res.status(200).send({ order })
+  } catch (err) {
+    return next(err)
+  }
+})
+
 async function getOrdersWithLimit({ markedForDeletion, skip, limit }) {
   return RawOrder.find({ markedForDeletion }).skip(skip).limit(limit).sort({ _id: -1 }).exec()
 }
