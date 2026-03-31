@@ -3,6 +3,7 @@ import { google } from 'googleapis'
 import path from 'path'
 import { promises as fs } from 'fs'
 import Order from '../../../src/shared/Order.js'
+import { formatAddressLocation } from '../../../src/shared/addressFormatter.js'
 import dayjs from '../../../src/shared/dayjs.js'
 import { TIMEZONE } from '../../utils/config.js'
 
@@ -123,9 +124,9 @@ function makeGoogleEventObjects(order) {
       summary: entries.move.title,
       description: entries.move.description,
       colorId: color,
-      location: [Order.addrStr(order.address)]
-        .concat(order.extraAddresses?.map((ea) => Order.addrStr(ea)))
-        .concat([Order.addrStr(order.destination)])
+      location: [formatAddressLocation(order.address)]
+        .concat(order.extraAddresses?.map((ea) => formatAddressLocation(ea)))
+        .concat([formatAddressLocation(order.destination)])
         .join('\n'),
       start: {
         dateTime: typeof order.date === 'string' ? order.date : order.date.toISOString(),
