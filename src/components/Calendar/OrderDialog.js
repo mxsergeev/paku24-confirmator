@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -241,6 +241,8 @@ export default function OrderDialog({
       setDeleting(false)
     }
   }, [onClose, orderId, queryClient])
+
+  const debounceTimerRef = useRef(null)
 
   const handleEventColorChange = useCallback(
     async (eventColor) => {
