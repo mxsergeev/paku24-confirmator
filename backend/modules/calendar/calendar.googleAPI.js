@@ -49,6 +49,32 @@ async function addEventToCalendar(event) {
   }
 }
 
+async function findEventByStartAndSummary(startIso, summary) {
+  if (env === 'test') return null
+
+  const calendar = await getCalendar()
+  try {
+    // Search a small window around the start time to find matching events
+    const timeMin = new Date(new Date(startIso).getTime() - 2 * 60 * 1000).toISOString()
+    const timeMax = new Date(new Date(startIso).getTime() + 2 * 60 * 1000).toISOString()
+    const res = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin,
+      timeMax,
+      singleEvents: true,
+      orderBy: 'startTime',
+      q: summary,
+    })
+    const items = res.data.items || []
+    // Find exact summary match if possible
+    const found = items.find((it) => (it.summary || '').trim() === (summary || '').trim())
+    return found || null
+  } catch (err) {
+    logger.error('findEventByStartAndSummary failed', err)
+    return null
+  }
+}
+
 async function deleteEventFromCalendar(eventId) {
   if (env === 'test') {
     logger.info(`(test) Pretend deleted event ${eventId}`)
@@ -70,4 +96,40 @@ async function deleteEventFromCalendar(eventId) {
   }
 }
 
-export { addEventToCalendar, deleteEventFromCalendar }
+async function updateEventInCalendar(eventId, event) {
+  if (env === 'test') {
+    const ev = {
+      data: {
+        id: eventId,
+        summary: event.summary,
+        start: event.start,
+        end: event.end,
+      },
+    }
+    logger.info(`(test) Event updated: ${ev.data.summary}`)
+    return ev
+  }
+
+  const calendar = await getCalendar()
+
+  try {
+    const ev = await calendar.events.update({
+      calendarId: 'primary',
+      eventId,
+      resource: event,
+    })
+
+    logger.info(`Event updated: ${ev.data?.id} - ${ev.data?.summary}`)
+    return ev
+  } catch (err) {
+    logger.error(err)
+    throw err
+  }
+}
+
+export {
+  addEventToCalendar,
+  deleteEventFromCalendar,
+  updateEventInCalendar,
+  findEventByStartAndSummary,
+}
