@@ -11,6 +11,7 @@ import icons from '../data/icons.json' with { type: 'json' }
 import dayjs from './dayjs.js'
 import { isNode } from './isNode.js'
 import { toZonedTime, fromZonedTime } from './date-fns-tz.js'
+import { formatAddress, formatAddressLocation } from './addressFormatter.js'
 
 const getDateInTz = (d) => (isNode() ? toZonedTime(d) : d)
 
@@ -282,13 +283,14 @@ class Order {
    * @returns {string} Formatted address string ending with newline.
    */
   static addrStr(address) {
-    let result = ''
-    result += address.street
-    if (address.index || address.city) {
-      result += `, ${address.index} ${address.city}`
-    }
-    result += '\n'
-    return result
+    return formatAddress(address)
+  }
+
+  /**
+   * Address string suitable for calendar `location` field — excludes floor/elevator info.
+   */
+  static addrStrLocation(address) {
+    return formatAddressLocation(address)
   }
 
   static makeIcons(order) {
@@ -315,15 +317,32 @@ class Order {
 
     const boxes = order.boxes || { amount: 0, deliveryDate: '', returnDate: '' }
 
+    // Coerce box date fields to string ISO so .includes and dayjs work reliably
+    const safeDateStr = (d) => {
+      if (!d) return ''
+      if (typeof d === 'string') return d
+      try {
+        const dt = new Date(d)
+        if (!Number.isNaN(dt.getTime())) return dt.toISOString()
+        if (d && typeof d.toISOString === 'function') return d.toISOString()
+        return String(d)
+      } catch (err) {
+        return String(d)
+      }
+    }
+
+    const deliveryDateStr = safeDateStr(boxes.deliveryDate)
+    const returnDateStr = safeDateStr(boxes.returnDate)
+
     const boxesDeliveryTitle = `${boxes.amount} ${Order.makeIcons(order).boxesDelivery} ${
-      boxes.deliveryDate && boxes.deliveryDate.includes('T')
-        ? `${dayjs(boxes.deliveryDate).format('HH:mm')} `
+      deliveryDateStr && deliveryDateStr.includes('T')
+        ? `${dayjs(deliveryDateStr).format('HH:mm')} `
         : ''
     }`
 
     const boxesPickupTitle = `NOUTO ${boxes.amount} ${Order.makeIcons(order).boxesPickup} ${
-      boxes.returnDate && boxes.returnDate.includes('T')
-        ? `${dayjs(boxes.returnDate).format('HH:mm')} `
+      returnDateStr && returnDateStr.includes('T')
+        ? `${dayjs(returnDateStr).format('HH:mm')} `
         : ''
     }`
 
