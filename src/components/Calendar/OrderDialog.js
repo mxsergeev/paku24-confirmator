@@ -300,6 +300,20 @@ export default function OrderDialog({
     [order, orderId, queryClient]
   )
 
+  const debouncedHandleEventColorChange = useCallback(
+    (eventColor) => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = setTimeout(() => handleEventColorChange(eventColor), 300)
+    },
+    [handleEventColorChange]
+  )
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    }
+  }, [])
+
   const handleReceiptOpen = useCallback(
     (documentType) => {
       if (!order) return
@@ -534,7 +548,7 @@ export default function OrderDialog({
           <OrderDialogDetails
             order={order}
             eventType={eventType}
-            onEventColorChange={handleEventColorChange}
+            onEventColorChange={debouncedHandleEventColorChange}
             changingEventColor={changingEventColor}
           />
         </DialogContent>
