@@ -93,6 +93,12 @@ function update(id, updateData) {
     .then((res) => res?.data)
 }
 
+function updateColor(id, eventColor) {
+  return interceptor.axiosInstance
+    .patch(`${baseUrl_v2}/${id}/color`, { eventColor })
+    .then((res) => res?.data)
+}
+
 const orderPoolAPI = {
   get,
   getOrderById,
@@ -104,6 +110,7 @@ const orderPoolAPI = {
   getConfirmedOrders,
   add,
   update,
+  updateColor,
 }
 
 export default orderPoolAPI
