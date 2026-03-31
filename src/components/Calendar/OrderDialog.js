@@ -267,9 +267,8 @@ export default function OrderDialog({
         setOrder(new Order(nextOrder))
         applyOrderColorInCache({ color: eventColor, eventColor })
 
-        const updateData = new Order(nextOrder).prepareForSending()
-        updateData.eventColor = eventColor
-        const response = await orderPoolAPI.update(orderId, updateData)
+        // Use lightweight color-only endpoint to avoid sending full order
+        const response = await orderPoolAPI.updateColor(orderId, eventColor)
 
         const resolvedOrder = new Order(response?.order || response || nextOrder)
 
