@@ -5,6 +5,8 @@ const calendarRouter = express.Router()
 import * as authMW from '../authentication/auth.middleware.js'
 
 import { addEventToCalendar, deleteEventFromCalendar } from './calendar.googleAPI.js'
+import { linkOrderToEvent } from './calendar.sync.js'
+import * as logger from '../../utils/logger.js'
 
 import { makeGoogleEventObjects } from './calendar.helpers.js'
 
@@ -24,6 +26,17 @@ calendarRouter.post('/', async (req, res, next) => {
       (r) => r.status === 'fulfilled' && r.value && r.value.data && r.value.data.id
     )
     const eventId = fulfilled ? fulfilled.value.data.id : null
+
+    // If this request was made for an existing order, delegate persisting googleEventId
+    try {
+      const orderId = req.body.order?._id || req.body.order?.id
+      if (eventId && orderId) {
+        await linkOrderToEvent(orderId, eventId)
+      }
+    } catch (err) {
+      // non-fatal: log and continue
+      logger.error('Failed to link googleEventId from /api/calendar', err)
+    }
 
     return res.status(200).send({
       message: events.length > 1 ? 'Events added to calendar.' : 'Event added to calendar.',
