@@ -1,4 +1,6 @@
 import mongoose from 'mongoose'
+import * as logger from '../utils/logger.js'
+import { syncOrderToCalendar, deleteOrderEvent } from '../modules/calendar/calendar.sync.js'
 
 const addressSchema = new mongoose.Schema(
   {
@@ -73,6 +75,10 @@ const order = new mongoose.Schema({
     default: null,
   },
   canceledAt: Date,
+  googleEventId: {
+    type: String,
+    default: null,
+  },
 })
 
 order.set('toJSON', {
@@ -81,6 +87,55 @@ order.set('toJSON', {
     delete returnedObject._id
     delete returnedObject.__v
   },
+})
+
+// Synchronize with Google Calendar for confirmed orders
+order.post('save', function (doc) {
+  try {
+    // Only sync if order is confirmed and not deleted
+    if (doc && doc.confirmed && !doc.deletedAt) {
+      setImmediate(() => {
+        syncOrderToCalendar(doc).catch((err) => logger.error('syncOrderToCalendar error', err))
+      })
+    }
+  } catch (err) {
+    logger.error('post save hook error', err)
+  }
+})
+
+order.post('findOneAndUpdate', function (doc) {
+  try {
+    if (doc) {
+      // If the document was marked as deleted (soft delete), remove the Google event
+      if (doc.deletedAt && doc.googleEventId) {
+        setImmediate(() => {
+          deleteOrderEvent(doc).catch((err) => logger.error('deleteOrderEvent error', err))
+        })
+        return
+      }
+
+      // Otherwise, only sync on update if order is confirmed and not deleted
+      if (doc.confirmed && !doc.deletedAt) {
+        setImmediate(() => {
+          syncOrderToCalendar(doc).catch((err) => logger.error('syncOrderToCalendar error', err))
+        })
+      }
+    }
+  } catch (err) {
+    logger.error('post findOneAndUpdate hook error', err)
+  }
+})
+
+order.post('findOneAndDelete', function (doc) {
+  try {
+    if (doc && doc.googleEventId) {
+      setImmediate(() => {
+        deleteOrderEvent(doc).catch((err) => logger.error('deleteOrderEvent error', err))
+      })
+    }
+  } catch (err) {
+    logger.error('post findOneAndDelete hook error', err)
+  }
 })
 
 const Order = mongoose.model('Order', order)
