@@ -13,6 +13,40 @@ import dayjs from '../../../src/shared/dayjs.js'
 import { updateOrder, getOrderById } from './orderPool.service.js'
 import { buildStableInvoiceNumber } from '../../utils/invoiceNumber.js'
 
+// Helpers to centralize order state changes
+async function confirmOrder(id, userId) {
+  if (!id) return null
+  const order = await Order.findByIdAndUpdate(
+    { _id: id },
+    {
+      confirmed: true,
+      confirmedBy: userId,
+      confirmedAt: new Date().toISOString(),
+    },
+    { new: true }
+  )
+  return order
+}
+
+async function cancelOrder(id) {
+  if (!id) return null
+  const order = await Order.findByIdAndUpdate(
+    { _id: id },
+    {
+      canceledAt: new Date().toISOString(),
+      eventColor: '8',
+    },
+    { new: true }
+  )
+  return order
+}
+
+async function updateOrderColor(id, eventColor) {
+  if (!id) return null
+  const order = await Order.findOneAndUpdate({ _id: id }, { $set: { eventColor } }, { new: true })
+  return order
+}
+
 function checkKey(req, res, next) {
   // if (req.body.key === ORDER_POOL_KEY && req.hostname === ACCEPTED_HOSTNAME) {
   if (req.body.key === ORDER_POOL_KEY) {
