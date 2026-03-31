@@ -246,16 +246,9 @@ orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
 orderPoolRouter.put('/v2/confirm/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    await Order.findByIdAndUpdate(
-      { _id: id },
-      {
-        confirmed: true,
-        confirmedBy: req.user.id,
-        confirmedAt: new Date().toISOString(),
-      }
-    )
-
-    return res.status(200).send({ message: 'Order confirmed' })
+    const order = await confirmOrder(id, req.user.id)
+    if (!order) return res.status(404).send({ error: 'Order not found' })
+    return res.status(200).send({ message: 'Order confirmed', order })
   } catch (err) {
     return next(err)
   }
@@ -264,16 +257,9 @@ orderPoolRouter.put('/v2/confirm/:id', async (req, res, next) => {
 orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    await Order.findByIdAndUpdate(
-      { _id: id },
-      {
-        confirmed: true,
-        confirmedBy: req.user.id,
-        confirmedAt: new Date().toISOString(),
-      }
-    )
-
-    return res.status(200).send({ message: 'Order confirmed' })
+    const order = await confirmOrder(id, req.user.id)
+    if (!order) return res.status(404).send({ error: 'Order not found' })
+    return res.status(200).send({ message: 'Order confirmed', order })
   } catch (err) {
     return next(err)
   }
@@ -282,14 +268,8 @@ orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
 orderPoolRouter.put('/v2/cancel/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    const order = await Order.findByIdAndUpdate(
-      { _id: id },
-      {
-        canceledAt: new Date().toISOString(),
-      },
-      { new: true }
-    )
-
+    const order = await cancelOrder(id)
+    if (!order) return res.status(404).send({ error: 'Order not found' })
     return res.status(200).send({ order, message: 'Order canceled' })
   } catch (err) {
     return next(err)
