@@ -1,8 +1,9 @@
 import React from 'react'
 import dayjs from 'dayjs'
 import { resolveFeeDisplayName } from './ReceiptPage'
-import colors from '../../data/colors.json'
+import colors from '../../shared/colors'
 import ColorSelector from '../common/ColorSelector'
+import { isCanceled, isDeleted } from '../../shared/orderState.helpers'
 
 export default function OrderDialogDetails({
   order,
@@ -10,6 +11,8 @@ export default function OrderDialogDetails({
   onEventColorChange,
   changingEventColor = false,
 }) {
+  const isCanceledOrder = isCanceled(order)
+  const isDeletedOrder = isDeleted(order)
   const hasClientNumber = Boolean(order?.phone)
   const hasBoxes = Number(order?.boxes?.amount) > 0
   const isBoxEvent = eventType === 'boxDelivery' || eventType === 'boxReturn'
@@ -149,6 +152,22 @@ export default function OrderDialogDetails({
               <div className="order-dialog-details__row">
                 <span className="order-dialog-details__label">Comment</span>
                 <span className="order-dialog-details__value">{order.comment}</span>
+              </div>
+            )}
+            {isCanceledOrder && (
+              <div className="order-dialog-details__row">
+                <span className="order-dialog-details__label">Canceled at</span>
+                <span className="order-dialog-details__value">
+                  {dayjs(order.canceledAt).format('DD.MM.YYYY HH:mm')}
+                </span>
+              </div>
+            )}
+            {isDeletedOrder && (
+              <div className="order-dialog-details__row">
+                <span className="order-dialog-details__label">Deleted at</span>
+                <span className="order-dialog-details__value">
+                  {dayjs(order.deletedAt).format('DD.MM.YYYY HH:mm')}
+                </span>
               </div>
             )}
           </div>
