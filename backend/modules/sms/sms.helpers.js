@@ -1,6 +1,7 @@
 import axios from 'axios'
 import termsData from '../email/email.data.terms.json' with { type: 'json' }
 import Order from '../../../src/shared/Order.js'
+import dayjs from '../../../src/shared/dayjs.js'
 import { SEMYSMS_DEVICE_ID, SEMYSMS_API_TOKEN } from '../../utils/config.js'
 
 const MAX_PARTS_PER_SEND = 3
@@ -145,7 +146,21 @@ function constructMessage(order) {
 function constructCancellationMessage(order) {
   const clientName = order?.name || 'Arvoisa asiakas'
 
-  const message = `${clientName}, varaus on peruutettu. Kysy lisätietoja.`
+  const serviceName = order?.service?.name || ''
+  const dateStr = order?.date ? dayjs(order.date).format('DD.MM.YYYY HH:mm') : ''
+
+  // Keep SMS short: truncate service name if too long
+  const maxServiceLen = 30
+  const shortService = serviceName.length > maxServiceLen ? `${serviceName.slice(0, maxServiceLen - 3)}...` : serviceName
+
+  let details = ''
+  if (shortService && dateStr) details = `${shortService} ${dateStr}`
+  else if (dateStr) details = `${dateStr}`
+  else if (shortService) details = `${shortService}`
+
+  const message = details
+    ? `${clientName}, varaus (${details}) peruutettu. Kysy lisätietoja.`
+    : `${clientName}, varaus on peruutettu. Kysy lisätietoja.`
 
   return message
 }
