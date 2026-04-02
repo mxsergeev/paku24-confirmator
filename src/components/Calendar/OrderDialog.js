@@ -655,16 +655,18 @@ export default function OrderDialog({
                 Confirm order
               </Button>
             )}
-            <Button
-              variant="text"
-              color="default"
-              startIcon={<EditIcon />}
-              onClick={handleEdit}
-              disabled={!order}
-              className="calendar-dialog-button calendar-dialog-button--quiet"
-            >
-              Edit
-            </Button>
+            {!isCanceledOrder && !isDeletedOrder && (
+              <Button
+                variant="text"
+                color="default"
+                startIcon={<EditIcon />}
+                onClick={handleEdit}
+                disabled={!order}
+                className="calendar-dialog-button calendar-dialog-button--quiet"
+              >
+                Edit
+              </Button>
+            )}
             {(isCanceledOrder || isDeletedOrder) && (
               <Button
                 variant="text"
