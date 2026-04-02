@@ -9,7 +9,9 @@ import { ORDER_POOL_KEY } from '../../utils/config.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import * as authMW from '../authentication/auth.middleware.js'
 import Order from '../../models/order.js'
+import User from '../../models/user.js'
 import dayjs from '../../../src/shared/dayjs.js'
+import { DEFAULT_EVENT_COLOR_ID } from '../../utils/colors.js'
 import { updateOrder, getOrderById } from './orderPool.service.js'
 import { buildStableInvoiceNumber } from '../../utils/invoiceNumber.js'
 
@@ -222,7 +224,7 @@ orderPoolRouter.put('/v2/retrieve/:id', async (req, res, next) => {
   try {
     const order = await Order.findByIdAndUpdate(
       { _id: id },
-      { $unset: { deletedAt: '' } },
+      { $unset: { deletedAt: 1 } },
       { new: true }
     )
 
@@ -242,7 +244,7 @@ orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
   try {
     const order = await Order.findByIdAndUpdate(
       { _id: id },
-      { $unset: { deletedAt: '' } },
+      { $unset: { deletedAt: 1 } },
       { new: true }
     )
 
@@ -284,6 +286,33 @@ orderPoolRouter.put('/v2/cancel/:id', async (req, res, next) => {
     const order = await cancelOrder(id)
     if (!order) return res.status(404).send({ error: 'Order not found' })
     return res.status(200).send({ order, message: 'Order canceled' })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+// RESTORE (clear deletedAt and canceledAt, set default Peacock color)
+orderPoolRouter.post('/v2/restore/:id', async (req, res, next) => {
+  const { id } = req.params
+  try {
+    // Authorization: only users with `access` allowed to restore orders
+    const currentUser = await User.findById(req.user?.id).lean()
+    if (!currentUser || !currentUser.access) {
+      return res.status(403).send({ error: 'Forbidden' })
+    }
+
+    // Clear deletedAt and canceledAt, set default event color
+    const order = await Order.findByIdAndUpdate(
+      { _id: id },
+      { $unset: { deletedAt: 1, canceledAt: 1 }, $set: { eventColor: DEFAULT_EVENT_COLOR_ID } },
+      { new: true }
+    )
+
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' })
+    }
+
+    return res.status(200).send({ message: 'Order restored', order })
   } catch (err) {
     return next(err)
   }
