@@ -5,7 +5,7 @@ import FormControlLabel from '@material-ui/core/FormControlLabel'
 import Checkbox from '@material-ui/core/Checkbox'
 import Radio from '@material-ui/core/Radio'
 import RadioGroup from '@material-ui/core/RadioGroup'
-import colors from '../../data/colors.json'
+import colors from '../../shared/colors'
 import ColorSelector from '../common/ColorSelector'
 
 export default function CheckboxGroup(props) {
