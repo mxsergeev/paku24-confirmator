@@ -3,6 +3,7 @@ import { enqueueSnackbar } from 'notistack'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 import sendSMS, { sendCancellationSMS } from '../../../services/smsAPI'
 import CustomButton from './CustomButton'
+import { isCanceled } from '../../../shared/orderState.helpers'
 
 const SMS = 'sms'
 
@@ -17,8 +18,8 @@ export default function ConfirmationSMSSenderButton({
     try {
       if (order.phone) {
         changeStatus(SMS, 'Working', true)
-        const isCanceled = Boolean(order?.canceledAt)
-        const response = isCanceled
+        const canceled = isCanceled(order)
+        const response = canceled
           ? await sendCancellationSMS({ order: order.prepareForSending() })
           : await sendSMS({ order: order.prepareForSending() })
         changeStatus(SMS, 'Done', true)
