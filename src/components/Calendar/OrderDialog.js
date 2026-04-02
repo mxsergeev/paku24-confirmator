@@ -688,7 +688,7 @@ export default function OrderDialog({
                 disabled={!order}
                 className="calendar-dialog-button calendar-dialog-button--danger"
               >
-                Delete
+                {isDeletedOrder ? 'Delete permanently' : 'Delete'}
               </Button>
             )}
             {isConfirmedOrder && !isCanceledOrder && (
