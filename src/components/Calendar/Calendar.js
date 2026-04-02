@@ -383,7 +383,7 @@ export default function Calendar() {
           ? deletedOrderColor
           : !isConfirmedOrder
           ? '#dedddd'
-          : isCanceled
+          : canceled
           ? '#616161'
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
@@ -407,7 +407,7 @@ export default function Calendar() {
           ? deletedOrderColor
           : !isConfirmedOrder
           ? '#dedddd'
-          : isCanceled
+          : canceled
           ? '#616161'
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
