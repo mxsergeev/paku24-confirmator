@@ -30,6 +30,9 @@ import OrderDialogDetails from './OrderDialogDetails'
 import ReceiptEditDialog, { buildReceiptDraftFromOrder } from './ReceiptEditDialog'
 import { normalizeDocumentType, normalizeReceiptDraft } from './receiptData.helpers'
 import iconsData from '../../data/icons.json'
+import colors from '../../shared/colors'
+import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
+import { hexToRgba } from '../../shared/color.helpers'
 
 const DOCUMENT_TYPES = {
   RECEIPT: 'receipt',
@@ -85,9 +88,9 @@ export default function OrderDialog({
 
     try {
       setSendingEmail(true)
-      const isCanceled = Boolean(order?.canceledAt)
+      const canceled = isCanceled(order)
       let response
-      if (isCanceled) {
+      if (canceled) {
         response = await sendCancellationEmail({ order, email: order.email })
       } else {
         response = await sendConfirmationEmail({
@@ -116,9 +119,9 @@ export default function OrderDialog({
 
     try {
       setSendingSMS(true)
-      const isCanceled = Boolean(order?.canceledAt)
+      const canceled = isCanceled(order)
       let response
-      if (isCanceled) {
+      if (canceled) {
         response = await sendCancellationSMS({ order: new Order(order).prepareForSending() })
       } else {
         response = await sendSMS({ order: new Order(order).prepareForSending() })
@@ -399,7 +402,8 @@ export default function OrderDialog({
         }(${order.duration}h) ${order.name}`
     : 'Order not found in this calendar view'
 
-  const isConfirmedOrder = Boolean(order?.confirmedAt)
+  const isConfirmedOrder = isConfirmed(order)
+  const isDeletedOrder = isDeleted(order)
 
   const handleConfirmDialogOpen = () => {
     setConfirmDialogOpen(true)
@@ -409,7 +413,32 @@ export default function OrderDialog({
     setConfirmDialogOpen(false)
   }
 
-  const isCanceledOrder = Boolean(order?.canceledAt)
+  const isCanceledOrder = isCanceled(order)
+
+  const headerBg = useMemo(() => {
+    const colorId = String(order?.eventColor ?? order?.color ?? '')
+    const hex = colors[colorId]?.hex || colors['7']?.hex || '#039be5'
+    return hexToRgba(hex, 0.62)
+  }, [order])
+
+  const titleWithDeleted = `${title}${isDeletedOrder ? ' (DELETED)' : ''}`
+
+  const handleRestore = useCallback(async () => {
+    if (!orderId) return
+    try {
+      const response = await orderPoolAPI.restore(orderId)
+      const updated = response.order || response
+      setOrder(new Order(updated))
+      enqueueSnackbar(response.message || 'Order restored')
+      queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+      if (onOrderUpdate) onOrderUpdate(updated)
+    } catch (err) {
+      if (err.message === 'logout') return
+      enqueueSnackbar(err.response?.data?.error || 'Could not restore order. Please try again.', {
+        variant: 'error',
+      })
+    }
+  }, [orderId, onOrderUpdate, queryClient])
 
   const handleCancelConfirmOpen = useCallback(() => {
     setCancelConfirmOpen(true)
@@ -526,7 +555,7 @@ export default function OrderDialog({
         className="calendar-order-dialog"
         PaperProps={
           isDesktop
-            ? { className: 'calendar-order-dialog-paper' }
+            ? { className: 'calendar-order-dialog-paper calendar-order-dialog-paper--no-border' }
             : {
                 style: {
                   width: '100vw',
@@ -534,12 +563,24 @@ export default function OrderDialog({
                   margin: 0,
                   borderRadius: 16,
                   minHeight: 'auto',
+                  border: 'none',
                 },
               }
         }
       >
-        <DialogTitle className="calendar-order-dialog-title-wrap">
-          <h3 className="calendar-dialog-title">{title}</h3>
+        <DialogTitle className="calendar-order-dialog-title-wrap" style={{ background: headerBg }}>
+          <h3 className="calendar-dialog-title">
+            {isDeletedOrder ? (
+              <span className="calendar-dialog-title-icon calendar-dialog-title-icon--deleted">
+                ❗️
+              </span>
+            ) : !isConfirmedOrder ? (
+              <span className="calendar-dialog-title-icon calendar-dialog-title-icon--unconfirmed">
+                ❓
+              </span>
+            ) : null}
+            {titleWithDeleted}
+          </h3>
           <IconButton aria-label="close" onClick={onClose} className="calendar-order-dialog-close">
             <CloseIcon />
           </IconButton>
@@ -553,52 +594,54 @@ export default function OrderDialog({
           />
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
-          <div className="calendar-dialog-actions-group">
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<EmailIcon />}
-              onClick={handleSendEmail}
-              disabled={!order || !order.email || sendingEmail}
-              className="calendar-dialog-button calendar-dialog-button--accent"
-            >
-              {sendingEmail ? 'Sending...' : 'Send email'}
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<TextsmsIcon />}
-              onClick={handleSendSMS}
-              disabled={!order || !order.phone || sendingSMS}
-              className="calendar-dialog-button calendar-dialog-button--accent"
-            >
-              {sendingSMS ? 'Sending...' : 'Send SMS'}
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => handleReceiptOpen(DOCUMENT_TYPES.RECEIPT)}
-              disabled={!order}
-              className={`calendar-dialog-button calendar-dialog-button--document ${
-                receiptDocumentType === DOCUMENT_TYPES.RECEIPT
-                  ? 'calendar-dialog-button--document-active'
-                  : ''
-              }`}
-            >
-              Create receipt
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => handleReceiptOpen(DOCUMENT_TYPES.INVOICE)}
-              disabled={!order}
-              className={`calendar-dialog-button calendar-dialog-button--document ${
-                receiptDocumentType === DOCUMENT_TYPES.INVOICE
-                  ? 'calendar-dialog-button--document-active'
-                  : ''
-              }`}
-            >
-              Create invoice
-            </Button>
-          </div>
+          {!isCanceledOrder && !isDeletedOrder && (
+            <div className="calendar-dialog-actions-group">
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<EmailIcon />}
+                onClick={handleSendEmail}
+                disabled={!order || !order.email || sendingEmail}
+                className="calendar-dialog-button calendar-dialog-button--accent"
+              >
+                {sendingEmail ? 'Sending...' : 'Send email'}
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<TextsmsIcon />}
+                onClick={handleSendSMS}
+                disabled={!order || !order.phone || sendingSMS}
+                className="calendar-dialog-button calendar-dialog-button--accent"
+              >
+                {sendingSMS ? 'Sending...' : 'Send SMS'}
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => handleReceiptOpen(DOCUMENT_TYPES.RECEIPT)}
+                disabled={!order}
+                className={`calendar-dialog-button calendar-dialog-button--document ${
+                  receiptDocumentType === DOCUMENT_TYPES.RECEIPT
+                    ? 'calendar-dialog-button--document-active'
+                    : ''
+                }`}
+              >
+                Create receipt
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => handleReceiptOpen(DOCUMENT_TYPES.INVOICE)}
+                disabled={!order}
+                className={`calendar-dialog-button calendar-dialog-button--document ${
+                  receiptDocumentType === DOCUMENT_TYPES.INVOICE
+                    ? 'calendar-dialog-button--document-active'
+                    : ''
+                }`}
+              >
+                Create invoice
+              </Button>
+            </div>
+          )}
           <div className="calendar-dialog-actions-secondary">
             {!isConfirmedOrder && (
               <Button
@@ -622,6 +665,18 @@ export default function OrderDialog({
             >
               Edit
             </Button>
+            {(isCanceledOrder || isDeletedOrder) && (
+              <Button
+                variant="text"
+                color="default"
+                startIcon={<CheckIcon />}
+                onClick={handleRestore}
+                disabled={!order}
+                className="calendar-dialog-button calendar-dialog-button--quiet"
+              >
+                Restore
+              </Button>
+            )}
             {(!isConfirmedOrder || isCanceledOrder) && (
               <Button
                 variant="text"
