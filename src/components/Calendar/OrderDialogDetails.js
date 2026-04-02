@@ -171,16 +171,18 @@ export default function OrderDialogDetails({
               </div>
             )}
           </div>
-          <div className="order-dialog-details__row">
-            <span className="order-dialog-details__label">Event color</span>
-            <span className="order-dialog-details__value">
-              <ColorSelector
-                value={selectedEventColorId}
-                onChange={(name, value) => onEventColorChange?.(value || null)}
-                colors={colors}
-              />
-            </span>
-          </div>
+          {!isCanceledOrder && !isDeletedOrder && (
+            <div className="order-dialog-details__row">
+              <span className="order-dialog-details__label">Event color</span>
+              <span className="order-dialog-details__value">
+                <ColorSelector
+                  value={selectedEventColorId}
+                  onChange={(name, value) => onEventColorChange?.(value || null)}
+                  colors={colors}
+                />
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

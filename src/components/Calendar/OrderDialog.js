@@ -420,7 +420,9 @@ export default function OrderDialog({
     return hexToRgba(hex, 0.62)
   }, [order])
 
-  const titleWithDeleted = `${title}${isDeletedOrder ? ' (DELETED)' : ''}`
+  const titleWithStatus = `${title}${
+    isDeletedOrder ? ' (DELETED)' : isCanceledOrder ? ' (CANCELED)' : ''
+  }`
 
   const handleRestore = useCallback(async () => {
     if (!orderId) return
@@ -569,7 +571,7 @@ export default function OrderDialog({
                 ❓
               </span>
             ) : null}
-            {titleWithDeleted}
+            {titleWithStatus}
           </h3>
           <IconButton aria-label="close" onClick={onClose} className="calendar-order-dialog-close">
             <CloseIcon />
