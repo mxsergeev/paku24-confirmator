@@ -11,7 +11,6 @@ import Editor from '../Confirmator/Editor'
 
 import OrderSettings from '../Confirmator/OrderSettings'
 import ValidationDisplay from '../Confirmator/ValidationDisplay'
-import RawOrderContainer from '../Confirmator/OrderContainers/RawOrderContainer'
 import TransformedOrderContainer from '../Confirmator/OrderContainers/TransformedOrderContainer'
 import TransformPanel from '../Confirmator/OrderOperations/TransformPanel'
 import MainOperationsPanel from '../Confirmator/OrderOperations/MainOperationsPanel'
@@ -42,7 +41,6 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
     localStorage.setItem('confirmator_rawOrder', JSON.stringify(rawOrder))
   }, [rawOrder])
 
-  const rawOrderOrderContainerRef = useRef(null)
   const transformedOrderContainerRef = useRef(null)
 
   const reset = useCallback(() => {
@@ -58,13 +56,6 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
       return setOrder(new Order(order))
     },
     [order]
-  )
-
-  const handleRawOrderUpdate = useCallback(
-    (rawO) => {
-      setRawOrder({ ...rawOrder, id: rawO.id || null, text: rawO.text || rawO })
-    },
-    [rawOrder]
   )
 
   const handleTransformedOrderUpdate = useCallback((transO) => {
@@ -114,12 +105,6 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
       <DialogContent className="calendar-new-order-dialog-content">
         <div className="calendar-new-order-dialog-content-wrap">
           <div className="flex-container calendar-new-order-flex-container">
-            <RawOrderContainer
-              elementRef={rawOrderOrderContainerRef}
-              rawOrderText={rawOrder.text}
-              handleClick={handleRawOrderUpdate}
-            />
-
             <Editor order={order} handleChange={handleOrderChange} />
 
             <TransformPanel
