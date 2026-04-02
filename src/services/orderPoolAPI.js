@@ -99,6 +99,11 @@ function updateColor(id, eventColor) {
     .then((res) => res?.data)
 }
 
+async function restore(id) {
+  const response = await interceptor.axiosInstance.post(`${baseUrl_v2}/restore/${id}`)
+  return response?.data
+}
+
 const orderPoolAPI = {
   get,
   getOrderById,
@@ -111,6 +116,7 @@ const orderPoolAPI = {
   add,
   update,
   updateColor,
+  restore,
 }
 
 export default orderPoolAPI
