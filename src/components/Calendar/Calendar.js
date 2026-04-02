@@ -8,7 +8,7 @@ import ReceiptPage from './ReceiptPage'
 import dayjs from 'dayjs'
 import { getOrderIcons, getBoxEventTitle, parseBoxEventId } from './helpers'
 import colorsData from './calendar.data.colors.json'
-import calendarColors from '../../data/colors.json'
+import calendarColors from '../../shared/colors'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
@@ -18,12 +18,13 @@ import multiMonthPlugin from '@fullcalendar/multimonth'
 import iconsData from '../../data/icons.json'
 import { useCalendarOrders } from '../../hooks/useCalendarOrders'
 import './Calendar.css'
+import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 
 const SHOW_DELETED_ORDERS_STORAGE_KEY = 'calendar-show-deleted-orders'
 const CALENDAR_VIEW_STORAGE_KEY = 'calendar-selected-view'
 const DEFAULT_CALENDAR_VIEW = 'dayGridMonth'
 const AVAILABLE_CALENDAR_VIEWS = ['dayGridMonth', 'timeGridWeek', 'listWeek', 'multiMonthYear']
-const isOrderDeleted = (order) => Boolean(order?.markedForDeletion || order?.deletedAt)
+// use `isDeleted` helper from shared/orderState.helpers
 
 export default function Calendar() {
   const calendarWrapRef = useRef(null)
@@ -304,7 +305,7 @@ export default function Calendar() {
     orders.forEach((order) => {
       if (!order?.date) return
 
-      if (isOrderDeleted(order)) return
+      if (isDeleted(order)) return
 
       const orderDate = new Date(order.date)
       if (Number.isNaN(orderDate.getTime())) return
@@ -315,7 +316,7 @@ export default function Calendar() {
       if (!matchesCurrentMonth) return
 
       total += 1
-      const isCanceledOrder = Boolean(order?.isCanceled || order?.canceledAt)
+      const isCanceledOrder = isCanceled(order)
       if (isCanceledOrder) {
         canceled += 1
         return
@@ -343,18 +344,18 @@ export default function Calendar() {
       const serviceColorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
       const colorId =
         customColorId && calendarColors[customColorId] ? customColorId : serviceColorId
-      const isCanceled = Boolean(order?.canceledAt)
-      const isDeletedOrder = isOrderDeleted(order)
+      const canceled = isCanceled(order)
+      const isDeletedOrder = isDeleted(order)
       const deletedOrderColor = '#3937375d'
       const deletedIcon = '❗️'
       const notConfirmedIcon = '❓'
-      const isConfirmedOrder = Boolean(order?.confirmedAt)
+      const isConfirmedOrder = isConfirmed(order)
       const addIcon = isDeletedOrder ? deletedIcon : !isConfirmedOrder ? notConfirmedIcon : ''
       const color = isDeletedOrder
         ? deletedOrderColor
         : !isConfirmedOrder
         ? '#dedddd'
-        : isCanceled
+        : canceled
         ? '#616161'
         : colorId && calendarColors[colorId]
         ? calendarColors[colorId].hex
