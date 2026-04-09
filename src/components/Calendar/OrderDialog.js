@@ -646,7 +646,7 @@ export default function OrderDialog({
             </div>
           )}
           <div className="calendar-dialog-actions-secondary">
-            {!isConfirmedOrder && (
+            {!isConfirmedOrder && !isDeletedOrder && (
               <Button
                 variant="text"
                 color="default"
