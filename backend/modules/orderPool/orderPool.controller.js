@@ -25,7 +25,7 @@ async function confirmOrder(id, userId) {
       confirmedBy: userId,
       confirmedAt: new Date().toISOString(),
     },
-    { new: true }
+    { new: true },
   )
   return order
 }
@@ -38,7 +38,7 @@ async function cancelOrder(id) {
       canceledAt: new Date().toISOString(),
       eventColor: '8',
     },
-    { new: true }
+    { new: true },
   )
   return order
 }
@@ -65,6 +65,53 @@ function checkKeyOrAuth(req, res, next) {
   return authMW.authenticateAccessToken(req, res, next)
 }
 
+function normalizeBoxes(boxes) {
+  if (!boxes || typeof boxes !== 'object') {
+    return boxes
+  }
+
+  const deliveryDate = boxes.deliveryDate ?? boxes.date?.delivery ?? null
+  const returnDate = boxes.returnDate ?? boxes.date?.pickup ?? null
+
+  return {
+    ...boxes,
+    amount: Number(boxes.amount ?? boxes.number ?? 0) || 0,
+    deliveryDate,
+    returnDate,
+  }
+}
+
+function normalizeIncomingOrder(orderData) {
+  if (!orderData || typeof orderData !== 'object') {
+    return orderData
+  }
+
+  const normalizedOrder = {
+    ...orderData,
+  }
+
+  if (normalizedOrder.boxes) {
+    normalizedOrder.boxes = normalizeBoxes(normalizedOrder.boxes)
+  }
+
+  if (!normalizedOrder.address && orderData.from) {
+    normalizedOrder.address = orderData.from
+  }
+
+  if (!normalizedOrder.destination && orderData.to) {
+    normalizedOrder.destination = orderData.to
+  }
+
+  if (normalizedOrder.service && typeof normalizedOrder.service === 'object') {
+    normalizedOrder.service = {
+      ...normalizedOrder.service,
+      price: normalizedOrder.service.price ?? normalizedOrder.servicePrice,
+    }
+  }
+
+  return normalizedOrder
+}
+
 orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
   try {
     const receivedOrder = new RawOrder({
@@ -84,11 +131,12 @@ orderPoolRouter.post('/v2/add', checkKeyOrAuth, async (req, res, next) => {
   try {
     const orderData =
       typeof req.body.order === 'string' ? JSON.parse(req.body.order) : req.body.order
+    const normalizedOrder = normalizeIncomingOrder(orderData)
 
     const receivedOrder = new Order({
       receivedAt: new Date().toISOString(),
-      ...orderData,
-      invoiceNumber: buildStableInvoiceNumber(orderData, orderData.invoiceNumber),
+      ...normalizedOrder,
+      invoiceNumber: buildStableInvoiceNumber(normalizedOrder, normalizedOrder.invoiceNumber),
     })
 
     await receivedOrder.save()
@@ -205,7 +253,7 @@ orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
       {
         deletedAt: new Date().toISOString(),
       },
-      { new: true }
+      { new: true },
     )
 
     if (!order) {
@@ -225,7 +273,7 @@ orderPoolRouter.put('/v2/retrieve/:id', async (req, res, next) => {
     const order = await Order.findByIdAndUpdate(
       { _id: id },
       { $unset: { deletedAt: 1 } },
-      { new: true }
+      { new: true },
     )
 
     if (!order) {
@@ -245,7 +293,7 @@ orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
     const order = await Order.findByIdAndUpdate(
       { _id: id },
       { $unset: { deletedAt: 1 } },
-      { new: true }
+      { new: true },
     )
 
     if (!order) {
@@ -305,7 +353,7 @@ orderPoolRouter.post('/v2/restore/:id', async (req, res, next) => {
     const order = await Order.findByIdAndUpdate(
       { _id: id },
       { $unset: { deletedAt: 1, canceledAt: 1 }, $set: { eventColor: DEFAULT_EVENT_COLOR_ID } },
-      { new: true }
+      { new: true },
     )
 
     if (!order) {
@@ -338,5 +386,7 @@ orderPoolRouter.get('/confirmed-by-user/', async (req, res) => {
 
   return res.status(200).send({ confirmedOrders })
 })
+
+export { normalizeBoxes, normalizeIncomingOrder }
 
 export default orderPoolRouter
