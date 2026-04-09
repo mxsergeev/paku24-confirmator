@@ -12,7 +12,7 @@ import Order from '../../models/order.js'
 import User from '../../models/user.js'
 import dayjs from '../../../src/shared/dayjs.js'
 import { DEFAULT_EVENT_COLOR_ID } from '../../utils/colors.js'
-import { updateOrder, getOrderById } from './orderPool.service.js'
+import { updateOrder, getOrderById, deleteOrderPermanently } from './orderPool.service.js'
 import { buildStableInvoiceNumber } from '../../utils/invoiceNumber.js'
 
 // Helpers to centralize order state changes
@@ -225,8 +225,8 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
       deleted === 'true'
         ? { deletedAt: { $exists: true } }
         : deleted === 'false'
-        ? { deletedAt: { $exists: false } }
-        : {}
+          ? { deletedAt: { $exists: false } }
+          : {}
 
     const match = {
       $or: [
@@ -334,6 +334,22 @@ orderPoolRouter.put('/v2/cancel/:id', async (req, res, next) => {
     const order = await cancelOrder(id)
     if (!order) return res.status(404).send({ error: 'Order not found' })
     return res.status(200).send({ order, message: 'Order canceled' })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+// Permanently delete an order from DB (requires auth middleware applied above)
+orderPoolRouter.delete('/v2/delete-permanent/:id', async (req, res, next) => {
+  const { id } = req.params
+  try {
+    const order = await deleteOrderPermanently(id)
+
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' })
+    }
+
+    return res.status(200).send({ message: 'Order permanently deleted', deletedId: id })
   } catch (err) {
     return next(err)
   }

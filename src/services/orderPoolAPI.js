@@ -70,6 +70,11 @@ async function remove(id) {
   return response?.data
 }
 
+async function removePermanently(id) {
+  const response = await interceptor.axiosInstance.delete(`${baseUrl_v2}/delete-permanent/${id}`)
+  return response?.data
+}
+
 async function retrieve(id) {
   const response = await interceptor.axiosInstance.put(`${baseUrl_v2}/retrieve/${id}`)
   return response?.data
@@ -111,6 +116,7 @@ const orderPoolAPI = {
   confirm,
   cancel,
   remove,
+  removePermanently,
   retrieve,
   getConfirmedOrders,
   add,

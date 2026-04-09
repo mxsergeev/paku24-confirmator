@@ -54,6 +54,7 @@ export default function OrderDialog({
   const [editableOrder, setEditableOrder] = useState(null)
   const [savingEdit, setSavingEdit] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteMode, setDeleteMode] = useState('soft')
   const [deleting, setDeleting] = useState(false)
   const [changingEventColor, setChangingEventColor] = useState(false)
   const [receiptOpen, setReceiptOpen] = useState(false)
@@ -217,11 +218,13 @@ export default function OrderDialog({
   }, [editableOrder, orderId, queryClient])
 
   const handleDeleteClick = useCallback(() => {
+    setDeleteMode(isDeleted(order) ? 'permanent' : 'soft')
     setDeleteConfirmOpen(true)
-  }, [])
+  }, [order])
 
   const handleDeleteConfirmClose = useCallback(() => {
     setDeleteConfirmOpen(false)
+    setDeleteMode('soft')
   }, [])
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -229,9 +232,17 @@ export default function OrderDialog({
 
     try {
       setDeleting(true)
-      const response = await orderPoolAPI.remove(orderId)
-      enqueueSnackbar(response.message || 'Order marked as deleted.')
+      let response
+      if (deleteMode === 'permanent') {
+        response = await orderPoolAPI.removePermanently(orderId)
+        enqueueSnackbar(response.message || 'Order permanently deleted.')
+      } else {
+        response = await orderPoolAPI.remove(orderId)
+        enqueueSnackbar(response.message || 'Order marked as deleted.')
+      }
+
       setDeleteConfirmOpen(false)
+      setDeleteMode('soft')
       queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
       onClose()
     } catch (err) {
@@ -242,7 +253,7 @@ export default function OrderDialog({
     } finally {
       setDeleting(false)
     }
-  }, [onClose, orderId, queryClient])
+  }, [deleteMode, onClose, orderId, queryClient])
 
   const debounceTimerRef = useRef(null)
 
@@ -794,13 +805,24 @@ export default function OrderDialog({
         }}
       >
         <DialogTitle className="calendar-order-dialog-title-wrap">
-          <h3 className="calendar-dialog-title">Delete this order?</h3>
+          <h3 className="calendar-dialog-title">
+            {deleteMode === 'permanent' ? 'Delete permanently?' : 'Delete this order?'}
+          </h3>
         </DialogTitle>
         <DialogContent>
-          <p>This will remove the order from active planning.</p>
-          <p className="calendar-dialog-muted-text">
-            You can still restore it later from deleted orders.
-          </p>
+          {deleteMode === 'permanent' ? (
+            <>
+              <p>This will permanently remove the order from the database.</p>
+              <p className="calendar-dialog-muted-text">This action cannot be undone.</p>
+            </>
+          ) : (
+            <>
+              <p>This will remove the order from active planning.</p>
+              <p className="calendar-dialog-muted-text">
+                You can still restore it later from deleted orders.
+              </p>
+            </>
+          )}
         </DialogContent>
         <DialogActions className="calendar-dialog-actions calendar-dialog-actions--compact">
           <Button
@@ -818,7 +840,11 @@ export default function OrderDialog({
             disabled={deleting}
             className="calendar-dialog-button calendar-dialog-button--danger-fill"
           >
-            {deleting ? 'Deleting...' : 'Delete'}
+            {deleting
+              ? 'Deleting...'
+              : deleteMode === 'permanent'
+              ? 'Delete permanently'
+              : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

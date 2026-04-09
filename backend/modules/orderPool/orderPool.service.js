@@ -47,3 +47,17 @@ async function updateOrder(id, updateData) {
 }
 
 export { getOrderById, updateOrder }
+
+async function deleteOrderPermanently(id) {
+  if (!id) throw newErrorWithCustomName('OrderNotFoundError', 404)
+
+  const order = await Order.findByIdAndDelete(id)
+
+  if (!order) {
+    throw newErrorWithCustomName('OrderNotFoundError', 404)
+  }
+
+  return order
+}
+
+export { deleteOrderPermanently }
