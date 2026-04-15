@@ -432,10 +432,30 @@ export default function Calendar() {
   function renderEventContent(eventInfo) {
     const bgColor = eventInfo.event.extendedProps.color
     return (
-      <div className="fc-event-title" style={{ backgroundColor: bgColor }}>
-        <span>{eventInfo.event.title}</span>
+      <div className="fc-event-inner" style={{ backgroundColor: bgColor }}>
+        <div className="fc-event-title" style={{ backgroundColor: bgColor }}>
+          <span>{eventInfo.event.title}</span>
+        </div>
       </div>
     )
+  }
+
+  function handleEventDidMount(eventInfo) {
+    const bgColor = eventInfo.event.extendedProps.color
+    if (!bgColor || !eventInfo.el) return
+
+    if (
+      eventInfo.el.classList.contains('fc-v-event') ||
+      eventInfo.el.classList.contains('fc-timegrid-event')
+    ) {
+      eventInfo.el.style.backgroundColor = bgColor
+      eventInfo.el.style.borderColor = bgColor
+
+      const eventMain = eventInfo.el.querySelector('.fc-event-main')
+      if (eventMain) {
+        eventMain.style.backgroundColor = bgColor
+      }
+    }
   }
 
   function handleEventClick(info) {
@@ -505,6 +525,7 @@ export default function Calendar() {
         }}
         events={events}
         eventContent={renderEventContent}
+        eventDidMount={handleEventDidMount}
         firstDay={1}
         eventClick={handleEventClick}
         datesSet={(dateInfo) => {
