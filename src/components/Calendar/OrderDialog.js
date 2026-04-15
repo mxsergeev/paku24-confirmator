@@ -610,7 +610,7 @@ export default function OrderDialog({
           />
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">
-          {!isCanceledOrder && !isDeletedOrder && (
+          {!isCanceledOrder && !isDeletedOrder && isConfirmedOrder && (
             <div className="calendar-dialog-actions-group">
               <Button
                 variant="contained"
