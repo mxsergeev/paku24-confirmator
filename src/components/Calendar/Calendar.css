@@ -249,6 +249,20 @@
   overflow: hidden;
 }
 
+.fc-list-event .fc-event-main,
+.fc-list-event .fc-event-main-frame,
+.fc-list-event .fc-list-event-title,
+.fc-list-event .fc-event-inner,
+.fc-list-event .fc-event-title {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fc-list-event .fc-event-title {
+  padding-right: 10px;
+}
+
 .fc-event-title {
   white-space: normal;
   word-break: break-word;
