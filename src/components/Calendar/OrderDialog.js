@@ -426,10 +426,23 @@ export default function OrderDialog({
   const isCanceledOrder = isCanceled(order)
 
   const headerBg = useMemo(() => {
-    const colorId = String(order?.eventColor ?? order?.color ?? '')
-    const hex = colors[colorId]?.hex || colors['7']?.hex || '#039be5'
-    return hexToRgba(hex, 0.62)
-  }, [order])
+    let bgColor
+
+    if (isDeletedOrder) {
+      bgColor = '#3937375d'
+    } else if (!isConfirmedOrder) {
+      bgColor = '#dedddd'
+    } else if (isCanceledOrder) {
+      bgColor = '#616161'
+    } else {
+      // Use order's color for confirmed orders (default)
+      const colorId = String(order?.eventColor ?? order?.color ?? '')
+      const hex = colors[colorId]?.hex || colors['7']?.hex || '#039be5'
+      bgColor = hexToRgba(hex, 0.62)
+    }
+
+    return bgColor
+  }, [order, isDeletedOrder, isConfirmedOrder, isCanceledOrder])
 
   const titleWithStatus = `${title}${
     isDeletedOrder ? ' (DELETED)' : isCanceledOrder ? ' (CANCELED)' : ''
