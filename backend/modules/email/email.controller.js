@@ -18,7 +18,6 @@ emailRouter.post('/send-confirmation', (req, res, next) => {
   const terms = makeTerms(orderForTerms)
   const { subject, body } = buildConfirmationEmail({
     order,
-    orderDetails,
     terms,
     lang: lang || order?.lang || order?.locale,
   })
