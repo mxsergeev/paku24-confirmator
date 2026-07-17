@@ -4,37 +4,52 @@ Internal tool for order management in Paku24.
 
 ## Development environment setup
 
+### Shared prerequisites
+
 1. Install [Docker](https://docs.docker.com/desktop/)
 
-2. Install [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) VS Code extension.
-
-3. Clone the repository
+2. Clone the repository
 
    ```bash
    git clone https://github.com/mxsergeev/paku24-confirmator.git
    cd paku24-confirmator
-
+   
    # Create and populate `.env` file
    cp .env.example .env
    ```
 
-4. Open the project in VS Code
+### Option A: Dev Container (VS Code)
 
-5. Enter the Dev Container
+- Install [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) VS Code extension.
 
-   Press `CTRL/CMD + Shift + P` and then type `Dev Containers: Reopen in Container`.
+- Open the project in VS Code
 
-6. Once inside the container, run `yarn dev`
+- Enter the Dev Container: Press `CTRL/CMD + Shift + P` and then type `Dev Containers: Reopen in Container`.
 
-7. Open the app at `http://localhost:3031`
+- Once inside the container, run `yarn dev`
+
+### Option B: Make (Terminal)
+
+- Run `make dev`
+
+- See `Makefile` for more commands (e.g., `make test`, `make stop`, `make clean`).
+
+
+### Continue
+
+3. Open the app at `http://localhost:3031`
 
    Login with username: `admin` and password: `1234`.
 
-   > If you can't login, the reason for that might be that containers did not initialize properly. In that case:
-   >
-   > - Press `CTRL/CMD + Shift + P` and then type `Dev Containers: Reopen folder locally`.
-   > - Then in terminal run `cd .devcontainer/ && docker compose down -v`,
-   > - and after that repeat steps 5 and 6.
+> If you can't login, the containers may not have initialized properly. Stop and remove volumes, then repeat the setup:
+>
+> **Make:** `make clean`
+>
+> **Dev Container:** Reopen the folder locally first (`CTRL/CMD + Shift + P` → `Dev Containers: Reopen Folder Locally`), then run:
+> ```bash
+> cd .devcontainer && docker compose down -v
+> ```
+> Then re-enter the container.
 
 ## Optional steps
 

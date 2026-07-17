@@ -1,0 +1,11 @@
+services:
+  app:
+    command: ["yarn", "test"]
+    depends_on:
+      mongodb:
+        condition: service_started
+    environment:
+      - NODE_ENV=test
+    ports: []
+  mongodb:
+    ports: []

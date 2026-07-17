@@ -38,7 +38,7 @@ services:
     command: sleep infinity
 
   mongodb:
-    image: mongo
+    image: mongo:7
     restart: 'no'
     working_dir: /app
     volumes:
