@@ -1,19 +1,16 @@
 /* eslint-disable no-console */
 import { enqueueSnackbar } from 'notistack'
 import isJSON from 'validator/lib/isJSON.js'
-import fees from '../data/fees.json' with { type: 'json' }
 import services from '../data/services.json' with { type: 'json' }
 import TextOrder from './TextOrder.js'
 import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
 import distances from '../data/distances.json' with { type: 'json' }
 import boxesSettings from '../data/boxes.json' with { type: 'json' }
-import icons from '../data/icons.json' with { type: 'json' }
 import dayjs from './dayjs.js'
-import { isNode } from './isNode.js'
-import { toZonedTime, fromZonedTime } from './date-fns-tz.js'
-import { formatAddress, formatAddressLocation } from './addressFormatter.js'
-
-const getDateInTz = (d) => (isNode() ? toZonedTime(d) : d)
+import { fromZonedTime } from './date-fns-tz.js'
+import { calculateAutomaticFees, getAvailableFees } from './fees.js'
+import { formatAddress, formatAddressLocation, formatOrder } from './render/text.js'
+import { makeCalendarEntries, makeIcons } from './render/googleCalendar.js'
 
 class Order {
   static EMPTY_ORDER = {
@@ -103,7 +100,7 @@ class Order {
   get autoBoxesPrice() {
     let duration = dayjs(this.boxes.returnDate).diff(
       dayjs(this.boxes.deliveryDate),
-      boxesSettings.timeUnit
+      boxesSettings.timeUnit,
     )
 
     if (duration < boxesSettings.minPeriod) {
@@ -142,42 +139,7 @@ class Order {
   }
 
   get autoFees() {
-    const hour = this.date.getHours()
-
-    const dayOFWeek = this.date.getDay()
-    const dayOfMonth = this.date.getDate()
-    const endOfMonth = [new Date(this.date.getFullYear(), this.date.getMonth() + 1, 0).getDate(), 1]
-
-    const weekEndFeeApplicable = dayOFWeek === 6 || dayOFWeek === 0
-
-    return Order.getAvailableFees(this).filter((f) => {
-      if (f.name === 'holidayFee') {
-        // Currently not implemented
-        return false
-      }
-
-      if (f.name === 'weekendFee') {
-        return weekEndFeeApplicable
-      }
-
-      if (f.name === 'startOrEndOfMonthFee') {
-        return !weekEndFeeApplicable && endOfMonth.includes(dayOfMonth)
-      }
-
-      if (f.name === 'nightFee') {
-        return hour < 8 || hour >= 20
-      }
-
-      if (f.name === 'paymentTypeFee') {
-        return this.paymentType.fee > 0
-      }
-
-      if (f.name.startsWith('stairsFee')) {
-        return true
-      }
-
-      return false
-    })
+    return calculateAutomaticFees(this)
   }
 
   set fees(f) {
@@ -242,7 +204,7 @@ class Order {
     prepared.time = this.time
 
     if (this.canceledAt) {
-      prepared.canceledAt = this.canceledAt;
+      prepared.canceledAt = this.canceledAt
     }
 
     return prepared
@@ -294,272 +256,19 @@ class Order {
   }
 
   static makeIcons(order) {
-    const sizeIcon = order.XL ? icons.size.XL : ''
-    const distanceIcon = icons.misc[order.distance] || ''
-    const feeIcons = order.fees
-      .map((fee) => icons.fees[fee.name])
-      .filter((icon) => icon)
-      .reduce((acc, cur) => acc + cur, '')
-    const serviceIcons = icons.service[order.service.id]
-    const paymentIcons = icons.payment[order.paymentType.id]
-
-    return {
-      move: `${sizeIcon}${distanceIcon}${feeIcons}${serviceIcons}${paymentIcons}`,
-      boxesDelivery: icons.boxes.delivery,
-      boxesPickup: icons.boxes.pickup,
-    }
+    return makeIcons(order)
   }
 
   static makeCalendarEntries(order) {
-    const moveTitle = `${Order.makeIcons(order).move}${dayjs(order.date).format('HH:mm')}(${
-      order.duration
-    }h)`
-
-    const boxes = order.boxes || { amount: 0, deliveryDate: '', returnDate: '' }
-
-    // Coerce box date fields to string ISO so .includes and dayjs work reliably
-    const safeDateStr = (d) => {
-      if (!d) return ''
-      if (typeof d === 'string') return d
-      try {
-        const dt = new Date(d)
-        if (!Number.isNaN(dt.getTime())) return dt.toISOString()
-        if (d && typeof d.toISOString === 'function') return d.toISOString()
-        return String(d)
-      } catch (err) {
-        return String(d)
-      }
-    }
-
-    const deliveryDateStr = safeDateStr(boxes.deliveryDate)
-    const returnDateStr = safeDateStr(boxes.returnDate)
-
-    const boxesDeliveryTitle = `${boxes.amount} ${Order.makeIcons(order).boxesDelivery} ${
-      deliveryDateStr && deliveryDateStr.includes('T')
-        ? `${dayjs(deliveryDateStr).format('HH:mm')} `
-        : ''
-    }`
-
-    const boxesPickupTitle = `NOUTO ${boxes.amount} ${Order.makeIcons(order).boxesPickup} ${
-      returnDateStr && returnDateStr.includes('T')
-        ? `${dayjs(returnDateStr).format('HH:mm')} `
-        : ''
-    }`
-
-    return {
-      move: {
-        title: `${moveTitle} ${order.name}`,
-        description: `${moveTitle}${Order.format(
-          order,
-          {
-            title: 0,
-            date: 0,
-            time: 0,
-            duration: 0,
-            paymentType: 0,
-          },
-          { removeFirstHeading: true }
-        )}`,
-      },
-      deliveryDate: {
-        title: `${boxesDeliveryTitle}${order.name}`,
-        description: `${boxesDeliveryTitle}${Order.format(
-          order,
-          {
-            address: 1,
-            name: 1,
-            email: 1,
-            phone: 1,
-            boxes: 1,
-          },
-          { removeFirstHeading: true }
-        )}`,
-      },
-      returnDate: {
-        title: `${boxesPickupTitle}${order.name}`,
-        description: `${boxesPickupTitle}${Order.format(
-          order,
-          {
-            destination: 1,
-            name: 1,
-            email: 1,
-            phone: 1,
-            boxes: 1,
-          },
-          { removeFirstHeading: true }
-        )}`,
-      },
-    }
+    return makeCalendarEntries(order)
   }
 
   static format(order, opts = {}, { removeFirstHeading = false } = {}) {
-    const defaultOpts = {
-      title: 1,
-      date: 1,
-      time: 1,
-      duration: 1,
-      paymentType: 1,
-      fees: 1,
-      address: 1,
-      extraAddresses: 1,
-      destination: 1,
-      name: 1,
-      email: 1,
-      phone: 1,
-      boxes: 1,
-      comment: 1,
-    }
-
-    let options = defaultOpts
-
-    // Include only selected fields
-    if (Object.keys(opts).length > 0 && Object.values(opts).includes(1)) {
-      options = opts
-    }
-    // Do not include selected fields but include the rest
-    else if (Object.values(opts).includes(0)) {
-      options = {
-        ...defaultOpts,
-        ...opts,
-      }
-    }
-
-    let transformed = ''
-
-    if (options.title) {
-      transformed += 'VARAUKSEN TIEDOT\n'
-    }
-    if (options.date) {
-      transformed += `${dayjs(getDateInTz(order.date)).format('YYYY-MM-DD')}\n`
-    }
-    if (options.time) {
-      transformed += 'ALKAMISAIKA\n'
-      transformed += `Klo ${dayjs(getDateInTz(order.date)).format('HH:mm')} (+/-15min)\n`
-    }
-    if (options.duration) {
-      transformed += 'ARVIOITU KESTO\n'
-      transformed += `${order.duration}h (${order.servicePrice}€/h, ${order.serviceName})\n`
-    }
-    if (options.paymentType) {
-      transformed += 'MAKSUTAPA\n'
-      transformed += `${order.paymentType.name}\n`
-    }
-    if (options.fees) {
-      order.fees.forEach((f) => {
-        const label = f.label ?? fees.find((fee) => fee.name === f.name)?.label ?? ''
-
-        transformed += `${label.toUpperCase()}\n`
-        transformed += `${f.amount}€\n`
-      })
-    }
-    if (options.boxes && order.boxes && order.boxes.amount > 0) {
-      const boxDelDateStr = dayjs(getDateInTz(order.boxes.deliveryDate)).format(
-        `DD-MM-YYYY ${order.boxes.deliveryDate.includes('T') ? 'HH:mm' : ''}`
-      )
-      const boxPickDateStr = dayjs(getDateInTz(order.boxes.returnDate)).format(
-        `DD-MM-YYYY ${order.boxes.returnDate.includes('T') ? 'HH:mm' : ''}`
-      )
-
-      transformed += 'MUUTTOLAATIKOT\n'
-      transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
-      transformed += `Määrä: ${order.boxes.amount} kpl\n`
-      transformed += `Hinta: ${order.boxesPrice}€\n`
-    }
-    if (options.price !== null) {
-      transformed += 'ARVIOITU HINTA\n'
-      transformed += `${order.price}€\n`
-    }
-    if (options.address) {
-      transformed += 'LÄHTÖPAIKKA\n'
-      transformed += Order.addrStr(order.address)
-    }
-    if (options.extraAddresses && order.extraAddresses && order.extraAddresses.length > 0) {
-      transformed += 'LISÄPYSÄHDYKSET\n'
-      order.extraAddresses.forEach((a) => {
-        transformed += Order.addrStr(a)
-      })
-    }
-    if (
-      options.destination &&
-      order.destination &&
-      order.destination.street &&
-      order.destination.street.length > 5
-    ) {
-      transformed += 'MÄÄRÄNPÄÄ\n'
-      transformed += Order.addrStr(order.destination)
-    }
-    if (options.name) {
-      transformed += 'NIMI\n'
-      transformed += `${order.name || '?'}\n`
-    }
-    if (options.email) {
-      transformed += 'SÄHKÖPOSTI\n'
-      transformed += `${order.email || '?'}\n`
-    }
-    if (options.phone) {
-      transformed += 'PUHELIN\n'
-      transformed += `${order.phone || '?'}\n`
-    }
-
-    if (options.comment) {
-      transformed += 'LISÄTIETOJA\n'
-
-      if (order.address.floor || order.address.elevator) {
-        transformed += `Lähtö: ${order.address.floor} krs.${
-          order.address.elevator ? ', hissi on.' : ', ei hissiä.'
-        }\n`
-      }
-
-      if (order.destination.floor || order.destination.elevator) {
-        transformed += `Määränpää: ${order.destination.floor} krs.${
-          order.destination.elevator ? ', hissi on.' : ', ei hissiä.'
-        }\n`
-      }
-
-      transformed += `${order.comment}\n`
-    }
-
-    if (removeFirstHeading) {
-      const ar = transformed.split('\n')
-      ar.shift()
-
-      transformed = ar.join('\n')
-    }
-
-    return transformed
+    return formatOrder(order, opts, { removeFirstHeading })
   }
 
   static getAvailableFees(order) {
-    // Floor fee calculation
-    const stairsFeeConfig = fees.find((f) => f.name === 'stairsFee')
-    if (!order || !order.service) return fees.filter((f) => f.name !== 'stairsFee')
-    const serviceObj = services.find((s) => String(s.id) === String(order.service.id))
-
-    const baseFee = Number(stairsFeeConfig?.baseFee)
-    const startFloor = Number(stairsFeeConfig?.startFloor)
-    const multiplier = Number(serviceObj?.multiplier)
-    const floorFees = []
-
-    if (!isNaN(baseFee) && !isNaN(startFloor) && !isNaN(multiplier) && multiplier > 0) {
-      const addresses = [order.address, order.destination, ...(order.extraAddresses || [])]
-
-      addresses.forEach((address, index) => {
-        if (address.elevator || address.floor < startFloor) {
-          return
-        }
-
-        const floorsAbove = Number(address.floor) - startFloor
-        floorFees.push({
-          name: `stairsFee_${index}`,
-          label: `KERROSLISÄ ${address.street ? `(${address.street})` : ''}`,
-          amount: floorsAbove * baseFee * multiplier,
-        })
-      })
-    }
-
-    const availableFees = fees.filter((f) => f.name !== 'stairsFee').concat(floorFees)
-
-    return availableFees
+    return getAvailableFees(order)
   }
 }
 
