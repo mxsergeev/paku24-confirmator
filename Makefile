@@ -3,15 +3,15 @@ COMPOSE_DEV = -f .devcontainer/docker-compose.yaml -f .devcontainer/docker-compo
 .PHONY: dev build-ui test stop clean prod
 
 dev:
-	docker compose $(COMPOSE_DEV) up --build app
+	docker compose $(COMPOSE_DEV) up app
 
 build-ui:
-	docker compose $(COMPOSE_DEV) run --build --rm app yarn build:ui --mode production
+	docker compose $(COMPOSE_DEV) run --rm app yarn build:ui --mode production
 
 test:
 	docker compose -f .devcontainer/docker-compose.yaml -f .devcontainer/docker-compose.test.yaml \
 	  -p confirmator-test \
-	  up --build --abort-on-container-exit --exit-code-from app
+	  up --abort-on-container-exit --exit-code-from app --attach app
 
 stop:
 	docker compose $(COMPOSE_DEV) down
