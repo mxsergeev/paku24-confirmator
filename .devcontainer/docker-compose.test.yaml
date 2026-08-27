@@ -6,6 +6,6 @@ services:
         condition: service_started
     environment:
       - NODE_ENV=test
-    ports: []
+    ports: !reset []
   mongodb:
-    ports: []
+    ports: !reset []
