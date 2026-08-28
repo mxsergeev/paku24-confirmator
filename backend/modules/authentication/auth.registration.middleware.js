@@ -7,6 +7,43 @@ import mongoose from 'mongoose'
 import User from '../../models/user.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 
+const MAX_USERNAME_ATTEMPTS = 5
+
+function generateUsername() {
+  return uniqueNamesGenerator({ dictionaries: [colors, animals] })
+}
+
+function isUsernameDuplicateKeyError(err) {
+  return (
+    err &&
+    err.code === 11000 &&
+    (Object.prototype.hasOwnProperty.call(err.keyPattern || {}, 'username') ||
+      Object.prototype.hasOwnProperty.call(err.keyValue || {}, 'username'))
+  )
+}
+
+async function persistWithUniqueUsername({ existingUsername, persist }) {
+  if (existingUsername) {
+    await persist(existingUsername)
+    return existingUsername
+  }
+
+  for (let attempt = 0; attempt < MAX_USERNAME_ATTEMPTS; attempt += 1) {
+    const username = generateUsername()
+
+    try {
+      await persist(username)
+      return username
+    } catch (err) {
+      if (!isUsernameDuplicateKeyError(err) || attempt === MAX_USERNAME_ATTEMPTS - 1) {
+        throw err
+      }
+    }
+  }
+
+  return undefined
+}
+
 async function checkIfUserExists(req, res, next) {
   const { email } = req.body
 
@@ -30,25 +67,23 @@ async function createUser(req, res, next) {
       .update(Date.now().toString() + name)
       .digest('base64')
 
-    const randomUsername = uniqueNamesGenerator({
-      dictionaries: [colors, animals],
-    })
-
     const user = new User({
       _id: mongoose.Types.ObjectId(),
-      username: randomUsername,
       name,
       email,
       requestToken,
       access: false,
       accessRequested: Date.now(),
     })
-    // eslint-disable-next-line no-console
-    console.log('user', user)
-
-    await user.save()
+    const username = await persistWithUniqueUsername({
+      persist: (candidate) => {
+        user.username = candidate
+        return user.save()
+      },
+    })
     req.requestToken = requestToken
-    req.randomUsername = randomUsername
+    req.username = username
+    req.randomUsername = username
 
     return next()
   } catch (err) {
@@ -85,17 +120,24 @@ async function generatePassword(req, res, next) {
 }
 
 async function updateUser(req, res, next) {
-  const { matchedUser, randomUsername, passwordHash } = req
+  const { matchedUser, passwordHash } = req
 
   try {
-    await matchedUser
-      .updateOne({
-        username: randomUsername,
-        passwordHash,
-        access: true,
-        $unset: { requestToken: '', accessRequested: '' },
-      })
-      .exec()
+    const username = await persistWithUniqueUsername({
+      existingUsername: matchedUser.username,
+      persist: (candidate) =>
+        matchedUser
+          .updateOne({
+            username: candidate,
+            passwordHash,
+            access: true,
+            $unset: { requestToken: '', accessRequested: '' },
+          })
+          .exec(),
+    })
+
+    req.username = username
+    req.randomUsername = username
     return next()
   } catch (err) {
     return next(err)
