@@ -1,9 +1,11 @@
 import fees from '../../data/fees.json' with { type: 'json' }
-import dayjs from '../dayjs.js'
-import { toZonedTime } from '../date-fns-tz.js'
-import { isNode } from '../isNode.js'
-
-const getDateInTz = (date) => (isNode() ? toZonedTime(date) : date)
+import {
+  HELSINKI_TIMEZONE,
+  formatInTimeZone,
+  isDateOnly,
+  parseDateOnly,
+  parseDateTime,
+} from '../date-fns-tz.js'
 
 function formatAddress(address) {
   let result = ''
@@ -38,11 +40,20 @@ function formatAddressLocation(address) {
   return result
 }
 
-function formatBoxDate(value) {
-  const dateOnly = typeof value === 'string' && !value.includes('T')
-  const date = dateOnly ? value : getDateInTz(value)
+function formatOrderDate(value, format, fieldName) {
+  const date = parseDateTime(value, fieldName)
+  return formatInTimeZone(date, format, HELSINKI_TIMEZONE)
+}
 
-  return dayjs(date).format(`DD-MM-YYYY ${dateOnly ? '' : 'HH:mm'}`)
+function formatBoxDate(value, fieldName) {
+  if (isDateOnly(value)) {
+    parseDateOnly(value, fieldName)
+    const [year, month, day] = value.split('-')
+    return `${day}-${month}-${year}`
+  }
+
+  const date = parseDateTime(value, fieldName)
+  return formatInTimeZone(date, 'dd-MM-yyyy HH:mm', HELSINKI_TIMEZONE)
 }
 
 function servicePrice(order) {
@@ -53,57 +64,62 @@ function serviceName(order) {
   return order.serviceName ?? order.service?.name
 }
 
-function formatOrder(order, opts = {}, { removeFirstHeading = false } = {}) {
-  const defaultOpts = {
-    title: 1,
-    date: 1,
-    time: 1,
-    duration: 1,
-    paymentType: 1,
-    fees: 1,
-    address: 1,
-    extraAddresses: 1,
-    destination: 1,
-    name: 1,
-    email: 1,
-    phone: 1,
-    boxes: 1,
-    comment: 1,
-  }
+const SECTION_NAMES = [
+  'title',
+  'date',
+  'time',
+  'duration',
+  'paymentType',
+  'fees',
+  'boxes',
+  'price',
+  'address',
+  'extraAddresses',
+  'destination',
+  'name',
+  'email',
+  'phone',
+  'comment',
+]
 
-  let options = defaultOpts
+function selectedSections(options) {
+  const included = Object.entries(options)
+    .filter(([, value]) => value === true || value === 1)
+    .map(([name]) => name)
 
-  // Include only selected fields.
-  if (Object.keys(opts).length > 0 && Object.values(opts).includes(1)) {
-    options = opts
-  } else if (Object.values(opts).includes(0)) {
-    options = {
-      ...defaultOpts,
-      ...opts,
-    }
-  }
+  if (included.length > 0) return new Set(included)
+
+  const selected = new Set(SECTION_NAMES)
+  Object.entries(options).forEach(([name, value]) => {
+    if (value === false || value === 0 || value === null) selected.delete(name)
+  })
+  return selected
+}
+
+function formatOrder(order, options = {}, { showBoxesHeading = true } = {}) {
+  const sections = selectedSections(options)
 
   let transformed = ''
 
-  if (options.title) {
+  if (sections.has('title')) {
     transformed += 'VARAUKSEN TIEDOT\n'
   }
-  if (options.date) {
-    transformed += `${dayjs(getDateInTz(order.date)).format('YYYY-MM-DD')}\n`
+  if (sections.has('date')) {
+    transformed += `${formatOrderDate(order.date, 'yyyy-MM-dd', 'order date')}\n`
   }
-  if (options.time) {
+  if (sections.has('time')) {
     transformed += 'ALKAMISAIKA\n'
-    transformed += `Klo ${dayjs(getDateInTz(order.date)).format('HH:mm')} (+/-15min)\n`
+    transformed += `Klo ${formatOrderDate(order.date, 'HH:mm', 'order date')} (+/-15min)\n`
   }
-  if (options.duration) {
+  if (sections.has('duration')) {
     transformed += 'ARVIOITU KESTO\n'
     transformed += `${order.duration}h (${servicePrice(order)}€/h, ${serviceName(order)})\n`
   }
-  if (options.paymentType) {
+  if (sections.has('paymentType')) {
     transformed += 'MAKSUTAPA\n'
     transformed += `${order.paymentType.name}\n`
   }
-  if (options.fees) {
+  if (sections.has('fees')) {
     ;(order.fees || []).forEach((fee) => {
       const label = fee.label ?? fees.find((item) => item.name === fee.name)?.label ?? ''
 
@@ -111,31 +127,37 @@ function formatOrder(order, opts = {}, { removeFirstHeading = false } = {}) {
       transformed += `${fee.amount}€\n`
     })
   }
-  if (options.boxes && order.boxes && order.boxes.amount > 0) {
-    const boxDelDateStr = formatBoxDate(order.boxes.deliveryDate)
-    const boxPickDateStr = formatBoxDate(order.boxes.returnDate)
+  if (sections.has('boxes') && order.boxes && order.boxes.amount > 0) {
+    const boxDelDateStr = formatBoxDate(order.boxes.deliveryDate, 'box delivery date')
+    const boxPickDateStr = formatBoxDate(order.boxes.returnDate, 'box return date')
 
-    transformed += 'MUUTTOLAATIKOT\n'
+    if (showBoxesHeading) {
+      transformed += 'MUUTTOLAATIKOT\n'
+    }
     transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
     transformed += `Määrä: ${order.boxes.amount} kpl\n`
     transformed += `Hinta: ${order.boxesPrice}€\n`
   }
-  if (options.price !== null) {
+  if (sections.has('price')) {
     transformed += 'ARVIOITU HINTA\n'
     transformed += `${order.price}€\n`
   }
-  if (options.address) {
+  if (sections.has('address')) {
     transformed += 'LÄHTÖPAIKKA\n'
     transformed += formatAddress(order.address)
   }
-  if (options.extraAddresses && order.extraAddresses && order.extraAddresses.length > 0) {
+  if (
+    sections.has('extraAddresses') &&
+    order.extraAddresses &&
+    order.extraAddresses.length > 0
+  ) {
     transformed += 'LISÄPYSÄHDYKSET\n'
     order.extraAddresses.forEach((address) => {
       transformed += formatAddress(address)
     })
   }
   if (
-    options.destination &&
+    sections.has('destination') &&
     order.destination &&
     order.destination.street &&
     order.destination.street.length > 5
@@ -143,20 +165,20 @@ function formatOrder(order, opts = {}, { removeFirstHeading = false } = {}) {
     transformed += 'MÄÄRÄNPÄÄ\n'
     transformed += formatAddress(order.destination)
   }
-  if (options.name) {
+  if (sections.has('name')) {
     transformed += 'NIMI\n'
     transformed += `${order.name || '?'}\n`
   }
-  if (options.email) {
+  if (sections.has('email')) {
     transformed += 'SÄHKÖPOSTI\n'
     transformed += `${order.email || '?'}\n`
   }
-  if (options.phone) {
+  if (sections.has('phone')) {
     transformed += 'PUHELIN\n'
     transformed += `${order.phone || '?'}\n`
   }
 
-  if (options.comment) {
+  if (sections.has('comment')) {
     transformed += 'LISÄTIETOJA\n'
     const address = order.address || {}
     const destination = order.destination || {}
@@ -174,12 +196,6 @@ function formatOrder(order, opts = {}, { removeFirstHeading = false } = {}) {
     }
 
     transformed += `${order.comment}\n`
-  }
-
-  if (removeFirstHeading) {
-    const lines = transformed.split('\n')
-    lines.shift()
-    transformed = lines.join('\n')
   }
 
   return transformed

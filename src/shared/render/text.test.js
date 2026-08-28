@@ -102,18 +102,31 @@ describe('formatOrder', () => {
     )
   })
 
-  it('supports include-only, exclude, and remove-heading modes', () => {
+  it('supports explicit include-only and exclude modes', () => {
     const order = makeOrder()
     const includeOnly = formatOrder(order, { address: 1, name: 1, boxes: 1 })
+    const includePrice = formatOrder(order, { address: 1, name: 1, price: 1 })
     const excluded = formatOrder(order, { fees: 0, time: 0 })
-    const withoutHeading = formatOrder(order, {}, { removeFirstHeading: true })
+    const excludedPrice = formatOrder(order, { price: 0 })
 
     expect(includeOnly).toContain('LÄHTÖPAIKKA')
-    expect(includeOnly).toContain('ARVIOITU HINTA')
+    expect(includeOnly).not.toContain('ARVIOITU HINTA')
     expect(includeOnly).not.toContain('ALKAMISAIKA')
+    expect(includePrice).toContain('ARVIOITU HINTA')
     expect(excluded).toContain('VARAUKSEN TIEDOT')
     expect(excluded).not.toContain('ALKAMISAIKA')
-    expect(withoutHeading.split('\n')[0]).toBe('2026-03-10')
+    expect(excludedPrice).not.toContain('ARVIOITU HINTA')
+  })
+
+  it('can omit a selected section heading without removing its content', () => {
+    const output = formatOrder(
+      makeOrder(),
+      { boxes: 1, price: 1 },
+      { showBoxesHeading: false },
+    )
+
+    expect(output).toContain('12-03-2026 09:00 - 20-03-2026 09:00')
+    expect(output).not.toContain('MUUTTOLAATIKOT')
   })
 
   it('accepts Date values for the order and box datetimes', () => {
@@ -143,7 +156,38 @@ describe('formatOrder', () => {
       }),
     )
 
-    expect(output).toContain('12-03-2026  - 20-03-2026')
+    expect(output).toContain('12-03-2026 - 20-03-2026')
+  })
+
+  it('uses Helsinki time for absolute instants regardless of the host timezone', () => {
+    const output = formatOrder(
+      makeOrder({
+        date: '2026-03-10T07:00:00Z',
+        boxes: {
+          deliveryDate: '2026-03-12T07:00:00Z',
+          returnDate: '2026-03-20T07:00:00Z',
+          amount: 10,
+        },
+      }),
+    )
+
+    expect(output).toContain('2026-03-10\nALKAMISAIKA\nKlo 09:00')
+    expect(output).toContain('12-03-2026 09:00 - 20-03-2026 09:00')
+  })
+
+  it('rejects invalid provided datetime values with a clear error', () => {
+    expect(() => formatOrder(makeOrder({ date: {} }))).toThrow('Invalid order date')
+    expect(() =>
+      formatOrder(
+        makeOrder({
+          boxes: {
+            deliveryDate: {},
+            returnDate: '2026-03-20T07:00:00Z',
+            amount: 10,
+          },
+        }),
+      ),
+    ).toThrow('Invalid box delivery date')
   })
 
   it('omits the boxes section when boxes are missing', () => {
@@ -152,7 +196,7 @@ describe('formatOrder', () => {
     expect(output).not.toContain('MUUTTOLAATIKOT')
   })
 
-  it('retains the documented destination and price rendering quirks', () => {
+  it('omits a short destination while still rendering fees and price', () => {
     const output = formatOrder(
       makeOrder({
         destination: { street: 'Katu', index: '', city: 'Helsinki', floor: 0, elevator: false },

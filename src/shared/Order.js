@@ -263,8 +263,11 @@ class Order {
     return makeCalendarEntries(order)
   }
 
-  static format(order, opts = {}, { removeFirstHeading = false } = {}) {
-    return formatOrder(order, opts, { removeFirstHeading })
+  static format(order, opts = {}, renderOptions = {}) {
+    const transformed = formatOrder(order, opts, renderOptions)
+    if (!renderOptions.removeFirstHeading) return transformed
+
+    return transformed.split('\n').slice(1).join('\n')
   }
 
   static getAvailableFees(order) {

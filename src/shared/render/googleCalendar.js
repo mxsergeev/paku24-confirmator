@@ -1,5 +1,11 @@
 import icons from '../../data/icons.json' with { type: 'json' }
-import dayjs from '../dayjs.js'
+import {
+  HELSINKI_TIMEZONE,
+  formatInTimeZone,
+  isDateOnly,
+  parseDateOnly,
+  parseDateTime,
+} from '../date-fns-tz.js'
 import { formatOrder } from './text.js'
 
 function makeIcons(order) {
@@ -19,39 +25,32 @@ function makeIcons(order) {
   }
 }
 
-function safeDateString(value) {
-  if (!value) return ''
-  if (typeof value === 'string') return value
-
-  try {
-    const date = new Date(value)
-    if (!Number.isNaN(date.getTime())) return date.toISOString()
-    if (value && typeof value.toISOString === 'function') return value.toISOString()
-    return String(value)
-  } catch (err) {
-    return String(value)
-  }
+function formatOrderTime(value) {
+  const date = parseDateTime(value, 'order date')
+  return formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)
 }
 
-function hasTime(value) {
-  return typeof value === 'string' ? value.includes('T') : Boolean(value)
+function formatBoxTime(value, fieldName) {
+  if (value === null || value === undefined || value === '') return ''
+
+  if (isDateOnly(value)) {
+    parseDateOnly(value, fieldName)
+    return ''
+  }
+
+  const date = parseDateTime(value, fieldName)
+  return `${formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)} `
 }
 
 function makeCalendarEntries(order) {
   const orderIcons = makeIcons(order)
-  const moveTitle = `${orderIcons.move}${dayjs(order.date).format('HH:mm')}(${order.duration}h)`
+  const moveTitle = `${orderIcons.move}${formatOrderTime(order.date)}(${order.duration}h)`
   const boxes = order.boxes || { amount: 0, deliveryDate: '', returnDate: '' }
-  const deliveryDateStr = safeDateString(boxes.deliveryDate)
-  const returnDateStr = safeDateString(boxes.returnDate)
+  const deliveryTime = formatBoxTime(boxes.deliveryDate, 'box delivery date')
+  const returnTime = formatBoxTime(boxes.returnDate, 'box return date')
 
-  const boxesDeliveryTitle = `${boxes.amount} ${orderIcons.boxesDelivery} ${
-    deliveryDateStr && hasTime(boxes.deliveryDate)
-      ? `${dayjs(deliveryDateStr).format('HH:mm')} `
-      : ''
-  }`
-  const boxesPickupTitle = `NOUTO ${boxes.amount} ${orderIcons.boxesPickup} ${
-    returnDateStr && hasTime(boxes.returnDate) ? `${dayjs(returnDateStr).format('HH:mm')} ` : ''
-  }`
+  const boxesDeliveryTitle = `${boxes.amount} ${orderIcons.boxesDelivery} ${deliveryTime}`
+  const boxesPickupTitle = `NOUTO ${boxes.amount} ${orderIcons.boxesPickup} ${returnTime}`
 
   return {
     move: {
@@ -65,7 +64,7 @@ function makeCalendarEntries(order) {
           duration: 0,
           paymentType: 0,
         },
-        { removeFirstHeading: true },
+        { showBoxesHeading: false },
       )}`,
     },
     deliveryDate: {
@@ -78,8 +77,9 @@ function makeCalendarEntries(order) {
           email: 1,
           phone: 1,
           boxes: 1,
+          price: 1,
         },
-        { removeFirstHeading: true },
+        { showBoxesHeading: false },
       )}`,
     },
     returnDate: {
@@ -92,8 +92,9 @@ function makeCalendarEntries(order) {
           email: 1,
           phone: 1,
           boxes: 1,
+          price: 1,
         },
-        { removeFirstHeading: true },
+        { showBoxesHeading: false },
       )}`,
     },
   }

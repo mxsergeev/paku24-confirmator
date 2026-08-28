@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { enqueueSnackbar } from 'notistack'
 import Order from './Order.js'
-import dayjs from './dayjs.js'
 import services from '../data/services.json' with { type: 'json' }
 import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
 
@@ -159,7 +158,7 @@ describe('price, fees and boxesPrice precedence', () => {
     expect(order.autoPrice).toBe(100)
   })
 
-  it('FLIP Phase 5: a stored price is shadowed by autoPrice', () => {
+  it('prefers automatic price over stored price without a manual override', () => {
     const order = baseOrder({ price: 300 })
     expect(order.price).toBe(100)
     expect(order.initialPrice).toBe(300)
@@ -172,7 +171,7 @@ describe('price, fees and boxesPrice precedence', () => {
     expect(order.initialPrice).toBe(200)
   })
 
-  it('FLIP Phase 5: stored fees are shadowed by autoFees', () => {
+  it('prefers automatic fees over stored fees without a manual override', () => {
     const order = new Order({
       date: new Date('2026-03-10 09:00'),
       fees: [{ name: 'weekendFee', label: 'VIIKONLOPPULISÄ', amount: 15 }],
@@ -191,7 +190,7 @@ describe('price, fees and boxesPrice precedence', () => {
     expect(order.fees).toEqual([{ name: 'weekendFee', amount: 15 }])
   })
 
-  it('FLIP Phase 5: a stored boxesPrice is shadowed by autoBoxesPrice', () => {
+  it('prefers automatic box price over stored box price without a manual override', () => {
     const order = baseOrder({ boxesPrice: 999 })
     expect(order.boxesPrice).toBe(0)
     expect(order.initialBoxesPrice).toBe(999)
@@ -299,7 +298,7 @@ describe('eventColor shadowing and spread-reset', () => {
     expect(new Order({ service: services[1] }).eventColor).toBe('9')
   })
 
-  it('FLIP Phase 5: spreading an Order loses an explicitly set eventColor', () => {
+  it('does not retain explicit event color when an Order is spread into a new one', () => {
     const order = new Order()
     order.eventColor = '5'
     const wrapped = new Order({ ...order, confirmedAt: '2026-03-10T10:00:00.000Z' })
@@ -312,7 +311,7 @@ describe('Order.format', () => {
   const fmtOrder = () =>
     new Order({
       // Absolute instant whose Helsinki wall time is 09:00: Order.format
-      // normalizes via toZonedTime, so this renders as 09:00 in any TZ.
+      // The renderer always uses Helsinki time, regardless of the process timezone.
       date: new Date('2026-03-10T07:00:00Z'),
       duration: 2,
       service: services[0],
@@ -388,17 +387,22 @@ describe('Order.format', () => {
     expect(out.split('\n')[0]).toBe('2026-03-10')
   })
 
-  it('include-only mode renders selected sections and always the price block', () => {
+  it('include-only mode renders only the selected sections', () => {
     const out = Order.format(fmtOrder(), { address: 1, name: 1, email: 1, phone: 1, boxes: 1 })
     expect(out).toContain('LÄHTÖPAIKKA')
     expect(out).toContain('NIMI')
     expect(out).toContain('SÄHKÖPOSTI')
     expect(out).toContain('PUHELIN')
     expect(out).toContain('MUUTTOLAATIKOT')
-    expect(out).toContain('ARVIOITU HINTA')
-    expect(out).toContain('320€')
+    expect(out).not.toContain('ARVIOITU HINTA')
     expect(out).not.toContain('VARAUKSEN TIEDOT')
     expect(out).not.toContain('ALKAMISAIKA')
+  })
+
+  it('includes the price block only when it is selected', () => {
+    const out = Order.format(fmtOrder(), { address: 1, price: 1 })
+    expect(out).toContain('LÄHTÖPAIKKA')
+    expect(out).toContain('ARVIOITU HINTA\n320€')
   })
 
   it('exclude mode drops the time section but keeps title and price', () => {
@@ -685,9 +689,8 @@ Tämä viesti lähetettiin sivustolta Paku24.fi (https://paku24.fi)`
 describe('Order.makeCalendarEntries', () => {
   it('produces move, deliveryDate and returnDate entries', () => {
     const order = new Order({
-      // Absolute instants so both the title times (dayjs local) and the
-      // description dates (Order.format Helsinki-normalized) are deterministic
-      // in any container timezone.
+      // Absolute instants so the renderer's Helsinki-local times are
+      // deterministic in any container timezone.
       date: new Date('2026-03-10T07:00:00Z'),
       duration: 2,
       service: services[0],
@@ -722,25 +725,15 @@ describe('Order.makeCalendarEntries', () => {
     const entries = Order.makeCalendarEntries(order)
     expect(Object.keys(entries)).toEqual(['move', 'deliveryDate', 'returnDate'])
 
-    expect(
-      entries.move.title.endsWith(`${dayjs(order.date).format('HH:mm')}(2h) Test Customer`),
-    ).toBe(true)
+    expect(entries.move.title.endsWith('09:00(2h) Test Customer')).toBe(true)
     expect(entries.move.description).toContain('Määrä: 10 kpl')
     expect(entries.move.description).toContain('Testikatu 1 A 2')
 
-    expect(
-      entries.deliveryDate.title.endsWith(
-        `${dayjs(order.boxes.deliveryDate).format('HH:mm')} Test Customer`,
-      ),
-    ).toBe(true)
+    expect(entries.deliveryDate.title.endsWith('09:00 Test Customer')).toBe(true)
     expect(entries.deliveryDate.description).toContain('12-03-2026 09:00 - 20-03-2026 09:00')
 
     expect(entries.returnDate.title.startsWith('NOUTO')).toBe(true)
-    expect(
-      entries.returnDate.title.endsWith(
-        `${dayjs(order.boxes.returnDate).format('HH:mm')} Test Customer`,
-      ),
-    ).toBe(true)
+    expect(entries.returnDate.title.endsWith('09:00 Test Customer')).toBe(true)
     expect(entries.returnDate.description).toContain('Testikatu 2 B 3')
   })
 })

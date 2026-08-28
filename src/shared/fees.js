@@ -1,5 +1,65 @@
 import fees from '../data/fees.json' with { type: 'json' }
 import services from '../data/services.json' with { type: 'json' }
+import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
+import { HELSINKI_TIMEZONE, parseDateTime } from './date-fns-tz.js'
+
+const finiteNumber = (value) => {
+  if (value === null || value === undefined) return null
+  if (typeof value === 'string' && value.trim() === '') return null
+  if (typeof value !== 'number' && typeof value !== 'string') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function datePartsInTimezone(value, timezone = HELSINKI_TIMEZONE) {
+  let date
+  try {
+    date = parseDateTime(value, 'date', timezone)
+  } catch {
+    return null
+  }
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    hourCycle: 'h23',
+    weekday: 'short',
+  })
+    .formatToParts(date)
+    .reduce((result, part) => {
+      if (part.type !== 'literal') result[part.type] = part.value
+      return result
+    }, {})
+
+  const weekdayNumbers = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  }
+
+  const year = finiteNumber(parts.year)
+  const month = finiteNumber(parts.month)
+  const day = finiteNumber(parts.day)
+  const hour = finiteNumber(parts.hour)
+
+  if (year === null || month === null || day === null || hour === null) return null
+
+  const endOfMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
+
+  return {
+    hour,
+    dayOfWeek: weekdayNumbers[parts.weekday],
+    dayOfMonth: day,
+    endOfMonth,
+  }
+}
 
 function getAvailableFees(order) {
   const stairsFeeConfig = fees.find((fee) => fee.name === 'stairsFee')
@@ -22,9 +82,10 @@ function getAvailableFees(order) {
     const addresses = [order.address, order.destination, ...(order.extraAddresses || [])]
 
     addresses.forEach((address, index) => {
-      if (!address || address.elevator || address.floor < startFloor) return
+      const floor = finiteNumber(address?.floor)
+      if (!address || address.elevator || floor === null || floor < startFloor) return
 
-      const floorsAbove = Number(address.floor) - startFloor
+      const floorsAbove = floor - startFloor
       floorFees.push({
         name: `stairsFee_${index}`,
         label: `KERROSLISÄ ${address.street ? `(${address.street})` : ''}`,
@@ -37,11 +98,11 @@ function getAvailableFees(order) {
 }
 
 function calculateAutomaticFees(order) {
-  const date = order?.date instanceof Date ? order.date : new Date(order?.date)
-  const hour = date.getHours()
-  const dayOfWeek = date.getDay()
-  const dayOfMonth = date.getDate()
-  const endOfMonth = [new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(), 1]
+  const localDate = datePartsInTimezone(order?.date)
+  const hour = localDate?.hour
+  const dayOfWeek = localDate?.dayOfWeek
+  const dayOfMonth = localDate?.dayOfMonth
+  const endOfMonth = localDate?.endOfMonth
   const weekendFeeApplicable = dayOfWeek === 6 || dayOfWeek === 0
 
   return getAvailableFees(order).filter((fee) => {
@@ -55,7 +116,7 @@ function calculateAutomaticFees(order) {
     }
 
     if (fee.name === 'startOrEndOfMonthFee') {
-      return !weekendFeeApplicable && endOfMonth.includes(dayOfMonth)
+      return !weekendFeeApplicable && [endOfMonth, 1].includes(dayOfMonth)
     }
 
     if (fee.name === 'nightFee') {
@@ -63,7 +124,11 @@ function calculateAutomaticFees(order) {
     }
 
     if (fee.name === 'paymentTypeFee') {
-      return Number(order?.paymentType?.fee) > 0
+      const payment = paymentTypes.find(
+        (item) => String(item.id) === String(order?.paymentType?.id),
+      )
+      const paymentFee = payment ? payment.fee : order?.paymentType?.fee
+      return Number(paymentFee) > 0
     }
 
     if (fee.name.startsWith('stairsFee')) {
