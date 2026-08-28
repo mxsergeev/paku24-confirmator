@@ -1,4 +1,3 @@
-import mongoose from 'mongoose'
 import supertest from 'supertest'
 import app from '../app.js'
 
@@ -46,5 +45,4 @@ afterAll(async () => {
       .send()
   )
   await Promise.all(promiseArray)
-  mongoose.connection.close()
 })

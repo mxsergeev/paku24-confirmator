@@ -1,9 +1,11 @@
 import 'dotenv/config.js'
 
-const {
-  MONGODB_URI = process.env.NODE_ENV === 'test'
+const MONGODB_URI =
+  process.env.NODE_ENV === 'test'
     ? process.env.TEST_MONGODB_URI
-    : process.env.DEV_MONGODB_URI || process.env.MONGODB_URI,
+    : process.env.MONGODB_URI || process.env.DEV_MONGODB_URI
+
+const {
   BACKEND_PORT,
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,

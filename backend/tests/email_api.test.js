@@ -1,4 +1,3 @@
-import mongoose from 'mongoose'
 import supertest from 'supertest'
 import app from '../app.js'
 
@@ -36,8 +35,4 @@ describe('Email', () => {
       .expect(403)
       .expect('Content-Type', /application\/json/)
   })
-})
-
-afterAll(async () => {
-  mongoose.connection.close()
 })

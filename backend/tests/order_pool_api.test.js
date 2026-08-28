@@ -1,10 +1,11 @@
-import mongoose from 'mongoose'
 import supertest from 'supertest'
 import app from '../app.js'
 import Order from '../models/order.js'
 import { generateJWT } from '../modules/authentication/auth.middleware.js'
+import useTestDatabase from './database_harness.js'
 
 const api = supertest(app)
+useTestDatabase()
 
 const key = process.env.ORDER_POOL_KEY || '1234'
 
@@ -134,8 +135,4 @@ describe('Order pool permanent delete', () => {
 
     orderId = null
   })
-})
-
-afterAll(async () => {
-  mongoose.connection.close()
 })

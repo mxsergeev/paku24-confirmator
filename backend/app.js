@@ -4,10 +4,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import morgan from 'morgan'
-import mongoose from 'mongoose'
 
-import * as config from './utils/config.js'
-import * as logger from './utils/logger.js'
 import errorHandler from './utils/errorHandler.middleware.js'
 import filterReqsBasedOnUrl from './utils/filterReqsBasedOnUrl.middleware.js'
 
@@ -19,20 +16,6 @@ import loginRouter from './modules/authentication/auth.login.controller.js'
 import logoutRouter from './modules/authentication/auth.logout.controller.js'
 import registrationRouter from './modules/authentication/auth.registration.controller.js.js'
 import tokenRouter from './modules/authentication/auth.token.controller.js'
-
-mongoose
-  .connect(config.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useFindAndModify: false,
-    useCreateIndex: true,
-  })
-  .then(() => {
-    logger.info('Connected to MongoDB.')
-  })
-  .catch((err) => {
-    logger.error('Error connecting to MongoDB:', err.message)
-  })
 
 const app = express()
 const REQUEST_BODY_LIMIT = '15mb'

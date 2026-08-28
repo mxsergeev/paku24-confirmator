@@ -1,7 +1,5 @@
-import mongoose from 'mongoose'
 import RefreshToken from '../models/refreshToken.js'
 import User from '../models/user.js'
-import * as config from '../utils/config.js'
 import { vi } from 'vitest'
 
 const initialUsers = [
@@ -47,19 +45,6 @@ async function initializeDB() {
   const userObjects = initialUsers.map((user) => new User(user))
   const promiseArray = userObjects.map((user) => user.save())
   await Promise.all(promiseArray)
-}
-
-function connectToDB() {
-  mongoose
-    .connect(config.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      useFindAndModify: false,
-      useCreateIndex: true,
-    })
-    .catch((err) => {
-      console.error('Error connecting to MongoDB:', err.message)
-    })
 }
 
 // mock
@@ -176,7 +161,6 @@ export {
   usersInDB,
   tokensInDB,
   initializeDB,
-  connectToDB,
   mockNext,
   res,
   exampleRefreshToken,

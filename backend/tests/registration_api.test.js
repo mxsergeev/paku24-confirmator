@@ -1,14 +1,24 @@
-import mongoose from 'mongoose'
 import supertest from 'supertest'
 import app from '../app.js'
 
+const generateUsername = vi.hoisted(() => vi.fn(() => 'generated-username'))
+
+vi.mock('unique-names-generator', async (importOriginal) => {
+  const original = await importOriginal()
+  return { ...original, uniqueNamesGenerator: generateUsername }
+})
+
 const api = supertest(app)
 
-import { initialUsers, usersInDB, initializeDB } from './test_helper.js'
+import { initialUsers, usersInDB } from './test_helper.js'
+import useTestDatabase from './database_harness.js'
 import User from '../models/user.js'
 
-beforeEach(async () => {
-  await initializeDB()
+useTestDatabase()
+
+beforeEach(() => {
+  generateUsername.mockReset()
+  generateUsername.mockReturnValue('generated-username')
 })
 
 describe('Registration', () => {
@@ -84,6 +94,3 @@ describe('Registration', () => {
   })
 })
 
-afterAll(() => {
-  mongoose.connection.close()
-})

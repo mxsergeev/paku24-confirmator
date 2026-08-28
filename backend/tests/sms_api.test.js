@@ -1,5 +1,4 @@
 import axios from 'axios'
-import mongoose from 'mongoose'
 import supertest from 'supertest'
 import app from '../app.js'
 import { smsOrderPayload } from './test_helper.js'
@@ -63,8 +62,4 @@ describe('SMS API', () => {
 
     expect(axios.get).not.toHaveBeenCalled()
   })
-})
-
-afterAll(async () => {
-  await mongoose.connection.close()
 })

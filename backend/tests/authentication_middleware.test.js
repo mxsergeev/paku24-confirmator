@@ -1,4 +1,3 @@
-import mongoose from 'mongoose'
 import * as authentication from '../modules/authentication/auth.middleware.js'
 import RefreshToken from '../models/refreshToken.js'
 import newErrorWithCustomName from '../utils/newErrorWithCustomName.js'
@@ -6,18 +5,15 @@ import newErrorWithCustomName from '../utils/newErrorWithCustomName.js'
 import {
   initialUsers,
   tokensInDB,
-  initializeDB,
-  connectToDB,
   mockNext,
   exampleRefreshToken,
 } from './test_helper.js'
+import useTestDatabase from './database_harness.js'
 
 let mockReq
 let mockRes
 
-beforeAll(async () => {
-  await connectToDB()
-})
+useTestDatabase()
 
 beforeEach(async () => {
   mockReq = { cookies: {} }
@@ -29,7 +25,6 @@ beforeEach(async () => {
       return this
     }),
   }
-  await initializeDB()
 })
 
 describe('Authentication middleware', () => {
@@ -287,11 +282,11 @@ describe('Authentication middleware', () => {
 
     test('expired access token', async () => {
       mockReq = {
-        cookies: { at: authentication.generateJWT(user, { expiresIn: '1ms' }) },
+        cookies: { at: authentication.generateJWT(user, { expiresIn: -1 }) },
       }
 
       expect(() => authentication.authenticateAccessToken(mockReq, mockRes, mockNext)).toThrowError(
-        newErrorWithCustomName('JsonWebTokenError', 'jwt expired')
+        expect.objectContaining({ name: 'TokenExpiredError', message: 'jwt expired' })
       )
 
       expect(mockReq).not.toHaveProperty('user')
@@ -341,7 +336,7 @@ describe('Authentication middleware', () => {
 
       await expect(async () => {
         await authentication.authenticateRefreshToken(mockReq, mockRes, mockNext)
-      }).rejects.toThrowError(newErrorWithCustomName('TokenMissingError'))
+      }).rejects.toThrowError(newErrorWithCustomName('RefreshTokenMissingError'))
       expect(mockReq).not.toHaveProperty('user')
       expect(mockReq).not.toHaveProperty('refreshTokenInDB')
     })
@@ -361,7 +356,7 @@ describe('Authentication middleware', () => {
     test('deleted refresh token with existing descendant - token theft', async () => {
       const descendantToken = new RefreshToken({
         ...exampleRefreshToken,
-        ancector: 'ancestortoken',
+        ancestor: 'ancestortoken',
       })
       await descendantToken.save()
 
@@ -394,6 +389,7 @@ describe('Authentication middleware', () => {
       const refreshToken = new RefreshToken({
         ...exampleRefreshToken,
         issuedAt: Date.now(),
+        expires: '9999999999999',
       })
       await refreshToken.save()
 
@@ -450,8 +446,4 @@ describe('Authentication middleware', () => {
       expect(mockReq).not.toHaveProperty('refreshTokenIsNew')
     })
   })
-})
-
-afterAll(() => {
-  mongoose.connection.close()
 })
