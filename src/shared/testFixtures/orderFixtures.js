@@ -181,10 +181,11 @@ export function makePersistedApiOrder() {
 
 export function makeCustomerCommunicationPayload() {
   return {
-    ...makeAppBooking(),
-    price: 167,
-    fees: [makeFee('weekendFee')],
-    boxesPrice: 52,
+    ...makeWordPressPayload(),
+    distance: distances.insideCapital,
+    hsy: false,
+    XL: false,
+    eventColor: '1',
   }
 }
 
