@@ -54,6 +54,45 @@ describe('draft serialization', () => {
     expect(restored.price).not.toBe(order.price)
   })
 
+  it('hydrates an app draft from stored fields and ignores stale outbound state', () => {
+    const payload = JSON.parse(JSON.stringify(serializeDraft(makeAppOrder())))
+    payload.order.price = 999
+    payload.order.fees = [{ name: 'stale', amount: 999 }]
+    payload.order.boxesPrice = 999
+    payload.order.confirmed = true
+
+    const restored = deserializeDraft(payload)
+
+    expect(restored.origin).toBe('app')
+    expect(restored.initialSnapshot).toBeNull()
+    expect(restored.confirmed).toBe(false)
+    expect(resolveActivePricing(restored)).toEqual(calculateAutomaticPricing(restored))
+  })
+
+  it('hydrates a WordPress draft with serialized snapshot and manual pricing state', () => {
+    const order = makeWordPressOrder()
+    const manualPricing = {
+      source: { ...order.pricing.source, price: 'manual' },
+      manual: { ...order.pricing.manual, price: 321 },
+    }
+    const payload = JSON.parse(JSON.stringify(serializeDraft({ ...order, pricing: manualPricing })))
+    payload.order.price = 1
+    payload.order.fees = [{ name: 'stale', amount: 1 }]
+    payload.order.boxesPrice = 1
+    payload.order.initialSnapshot.confirmed = true
+
+    const restored = deserializeDraft(payload)
+
+    expect(restored.origin).toBe('wordpress')
+    expect(restored.initialSnapshot).toMatchObject({
+      date: new Date('2026-01-15T07:00:00.000Z'),
+    })
+    expect(restored.pricing).toEqual(manualPricing)
+    expect(restored.price).toBe(321)
+    expect(restored).toHaveProperty('confirmed', false)
+    expect(restored.initialSnapshot).not.toHaveProperty('confirmed')
+  })
+
   it('preserves date-only boxes and converts datetime values symmetrically', () => {
     const order = createWordPressOrder({
       ...makeWordPressStructuredJsonComplete(),

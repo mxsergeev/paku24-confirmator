@@ -16,6 +16,7 @@ import {
 
 const DRAFT_VERSION = 1
 const ADDRESS_FIELDS = ['street', 'index', 'city', 'floor', 'elevator']
+const DRAFT_ORDER_FIELDS = [...BOOKING_FIELDS, 'origin', 'initialSnapshot', 'pricing']
 
 function serializeAddress(value) {
   if (!isPlainObject(value)) return cloneValue(value)
@@ -134,7 +135,7 @@ function requireOrigin(order) {
   return order.origin
 }
 
-function extractDraftOrder(order) {
+function serializeDraftOrder(order) {
   if (!isPlainObject(order)) throw new Error('Invalid draft order')
 
   if (!hasOwn(order, 'origin')) throw new Error('Invalid draft order: origin is required')
@@ -157,12 +158,33 @@ function extractDraftOrder(order) {
 }
 
 function serializeDraft(order) {
-  const serialized = extractDraftOrder(order)
+  const serialized = serializeDraftOrder(order)
 
   return {
     version: DRAFT_VERSION,
     order: serialized,
   }
+}
+
+function deserializeDraftOrder(order) {
+  if (!isPlainObject(order)) throw new Error('Invalid draft order')
+
+  if (!hasOwn(order, 'origin')) throw new Error('Invalid draft order: origin is required')
+  if (!hasOwn(order, 'initialSnapshot')) {
+    throw new Error('Invalid draft order: initialSnapshot is required')
+  }
+  if (!hasOwn(order, 'pricing')) throw new Error('Invalid draft order: pricing is required')
+
+  // Draft JSON has the same value representation as persisted canonical data.
+  // Select draft-owned fields first so lifecycle metadata and materialized
+  // projections cannot leak into the canonical hydrator.
+  const draftOrder = Object.fromEntries(
+    DRAFT_ORDER_FIELDS
+      .filter((field) => hasOwn(order, field))
+      .map((field) => [field, cloneValue(order[field])]),
+  )
+
+  return hydrateCanonicalOrder(draftOrder)
 }
 
 function deserializeDraft(payload) {
@@ -174,7 +196,7 @@ function deserializeDraft(payload) {
 
   // Selecting the draft fields also ensures lifecycle and materialized projections
   // supplied by stale or hand-edited drafts never become hydrated order state.
-  return hydrateCanonicalOrder(extractDraftOrder(payload.order))
+  return deserializeDraftOrder(payload.order)
 }
 
 function toCreateOrderPayload(order) {
