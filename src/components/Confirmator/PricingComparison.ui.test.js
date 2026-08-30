@@ -69,6 +69,8 @@ describe('PricingComparison', () => {
     const { onChange, rerender } = renderComparison(order)
 
     fireEvent.change(screen.getByLabelText('Manual price'), { target: { value: '0' } })
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getAllByText(/Manual: Not set/i)).toHaveLength(3)
     fireEvent.click(screen.getByRole('button', { name: 'Use manual price' }))
     const manualPriceOrder = getUpdatedOrder(onChange)
     expect(manualPriceOrder.pricing.source.price).toBe('manual')
@@ -80,6 +82,18 @@ describe('PricingComparison', () => {
     const manualFeesOrder = getUpdatedOrder(onChange)
     expect(manualFeesOrder.pricing.source.fees).toBe('manual')
     expect(manualFeesOrder.pricing.manual.fees).toEqual([])
+  })
+
+  it('uses committed manual values as the numeric input and fee selection defaults', () => {
+    let order = createAppOrder(makeWordPressStructuredJsonMissingPricing())
+    order = setManualPricing(order, 'price', 0)
+    order = setManualPricing(order, 'fees', [{ name: 'customFee', amount: 9 }])
+
+    renderComparison(order)
+
+    expect(screen.getByLabelText('Manual price')).toHaveValue(0)
+    expect(screen.getByText(/Manual: 0 €/i)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Manual customFee fee' })).toBeChecked()
   })
 
   it('supports manual fee selection and manual box price input', () => {
