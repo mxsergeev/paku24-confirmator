@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import { getAvailableFees } from '../../shared/fees'
 import {
   calculateAutomaticPricing,
@@ -9,12 +9,18 @@ import {
   setManualPricing,
   setPricingSource,
 } from '../../shared/orderModel'
-import { hasOwn, PRICING_COMPONENTS } from '../../shared/orderPrimitives'
+import { hasOwn } from '../../shared/orderPrimitives'
 
-const PRICING_COMPONENT_DETAILS = {
-  price: { label: 'Price', inputLabel: 'Manual price', unit: '€' },
-  fees: { label: 'Fees' },
-  boxesPrice: { label: 'Boxes price', inputLabel: 'Manual boxes price', unit: '€' },
+const PRICE_COMPONENT = {
+  key: 'price',
+  label: 'Price',
+  inputLabel: 'Manual price',
+}
+
+const BOXES_PRICE_COMPONENT = {
+  key: 'boxesPrice',
+  label: 'Boxes price',
+  inputLabel: 'Manual boxes price',
 }
 
 function hasValue(value) {
@@ -31,7 +37,7 @@ function hasInitialValue(order, component) {
 }
 
 function formatMoney(value) {
-  return `${value} €`
+  return hasValue(value) ? `${value} €` : 'Not set'
 }
 
 function formatFees(value) {
@@ -40,51 +46,39 @@ function formatFees(value) {
   return value.map((fee) => `${fee.label || fee.name} (${fee.amount} €)`).join(', ')
 }
 
-function formatValue(component, value) {
-  if (!hasValue(value)) return 'Not set'
-  if (component === 'fees') return formatFees(value)
-  return formatMoney(value)
-}
-
 function isUsableNumber(value) {
   return value.trim() !== '' && Number.isFinite(Number(value))
 }
 
-function PricingRow({ order, component, initialVisible, automaticValue, activeValue, onChange }) {
-  const { key, label, inputLabel, unit } = component
+function NumericPricingRow({
+  order,
+  component,
+  initialVisible,
+  automaticValue,
+  activeValue,
+  onChange,
+}) {
+  const { key, label, inputLabel } = component
   const manualValue = order.pricing?.manual?.[key]
   const activeSource = order.pricing?.source?.[key]
   const initialAvailable = hasInitialValue(order, key)
-  const [manualInput, setManualInput] = useState(
-    key === 'fees' ? '' : hasValue(manualValue) ? String(manualValue) : '',
-  )
-  const [manualFees, setManualFees] = useState(Array.isArray(manualValue) ? manualValue : [])
 
-  useEffect(() => {
-    if (key === 'fees') {
-      const nextFees = Array.isArray(manualValue) ? manualValue : []
-      setManualFees(nextFees)
-      return
-    }
-    setManualInput(hasValue(manualValue) ? String(manualValue) : '')
-  }, [key, manualValue])
-
-  const availableFees = useMemo(() => {
-    if (key !== 'fees') return []
-
-    const configuredFees = getAvailableFees(order)
-    const configuredNames = new Set(configuredFees.map((fee) => fee.name))
-    const existingManualFees = Array.isArray(manualValue)
-      ? manualValue.filter((fee) => !configuredNames.has(fee.name))
-      : []
-    return configuredFees.concat(existingManualFees)
-  }, [key, manualValue, order])
+  // This is only an uncommitted input draft. Once it is applied or cleared,
+  // the canonical value comes from order.pricing again.
+  const [manualInputDraft, setManualInputDraft] = useState(null)
+  const draftValue = manualInputDraft?.order === order ? manualInputDraft.value : null
+  const manualInput =
+    draftValue === null ? (hasValue(manualValue) ? String(manualValue) : '') : draftValue
 
   const updateSource = (source) => onChange(setPricingSource(order, key, source))
-  const clearManual = () => onChange(clearManualPricing(order, key))
+  const clearManual = () => {
+    setManualInputDraft(null)
+    onChange(clearManualPricing(order, key))
+  }
   const useManual = () => {
-    const value = key === 'fees' ? manualFees : Number(manualInput)
-    onChange(setManualPricing(order, key, value))
+    if (!isUsableNumber(manualInput)) return
+    onChange(setManualPricing(order, key, Number(manualInput)))
+    setManualInputDraft(null)
   }
 
   return (
@@ -92,13 +86,13 @@ function PricingRow({ order, component, initialVisible, automaticValue, activeVa
       <h3 id={`${key}-pricing-title`}>{label}</h3>
       {initialVisible && (
         <p>
-          Initial: {initialAvailable ? formatValue(key, order.initialSnapshot[key]) : 'Not available'}
+          Initial: {initialAvailable ? formatMoney(order.initialSnapshot[key]) : 'Not available'}
         </p>
       )}
-      <p>Automatic: {formatValue(key, automaticValue)}</p>
-      <p>Manual: {formatValue(key, manualValue)}</p>
+      <p>Automatic: {formatMoney(automaticValue)}</p>
+      <p>Manual: {hasValue(manualValue) ? formatMoney(manualValue) : 'Not set'}</p>
       <p>
-        Active: <strong>{formatValue(key, activeValue)}</strong>
+        Active: <strong>{formatMoney(activeValue)}</strong>
       </p>
       <p>Active source: {activeSource}</p>
 
@@ -112,65 +106,128 @@ function PricingRow({ order, component, initialVisible, automaticValue, activeVa
             Use initial {label.toLowerCase()}
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => updateSource('auto')}
-        >
+        <button type="button" onClick={() => updateSource('auto')}>
           Use automatic {label.toLowerCase()}
         </button>
-        {key === 'fees' ? (
-          <div>
-            {availableFees.map((fee) => (
-              <label key={fee.name}>
-                <input
-                  type="checkbox"
-                  checked={manualFees.some((selectedFee) => selectedFee.name === fee.name)}
-                  onChange={() => {
-                    const isSelected = manualFees.some(
-                      (selectedFee) => selectedFee.name === fee.name,
-                    )
-                    const nextFees = isSelected
-                      ? manualFees.filter((selectedFee) => selectedFee.name !== fee.name)
-                      : manualFees.concat(fee)
-                    setManualFees(nextFees)
-                  }}
-                  aria-label={`Manual ${fee.label || fee.name} fee`}
-                />
-                {`${fee.label || fee.name} (${fee.amount} €)`}
-              </label>
-            ))}
-            <button type="button" onClick={useManual}>
-              Use manual fees
-            </button>
-          </div>
-        ) : (
-          <>
-            <label>
-              {inputLabel}
-              <input
-                aria-label={inputLabel}
-                type="number"
-                value={manualInput}
-                onChange={(event) => setManualInput(event.target.value)}
-                step="any"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={!isUsableNumber(manualInput)}
-              onClick={useManual}
-            >
-              Use manual {label.toLowerCase()}
-            </button>
-            {unit && <span className="pricing-comparison-unit">{unit}</span>}
-          </>
-        )}
+        <label>
+          {inputLabel}
+          <input
+            aria-label={inputLabel}
+            type="number"
+            value={manualInput}
+            onChange={(event) =>
+              setManualInputDraft({ order, value: event.target.value })
+            }
+            step="any"
+          />
+        </label>
+        <button
+          type="button"
+          disabled={!isUsableNumber(manualInput)}
+          onClick={useManual}
+        >
+          Use manual {label.toLowerCase()}
+        </button>
+        <span className="pricing-comparison-unit">€</span>
         <button
           type="button"
           disabled={!hasValue(manualValue)}
           onClick={clearManual}
         >
           Clear manual {label.toLowerCase()}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function FeesPricingRow({ order, initialVisible, automaticValue, activeValue, onChange }) {
+  const manualValue = order.pricing?.manual?.fees
+  const activeSource = order.pricing?.source?.fees
+  const initialAvailable = hasInitialValue(order, 'fees')
+
+  // Fee checkboxes are a temporary selection until the user applies them.
+  // The committed manual fee list remains in order.pricing.manual.fees.
+  const [manualFeesDraft, setManualFeesDraft] = useState(null)
+  const draftFees = manualFeesDraft?.order === order ? manualFeesDraft.value : null
+  const manualFees =
+    draftFees === null ? (Array.isArray(manualValue) ? manualValue : []) : draftFees
+
+  const configuredFees = getAvailableFees(order)
+  const configuredNames = new Set(configuredFees.map((fee) => fee.name))
+  const existingManualFees = Array.isArray(manualValue)
+    ? manualValue.filter((fee) => !configuredNames.has(fee.name))
+    : []
+  const availableFees = configuredFees.concat(existingManualFees)
+
+  const updateSource = (source) => onChange(setPricingSource(order, 'fees', source))
+  const clearManual = () => {
+    setManualFeesDraft(null)
+    onChange(clearManualPricing(order, 'fees'))
+  }
+  const useManual = () => {
+    onChange(setManualPricing(order, 'fees', manualFees))
+    setManualFeesDraft(null)
+  }
+
+  return (
+    <section aria-labelledby="fees-pricing-title" className="pricing-comparison-row">
+      <h3 id="fees-pricing-title">Fees</h3>
+      {initialVisible && (
+        <p>
+          Initial: {initialAvailable ? formatFees(order.initialSnapshot.fees) : 'Not available'}
+        </p>
+      )}
+      <p>Automatic: {formatFees(automaticValue)}</p>
+      <p>Manual: {formatFees(manualValue)}</p>
+      <p>
+        Active: <strong>{formatFees(activeValue)}</strong>
+      </p>
+      <p>Active source: {activeSource}</p>
+
+      <div className="pricing-comparison-actions">
+        {initialVisible && (
+          <button
+            type="button"
+            disabled={!initialAvailable}
+            onClick={() => updateSource('initial')}
+          >
+            Use initial fees
+          </button>
+        )}
+        <button type="button" onClick={() => updateSource('auto')}>
+          Use automatic fees
+        </button>
+        <div>
+          {availableFees.map((fee) => (
+            <label key={fee.name}>
+              <input
+                type="checkbox"
+                checked={manualFees.some((selectedFee) => selectedFee.name === fee.name)}
+                onChange={() => {
+                  const isSelected = manualFees.some(
+                    (selectedFee) => selectedFee.name === fee.name,
+                  )
+                  const nextFees = isSelected
+                    ? manualFees.filter((selectedFee) => selectedFee.name !== fee.name)
+                    : manualFees.concat(fee)
+                  setManualFeesDraft({ order, value: nextFees })
+                }}
+                aria-label={`Manual ${fee.label || fee.name} fee`}
+              />
+              {`${fee.label || fee.name} (${fee.amount} €)`}
+            </label>
+          ))}
+          <button type="button" onClick={useManual}>
+            Use manual fees
+          </button>
+        </div>
+        <button
+          type="button"
+          disabled={!hasValue(manualValue)}
+          onClick={clearManual}
+        >
+          Clear manual fees
         </button>
       </div>
     </section>
@@ -186,20 +243,29 @@ export default function PricingComparison({ order, onChange, onRevert, reverting
 
   return (
     <div className="pricing-comparison" aria-label="Pricing comparison">
-      {PRICING_COMPONENTS.map((key) => {
-        const component = { key, ...PRICING_COMPONENT_DETAILS[key] }
-        return (
-          <PricingRow
-            key={component.key}
-            order={order}
-            component={component}
-            initialVisible={initialVisible}
-            automaticValue={automaticPricing[component.key]}
-            activeValue={activePricing[component.key]}
-            onChange={onChange}
-          />
-        )
-      })}
+      <NumericPricingRow
+        order={order}
+        component={PRICE_COMPONENT}
+        initialVisible={initialVisible}
+        automaticValue={automaticPricing.price}
+        activeValue={activePricing.price}
+        onChange={onChange}
+      />
+      <FeesPricingRow
+        order={order}
+        initialVisible={initialVisible}
+        automaticValue={automaticPricing.fees}
+        activeValue={activePricing.fees}
+        onChange={onChange}
+      />
+      <NumericPricingRow
+        order={order}
+        component={BOXES_PRICE_COMPONENT}
+        initialVisible={initialVisible}
+        automaticValue={automaticPricing.boxesPrice}
+        activeValue={activePricing.boxesPrice}
+        onChange={onChange}
+      />
       {initialVisible && onRevert && (
         <button
           type="button"
