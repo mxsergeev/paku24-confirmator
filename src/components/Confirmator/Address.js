@@ -13,6 +13,7 @@ import React, { useState } from 'react'
 export default function Address({
   value = {},
   onChange = () => {},
+  onRemove = null,
   style = {},
   showRemove = false,
 }) {
@@ -134,7 +135,7 @@ export default function Address({
         {showRemove && (
           <MenuItem
             onClick={() => {
-              onChange({ removeId: value.id })
+              onRemove?.()
               closeMenu()
             }}
           >

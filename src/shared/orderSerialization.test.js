@@ -6,6 +6,7 @@ import {
 import {
   createAppOrder,
   createWordPressOrder,
+  normalizeOrder,
 } from './orderModel.js'
 import {
   makeAppOrder,
@@ -151,6 +152,49 @@ describe('API and communication payloads', () => {
 
     order.pricing.manual.fees.push({ name: 'changed', amount: 1 })
     expect(payload.pricing.manual.fees).toEqual([])
+  })
+
+  it('strips editor-only identity metadata from extra addresses at the update boundary', () => {
+    const appOrder = makeAppOrder()
+    const order = createAppOrder({
+      ...appOrder,
+      extraAddresses: [
+        {
+          ...appOrder.extraAddresses[0],
+          id: 'temporary-extra-address-0',
+          _uiId: 'editor-row-0',
+          key: 'row-0',
+        },
+      ],
+    })
+
+    const payload = toUpdateOrderPayload(order)
+
+    expect(payload.extraAddresses).toEqual([
+      {
+        street: 'Mechelininkatu 20',
+        index: '00100',
+        city: 'Helsinki',
+        floor: 1,
+        elevator: false,
+      },
+    ])
+    expect(payload.extraAddresses[0]).not.toHaveProperty('id')
+    expect(payload.extraAddresses[0]).not.toHaveProperty('_uiId')
+    expect(payload.extraAddresses[0]).not.toHaveProperty('key')
+  })
+
+  it('keeps imported pricing sources unchanged when a persisted order is reopened and saved', () => {
+    const persistedOrder = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const reopenedOrder = normalizeOrder(persistedOrder)
+    const payload = toUpdateOrderPayload(reopenedOrder)
+
+    expect(payload.pricing.source).toEqual({
+      price: 'initial',
+      fees: 'initial',
+      boxesPrice: 'initial',
+    })
+    expect(payload.extraAddresses).toEqual(persistedOrder.extraAddresses)
   })
 
   it('uses resolved active pricing and excludes internal state for communication', () => {

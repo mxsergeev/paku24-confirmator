@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@material-ui/core'
 import TextField from '@material-ui/core/TextField'
 import NativeSelect from '@material-ui/core/NativeSelect'
@@ -14,6 +14,71 @@ import Address from './Address'
 import PricingComparison from './PricingComparison'
 
 export default function Editor({ order, handleChange, onOrderChange, onRevert, reverting }) {
+  const nextExtraAddressId = useRef(0)
+  const [extraAddressIds, setExtraAddressIds] = useState(() =>
+    (order?.extraAddresses || []).map(() => {
+      const id = `extra-address-row-${nextExtraAddressId.current}`
+      nextExtraAddressId.current += 1
+      return id
+    }),
+  )
+
+  const createExtraAddressId = useCallback(() => {
+    const id = `extra-address-row-${nextExtraAddressId.current}`
+    nextExtraAddressId.current += 1
+    return id
+  }, [])
+
+  // Orders can be loaded or replaced by a parent while this editor remains
+  // mounted. Keep an editor-only key for every row without decorating the
+  // canonical address values passed through order state.
+  useEffect(() => {
+    const addressCount = order?.extraAddresses?.length || 0
+    setExtraAddressIds((previous) => {
+      if (previous.length === addressCount) return previous
+      if (previous.length > addressCount) return previous.slice(0, addressCount)
+      return [
+        ...previous,
+        ...Array.from({ length: addressCount - previous.length }, createExtraAddressId),
+      ]
+    })
+  }, [createExtraAddressId, order?.extraAddresses?.length])
+
+  const handleExtraAddressChange = useCallback(
+    (index, address) => {
+      const nextAddresses = (order.extraAddresses || []).map((item, itemIndex) =>
+        itemIndex === index ? address : item,
+      )
+      handleChange?.('extraAddresses', nextAddresses)
+    },
+    [handleChange, order?.extraAddresses],
+  )
+
+  const handleExtraAddressRemove = useCallback(
+    (index) => {
+      const nextAddresses = (order.extraAddresses || []).filter(
+        (_, itemIndex) => itemIndex !== index,
+      )
+      setExtraAddressIds((previous) => previous.filter((_, itemIndex) => itemIndex !== index))
+      handleChange?.('extraAddresses', nextAddresses)
+    },
+    [handleChange, order?.extraAddresses],
+  )
+
+  const handleExtraAddressAdd = useCallback(() => {
+    setExtraAddressIds((previous) => [...previous, createExtraAddressId()])
+    handleChange?.('extraAddresses', [
+      ...(order.extraAddresses || []),
+      {
+        street: '',
+        city: '',
+        index: '',
+        floor: 0,
+        elevator: false,
+      },
+    ])
+  }, [createExtraAddressId, handleChange, order?.extraAddresses])
+
   const margin = {
     marginTop: 5,
   }
@@ -118,38 +183,20 @@ export default function Editor({ order, handleChange, onOrderChange, onRevert, r
           marginBottom: order?.extraAddresses?.length > 0 ? '1rem' : 0,
         }}
       />
-      {order?.extraAddresses.map((a) => (
+      {order?.extraAddresses.map((a, index) => (
         <Address
-          key={a.id}
+          key={extraAddressIds[index] || `extra-address-row-pending-${index}`}
           value={a}
           showRemove
-          onChange={(address) =>
-            handleChange?.(
-              'extraAddresses',
-              address.removeId
-                ? order.extraAddresses.filter((addr) => addr.id !== address.removeId)
-                : order.extraAddresses.map((addr) => (addr.id === address.id ? address : addr))
-            )
-          }
+          onChange={(address) => handleExtraAddressChange(index, address)}
+          onRemove={() => handleExtraAddressRemove(index)}
         />
       ))}
 
       <Button
         size="small"
         style={{ color: 'gray' }}
-        onClick={() =>
-          handleChange?.('extraAddresses', [
-            ...(order.extraAddresses || []),
-            {
-              id: Date.now().toString(),
-              street: '',
-              city: '',
-              index: '',
-              floor: 0,
-              elevator: false,
-            },
-          ])
-        }
+        onClick={handleExtraAddressAdd}
       >
         <PlaylistAddRoundedIcon />
       </Button>

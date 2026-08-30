@@ -11,6 +11,7 @@ const PRICING_COMPONENTS = ['price', 'fees', 'boxesPrice']
 const PRICING_SOURCES = ['initial', 'auto', 'manual']
 const VALID_ORIGINS = ['app', 'wordpress']
 const TIMEZONE_SUFFIX = /(?:Z|[+-]\d{2}:?\d{2})$/i
+const ADDRESS_FIELDS = ['street', 'index', 'city', 'floor', 'elevator']
 
 function hasOwn(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key)
@@ -31,6 +32,22 @@ function cloneValue(value) {
   }
 
   return value
+}
+
+function serializeAddress(value) {
+  if (!isPlainObject(value)) return cloneValue(value)
+
+  return Object.fromEntries(
+    ADDRESS_FIELDS.filter((field) => hasOwn(value, field)).map((field) => [
+      field,
+      cloneValue(value[field]),
+    ]),
+  )
+}
+
+function serializeExtraAddresses(value) {
+  if (!Array.isArray(value)) return cloneValue(value)
+  return value.map((address) => serializeAddress(address))
 }
 
 function serializeDateTime(value, fieldName) {
@@ -69,7 +86,11 @@ function serializeBookingFields(order) {
 
     if (field === 'date') result.date = serializeDateTime(order.date, 'date')
     else if (field === 'boxes') result.boxes = serializeBoxes(order.boxes, 'boxes')
-    else result[field] = cloneValue(order[field])
+    else if (field === 'address' || field === 'destination') {
+      result[field] = serializeAddress(order[field])
+    } else if (field === 'extraAddresses') {
+      result.extraAddresses = serializeExtraAddresses(order.extraAddresses)
+    } else result[field] = cloneValue(order[field])
   })
 
   return result
@@ -86,6 +107,10 @@ function serializeSnapshot(value) {
     if (field === 'date') result.date = serializeDateTime(value.date, 'initialSnapshot.date')
     else if (field === 'boxes') {
       result.boxes = serializeBoxes(value.boxes, 'initialSnapshot.boxes')
+    } else if (field === 'address' || field === 'destination') {
+      result[field] = serializeAddress(value[field])
+    } else if (field === 'extraAddresses') {
+      result.extraAddresses = serializeExtraAddresses(value.extraAddresses)
     } else {
       result[field] = cloneValue(value[field])
     }

@@ -47,18 +47,6 @@ const DOCUMENT_TYPES = {
   INVOICE: 'invoice',
 }
 
-function makeEditableOrder(order) {
-  const normalizedOrder = normalizeOrder(order)
-
-  return {
-    ...normalizedOrder,
-    extraAddresses: normalizedOrder.extraAddresses.map((address, index) => ({
-      ...address,
-      id: address?.id || `temporary-extra-address-${index}`,
-    })),
-  }
-}
-
 export default function OrderDialog({
   onClose,
   eventId,
@@ -173,7 +161,7 @@ export default function OrderDialog({
   const handleEdit = useCallback(() => {
     if (!order) return
 
-    setEditableOrder(makeEditableOrder(order))
+    setEditableOrder(normalizeOrder(order))
     setEditOpen(true)
   }, [order])
 
@@ -219,7 +207,7 @@ export default function OrderDialog({
       const updatedOrder = normalizeOrder(response.order || response)
 
       setOrder(updatedOrder)
-      setEditableOrder(makeEditableOrder(updatedOrder))
+      setEditableOrder(updatedOrder)
       onOrderUpdate?.(updatedOrder)
       queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
       enqueueSnackbar(response.message || 'Order reverted.')
