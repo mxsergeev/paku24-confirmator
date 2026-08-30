@@ -14,21 +14,8 @@ import './OrderPool.css'
 const INBOX = 'inbox'
 const TRASHCAN = 'trashcan'
 
-function filterWithSearchText(values, search) {
-  // return values.filter((value) => value.text.toLowerCase().includes(search?.toLowerCase().trim()))
-  return values
-}
-
 function filterConfirmed(values, condition) {
   return condition ? values.filter((value) => !value?.confirmedAt) : values
-}
-
-function makeSearch(val, bool, searchTarget) {
-  const filteredWithConfirmedAndSearch = filterConfirmed(
-    filterWithSearchText(searchTarget, val),
-    bool
-  )
-  return filteredWithConfirmedAndSearch
 }
 
 export default function OrderPool({ handleExport }) {
@@ -72,10 +59,9 @@ export default function OrderPool({ handleExport }) {
 
         setOrders(ordersFromPool)
 
-        const filteredOrders = makeSearch(
-          searchOptions[currentTab].searchText,
+        const filteredOrders = filterConfirmed(
+          ordersFromPool,
           searchOptions[currentTab].showOnlyNotConfirmed,
-          ordersFromPool
         )
         setSearchResults(filteredOrders)
         setIsloading(false)
@@ -102,10 +88,9 @@ export default function OrderPool({ handleExport }) {
 
     setOrders(concatenatedOrders)
 
-    const filteredOrders = makeSearch(
-      searchOptions[currentTab].searchText,
+    const filteredOrders = filterConfirmed(
+      concatenatedOrders,
       searchOptions[currentTab].showOnlyNotConfirmed,
-      concatenatedOrders
     )
     setSearchResults(filteredOrders)
   }, [pages, currentTab, orders, searchOptions])
@@ -118,11 +103,7 @@ export default function OrderPool({ handleExport }) {
         [currentTab]: { ...prevOptsForCurTab, searchText: e.target.value },
       })
 
-      const filteredOrders = makeSearch(
-        e.target.value,
-        prevOptsForCurTab.showOnlyNotConfirmed,
-        orders
-      )
+      const filteredOrders = filterConfirmed(orders, prevOptsForCurTab.showOnlyNotConfirmed)
 
       setSearchResults(filteredOrders)
     },
@@ -137,7 +118,7 @@ export default function OrderPool({ handleExport }) {
         [currentTab]: { ...prevOptsForCurTab, showOnlyNotConfirmed: bool },
       })
 
-      const filteredOrders = makeSearch(prevOptsForCurTab.searchText, bool, orders)
+      const filteredOrders = filterConfirmed(orders, bool)
 
       setSearchResults(filteredOrders)
     },

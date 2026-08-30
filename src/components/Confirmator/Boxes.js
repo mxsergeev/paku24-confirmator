@@ -26,14 +26,6 @@ export default function Boxes({ order = {}, handleChange, style }) {
     setIncludeTime_end(!isDateOnly(order.boxes.returnDate))
   }, [order.boxes.deliveryDate, order.boxes.returnDate])
 
-  // const [selfPickup, setSelfPickup] = useState(false)
-  // const [selfReturn, setSelfReturn] = useState(false)
-
-  // useEffect(() => {
-  //   setSelfPickup(order.selfPickup ?? false)
-  //   setSelfReturn(order.selfReturn ?? false)
-  // }, [order.selfPickup, order.selfReturn])
-
   const handleDateChange = (name, date, includeTime) =>
     handleChange('boxes', {
       ...order.boxes,
@@ -153,52 +145,6 @@ export default function Boxes({ order = {}, handleChange, style }) {
               ))}
             </NativeSelect>
 
-            {/* <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <FormControlLabel
-                size="small"
-                style={{ display: 'block', marginLeft: 0 }}
-                control={
-                  <Checkbox
-                    checked={selfPickup}
-                    onChange={() => {
-                      const v = !selfPickup
-                      setSelfPickup(v)
-                      handleChange({
-                        target: {
-                          name: 'selfPickup',
-                          value: v,
-                        },
-                      })
-                    }}
-                    color="primary"
-                  />
-                }
-                label="Self pickup"
-                labelPlacement="start"
-              />
-              <FormControlLabel
-                size="small"
-                style={{ display: 'block', marginLeft: 0 }}
-                control={
-                  <Checkbox
-                    checked={selfReturn}
-                    onChange={() => {
-                      const v = !selfReturn
-                      setSelfReturn(v)
-                      handleChange({
-                        target: {
-                          name: 'selfReturn',
-                          value: v,
-                        },
-                      })
-                    }}
-                    color="primary"
-                  />
-                }
-                label="Self return"
-                labelPlacement="start"
-              />
-            </div> */}
           </div>
         </div>
       </CollapseWrapper>
