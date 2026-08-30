@@ -2,10 +2,15 @@ import { authenticate } from '@google-cloud/local-auth'
 import { google } from 'googleapis'
 import path from 'path'
 import { promises as fs } from 'fs'
-import Order from '../../../src/shared/Order.js'
 import { formatAddressLocation } from '../../../src/shared/addressFormatter.js'
+import {
+  HELSINKI_TIMEZONE,
+  isDateOnly,
+  parseDateOnly,
+  parseDateTime,
+} from '../../../src/shared/date-fns-tz.js'
+import { makeCalendarEntries } from '../../../src/shared/render/googleCalendar.js'
 import dayjs from '../../../src/shared/dayjs.js'
-import { TIMEZONE } from '../../utils/config.js'
 
 const env = process.env.NODE_ENV || 'production'
 
@@ -117,7 +122,7 @@ function makeGoogleEventObjects(order) {
 
   const color = makeColor(order)
 
-  const entries = Order.makeCalendarEntries(order)
+  const entries = makeCalendarEntries(order)
 
   const events = [
     {
@@ -130,11 +135,11 @@ function makeGoogleEventObjects(order) {
         .join('\n'),
       start: {
         dateTime: typeof order.date === 'string' ? order.date : order.date.toISOString(),
-        timeZone: TIMEZONE,
+        timeZone: HELSINKI_TIMEZONE,
       },
       end: {
         dateTime: dayjs(order.date).add(hours, 'hour').add(minutes, 'minute').toISOString(),
-        timeZone: TIMEZONE,
+        timeZone: HELSINKI_TIMEZONE,
       },
       reminders: {
         useDefault: false,
@@ -145,6 +150,11 @@ function makeGoogleEventObjects(order) {
   if (order.boxes && order.boxes.amount > 0) {
     ;['deliveryDate', 'returnDate'].forEach((f) => {
       const dateStr = order.boxes[f]
+      const fieldName = f === 'deliveryDate' ? 'box delivery date' : 'box return date'
+      const dateOnly = isDateOnly(dateStr)
+      if (dateOnly) parseDateOnly(dateStr, fieldName)
+      const parsedDate = dateOnly ? null : parseDateTime(dateStr, fieldName)
+      const dateTime = parsedDate?.toISOString()
 
       let location = ''
 
@@ -161,18 +171,18 @@ function makeGoogleEventObjects(order) {
         description: entries[f].description,
         colorId: '1',
         location,
-        start: dateStr.includes('T')
+        start: !dateOnly
           ? {
-              dateTime: dateStr,
-              timeZone: TIMEZONE,
+              dateTime,
+              timeZone: HELSINKI_TIMEZONE,
             }
           : {
               date: dateStr,
             },
-        end: dateStr.includes('T')
+        end: !dateOnly
           ? {
-              dateTime: dayjs(dateStr).add(1, 'hour').toISOString(),
-              timeZone: TIMEZONE,
+              dateTime: dayjs(parsedDate).add(1, 'hour').toISOString(),
+              timeZone: HELSINKI_TIMEZONE,
             }
           : {
               date: dateStr,

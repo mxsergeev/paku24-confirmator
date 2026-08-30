@@ -15,44 +15,11 @@ import {
   parseAndFormatDecimalString,
 } from '../../helpers/decimalStringHelpers'
 import {
-  buildStableInvoiceNumber,
+  buildReceiptDraftFromOrder,
   toDateInputValue,
   normalizeReceiptDraft,
   resolveDocumentType,
 } from './receiptData.helpers'
-
-function formatAddressForReceipt(address) {
-  if (!address) return ''
-  if (typeof address === 'string') return address
-
-  const parts = [address.street, address.index, address.city].filter(Boolean)
-  return parts.join(', ')
-}
-
-function getDefaultTotal(order) {
-  if (!order) return ''
-  if (typeof order.price === 'number') return String(order.price)
-  if (typeof order.price === 'string') return order.price
-  return ''
-}
-
-export function buildReceiptDraftFromOrder(order = {}) {
-  const safeOrder = order || {}
-  const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-  const dueDate = defaultDueDate.toISOString().slice(0, 10)
-
-  return {
-    customerName: safeOrder.name || '',
-    customerEmail: safeOrder.email || '',
-    customerAddress: formatAddressForReceipt(safeOrder.address),
-    totalAmount: getDefaultTotal(safeOrder),
-    serviceName: safeOrder.service?.name || '',
-    serviceHours: safeOrder.duration || '',
-    unitPrice: safeOrder.service?.pricePerHour || '',
-    dueDate,
-    invoiceNumber: buildStableInvoiceNumber(safeOrder, safeOrder.invoiceNumber),
-  }
-}
 
 export default function ReceiptEditDialog({
   open,
@@ -74,12 +41,12 @@ export default function ReceiptEditDialog({
     }
   }, [fallbackDocumentType, initialDraft, order])
   const [draft, setDraft] = useState(baseDraft)
-  const [totalInput, setTotalInput] = useState(baseDraft.totalAmount || '')
+  const [totalInput, setTotalInput] = useState(baseDraft.totalAmount ?? '')
   const isDesktop = useMediaQuery('(min-width:601px)')
 
   useEffect(() => {
     setDraft(baseDraft)
-    setTotalInput(baseDraft.totalAmount || '')
+    setTotalInput(baseDraft.totalAmount ?? '')
   }, [baseDraft])
 
   const handleChange = (key) => (event) => {

@@ -1,9 +1,10 @@
 import React from 'react'
-import dayjs from 'dayjs'
 import { resolveFeeDisplayName } from './ReceiptPage'
 import colors from '../../shared/colors'
 import ColorSelector from '../common/ColorSelector'
 import { isCanceled, isDeleted } from '../../shared/orderState.helpers'
+import { HELSINKI_TIMEZONE, formatInTimeZone, parseDateTime } from '../../shared/date-fns-tz'
+import { formatBoxDate } from '../../shared/render/text'
 
 export default function OrderDialogDetails({
   order,
@@ -21,7 +22,7 @@ export default function OrderDialogDetails({
     order?.extraAddresses && Array.isArray(order.extraAddresses) && order.extraAddresses.length > 0
   const hasClientEmail = Boolean(order?.email)
   const selectedEventColorId = (() => {
-    const colorId = order?.eventColor ?? order?.color ?? ''
+    const colorId = order?.eventColor ?? ''
     const normalized = colorId == null ? '' : String(colorId)
     return colors[normalized] ? normalized : ''
   })()
@@ -33,17 +34,13 @@ export default function OrderDialogDetails({
             label: 'Date',
             value:
               eventType === 'boxDelivery'
-                ? dayjs(order.boxes.deliveryDate).format('DD.MM.YYYY HH:mm')
-                : dayjs(order.boxes.returnDate).format('DD.MM.YYYY HH:mm'),
+                ? formatBoxDate(order.boxes.deliveryDate, 'box delivery date')
+                : formatBoxDate(order.boxes.returnDate, 'box return date'),
           },
           { label: 'Boxes', value: `${order.boxes.amount} pcs` },
           {
             label: 'Price',
-            value: `${
-              eventType === 'boxDelivery'
-                ? order.boxes.deliveryPrice || 0
-                : order.boxes.returnPrice || 0
-            }€`,
+            value: `${order.boxesPrice ?? 0}€`,
           },
         ]
       : []
@@ -58,9 +55,15 @@ export default function OrderDialogDetails({
         },
         hasExtraAddresses && {
           label: 'Additional addresses',
-          value: order.extraAddresses.map((addr) => (
+          value: order.extraAddresses.map((addr, index) => (
             <div
-              key={addr.id}
+              key={
+                addr?.id !== null && addr?.id !== undefined && addr.id !== ''
+                  ? `extra-address-id-${addr.id}`
+                  : `extra-address-${addr?.street || ''}-${addr?.index || ''}-${
+                      addr?.city || ''
+                    }-${addr?.floor ?? ''}-${index}`
+              }
               className="order-dialog-details__extra-address"
             >{`${addr.street} (${addr.floor} floor), ${addr.index} ${addr.city}`}</div>
           )),
@@ -107,7 +110,11 @@ export default function OrderDialogDetails({
           <div className="order-dialog-details__row">
             <span className="order-dialog-details__label">Date</span>
             <span className="order-dialog-details__value">
-              {dayjs(order.date).format('DD.MM.YYYY HH:mm')}
+              {formatInTimeZone(
+                parseDateTime(order.date, 'order date'),
+                'dd.MM.yyyy HH:mm',
+                HELSINKI_TIMEZONE,
+              )}
             </span>
           </div>
           {regularRows.map((row) => (
@@ -158,7 +165,11 @@ export default function OrderDialogDetails({
               <div className="order-dialog-details__row">
                 <span className="order-dialog-details__label">Canceled at</span>
                 <span className="order-dialog-details__value">
-                  {dayjs(order.canceledAt).format('DD.MM.YYYY HH:mm')}
+                  {formatInTimeZone(
+                    parseDateTime(order.canceledAt, 'canceled at'),
+                    'dd.MM.yyyy HH:mm',
+                    HELSINKI_TIMEZONE,
+                  )}
                 </span>
               </div>
             )}
@@ -166,7 +177,11 @@ export default function OrderDialogDetails({
               <div className="order-dialog-details__row">
                 <span className="order-dialog-details__label">Deleted at</span>
                 <span className="order-dialog-details__value">
-                  {dayjs(order.deletedAt).format('DD.MM.YYYY HH:mm')}
+                  {formatInTimeZone(
+                    parseDateTime(order.deletedAt, 'deleted at'),
+                    'dd.MM.yyyy HH:mm',
+                    HELSINKI_TIMEZONE,
+                  )}
                 </span>
               </div>
             )}

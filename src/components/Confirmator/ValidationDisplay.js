@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import validator from 'validator'
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline'
 import dayjs from '../../shared/dayjs'
+import { parseDateTime } from '../../shared/date-fns-tz'
+import { orderTime } from '../../shared/orderPricing'
 
 function ValidationMessages({ validationArray }) {
   const errStyle = { color: 'red' }
@@ -28,13 +30,23 @@ export default function ValidationDisplay({ order, shouldValidate }) {
 
   useEffect(() => {
     if (shouldValidate) {
+      let date = null
+      let time = '---'
+
+      try {
+        date = parseDateTime(order?.date, 'order date')
+        time = orderTime(order)
+      } catch {
+        // Keep the validation display safe while an order date is incomplete.
+      }
+
       const validationAr = [
         {
           id: 1,
           name: 'Date and time',
-          isError: validator.isBefore(order.date.toISOString(), new Date().toISOString()),
+          isError: !date || validator.isBefore(date.toISOString(), new Date().toISOString()),
           message: `might have some problems. Check to be sure: ${
-            `${dayjs(order.date).format('YYYY-MM-DD')} ${order.time}` || '---'
+            date ? `${dayjs(date).format('YYYY-MM-DD')} ${time}` : '---'
           }`,
         },
         {
@@ -58,7 +70,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
       ]
       setValidationArray(validationAr)
     }
-  }, [order.date, order.phone, order.address, order.email, order.time, shouldValidate])
+  }, [order?.date, order?.phone, order?.address, order?.email, shouldValidate])
 
   const someIsInvalid = validationArray.some((v) => v.isError)
 

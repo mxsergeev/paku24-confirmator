@@ -3,7 +3,7 @@ import app from '../app.js'
 
 const api = supertest(app)
 
-import { exampleEvent, exampleCreatedEvent } from './test_helper.js'
+import { exampleEvent } from './test_helper.js'
 import { generateJWT } from '../modules/authentication/auth.middleware.js'
 
 const eventIds = []
@@ -22,7 +22,7 @@ describe('Calendar', () => {
       .expect('Content-Type', /application\/json/)
       .then((res) => {
         expect(res.body).toHaveProperty('message')
-        expect(res.body).toHaveProperty('createdEvent', exampleCreatedEvent)
+        expect(res.body).toHaveProperty('createdEvent', `🚛🚛💳22:00(5h)${exampleEvent.entry}`)
         expect(res.body).toHaveProperty('eventId')
         eventIds.push(res.body.eventId)
       })

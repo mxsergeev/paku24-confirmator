@@ -11,14 +11,17 @@ function getOrderLanguage(order, fallback = 'fi') {
 }
 /**
  * @param {Object} params
- * @param {string} params.orderDetails
- * @param {Object} params.order
+ * @param {Object} params.order Structured communication order with materialized pricing.
+ * @param {string} [params.email] Explicit recipient fallback when order.email is absent.
+ * @param {string} [params.lang] Confirmation language; defaults to the order language or Finnish.
  */
 
-export default async function sendConfirmationEmail(params) {
+export default async function sendConfirmationEmail(params = {}) {
+  const order = params?.order
   const payload = {
-    ...params,
-    lang: params?.lang || getOrderLanguage(params?.order),
+    order,
+    email: params?.email,
+    lang: params?.lang || getOrderLanguage(order),
   }
 
   const response = await interceptor.axiosInstance.post(`${baseUrl}/send-confirmation`, payload)

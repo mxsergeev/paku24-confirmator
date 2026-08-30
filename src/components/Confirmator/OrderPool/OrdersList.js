@@ -1,8 +1,18 @@
 /* eslint-disable react/no-array-index-key */
 import React, { useEffect, useState } from 'react'
 import Button from '@material-ui/core/Button'
-import Order from '../../../shared/Order'
 import dayjs from '../../../shared/dayjs'
+import { BOOKING_FIELDS } from '../../../shared/orderModel'
+import { formatAddress, formatBoxDate } from '../../../shared/render/text'
+
+const HIDDEN_BOOKING_FIELDS = ['distance', 'hsy', 'XL', 'eventColor']
+const DISPLAY_FIELDS = [
+  ...BOOKING_FIELDS.filter((field) => !HIDDEN_BOOKING_FIELDS.includes(field)),
+  'fees',
+  'boxesPrice',
+  'price',
+  'canceledAt',
+]
 
 export default function OrdersList({
   orders,
@@ -48,23 +58,8 @@ export default function OrdersList({
   }
 
   function JSONOrder(jsonOrder) {
-    const ignored = [
-      'initialPrice',
-      'manualPrice',
-      'distance',
-      'hsy',
-      'XL',
-      'initialFees',
-      'manualFees',
-      'manualBoxesPrice',
-      'eventColor',
-    ]
-    return Object.keys(Order.EMPTY_ORDER).map((key, index) => {
+    return DISPLAY_FIELDS.map((key, index) => {
       let value = jsonOrder[key]
-
-      if (ignored.includes(key)) {
-        return null
-      }
 
       switch (key) {
         case 'date': {
@@ -80,39 +75,36 @@ export default function OrdersList({
             return null
           }
 
-          value = `Delivery: ${new Date(value.deliveryDate).toLocaleDateString()} ${new Date(
-            value.deliveryDate
-          )
-            .toLocaleTimeString()
-            .slice(0, 5)}, Return: ${new Date(value.returnDate).toLocaleDateString()} ${new Date(
-            value.returnDate
-          )
-            .toLocaleTimeString()
-            .slice(0, 5)}, Amount: ${value.amount} kpl`
+          value = `Delivery: ${formatBoxDate(
+            value.deliveryDate,
+            'box delivery date'
+          )}, Return: ${formatBoxDate(value.returnDate, 'box return date')}, Amount: ${
+            value.amount
+          } kpl`
           break
         }
         case 'address':
         case 'destination':
-          value = Order.addrStr(value)
+          value = formatAddress(value)
           break
         case 'extraAddresses':
-          value = value.map((addr) => Order.addrStr(addr)).join('; ')
+          value = (value || []).map((addr) => formatAddress(addr)).join('; ')
           if (!value) {
             return null
           }
           break
         case 'service': {
-          value = `${value.name} (${value.pricePerHour}€/h)`
+          value = value ? `${value.name} (${value.pricePerHour}€/h)` : ''
           break
         }
         case 'price':
           value = `${value} €`
           break
         case 'paymentType':
-          value = value.name
+          value = value?.name ?? ''
           break
         case 'fees':
-          value = value.map((fee) => `${fee.name}: ${fee.amount}€`).join('; ')
+          value = (value || []).map((fee) => `${fee.name}: ${fee.amount}€`).join('; ')
           break
         default:
           value = value?.toString() ?? ''

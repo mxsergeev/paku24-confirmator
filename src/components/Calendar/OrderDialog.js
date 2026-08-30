@@ -23,20 +23,40 @@ import { getOrderIcons, parseBoxEventId, getBoxEventTitle } from './helpers'
 import orderPoolAPI from '../../services/orderPoolAPI'
 import sendConfirmationEmail, { sendCancellationEmail } from '../../services/emailAPI'
 import sendSMS, { sendCancellationSMS } from '../../services/smsAPI'
-import Order from '../../shared/Order'
 import Editor from '../Confirmator/Editor'
 import OrderSettings from '../Confirmator/OrderSettings'
 import OrderDialogDetails from './OrderDialogDetails'
-import ReceiptEditDialog, { buildReceiptDraftFromOrder } from './ReceiptEditDialog'
-import { normalizeDocumentType, normalizeReceiptDraft } from './receiptData.helpers'
+import ReceiptEditDialog from './ReceiptEditDialog'
+import {
+  buildReceiptDraftFromOrder,
+  normalizeDocumentType,
+  normalizeReceiptDraft,
+} from './receiptData.helpers'
 import iconsData from '../../data/icons.json'
 import colors from '../../shared/colors'
+import {
+  normalizeOrder,
+  updateOrderField,
+} from '../../shared/orderModel'
+import { toCommunicationOrder, toUpdateOrderPayload } from '../../shared/orderSerialization'
 import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 import { hexToRgba } from '../../shared/color.helpers'
 
 const DOCUMENT_TYPES = {
   RECEIPT: 'receipt',
   INVOICE: 'invoice',
+}
+
+function makeEditableOrder(order) {
+  const normalizedOrder = normalizeOrder(order)
+
+  return {
+    ...normalizedOrder,
+    extraAddresses: normalizedOrder.extraAddresses.map((address, index) => ({
+      ...address,
+      id: address?.id || `temporary-extra-address-${index}`,
+    })),
+  }
 }
 
 export default function OrderDialog({
@@ -53,6 +73,7 @@ export default function OrderDialog({
   const [editOpen, setEditOpen] = useState(false)
   const [editableOrder, setEditableOrder] = useState(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [revertingEdit, setRevertingEdit] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteMode, setDeleteMode] = useState('soft')
   const [deleting, setDeleting] = useState(false)
@@ -77,25 +98,19 @@ export default function OrderDialog({
       return
     }
 
-    const transformedOrderText = Order.format(new Order(order))
-
-    if (!transformedOrderText) {
-      enqueueSnackbar('Order details are incomplete. Check required fields.', {
-        variant: 'warning',
-      })
-      return
-    }
-
     try {
       setSendingEmail(true)
       const canceled = isCanceled(order)
+      const communicationOrder = toCommunicationOrder(order)
       let response
       if (canceled) {
-        response = await sendCancellationEmail({ order, email: order.email })
+        response = await sendCancellationEmail({
+          order: communicationOrder,
+          email: order.email,
+        })
       } else {
         response = await sendConfirmationEmail({
-          orderDetails: transformedOrderText,
-          order,
+          order: communicationOrder,
           email: order.email,
         })
       }
@@ -120,11 +135,12 @@ export default function OrderDialog({
     try {
       setSendingSMS(true)
       const canceled = isCanceled(order)
+      const communicationOrder = toCommunicationOrder(order)
       let response
       if (canceled) {
-        response = await sendCancellationSMS({ order: new Order(order).prepareForSending() })
+        response = await sendCancellationSMS({ order: communicationOrder })
       } else {
-        response = await sendSMS({ order: new Order(order).prepareForSending() })
+        response = await sendSMS({ order: communicationOrder })
       }
       enqueueSnackbar(response.message || 'SMS sent to client.')
     } catch (err) {
@@ -141,12 +157,11 @@ export default function OrderDialog({
     if (!order?.id) return
 
     try {
-      await orderPoolAPI.confirm(order.id)
-      setOrder((prevOrder) =>
-        prevOrder ? new Order({ ...prevOrder, confirmedAt: new Date().toISOString() }) : prevOrder
-      )
+      const response = await orderPoolAPI.confirm(order.id)
+      const updatedOrder = normalizeOrder(response.order || response)
+      setOrder(updatedOrder)
       if (onOrderUpdate) {
-        onOrderUpdate()
+        onOrderUpdate(updatedOrder)
       }
     } catch (err) {
       enqueueSnackbar('Failed to confirm order. Please try again.', { variant: 'error' })
@@ -158,15 +173,7 @@ export default function OrderDialog({
   const handleEdit = useCallback(() => {
     if (!order) return
 
-    const normalizedOrder = new Order(order)
-    normalizedOrder.extraAddresses = (normalizedOrder.extraAddresses || []).map(
-      (address, index) => ({
-        ...address,
-        id: address?.id || `${Date.now()}-${index}`,
-      })
-    )
-
-    setEditableOrder(new Order(normalizedOrder))
+    setEditableOrder(makeEditableOrder(order))
     setEditOpen(true)
   }, [order])
 
@@ -175,34 +182,20 @@ export default function OrderDialog({
     setEditableOrder(null)
   }, [])
 
-  const handleEditChange = useCallback((key, value) => {
-    setEditableOrder((prev) => {
-      if (!prev) return prev
-      const next = new Order(prev)
-      next[key] = value
-      return new Order(next)
-    })
-  }, [])
+  const handleEditChange = useCallback(
+    (key, value) => setEditableOrder((prev) => (prev ? updateOrderField(prev, key, value) : prev)),
+    []
+  )
 
   const handleSaveChanges = useCallback(async () => {
     if (!orderId || !editableOrder) return
 
     try {
       setSavingEdit(true)
-      const updateData = new Order(editableOrder).prepareForSending()
-      updateData.eventColor = editableOrder?.color ?? null
-
-      // Update cache logic for all changes
-      const cachedOrder = queryClient.getQueryData(['calendar-orders', orderId])
-      if (cachedOrder) {
-        queryClient.setQueryData(['calendar-orders', orderId], {
-          ...cachedOrder,
-          ...updateData,
-        })
-      }
+      const updateData = toUpdateOrderPayload(editableOrder)
 
       const response = await orderPoolAPI.update(orderId, updateData)
-      setOrder(response.order || response)
+      setOrder(normalizeOrder(response.order || response))
       enqueueSnackbar(response.message || 'Order changes saved.')
       setEditOpen(false)
       setEditableOrder(null)
@@ -216,6 +209,29 @@ export default function OrderDialog({
       setSavingEdit(false)
     }
   }, [editableOrder, orderId, queryClient])
+
+  const handleRevertEdit = useCallback(async () => {
+    if (!orderId || !editableOrder) return
+
+    try {
+      setRevertingEdit(true)
+      const response = await orderPoolAPI.revert(orderId)
+      const updatedOrder = normalizeOrder(response.order || response)
+
+      setOrder(updatedOrder)
+      setEditableOrder(makeEditableOrder(updatedOrder))
+      onOrderUpdate?.(updatedOrder)
+      queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+      enqueueSnackbar(response.message || 'Order reverted.')
+    } catch (err) {
+      if (err.message === 'logout') return
+      enqueueSnackbar(err.response?.data?.error || 'Could not revert order. Please try again.', {
+        variant: 'error',
+      })
+    } finally {
+      setRevertingEdit(false)
+    }
+  }, [editableOrder, onOrderUpdate, orderId, queryClient])
 
   const handleDeleteClick = useCallback(() => {
     setDeleteMode(isDeleted(order) ? 'permanent' : 'soft')
@@ -261,10 +277,8 @@ export default function OrderDialog({
     async (eventColor) => {
       if (!orderId || !order) return
 
-      const previousOrder = new Order(order) // Save the current order state
-      const previousCalendarOrdersCache = queryClient
-        .getQueriesData(['calendar-orders'])
-        .map((query) => [query[0], query[1]]) // Ensure it's an array of [queryKey, data] pairs
+      const previousOrder = normalizeOrder(order)
+      const previousCalendarOrdersCache = queryClient.getQueriesData(['calendar-orders'])
 
       try {
         setChangingEventColor(true)
@@ -274,22 +288,18 @@ export default function OrderDialog({
           throw new Error('Invalid event color provided.')
         }
 
-        const nextOrder = new Order(order)
-        nextOrder.eventColor = eventColor
+        const nextOrder = updateOrderField(order, 'eventColor', eventColor)
 
-        setOrder(new Order(nextOrder))
-        applyOrderColorInCache({ color: eventColor, eventColor })
+        setOrder(nextOrder)
+        applyOrderColorInCache(eventColor)
 
         // Use lightweight color-only endpoint to avoid sending full order
         const response = await orderPoolAPI.updateColor(orderId, eventColor)
 
-        const resolvedOrder = new Order(response?.order || response || nextOrder)
+        const resolvedOrder = normalizeOrder(response?.order || response || nextOrder)
 
         setOrder(resolvedOrder)
-        applyOrderColorInCache({
-          color: resolvedOrder?.color ?? null,
-          eventColor: resolvedOrder?.eventColor ?? null,
-        })
+        applyOrderColorInCache(resolvedOrder?.eventColor ?? null)
         enqueueSnackbar(response?.message || 'Event color updated.', { variant: 'success' })
         queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
       } catch (err) {
@@ -389,7 +399,7 @@ export default function OrderDialog({
   )
 
   useEffect(() => {
-    setOrder(incomingOrder ? new Order(incomingOrder) : null)
+    setOrder(incomingOrder ? normalizeOrder(incomingOrder) : null)
   }, [incomingOrder])
 
   const title = order
@@ -435,8 +445,8 @@ export default function OrderDialog({
     } else if (isCanceledOrder) {
       bgColor = '#616161'
     } else {
-      // Use order's color for confirmed orders (default)
-      const colorId = String(order?.eventColor ?? order?.color ?? '')
+      // Use the order's canonical event color for confirmed orders (default)
+      const colorId = String(order?.eventColor ?? '')
       const hex = colors[colorId]?.hex || colors['7']?.hex || '#039be5'
       bgColor = hexToRgba(hex, 0.62)
     }
@@ -452,8 +462,8 @@ export default function OrderDialog({
     if (!orderId) return
     try {
       const response = await orderPoolAPI.restore(orderId)
-      const updated = response.order || response
-      setOrder(new Order(updated))
+      const updated = normalizeOrder(response.order || response)
+      setOrder(updated)
       enqueueSnackbar(response.message || 'Order restored')
       queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
       if (onOrderUpdate) onOrderUpdate(updated)
@@ -477,8 +487,8 @@ export default function OrderDialog({
     async (id) => {
       if (!id) throw new Error('missing order id')
       const response = await orderPoolAPI.cancel(id)
-      const updatedOrder = response.order || response
-      setOrder(new Order(updatedOrder))
+      const updatedOrder = normalizeOrder(response.order || response)
+      setOrder(updatedOrder)
       queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
       if (onOrderUpdate) onOrderUpdate(updatedOrder)
       return { response, updatedOrder }
@@ -512,11 +522,17 @@ export default function OrderDialog({
       const { response, updatedOrder } = await cancelAndUpdate(orderId)
 
       const sendPromises = []
+      const communicationOrder = toCommunicationOrder(updatedOrder)
       if (updatedOrder?.email) {
-        sendPromises.push(sendCancellationEmail({ order: updatedOrder, email: updatedOrder.email }))
+        sendPromises.push(
+          sendCancellationEmail({
+            order: communicationOrder,
+            email: updatedOrder.email,
+          })
+        )
       }
       if (updatedOrder?.phone) {
-        sendPromises.push(sendCancellationSMS({ order: updatedOrder }))
+        sendPromises.push(sendCancellationSMS({ order: communicationOrder }))
       }
 
       if (sendPromises.length > 0) {
@@ -544,21 +560,35 @@ export default function OrderDialog({
   }, [orderId, cancelAndUpdate])
 
   const applyOrderColorInCache = useCallback(
-    ({ color, eventColor }) => {
-      if (!color || !eventColor) return
+    (eventColor) => {
+      if (!eventColor) return
 
       const cachedOrders = queryClient.getQueriesData(['calendar-orders'])
       cachedOrders.forEach(([queryKey, data]) => {
-        if (data?.id === order?.id) {
-          queryClient.setQueryData(queryKey, {
-            ...data,
-            color,
-            eventColor,
-          })
+        let changed = false
+        const updateCachedOrder = (cachedOrder) => {
+          if (!cachedOrder) return cachedOrder
+          const cachedOrderId = cachedOrder.id ?? cachedOrder._id
+          if (String(cachedOrderId) !== String(orderId)) return cachedOrder
+          changed = true
+          return { ...cachedOrder, eventColor }
+        }
+
+        if (Array.isArray(data)) {
+          const updatedOrders = data.map(updateCachedOrder)
+          if (changed) queryClient.setQueryData(queryKey, updatedOrders)
+        } else if (Array.isArray(data?.orders)) {
+          const updatedOrders = data.orders.map(updateCachedOrder)
+          if (changed) {
+            queryClient.setQueryData(queryKey, { ...data, orders: updatedOrders })
+          }
+        } else {
+          const updatedOrder = updateCachedOrder(data)
+          if (updatedOrder !== data) queryClient.setQueryData(queryKey, updatedOrder)
         }
       })
     },
-    [queryClient, order]
+    [orderId, queryClient]
   )
 
   return (
@@ -781,7 +811,13 @@ export default function OrderDialog({
         <DialogContent className="calendar-new-order-dialog-content">
           <div className="calendar-new-order-dialog-content-wrap">
             <div className="calendar-new-order-flex-container">
-              <Editor order={editableOrder} handleChange={handleEditChange} />
+              <Editor
+                order={editableOrder}
+                handleChange={handleEditChange}
+                onOrderChange={setEditableOrder}
+                onRevert={handleRevertEdit}
+                reverting={revertingEdit}
+              />
               {editableOrder && (
                 <OrderSettings order={editableOrder} handleChange={handleEditChange} />
               )}
@@ -794,7 +830,7 @@ export default function OrderDialog({
             color="primary"
             onClick={handleSaveChanges}
             className="calendar-dialog-button"
-            disabled={!editableOrder || savingEdit}
+            disabled={!editableOrder || savingEdit || revertingEdit}
           >
             Save changes
           </Button>
@@ -803,7 +839,7 @@ export default function OrderDialog({
             color="default"
             onClick={handleEditClose}
             className="calendar-dialog-button"
-            disabled={savingEdit}
+            disabled={savingEdit || revertingEdit}
           >
             Cancel
           </Button>

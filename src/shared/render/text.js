@@ -201,4 +201,4 @@ function formatOrder(order, options = {}, { showBoxesHeading = true } = {}) {
   return transformed
 }
 
-export { formatAddress, formatAddressLocation, formatOrder }
+export { formatAddress, formatAddressLocation, formatBoxDate, formatOrder }

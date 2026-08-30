@@ -7,19 +7,19 @@ import * as authMW from '../authentication/auth.middleware.js'
 import { addEventToCalendar, deleteEventFromCalendar } from './calendar.googleAPI.js'
 import { linkOrderToEvent } from './calendar.sync.js'
 import * as logger from '../../utils/logger.js'
+import { orderTime } from '../../../src/shared/orderPricing.js'
 
 import { makeGoogleEventObjects } from './calendar.helpers.js'
 
 calendarRouter.use(authMW.authenticateAccessToken)
 
 calendarRouter.post('/', async (req, res, next) => {
-  const events = makeGoogleEventObjects(req.body.order)
-
   try {
+    const order = req.body.order || {}
+    const events = makeGoogleEventObjects(order)
     const results = await Promise.allSettled(events.map((ev) => addEventToCalendar(ev)))
 
-    const order = req.body.order || {}
-    const createdEvent = `🚛🚛💳${order.time}(${order.duration}h)${req.body.entry || ''}`
+    const createdEvent = `🚛🚛💳${orderTime(order)}(${order.duration}h)${req.body.entry || ''}`
 
     // pick the first fulfilled result that contains an id
     const fulfilled = results.find(
@@ -29,9 +29,11 @@ calendarRouter.post('/', async (req, res, next) => {
 
     // If this request was made for an existing order, delegate persisting googleEventId
     try {
-      const orderId = req.body.order?._id || req.body.order?.id
-      if (eventId && orderId) {
-        await linkOrderToEvent(orderId, eventId)
+      // `orderId` is the migrated boundary. Keep embedded IDs only for callers
+      // that still send the pre-migration calendar payload.
+      const linkedOrderId = req.body.orderId || order._id || order.id
+      if (eventId && linkedOrderId) {
+        await linkOrderToEvent(linkedOrderId, eventId)
       }
     } catch (err) {
       // non-fatal: log and continue

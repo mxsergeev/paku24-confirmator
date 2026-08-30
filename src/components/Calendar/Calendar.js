@@ -5,10 +5,17 @@ import { useQueryClient } from '@tanstack/react-query'
 import OrderDialog from './OrderDialog'
 import NewOrderDialog from './NewOrderDialog'
 import ReceiptPage from './ReceiptPage'
-import dayjs from 'dayjs'
 import { getOrderIcons, getBoxEventTitle, parseBoxEventId } from './helpers'
 import colorsData from './calendar.data.colors.json'
 import calendarColors from '../../shared/colors'
+import {
+  HELSINKI_TIMEZONE,
+  formatInTimeZone,
+  isDateOnly,
+  parseDateOnly,
+  parseDateTime,
+} from '../../shared/date-fns-tz'
+import { orderTime } from '../../shared/orderPricing'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
@@ -25,6 +32,19 @@ const CALENDAR_VIEW_STORAGE_KEY = 'calendar-selected-view'
 const DEFAULT_CALENDAR_VIEW = 'dayGridMonth'
 const AVAILABLE_CALENDAR_VIEWS = ['dayGridMonth', 'timeGridWeek', 'listWeek', 'multiMonthYear']
 // use `isDeleted` helper from shared/orderState.helpers
+
+function calendarEventStart(value, fieldName) {
+  if (isDateOnly(value)) {
+    parseDateOnly(value, fieldName)
+    return value
+  }
+  return parseDateTime(value, fieldName).toISOString()
+}
+
+function calendarEventTime(value, fieldName) {
+  if (isDateOnly(value)) return ''
+  return formatInTimeZone(parseDateTime(value, fieldName), 'HH:mm', HELSINKI_TIMEZONE)
+}
 
 export default function Calendar() {
   const calendarWrapRef = useRef(null)
@@ -339,7 +359,7 @@ export default function Calendar() {
     return orders.flatMap((order) => {
       const events = []
       const serviceName = order.service?.name
-      const customColorIdRaw = order?.eventColor ?? order?.color ?? null
+      const customColorIdRaw = order?.eventColor ?? null
       const customColorId = customColorIdRaw == null ? null : String(customColorIdRaw)
       const serviceColorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
       const colorId =
@@ -362,13 +382,13 @@ export default function Calendar() {
         : '#eee'
 
       if (order.date) {
-        const eventTime = dayjs(order.date).format('HH:mm')
+        const eventTime = orderTime(order)
         events.push({
           id: order.id,
           title: `${addIcon}${getOrderIcons(order, iconsData)} ${
             order.address ? `${eventTime}(${order.duration}h) ${order.name}` : ''
           }`,
-          start: order.date,
+          start: calendarEventStart(order.date, 'order date'),
           extendedProps: {
             color,
             eventType: 'order',
@@ -388,11 +408,16 @@ export default function Calendar() {
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
           : '#7986cb'
-        const deliveryTime = dayjs(order.boxes.deliveryDate).format('HH:mm')
+        const deliveryDateOnly = isDateOnly(order.boxes.deliveryDate)
+        const deliveryTime = calendarEventTime(
+          order.boxes.deliveryDate,
+          'box delivery date',
+        )
         events.push({
           id: `${order.id}-box-delivery`,
           title: `${addIcon}${getBoxEventTitle(order, 'boxDelivery', deliveryTime, iconsData)}`,
-          start: order.boxes.deliveryDate,
+          start: calendarEventStart(order.boxes.deliveryDate, 'box delivery date'),
+          ...(deliveryDateOnly ? { allDay: true } : {}),
           extendedProps: {
             color: boxColor,
             eventType: 'boxDelivery',
@@ -412,11 +437,13 @@ export default function Calendar() {
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
           : '#7986cb'
-        const returnTime = dayjs(order.boxes.returnDate).format('HH:mm')
+        const returnDateOnly = isDateOnly(order.boxes.returnDate)
+        const returnTime = calendarEventTime(order.boxes.returnDate, 'box return date')
         events.push({
           id: `${order.id}-box-return`,
           title: `${addIcon}${getBoxEventTitle(order, 'boxReturn', returnTime, iconsData)}`,
-          start: order.boxes.returnDate,
+          start: calendarEventStart(order.boxes.returnDate, 'box return date'),
+          ...(returnDateOnly ? { allDay: true } : {}),
           extendedProps: {
             color: boxColor,
             eventType: 'boxReturn',

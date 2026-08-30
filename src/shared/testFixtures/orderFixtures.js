@@ -104,31 +104,6 @@ export function makeWordPressStructuredJsonMissingPricing() {
   })
 }
 
-export const wordpressTextOrder = `Service: Pakettiauto ja kuljettaja
-Accessories: None
-
-Date and time: Thursday, January 15th 2026 09:00
-Duration: 2 h
-
-Start location: Helsinki / 00100 Mannerheimintie 10
-End location: Helsinki / 00500 Paaskylankatu 5
-Name: Test Customer
-Email: customer@example.com
-Phone: +358401234567
-Comment: Ring the doorbell on arrival.
-
-Payment Type: Maksukortti
-PRICE
-— Amount: 10
-— Price: 52
-— Booking time starts: 2026-01-16T09:00
-— Booking time ends: 2026-01-24T09:00
-— Self pickup: No
-— Self return: No
-
---
-Tämä viesti lähetettiin sivustolta Paku24.fi (https://paku24.fi)`
-
 export function makeAppOrder() {
   return {
     ...makeBookingFields({

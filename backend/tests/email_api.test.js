@@ -3,7 +3,7 @@ import app from '../app.js'
 
 const api = supertest(app)
 
-import { orderDetails, exampleOptions } from './test_helper.js'
+import { makeCustomerCommunicationPayload } from '../../src/shared/testFixtures/orderFixtures.js'
 import { generateJWT } from '../modules/authentication/auth.middleware.js'
 
 // access token
@@ -14,8 +14,7 @@ const at = generateJWT(
 
 const requestData = {
   email: 'themaximsergeev@gmail.com',
-  orderDetails,
-  options: exampleOptions,
+  order: makeCustomerCommunicationPayload(),
 }
 
 describe('Email', () => {
@@ -33,6 +32,39 @@ describe('Email', () => {
       .post('/api/email/send-confirmation')
       .send(requestData)
       .expect(403)
+      .expect('Content-Type', /application\/json/)
+  })
+
+  test('rejects the legacy orderDetails/options-only shape', async () => {
+    await api
+      .post('/api/email/send-confirmation')
+      .set('Cookie', [`at=${at}`])
+      .send({
+        email: 'themaximsergeev@gmail.com',
+        orderDetails: 'legacy confirmation text',
+        options: { distance: 'insideCapital' },
+      })
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+  })
+
+  test('rejects a non-object order', async () => {
+    await api
+      .post('/api/email/send-confirmation')
+      .set('Cookie', [`at=${at}`])
+      .send({ email: 'themaximsergeev@gmail.com', order: 'legacy confirmation text' })
+      .expect(400)
+  })
+
+  test('rejects a structured order without a recipient', async () => {
+    const order = makeCustomerCommunicationPayload()
+    delete order.email
+
+    await api
+      .post('/api/email/send-confirmation')
+      .set('Cookie', [`at=${at}`])
+      .send({ order })
+      .expect(400)
       .expect('Content-Type', /application\/json/)
   })
 })

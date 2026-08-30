@@ -4,6 +4,7 @@ import { enqueueSnackbar } from 'notistack'
 import EventIcon from '@material-ui/icons/Event'
 import addEventToCalendar from '../../../services/calendarAPI'
 import orderPoolAPI from '../../../services/orderPoolAPI'
+import { toCommunicationOrder, toCreateOrderPayload } from '../../../shared/orderSerialization'
 
 import CustomButton from './CustomButton'
 
@@ -21,13 +22,14 @@ export default function AddOrderToCalendarButton({
     try {
       changeStatus(CALENDAR, 'Working', true)
       const response = await addEventToCalendar({
-        order: order.prepareForSending(),
+        order: toCommunicationOrder(order),
+        orderId,
       })
       let oId = orderId
 
       if (!oId) {
         const { id } = await orderPoolAPI.add({
-          order: JSON.stringify(order.prepareForSending()),
+          order: toCreateOrderPayload(order),
         })
         oId = id
       }

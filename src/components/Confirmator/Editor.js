@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { Button } from '@material-ui/core'
 import TextField from '@material-ui/core/TextField'
 import NativeSelect from '@material-ui/core/NativeSelect'
@@ -11,13 +11,9 @@ import services from '../../data/services.json'
 import paymentTypes from '../../data/paymentTypes.json'
 import Boxes from './Boxes'
 import Address from './Address'
-import FeeSelector from './Editor/FeeSelector'
-import {
-  parseAndFormatDecimalString,
-  sanitizeDecimalString,
-} from '../../helpers/decimalStringHelpers'
+import PricingComparison from './PricingComparison'
 
-export default function Editor({ order, handleChange }) {
+export default function Editor({ order, handleChange, onOrderChange, onRevert, reverting }) {
   const margin = {
     marginTop: 5,
   }
@@ -27,18 +23,6 @@ export default function Editor({ order, handleChange }) {
   }
 
   locale_en.weekStart = 1
-
-  const [manualPriceInput, setManualPriceInput] = useState(order?.manualPrice ?? order?.price ?? '')
-
-  useEffect(() => {
-    if (order?.manualPrice != null && order.manualPrice !== order.autoPrice) {
-      setManualPriceInput(String(order.manualPrice))
-    } else if (order?.price != null) {
-      setManualPriceInput(String(order.price))
-    } else {
-      setManualPriceInput('')
-    }
-  }, [order?.manualPrice, order?.autoPrice, order?.price])
 
   if (!order) {
     return null
@@ -211,21 +195,11 @@ export default function Editor({ order, handleChange }) {
         size="small"
       />
       <Boxes style={{ marginTop: margin.marginTop }} order={order} handleChange={handleChange} />
-      <TextField
-        fullWidth
-        style={margin}
-        className="flex-item"
-        name="price"
-        value={manualPriceInput}
-        onChange={(e) => setManualPriceInput(sanitizeDecimalString(e.target.value))}
-        onBlur={() => {
-          const { formatted, numeric } = parseAndFormatDecimalString(manualPriceInput)
-          setManualPriceInput(formatted)
-          handleChange?.('manualPrice', numeric)
-        }}
-        label="Price estimate"
-        variant="outlined"
-        size="small"
+      <PricingComparison
+        order={order}
+        onChange={onOrderChange}
+        onRevert={onRevert}
+        reverting={reverting}
       />
       <TextareaAutosize
         style={margin}
@@ -237,7 +211,6 @@ export default function Editor({ order, handleChange }) {
         placeholder="Additional information."
         onChange={(e) => handleChange?.(e.target.name, e.target.value)}
       />
-      <FeeSelector order={order} onChange={(fees) => handleChange?.('manualFees', fees)} />
     </div>
   )
 }

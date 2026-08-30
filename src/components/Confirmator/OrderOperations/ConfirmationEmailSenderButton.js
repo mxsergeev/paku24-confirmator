@@ -5,6 +5,7 @@ import EmailIcon from '@material-ui/icons/Email'
 import CustomButton from './CustomButton'
 import sendConfirmationEmail, { sendCancellationEmail } from '../../../services/emailAPI'
 import { isCanceled } from '../../../shared/orderState.helpers'
+import { toCommunicationOrder } from '../../../shared/orderSerialization'
 
 const EMAIL = 'email'
 
@@ -21,11 +22,11 @@ export default function ConfirmationEmailSenderButton({
     if (email && transformedOrderText) {
       changeStatus(EMAIL, 'Working', true)
       const canceled = isCanceled(order)
+      const communicationOrder = toCommunicationOrder(order)
       return (canceled
-        ? sendCancellationEmail({ order, email })
+        ? sendCancellationEmail({ order: communicationOrder, email })
         : sendConfirmationEmail({
-            orderDetails: transformedOrderText,
-            order,
+            order: communicationOrder,
             email,
           })
       )

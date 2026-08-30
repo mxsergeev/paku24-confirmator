@@ -10,12 +10,19 @@ import * as authMW from '../authentication/auth.middleware.js'
 emailRouter.use(authMW.authenticateAccessToken)
 
 emailRouter.post('/send-confirmation', (req, res, next) => {
-  const { orderDetails, order, options, email, lang } = req.body
+  const { order, email, lang } = req.body || {}
 
-  const orderForTerms = order || options || {}
-  const targetEmail = (order && order.email) || email || (orderForTerms && orderForTerms.email)
+  if (!order || typeof order !== 'object' || Array.isArray(order)) {
+    return res.status(400).send({ error: 'Order is required.' })
+  }
 
-  const terms = makeTerms(orderForTerms)
+  const targetEmail = order.email || email
+
+  if (!targetEmail) {
+    return res.status(400).send({ error: 'Email address is required.' })
+  }
+
+  const terms = makeTerms(order)
   const { subject, body } = buildConfirmationEmail({
     order,
     terms,

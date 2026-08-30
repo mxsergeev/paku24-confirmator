@@ -26,6 +26,48 @@ export function buildStableInvoiceNumber(order, existingInvoiceNumber = '') {
   return `${datePart}${suffix}`
 }
 
+function formatAddressForReceipt(address) {
+  if (!address) return ''
+  if (typeof address === 'string') return address
+
+  const parts = [address.street, address.index, address.city].filter(Boolean)
+  return parts.join(', ')
+}
+
+export function getReceiptServicePrice(order, fallback = '') {
+  return order?.service?.pricePerHour ?? fallback
+}
+
+export function getReceiptBoxesPrice(order, fallback) {
+  return order?.boxesPrice ?? fallback
+}
+
+export function getReceiptTotal(value, fallback) {
+  return value === null || value === undefined || String(value).trim() === '' ? fallback : value
+}
+
+export function buildReceiptDraftFromOrder(order = {}) {
+  const safeOrder = order || {}
+  const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+  const dueDate = defaultDueDate.toISOString().slice(0, 10)
+  const totalAmount =
+    typeof safeOrder.price === 'number' || typeof safeOrder.price === 'string'
+      ? String(safeOrder.price)
+      : ''
+
+  return {
+    customerName: safeOrder.name || '',
+    customerEmail: safeOrder.email || '',
+    customerAddress: formatAddressForReceipt(safeOrder.address),
+    totalAmount,
+    serviceName: safeOrder.service?.name || '',
+    serviceHours: safeOrder.duration || '',
+    unitPrice: getReceiptServicePrice(safeOrder),
+    dueDate,
+    invoiceNumber: buildStableInvoiceNumber(safeOrder, safeOrder.invoiceNumber),
+  }
+}
+
 export function toDateInputValue(value) {
   const source = String(value || '').trim()
   if (!source) return ''

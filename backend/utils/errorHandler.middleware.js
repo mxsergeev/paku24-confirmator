@@ -22,6 +22,10 @@ function errorHandler(err, req, res, next) {
       status: 400,
       message: err.message,
     },
+    OrderNotFoundError: {
+      status: 404,
+      message: 'Order not found',
+    },
     AccessTokenMissingError: {
       status: 403,
       message: 'access token missing',

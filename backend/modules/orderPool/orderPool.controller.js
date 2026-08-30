@@ -4,7 +4,6 @@ import express from 'express'
 
 const orderPoolRouter = express.Router()
 
-import RawOrder from '../../models/rawOrder.js'
 import { ORDER_POOL_KEY } from '../../utils/config.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import * as authMW from '../authentication/auth.middleware.js'
@@ -12,8 +11,21 @@ import Order from '../../models/order.js'
 import User from '../../models/user.js'
 import dayjs from '../../../src/shared/dayjs.js'
 import { DEFAULT_EVENT_COLOR_ID } from '../../utils/colors.js'
-import { updateOrder, getOrderById, deleteOrderPermanently } from './orderPool.service.js'
+import {
+  updateOrder,
+  getOrderById,
+  revertOrder,
+  deleteOrderPermanently,
+} from './orderPool.service.js'
 import { buildStableInvoiceNumber } from '../../utils/invoiceNumber.js'
+import {
+  BOOKING_FIELDS,
+  createAppOrder,
+  createWordPressOrder,
+} from '../../../src/shared/orderModel.js'
+import { normalizeWordPressOrderPayload } from '../../../src/shared/wordpressOrderPayload.js'
+
+const ORDER_POOL_PAGE_SIZE = 20
 
 // Helpers to centralize order state changes
 async function confirmOrder(id, userId) {
@@ -49,94 +61,81 @@ async function updateOrderColor(id, eventColor) {
   return order
 }
 
-function checkKey(req, res, next) {
-  // if (req.body.key === ORDER_POOL_KEY && req.hostname === ACCEPTED_HOSTNAME) {
-  if (req.body.key === ORDER_POOL_KEY) {
-    return next()
-  }
-  const OrderPoolKeyError = newErrorWithCustomName('OrderPoolKeyError')
-  return next(OrderPoolKeyError)
-}
-
 function checkKeyOrAuth(req, res, next) {
-  if (req.body.key === ORDER_POOL_KEY) {
+  if (ORDER_POOL_KEY && req.body?.key === ORDER_POOL_KEY) {
+    req.orderPoolOrigin = 'wordpress'
     return next()
   }
+
+  req.orderPoolOrigin = 'app'
   return authMW.authenticateAccessToken(req, res, next)
 }
 
-function normalizeBoxes(boxes) {
-  if (!boxes || typeof boxes !== 'object') {
-    return boxes
-  }
-
-  const deliveryDate = boxes.deliveryDate ?? boxes.date?.delivery ?? null
-  const returnDate = boxes.returnDate ?? boxes.date?.pickup ?? null
-
-  return {
-    ...boxes,
-    amount: Number(boxes.amount ?? boxes.number ?? 0) || 0,
-    deliveryDate,
-    returnDate,
-  }
+function isPlainObject(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }
 
-function normalizeIncomingOrder(orderData) {
-  if (!orderData || typeof orderData !== 'object') {
-    return orderData
-  }
-
-  const normalizedOrder = {
-    ...orderData,
-  }
-
-  if (normalizedOrder.boxes) {
-    normalizedOrder.boxes = normalizeBoxes(normalizedOrder.boxes)
-  }
-
-  if (!normalizedOrder.address && orderData.from) {
-    normalizedOrder.address = orderData.from
-  }
-
-  if (!normalizedOrder.destination && orderData.to) {
-    normalizedOrder.destination = orderData.to
-  }
-
-  if (normalizedOrder.service && typeof normalizedOrder.service === 'object') {
-    normalizedOrder.service = {
-      ...normalizedOrder.service,
-      price: normalizedOrder.service.price ?? normalizedOrder.servicePrice,
-    }
-  }
-
-  return normalizedOrder
+function hasOwn(value, key) {
+  return Object.prototype.hasOwnProperty.call(value, key)
 }
 
-orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
+function validationError(message) {
+  return newErrorWithCustomName('ValidationError', message)
+}
+
+function pickBookingFields(orderData) {
+  const bookingFields = {}
+
+  BOOKING_FIELDS.forEach((field) => {
+    if (hasOwn(orderData, field)) bookingFields[field] = orderData[field]
+  })
+
+  return bookingFields
+}
+
+function buildOrderForCreate(req) {
+  const orderData = req.body?.order
+
+  if (!isPlainObject(orderData)) {
+    throw validationError('order must be an object')
+  }
+
+  // The snapshot is immutable source metadata. It is always built by the
+  // server, including when a caller explicitly sends null.
+  if (hasOwn(orderData, 'initialSnapshot')) {
+    throw validationError('initialSnapshot is server-managed and cannot be supplied')
+  }
+
   try {
-    const receivedOrder = new RawOrder({
-      text: req.body.order,
-      date: new Date().toISOString(),
-    })
+    if (req.orderPoolOrigin === 'wordpress') {
+      return createWordPressOrder(normalizeWordPressOrderPayload(orderData))
+    }
 
-    await receivedOrder.save()
+    if (orderData.origin !== 'app') {
+      throw validationError("Authenticated order creation requires origin: 'app'")
+    }
 
-    return res.status(200).send({ message: 'Order added to the pool.', id: receivedOrder._id })
+    // App-origin creation accepts booking fields only. Lifecycle fields and
+    // materialized pricing projections are server-managed and are ignored.
+    return createAppOrder(pickBookingFields(orderData))
   } catch (err) {
-    return next(err)
+    if (err.name === 'ValidationError') throw err
+    throw validationError(err.message)
   }
-})
+}
 
 orderPoolRouter.post('/v2/add', checkKeyOrAuth, async (req, res, next) => {
   try {
-    const orderData =
-      typeof req.body.order === 'string' ? JSON.parse(req.body.order) : req.body.order
-    const normalizedOrder = normalizeIncomingOrder(orderData)
-
+    const order = buildOrderForCreate(req)
+    const orderToSave = { ...order }
+    delete orderToSave.id
+    delete orderToSave._id
     const receivedOrder = new Order({
-      receivedAt: new Date().toISOString(),
-      ...normalizedOrder,
-      invoiceNumber: buildStableInvoiceNumber(normalizedOrder, normalizedOrder.invoiceNumber),
+      ...orderToSave,
+      receivedAt: new Date(),
+      invoiceNumber: buildStableInvoiceNumber(order),
     })
 
     await receivedOrder.save()
@@ -147,7 +146,7 @@ orderPoolRouter.post('/v2/add', checkKeyOrAuth, async (req, res, next) => {
   }
 })
 
-orderPoolRouter.get('/v2/:id', async (req, res, next) => {
+orderPoolRouter.get('/v2/:id', authMW.authenticateAccessToken, async (req, res, next) => {
   try {
     const { id } = req.params
 
@@ -159,13 +158,25 @@ orderPoolRouter.get('/v2/:id', async (req, res, next) => {
   }
 })
 
-orderPoolRouter.put('/v2/:id', async (req, res, next) => {
+orderPoolRouter.put('/v2/:id', authMW.authenticateAccessToken, async (req, res, next) => {
   try {
     const { id } = req.params
 
-    const order = await updateOrder(id, req.body.updateData)
+    const order = await updateOrder(id, req.body?.updateData)
 
     return res.status(200).send({ order, message: 'Order updated' })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+orderPoolRouter.post('/v2/:id/revert', authMW.authenticateAccessToken, async (req, res, next) => {
+  try {
+    const { id } = req.params
+
+    const order = await revertOrder(id)
+
+    return res.status(200).send({ order, message: 'Order reverted' })
   } catch (err) {
     return next(err)
   }
@@ -186,60 +197,82 @@ orderPoolRouter.patch('/v2/:id/color', async (req, res, next) => {
   }
 })
 
-async function getOrdersWithLimit({ markedForDeletion, skip, limit }) {
-  return RawOrder.find({ markedForDeletion }).skip(skip).limit(limit).sort({ _id: -1 }).exec()
+function makeDeletedFilter(deleted) {
+  if (deleted === 'true') return { deletedAt: { $exists: true } }
+  if (deleted === 'false') return { deletedAt: { $exists: false } }
+  return {}
 }
 
-function howMuchToGet(pages = ['1']) {
-  // pages is something like: [ '1', '2', '3' ] (for many pages) || ['2'] (for only one page)
-  const pagesInNumberType = pages.map((p) => Number(p))
-  const skip = pagesInNumberType[0] === 1 ? 0 : (pagesInNumberType[0] - 1) * 20
-  const limit = pagesInNumberType.length * 20
+function parsePages(rawPages) {
+  const values = Array.isArray(rawPages) ? rawPages : [rawPages]
 
-  return { skip, limit }
-}
-
-orderPoolRouter.get('/', async (req, res, next) => {
-  try {
-    const { deleted: markedForDeletion } = req.query
-    const { skip, limit } = howMuchToGet(req.query.pages)
-
-    const ordersInPool = await getOrdersWithLimit({
-      markedForDeletion,
-      skip,
-      limit,
-    })
-
-    // Documents are automatically transformed to JSON
-    return res.status(200).send({ orders: ordersInPool, limitPerPage: 20 })
-  } catch (err) {
-    return next(err)
+  if (values.length === 0) {
+    throw validationError('pages must contain at least one positive integer')
   }
-})
+
+  return values.map((value) => {
+    const normalized = String(value).trim()
+    if (!/^[1-9]\d*$/.test(normalized)) {
+      throw validationError('pages must contain only positive integers')
+    }
+
+    const page = Number(normalized)
+    if (!Number.isSafeInteger(page)) {
+      throw validationError('pages must contain only positive integers')
+    }
+
+    return page
+  })
+}
 
 orderPoolRouter.get('/v2/', async (req, res, next) => {
   try {
     const { from, to, deleted } = req.query
+    const deletedFilter = makeDeletedFilter(deleted)
+    const hasFrom = typeof from !== 'undefined'
+    const hasTo = typeof to !== 'undefined'
 
-    const deletedFilter =
-      deleted === 'true'
-        ? { deletedAt: { $exists: true } }
-        : deleted === 'false'
-          ? { deletedAt: { $exists: false } }
-          : {}
+    if (hasFrom || hasTo) {
+      if (typeof from !== 'string' || typeof to !== 'string' || !from || !to) {
+        throw validationError('from and to must be provided together')
+      }
 
-    const match = {
-      $or: [
-        { date: { $gte: from, $lte: to } },
-        { 'boxes.deliveryDate': { $gte: from, $lte: to } },
-        { 'boxes.returnDate': { $gte: from, $lte: to } },
-      ],
-      ...deletedFilter,
+      const match = {
+        $or: [
+          { date: { $gte: from, $lte: to } },
+          { 'boxes.deliveryDate': { $gte: from, $lte: to } },
+          {
+            'boxes.deliveryDate': {
+              $gte: from.slice(0, 10),
+              $lte: to.slice(0, 10),
+            },
+          },
+          { 'boxes.returnDate': { $gte: from, $lte: to } },
+          {
+            'boxes.returnDate': {
+              $gte: from.slice(0, 10),
+              $lte: to.slice(0, 10),
+            },
+          },
+        ],
+        ...deletedFilter,
+      }
+
+      const ordersInPool = await Order.find(match).sort({ _id: -1 })
+
+      return res.status(200).send({ orders: ordersInPool })
     }
 
-    const ordersInPool = await Order.find(match).sort({ _id: -1 })
+    const pages = parsePages(req.query.pages ?? ['1'])
+    const firstPage = pages[0]
+    const skip = firstPage === 1 ? 0 : (firstPage - 1) * ORDER_POOL_PAGE_SIZE
+    const limit = pages.length * ORDER_POOL_PAGE_SIZE
+    const ordersInPool = await Order.find(deletedFilter)
+      .sort({ _id: -1 })
+      .skip(skip)
+      .limit(limit)
 
-    return res.status(200).send({ orders: ordersInPool })
+    return res.status(200).send({ orders: ordersInPool, limitPerPage: ORDER_POOL_PAGE_SIZE })
   } catch (err) {
     return next(err)
   }
@@ -402,7 +435,5 @@ orderPoolRouter.get('/confirmed-by-user/', async (req, res) => {
 
   return res.status(200).send({ confirmedOrders })
 })
-
-export { normalizeBoxes, normalizeIncomingOrder }
 
 export default orderPoolRouter

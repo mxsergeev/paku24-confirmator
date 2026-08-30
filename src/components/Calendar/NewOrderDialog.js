@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogTitle, IconButton } from '@material-ui/core'
 import useMediaQuery from '@material-ui/core/useMediaQuery'
 import CloseIcon from '@material-ui/icons/Close'
-import { enqueueSnackbar } from 'notistack'
 import { useQueryClient } from '@tanstack/react-query'
 
 import '../Confirmator/Confirmator.css'
@@ -14,48 +13,58 @@ import ValidationDisplay from '../Confirmator/ValidationDisplay'
 import TransformedOrderContainer from '../Confirmator/OrderContainers/TransformedOrderContainer'
 import TransformPanel from '../Confirmator/OrderOperations/TransformPanel'
 import MainOperationsPanel from '../Confirmator/OrderOperations/MainOperationsPanel'
-import Order from '../../shared/Order'
+import {
+  createAppOrder,
+  updateOrderField,
+} from '../../shared/orderModel'
+import { deserializeDraft, serializeDraft } from '../../shared/orderSerialization'
+import { formatOrder } from '../../shared/render/text'
+
+const NEW_ORDER_DRAFT_STORAGE_KEY = 'new_order'
+
+function readNewOrderDraft() {
+  try {
+    const savedOrder = localStorage.getItem(NEW_ORDER_DRAFT_STORAGE_KEY)
+    if (!savedOrder) return null
+    return deserializeDraft(JSON.parse(savedOrder))
+  } catch {
+    localStorage.removeItem(NEW_ORDER_DRAFT_STORAGE_KEY)
+    return null
+  }
+}
 
 export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   const queryClient = useQueryClient()
   const isMobile = useMediaQuery('(max-width:600px)')
-  const [rawOrder, setRawOrder] = useState({ text: '', id: null })
   const [transformedOrder, setTransformedOrder] = useState({
     text: '',
     id: null,
   })
 
-  const [order, setOrder] = useState(Order.default())
+  const [order, setOrder] = useState(() => readNewOrderDraft() || createAppOrder())
+  const skipNextPersistenceRef = useRef(false)
 
   useEffect(() => {
-    const savedOrder = localStorage.getItem('confirmator_order')
-    const savedRawOrder = localStorage.getItem('confirmator_rawOrder')
-    savedOrder && setOrder(new Order(JSON.parse(savedOrder)))
-    savedRawOrder && setRawOrder(JSON.parse(savedRawOrder))
-  }, [])
+    if (skipNextPersistenceRef.current) {
+      skipNextPersistenceRef.current = false
+      return
+    }
 
-  useEffect(() => {
-    localStorage.setItem('confirmator_order', JSON.stringify(order.prepareForSending()))
+    localStorage.setItem(NEW_ORDER_DRAFT_STORAGE_KEY, JSON.stringify(serializeDraft(order)))
   }, [order])
-  useEffect(() => {
-    localStorage.setItem('confirmator_rawOrder', JSON.stringify(rawOrder))
-  }, [rawOrder])
 
   const transformedOrderContainerRef = useRef(null)
 
   const reset = useCallback(() => {
-    setRawOrder({ text: '', id: null })
+    localStorage.removeItem(NEW_ORDER_DRAFT_STORAGE_KEY)
+    skipNextPersistenceRef.current = true
     setTransformedOrder({ text: '', id: null })
-    setOrder(Order.default())
+    setOrder(createAppOrder())
   }, [])
 
   const handleOrderChange = useCallback(
-    (key, value) => {
-      order[key] = value
-
-      return setOrder(new Order(order))
-    },
-    [order]
+    (key, value) => setOrder((previous) => updateOrderField(previous, key, value)),
+    []
   )
 
   const handleTransformedOrderUpdate = useCallback((transO) => {
@@ -63,8 +72,8 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   }, [])
 
   const handleOrderTransformFromEditor = useCallback(
-    () => setTransformedOrder({ id: rawOrder.id, text: Order.format(order) }),
-    [rawOrder, order]
+    () => setTransformedOrder({ id: null, text: formatOrder(order) }),
+    [order]
   )
 
   const handleComplete = useCallback(() => {
@@ -105,7 +114,7 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
       <DialogContent className="calendar-new-order-dialog-content">
         <div className="calendar-new-order-dialog-content-wrap">
           <div className="flex-container calendar-new-order-flex-container">
-            <Editor order={order} handleChange={handleOrderChange} />
+            <Editor order={order} handleChange={handleOrderChange} onOrderChange={setOrder} />
 
             <TransformPanel
               elementRef={transformedOrderContainerRef}
@@ -124,7 +133,7 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
             <ValidationDisplay order={order} shouldValidate={transformedOrder.text} />
             <MainOperationsPanel
               order={order}
-              orderId={rawOrder.id}
+              orderId={null}
               transformedOrder={transformedOrder}
               handleResetClick={handleComplete}
               hideOrderPool={true}

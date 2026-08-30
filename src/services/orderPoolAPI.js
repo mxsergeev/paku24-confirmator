@@ -28,7 +28,7 @@ async function get(pages = [1], options = { deleted: false }) {
 
   const query = `${deleted ? 'deleted=true' : 'deleted=false'}&${makeQueryArray('pages', pages)}`
 
-  // example: /api/order-pool/?deleted=false&pages[]=1&pages[]=2
+  // example: /api/order-pool/v2/?deleted=false&pages[]=1&pages[]=2
   const url = `${baseUrl_v2}/?${query}`
 
   return interceptor.axiosInstance.get(url).then(async (res) => {
@@ -109,6 +109,11 @@ async function restore(id) {
   return response?.data
 }
 
+async function revert(id) {
+  const response = await interceptor.axiosInstance.post(`${baseUrl_v2}/${id}/revert`)
+  return response?.data
+}
+
 const orderPoolAPI = {
   get,
   getOrderById,
@@ -123,6 +128,7 @@ const orderPoolAPI = {
   update,
   updateColor,
   restore,
+  revert,
 }
 
 export default orderPoolAPI

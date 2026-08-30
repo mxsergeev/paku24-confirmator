@@ -1,144 +1,180 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { enqueueSnackbar } from 'notistack'
 import { useParams } from 'react-router-dom'
+import { enqueueSnackbar } from 'notistack'
 
 import './Confirmator.css'
 import Editor from './Editor'
 
 import OrderSettings from './OrderSettings'
 import ValidationDisplay from './ValidationDisplay'
-import RawOrderContainer from './OrderContainers/RawOrderContainer'
 import TransformedOrderContainer from './OrderContainers/TransformedOrderContainer'
 import TransformPanel from './OrderOperations/TransformPanel'
 import MainOperationsPanel from './OrderOperations/MainOperationsPanel'
 import OrderPoolDialog from './OrderPool/OrderPoolDialog'
-import Order from '../../shared/Order'
 import orderPoolAPI from '../../services/orderPoolAPI'
+import {
+  createAppOrder,
+  normalizeOrder,
+  revertToInitial,
+  updateOrderField,
+} from '../../shared/orderModel'
+import { deserializeDraft, serializeDraft } from '../../shared/orderSerialization'
+import { formatOrder } from '../../shared/render/text'
 import { isObjectId } from '../../shared/validators'
+
+const CONFIRMATOR_DRAFT_STORAGE_KEY = 'confirmator_order'
+
+function readConfirmatorDraft() {
+  try {
+    const savedOrder = localStorage.getItem(CONFIRMATOR_DRAFT_STORAGE_KEY)
+    if (!savedOrder) return null
+    return deserializeDraft(JSON.parse(savedOrder))
+  } catch {
+    localStorage.removeItem(CONFIRMATOR_DRAFT_STORAGE_KEY)
+    return null
+  }
+}
 
 export default function Confirmator() {
   const params = useParams()
+  const hasExplicitOrderId = Boolean(params.id && isObjectId(params.id))
 
-  const [rawOrder, setRawOrder] = useState({ text: '', id: null })
   const [transformedOrder, setTransformedOrder] = useState({
     text: '',
     id: null,
   })
 
-  const [order, setOrder] = useState(Order.default())
+  const [order, setOrder] = useState(() =>
+    hasExplicitOrderId ? createAppOrder() : readConfirmatorDraft() || createAppOrder()
+  )
+  const [reverting, setReverting] = useState(false)
+
+  const routeIdRef = useRef(params.id)
+  const skipNextPersistenceRef = useRef(false)
 
   useEffect(() => {
+    let active = true
+    const routeChanged = routeIdRef.current !== params.id
+    routeIdRef.current = params.id
+
+    if (!hasExplicitOrderId) {
+      // The initial no-id render is hydrated lazily in useState. Hydrate again
+      // only when the route changes while this component remains mounted.
+      if (routeChanged) {
+        skipNextPersistenceRef.current = true
+        setOrder(readConfirmatorDraft() || createAppOrder())
+      }
+      return () => {
+        active = false
+      }
+    }
+
     const fetchOrder = async () => {
-      if (!params.id || !isObjectId(params.id)) {
-        return
+      try {
+        const { order: responseOrder } = await orderPoolAPI.getOrderById(params.id)
+
+        if (!active || !responseOrder) return
+
+        const normalizedOrder = normalizeOrder(responseOrder)
+        setOrder(normalizedOrder)
+      } catch {
+        // Keep the fresh app state when the requested order cannot be loaded.
       }
-
-      const { order: o } = await orderPoolAPI.getOrderById(params.id)
-
-      if (!o) {
-        return
-      }
-
-      setOrder(new Order(o))
     }
 
     fetchOrder()
-  }, [params.id])
+
+    return () => {
+      active = false
+    }
+  }, [hasExplicitOrderId, params.id])
 
   useEffect(() => {
-    const savedOrder = localStorage.getItem('confirmator_order')
-    const savedRawOrder = localStorage.getItem('confirmator_rawOrder')
-    savedOrder && setOrder(new Order(JSON.parse(savedOrder)))
-    savedRawOrder && setRawOrder(JSON.parse(savedRawOrder))
-  }, [])
+    if (hasExplicitOrderId) return
 
-  useEffect(() => {
-    localStorage.setItem('confirmator_order', JSON.stringify(order.prepareForSending()))
-  }, [order])
-  useEffect(() => {
-    localStorage.setItem('confirmator_rawOrder', JSON.stringify(rawOrder))
-  }, [rawOrder])
+    if (skipNextPersistenceRef.current) {
+      skipNextPersistenceRef.current = false
+      return
+    }
 
-  const rawOrderOrderContainerRef = useRef(null)
+    localStorage.setItem(CONFIRMATOR_DRAFT_STORAGE_KEY, JSON.stringify(serializeDraft(order)))
+  }, [hasExplicitOrderId, order])
+
   const transformedOrderContainerRef = useRef(null)
 
   const reset = useCallback(() => {
-    setRawOrder({ text: '', id: null })
+    localStorage.removeItem(CONFIRMATOR_DRAFT_STORAGE_KEY)
+    skipNextPersistenceRef.current = true
     setTransformedOrder({ text: '', id: null })
-    setOrder(Order.default())
+    setOrder(createAppOrder())
   }, [])
 
   const handleOrderChange = useCallback(
-    (key, value) => {
-      // It's not very good to mutate the state directly but setters won't work otherwise
-      order[key] = value
-
-      return setOrder(new Order(order))
-    },
-    [order]
+    (key, value) => setOrder((previous) => updateOrderField(previous, key, value)),
+    []
   )
 
-  const handleRawOrderUpdate = useCallback(
-    (rawO) => {
-      // Raw order has an id and is an object if it is exported from DB otherwise it's a plain string
-      setRawOrder({ ...rawOrder, id: rawO.id || null, text: rawO.text || rawO })
-    },
-    [rawOrder]
-  )
+  const handleRevert = useCallback(async () => {
+    if (!order) return
+
+    const orderId = order.id || order._id
+
+    try {
+      setReverting(true)
+      if (orderId) {
+        const response = await orderPoolAPI.revert(orderId)
+        const updatedOrder = normalizeOrder(response.order || response)
+        setOrder(updatedOrder)
+        enqueueSnackbar(response.message || 'Order reverted.')
+      } else {
+        setOrder((previous) => revertToInitial(previous))
+      }
+    } catch (err) {
+      if (err.message === 'logout') return
+      enqueueSnackbar(err.response?.data?.error || err.message || 'Could not revert order.', {
+        variant: 'error',
+      })
+    } finally {
+      setReverting(false)
+    }
+  }, [order])
 
   const handleTransformedOrderUpdate = useCallback((transO) => {
     setTransformedOrder((prev) => ({ ...prev, text: transO }))
   }, [])
 
-  const handleOrderTransformFromText = useCallback(
-    (o = rawOrder) => {
-      Order.setupOrderFromText(o.text)
-        .then((orderFromText) => {
-          setOrder(orderFromText)
-          return setTransformedOrder({
-            id: o.id,
-            text: Order.format(orderFromText),
-          })
-        })
-        .catch((err) => enqueueSnackbar(err.message, { variant: 'error' }))
-    },
-    [rawOrder]
-  )
-
   const handleOrderTransformFromEditor = useCallback(
-    () => setTransformedOrder({ id: rawOrder.id, text: Order.format(order) }),
-    [rawOrder, order]
+    () => setTransformedOrder({ id: order?.id || order?._id || null, text: formatOrder(order) }),
+    [order]
   )
 
   const handleOrderPoolExport = useCallback(
     (o) => {
-      const ord = new Order(o)
+      const ord = normalizeOrder(o)
+      const orderId = ord.id || ord._id || o.id || o._id || null
 
       setOrder(ord)
       setTransformedOrder({
-        id: o.id,
-        text: Order.format(ord),
+        id: orderId,
+        text: formatOrder(ord),
       })
-      setTimeout(() => rawOrderOrderContainerRef.current.scrollIntoView({ smooth: true }), 700)
     },
-    [rawOrderOrderContainerRef]
+    []
   )
 
   return (
     <div className="flex-container">
-      <RawOrderContainer
-        elementRef={rawOrderOrderContainerRef}
-        rawOrderText={rawOrder.text}
-        handleClick={handleRawOrderUpdate}
+      <Editor
+        order={order}
+        handleChange={handleOrderChange}
+        onOrderChange={setOrder}
+        onRevert={handleRevert}
+        reverting={reverting}
       />
-
-      <Editor order={order} handleChange={handleOrderChange} />
 
       <TransformPanel
         elementRef={transformedOrderContainerRef}
-        transformDisabled={!rawOrder.text}
         copyDisabled={!transformedOrder.text}
-        handleOrderTransformFromText={handleOrderTransformFromText}
         handleOrderTransformFromEditor={handleOrderTransformFromEditor}
       />
 
@@ -152,7 +188,7 @@ export default function Confirmator() {
       <ValidationDisplay order={order} shouldValidate={transformedOrder.text} />
       <MainOperationsPanel
         order={order}
-        orderId={rawOrder.id}
+        orderId={order?.id || order?._id || null}
         transformedOrder={transformedOrder}
         handleResetClick={reset}
         orderPoolUrl="/confirmator/order-pool"
