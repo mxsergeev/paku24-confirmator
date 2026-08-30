@@ -1,13 +1,13 @@
 import fees from '../data/fees.json' with { type: 'json' }
 import services from '../data/services.json' with { type: 'json' }
 import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
-import { HELSINKI_TIMEZONE, parseDateTime } from './date-fns-tz.js'
+import { HELSINKI_TIMEZONE, parseInstant } from './date-fns-tz.js'
 import { toFiniteNumberOrNull } from './orderPrimitives.js'
 
 function datePartsInTimezone(value, timezone = HELSINKI_TIMEZONE) {
   let date
   try {
-    date = parseDateTime(value, 'date', timezone)
+    date = parseInstant(value, 'date')
   } catch {
     return null
   }

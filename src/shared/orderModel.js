@@ -1,7 +1,7 @@
 import distances from '../data/distances.json' with { type: 'json' }
 import services from '../data/services.json' with { type: 'json' }
 import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
-import { isDateOnly, parseDateOnly, parseDateTime } from './date-fns-tz.js'
+import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
 import {
   materializeActivePricing,
   normalizeFeeList,
@@ -169,11 +169,11 @@ function makeDefaultState() {
 
 function normalizeBoxDate(value, fieldName) {
   if (isDateOnly(value)) {
-    parseDateOnly(value, fieldName)
+    parseCalendarDate(value, fieldName)
     return value
   }
 
-  return parseDateTime(value, fieldName)
+  return parseInstant(value, fieldName)
 }
 
 function normalizeCurrentBoxes(value, fallback) {
@@ -258,7 +258,7 @@ function normalizeSnapshot(value, { requireBooking = false } = {}) {
     }
 
     if (field === 'date') {
-      snapshot.date = parseDateTime(value.date, 'initialSnapshot.date')
+      snapshot.date = parseInstant(value.date, 'initialSnapshot.date')
     } else if (field === 'boxes') {
       snapshot.boxes = normalizeSnapshotBoxes(value.boxes)
     } else if (field === 'fees' || field === 'price' || field === 'boxesPrice') {
@@ -434,7 +434,7 @@ function normalizeCanonicalBooking(input, fieldPrefix = '') {
     const fieldName = fieldPrefix ? `${fieldPrefix}.${field}` : field
 
     if (field === 'date') {
-      result[field] = parseDateTime(value, fieldName)
+      result[field] = parseInstant(value, fieldName)
     } else if (field === 'boxes') {
       result[field] = normalizeCanonicalBoxes(value, fieldName)
     } else if (field === 'address' || field === 'destination') {
@@ -492,7 +492,7 @@ function normalizeCanonicalLifecycle(input, result) {
       if (typeof input[field] !== 'boolean') throw new Error(`Invalid ${field}`)
       lifecycle[field] = input[field]
     } else if (field.endsWith('At') || field === 'receivedAt') {
-      lifecycle[field] = input[field] === null ? null : parseDateTime(input[field], field)
+      lifecycle[field] = input[field] === null ? null : parseInstant(input[field], field)
     } else {
       lifecycle[field] = cloneValue(input[field])
     }
@@ -593,7 +593,7 @@ function constructBookingOrder(input, origin) {
     if (!hasOwn(input, field) || input[field] === undefined) return
 
     if (field === 'date') {
-      result.date = parseDateTime(input.date, 'date')
+      result.date = parseInstant(input.date, 'date')
     } else if (field === 'boxes') {
       result.boxes = normalizeCurrentBoxes(input.boxes, defaults.boxes)
     } else if (field === 'extraAddresses') {
@@ -752,7 +752,7 @@ function applyOrderPatch(currentOrder, patch) {
     let nextValue = value
 
     if (field === 'date' && value !== null && value !== undefined) {
-      nextValue = parseDateTime(value, 'date')
+      nextValue = parseInstant(value, 'date')
     } else if (field === 'boxes') {
       nextValue = normalizePatchBoxes(value, updated.boxes)
     }

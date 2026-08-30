@@ -4,7 +4,7 @@ import {
   SNAPSHOT_FIELDS,
 } from './orderModel.js'
 import { resolveActivePricing } from './orderPricing.js'
-import { hasTimezoneSuffix, isDateOnly, parseDateOnly, parseDateTime } from './date-fns-tz.js'
+import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
 import {
   cloneValue,
   hasOwn,
@@ -34,15 +34,12 @@ function serializeExtraAddresses(value) {
 }
 
 function serializeDateTime(value, fieldName) {
-  if (typeof value === 'string' && !hasTimezoneSuffix(value)) {
-    throw new Error(`Invalid ${fieldName}: expected an absolute instant`)
-  }
-  return parseDateTime(value, fieldName).toISOString()
+  return parseInstant(value, fieldName).toISOString()
 }
 
 function serializeBoxDate(value, fieldName) {
   if (isDateOnly(value)) {
-    parseDateOnly(value, fieldName)
+    parseCalendarDate(value, fieldName)
     return value
   }
 

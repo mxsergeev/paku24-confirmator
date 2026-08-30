@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import * as logger from '../utils/logger.js'
 import { syncOrderToCalendar, deleteOrderEvent } from '../modules/calendar/calendar.sync.js'
-import { isDateOnly, isIsoInstant, isValidDateOnly } from '../../src/shared/date-fns-tz.js'
+import { isDateOnly, parseCalendarDate, parseInstant } from '../../src/shared/date-fns-tz.js'
 import { ORDER_ORIGINS, PRICING_SOURCES } from '../../src/shared/orderPrimitives.js'
 
 /**
@@ -26,21 +26,19 @@ class DateOrDateOnly extends mongoose.SchemaType {
 
     if (typeof value === 'string') {
       if (isDateOnly(value)) {
-        if (!isValidDateOnly(value)) {
+        try {
+          parseCalendarDate(value, this.path)
+        } catch {
           throw new mongoose.Error.CastError(this.instance, value, this.path)
         }
         return value
       }
 
-      // Datetime values use the ISO calendar portion. Check it separately
-      // because JavaScript's Date parser normalizes some impossible dates
-      // (for example, February 31) instead of rejecting them.
-      if (!isIsoInstant(value) || !isValidDateOnly(value.slice(0, 10))) {
+      try {
+        return parseInstant(value, this.path)
+      } catch {
         throw new mongoose.Error.CastError(this.instance, value, this.path)
       }
-
-      const date = new Date(value)
-      if (!Number.isNaN(date.getTime())) return date
     }
 
     throw new mongoose.Error.CastError(this.instance, value, this.path)

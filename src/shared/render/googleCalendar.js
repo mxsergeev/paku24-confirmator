@@ -3,8 +3,8 @@ import {
   HELSINKI_TIMEZONE,
   formatInTimeZone,
   isDateOnly,
-  parseDateOnly,
-  parseDateTime,
+  parseCalendarDate,
+  parseInstant,
 } from '../date-fns-tz.js'
 import { formatOrder } from './text.js'
 
@@ -26,7 +26,7 @@ function makeIcons(order) {
 }
 
 function formatOrderTime(value) {
-  const date = parseDateTime(value, 'order date')
+  const date = parseInstant(value, 'order date')
   return formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)
 }
 
@@ -34,11 +34,11 @@ function formatBoxTime(value, fieldName) {
   if (value === null || value === undefined || value === '') return ''
 
   if (isDateOnly(value)) {
-    parseDateOnly(value, fieldName)
+    parseCalendarDate(value, fieldName)
     return ''
   }
 
-  const date = parseDateTime(value, fieldName)
+  const date = parseInstant(value, fieldName)
   return `${formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)} `
 }
 

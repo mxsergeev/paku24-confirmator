@@ -81,7 +81,7 @@ describe('normalizeWordPressOrderPayload', () => {
     [null, /plain object/i],
     ['{}', /plain object/i],
     [{}, /date.*required/i],
-    [wordpressPayload({ date: '2026-01-15T09:00:00' }), /date.*timezone/i],
+    [wordpressPayload({ date: '2026-01-15T09:00:00' }), /date.*absolute instant/i],
     [wordpressPayload({ date: '2026-02-29T09:00:00.000Z' }), /date/i],
     [wordpressPayload({ duration: 'nope' }), /duration/i],
     [wordpressPayload({ service: { id: '1', name: 'Move', pricePerHour: 'nope' } }), /service\.pricePerHour/i],

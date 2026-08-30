@@ -4,6 +4,7 @@ import { calculateAutomaticFees } from './fees.js'
 import {
   calculateAutomaticBoxesPrice,
   calculateAutomaticPricing,
+  calculateBoxPeriod,
   getEventColor,
   materializeActivePricing,
   orderTime,
@@ -59,6 +60,25 @@ describe('automatic pricing', () => {
         }),
       ),
     ).toThrow('Invalid boxes.deliveryDate')
+  })
+
+  it.each([
+    ['normal period', '2026-03-12T07:00:00Z', '2026-03-20T07:00:00Z', 8],
+    // The spring transition removes one elapsed hour. Calendar dates still
+    // span eight chargeable days.
+    ['Helsinki spring DST', '2026-03-28T22:00:00Z', '2026-04-05T21:00:00Z', 8],
+    // The autumn transition adds one elapsed hour. With endpoints near
+    // midnight, elapsed blocks still undercount the local calendar days.
+    ['Helsinki autumn DST', '2026-10-25T20:30:00Z', '2026-11-01T22:00:00Z', 8],
+    ['date-only endpoints', '2026-03-12', '2026-03-20', 8],
+    [
+      'instants sharing a local calendar date',
+      '2026-03-28T22:00:00Z',
+      '2026-03-29T00:30:00Z',
+      7,
+    ],
+  ])('uses Helsinki calendar-day difference for %s', (_name, deliveryDate, returnDate, expected) => {
+    expect(calculateBoxPeriod(deliveryDate, returnDate)).toBe(expected)
   })
 
   it.each([-1, '-1', NaN, Infinity, 'not-a-number', true, [], {}])(

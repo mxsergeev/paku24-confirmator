@@ -13,7 +13,6 @@ export const HELSINKI_TIMEZONE = 'Europe/Helsinki'
 const TIMEZONE = process.env.VITE_TIMEZONE || HELSINKI_TIMEZONE
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const ISO_INSTANT_PATTERN = /^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:?\d{2})$/i
-const TIMEZONE_SUFFIX_PATTERN = /(?:Z|[+-]\d{2}:?\d{2})$/i
 
 /**
  * Return whether a value is a date-only string in the canonical API format.
@@ -23,10 +22,8 @@ export function isDateOnly(value) {
   return typeof value === 'string' && DATE_ONLY_PATTERN.test(value)
 }
 
-/**
- * Validate a canonical date-only string and return its UTC midnight instant.
- */
-export function parseDateOnly(value, fieldName = 'date') {
+// Validate once and produce UTC midnight for the conversion helper below.
+function parseCalendarDateToUtc(value, fieldName) {
   if (!isDateOnly(value)) throw new Error(`Invalid ${fieldName}`)
 
   const [year, month, day] = value.split('-').map(Number)
@@ -47,6 +44,25 @@ export function parseDateOnly(value, fieldName = 'date') {
 }
 
 /**
+ * Validate and return a canonical calendar date without converting it to an
+ * instant. Calendar dates intentionally remain strings at persistence and API
+ * boundaries so that they can be rendered as all-day values.
+ */
+export function parseCalendarDate(value, fieldName = 'date') {
+  parseCalendarDateToUtc(value, fieldName)
+  return value
+}
+
+/**
+ * Convert a validated calendar date to a UTC-midnight Date when an API needs
+ * a Date for arithmetic. This is deliberately separate from parseCalendarDate
+ * so date-only values are not accidentally treated as instants.
+ */
+export function calendarDateToUtc(value, fieldName = 'date') {
+  return parseCalendarDateToUtc(value, fieldName)
+}
+
+/**
  * Return whether a value is a valid date-only string, including its calendar
  * validity (for example, reject February 30).
  */
@@ -54,7 +70,7 @@ export function isValidDateOnly(value) {
   if (!isDateOnly(value)) return false
 
   try {
-    parseDateOnly(value)
+    parseCalendarDate(value)
     return true
   } catch {
     return false
@@ -69,18 +85,14 @@ export function isIsoInstant(value) {
   return typeof value === 'string' && ISO_INSTANT_PATTERN.test(value)
 }
 
-export function hasTimezoneSuffix(value) {
-  return typeof value === 'string' && TIMEZONE_SUFFIX_PATTERN.test(value)
-}
-
 /**
- * Parse a date/time value as an instant.
+ * Parse a date/time value that unambiguously represents an instant.
  *
- * Date instances and strings with an explicit timezone already represent an
- * instant. Strings without a timezone are interpreted as wall-clock time in
- * the supplied timezone.
+ * Date instances and strings with an explicit timezone represent an instant.
+ * Timezone-less strings are rejected; callers that really receive wall-clock
+ * input must convert it explicitly for the relevant timezone.
  */
-export function parseDateTime(value, fieldName = 'date', timezone = HELSINKI_TIMEZONE) {
+export function parseInstant(value, fieldName = 'date') {
   if (value === null || value === undefined) throw new Error(`Invalid ${fieldName}`)
 
   if (value instanceof Date) {
@@ -88,15 +100,14 @@ export function parseDateTime(value, fieldName = 'date', timezone = HELSINKI_TIM
     return new Date(value.getTime())
   }
 
-  let parsed
-
-  if (typeof value === 'string') {
-    const hasTimezone = hasTimezoneSuffix(value)
-    parsed = hasTimezone ? new Date(value) : zonedTimeToUtc(value, timezone)
-  } else {
-    parsed = new Date(value)
+  if (!isIsoInstant(value)) {
+    throw new Error(`Invalid ${fieldName}: expected an absolute instant`)
   }
 
+  // JavaScript normalizes impossible dates in some ISO strings, so validate
+  // the calendar portion before accepting the parsed instant.
+  parseCalendarDate(value.slice(0, 10), fieldName)
+  const parsed = new Date(value)
   if (!Number.isFinite(parsed.getTime())) throw new Error(`Invalid ${fieldName}`)
   return parsed
 }

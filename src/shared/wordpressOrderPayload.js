@@ -1,4 +1,4 @@
-import { isDateOnly, isIsoInstant, parseDateOnly } from './date-fns-tz.js'
+import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
 import {
   cloneValue,
   hasOwn,
@@ -23,20 +23,6 @@ const BOOKING_FIELDS = [
 ]
 
 const BOX_PRICE_FIELDS = ['pricePerBox', 'deliveryPrice', 'returnPrice']
-
-function parseIsoInstant(value, field) {
-  if (!isIsoInstant(value)) {
-    throw new Error(`Invalid ${field}: expected an ISO instant with timezone`)
-  }
-
-  parseDateOnly(value.slice(0, 10), field)
-
-  const date = new Date(value)
-  if (!Number.isFinite(date.getTime())) {
-    throw new Error(`Invalid ${field}: expected an ISO instant with timezone`)
-  }
-  return date
-}
 
 function normalizeAddress(value, field) {
   if (!isPlainObject(value)) throw new Error(`Invalid ${field}: expected a structured address`)
@@ -92,10 +78,10 @@ function normalizeFees(value) {
 
 function normalizeBoxDate(value, field) {
   if (isDateOnly(value)) {
-    parseDateOnly(value, field)
+    parseCalendarDate(value, field)
     return value
   }
-  return parseIsoInstant(value, field)
+  return parseInstant(value, field)
 }
 
 function normalizeBoxes(value, orderDate) {
@@ -136,7 +122,7 @@ export function normalizeWordPressOrderPayload(input) {
   BOOKING_FIELDS.forEach((field) => {
     if (!hasOwn(input, field)) return
 
-    if (field === 'date') result.date = parseIsoInstant(input.date, 'date')
+    if (field === 'date') result.date = parseInstant(input.date, 'date')
     else if (field === 'duration') result.duration = requireFiniteNumber(input.duration, 'duration')
     else if (field === 'service') result.service = normalizeEmbedded(input.service, 'service', 'pricePerHour')
     else if (field === 'paymentType') result.paymentType = normalizeEmbedded(input.paymentType, 'paymentType', 'fee')

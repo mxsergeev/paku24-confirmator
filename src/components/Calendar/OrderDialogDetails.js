@@ -3,7 +3,7 @@ import { resolveFeeDisplayName } from './ReceiptPage'
 import colors from '../../shared/colors'
 import ColorSelector from '../common/ColorSelector'
 import { isCanceled, isDeleted } from '../../shared/orderState.helpers'
-import { HELSINKI_TIMEZONE, formatInTimeZone, parseDateTime } from '../../shared/date-fns-tz'
+import { HELSINKI_TIMEZONE, formatInTimeZone, parseInstant } from '../../shared/date-fns-tz'
 import { formatBoxDate } from '../../shared/render/text'
 
 export default function OrderDialogDetails({
@@ -111,7 +111,7 @@ export default function OrderDialogDetails({
             <span className="order-dialog-details__label">Date</span>
             <span className="order-dialog-details__value">
               {formatInTimeZone(
-                parseDateTime(order.date, 'order date'),
+                parseInstant(order.date, 'order date'),
                 'dd.MM.yyyy HH:mm',
                 HELSINKI_TIMEZONE,
               )}
@@ -166,7 +166,7 @@ export default function OrderDialogDetails({
                 <span className="order-dialog-details__label">Canceled at</span>
                 <span className="order-dialog-details__value">
                   {formatInTimeZone(
-                    parseDateTime(order.canceledAt, 'canceled at'),
+                    parseInstant(order.canceledAt, 'canceled at'),
                     'dd.MM.yyyy HH:mm',
                     HELSINKI_TIMEZONE,
                   )}
@@ -178,7 +178,7 @@ export default function OrderDialogDetails({
                 <span className="order-dialog-details__label">Deleted at</span>
                 <span className="order-dialog-details__value">
                   {formatInTimeZone(
-                    parseDateTime(order.deletedAt, 'deleted at'),
+                    parseInstant(order.deletedAt, 'deleted at'),
                     'dd.MM.yyyy HH:mm',
                     HELSINKI_TIMEZONE,
                   )}

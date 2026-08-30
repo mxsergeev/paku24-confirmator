@@ -6,8 +6,8 @@ import { formatAddressLocation } from '../../../src/shared/addressFormatter.js'
 import {
   HELSINKI_TIMEZONE,
   isDateOnly,
-  parseDateOnly,
-  parseDateTime,
+  parseCalendarDate,
+  parseInstant,
 } from '../../../src/shared/date-fns-tz.js'
 import { makeCalendarEntries } from '../../../src/shared/render/googleCalendar.js'
 import dayjs from '../../../src/shared/dayjs.js'
@@ -152,8 +152,8 @@ function makeGoogleEventObjects(order) {
       const dateStr = order.boxes[f]
       const fieldName = f === 'deliveryDate' ? 'box delivery date' : 'box return date'
       const dateOnly = isDateOnly(dateStr)
-      if (dateOnly) parseDateOnly(dateStr, fieldName)
-      const parsedDate = dateOnly ? null : parseDateTime(dateStr, fieldName)
+      if (dateOnly) parseCalendarDate(dateStr, fieldName)
+      const parsedDate = dateOnly ? null : parseInstant(dateStr, fieldName)
       const dateTime = parsedDate?.toISOString()
 
       let location = ''

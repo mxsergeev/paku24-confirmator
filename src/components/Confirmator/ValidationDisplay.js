@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import validator from 'validator'
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline'
 import dayjs from '../../shared/dayjs'
-import { parseDateTime } from '../../shared/date-fns-tz'
+import { parseInstant } from '../../shared/date-fns-tz'
 import { orderTime } from '../../shared/orderPricing'
 
 function ValidationMessages({ validationArray }) {
@@ -34,7 +34,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
       let time = '---'
 
       try {
-        date = parseDateTime(order?.date, 'order date')
+        date = parseInstant(order?.date, 'order date')
         time = orderTime(order)
       } catch {
         // Keep the validation display safe while an order date is incomplete.

@@ -3,8 +3,8 @@ import {
   HELSINKI_TIMEZONE,
   formatInTimeZone,
   isDateOnly,
-  parseDateOnly,
-  parseDateTime,
+  parseCalendarDate,
+  parseInstant,
 } from '../date-fns-tz.js'
 
 function formatAddress(address) {
@@ -41,18 +41,18 @@ function formatAddressLocation(address) {
 }
 
 function formatOrderDate(value, format, fieldName) {
-  const date = parseDateTime(value, fieldName)
+  const date = parseInstant(value, fieldName)
   return formatInTimeZone(date, format, HELSINKI_TIMEZONE)
 }
 
 function formatBoxDate(value, fieldName) {
   if (isDateOnly(value)) {
-    parseDateOnly(value, fieldName)
+    parseCalendarDate(value, fieldName)
     const [year, month, day] = value.split('-')
     return `${day}-${month}-${year}`
   }
 
-  const date = parseDateTime(value, fieldName)
+  const date = parseInstant(value, fieldName)
   return formatInTimeZone(date, 'dd-MM-yyyy HH:mm', HELSINKI_TIMEZONE)
 }
 

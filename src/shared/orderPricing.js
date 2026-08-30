@@ -2,10 +2,11 @@ import services from '../data/services.json' with { type: 'json' }
 import boxesSettings from '../data/boxes.json' with { type: 'json' }
 import {
   HELSINKI_TIMEZONE,
+  calendarDateToUtc,
   formatInTimeZone,
   isDateOnly,
-  parseDateOnly,
-  parseDateTime,
+  parseCalendarDate,
+  parseInstant,
 } from './date-fns-tz.js'
 import { calculateAutomaticFees } from './fees.js'
 import { toFiniteNumberOrNull } from './orderPrimitives.js'
@@ -30,14 +31,22 @@ function findServiceById(id) {
   return services.find((service) => String(service.id) === String(id)) || null
 }
 
-function parseBoxDate(value, fieldName) {
-  return isDateOnly(value) ? parseDateOnly(value, fieldName) : parseDateTime(value, fieldName)
+function parseBoxCalendarDate(value, fieldName) {
+  if (isDateOnly(value)) return parseCalendarDate(value, fieldName)
+
+  return formatInTimeZone(parseInstant(value, fieldName), 'yyyy-MM-dd', HELSINKI_TIMEZONE)
 }
 
 function calculateBoxPeriod(deliveryDate, returnDate) {
-  const delivery = parseBoxDate(deliveryDate, 'boxes.deliveryDate')
-  const returned = parseBoxDate(returnDate, 'boxes.returnDate')
-  const duration = Math.trunc((returned.getTime() - delivery.getTime()) / DAY_IN_MILLISECONDS)
+  const delivery = calendarDateToUtc(
+    parseBoxCalendarDate(deliveryDate, 'boxes.deliveryDate'),
+    'boxes.deliveryDate',
+  )
+  const returned = calendarDateToUtc(
+    parseBoxCalendarDate(returnDate, 'boxes.returnDate'),
+    'boxes.returnDate',
+  )
+  const duration = Math.round((returned.getTime() - delivery.getTime()) / DAY_IN_MILLISECONDS)
 
   return Math.max(duration, Number(boxesSettings.minPeriod) || 0)
 }
@@ -198,13 +207,14 @@ function getEventColor(order) {
 }
 
 function orderTime(order) {
-  const date = parseDateTime(order?.date, 'order date')
+  const date = parseInstant(order?.date, 'order date')
   return formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)
 }
 
 export {
   servicePrice,
   calculateAutomaticBoxesPrice,
+  calculateBoxPeriod,
   calculateAutomaticPricing,
   resolveActiveFees,
   resolveActiveBoxesPrice,

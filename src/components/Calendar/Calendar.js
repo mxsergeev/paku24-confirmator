@@ -12,8 +12,8 @@ import {
   HELSINKI_TIMEZONE,
   formatInTimeZone,
   isDateOnly,
-  parseDateOnly,
-  parseDateTime,
+  parseCalendarDate,
+  parseInstant,
 } from '../../shared/date-fns-tz'
 import { orderTime } from '../../shared/orderPricing'
 import FullCalendar from '@fullcalendar/react'
@@ -35,15 +35,15 @@ const AVAILABLE_CALENDAR_VIEWS = ['dayGridMonth', 'timeGridWeek', 'listWeek', 'm
 
 function calendarEventStart(value, fieldName) {
   if (isDateOnly(value)) {
-    parseDateOnly(value, fieldName)
+    parseCalendarDate(value, fieldName)
     return value
   }
-  return parseDateTime(value, fieldName).toISOString()
+  return parseInstant(value, fieldName).toISOString()
 }
 
 function calendarEventTime(value, fieldName) {
   if (isDateOnly(value)) return ''
-  return formatInTimeZone(parseDateTime(value, fieldName), 'HH:mm', HELSINKI_TIMEZONE)
+  return formatInTimeZone(parseInstant(value, fieldName), 'HH:mm', HELSINKI_TIMEZONE)
 }
 
 export default function Calendar() {
