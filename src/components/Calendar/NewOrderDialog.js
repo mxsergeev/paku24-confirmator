@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { Dialog, DialogContent, DialogTitle, IconButton } from '@material-ui/core'
 import useMediaQuery from '@material-ui/core/useMediaQuery'
 import CloseIcon from '@material-ui/icons/Close'
@@ -17,21 +17,10 @@ import {
   createAppOrder,
   updateOrderField,
 } from '../../shared/orderModel'
-import { deserializeDraft, serializeDraft } from '../../shared/orderSerialization'
+import { readOrderDraft, useOrderDraft } from '../../hooks/useOrderDraft'
 import { formatOrder } from '../../shared/render/text'
 
 const NEW_ORDER_DRAFT_STORAGE_KEY = 'new_order'
-
-function readNewOrderDraft() {
-  try {
-    const savedOrder = localStorage.getItem(NEW_ORDER_DRAFT_STORAGE_KEY)
-    if (!savedOrder) return null
-    return deserializeDraft(JSON.parse(savedOrder))
-  } catch {
-    localStorage.removeItem(NEW_ORDER_DRAFT_STORAGE_KEY)
-    return null
-  }
-}
 
 export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   const queryClient = useQueryClient()
@@ -41,26 +30,21 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
     id: null,
   })
 
-  const [order, setOrder] = useState(() => readNewOrderDraft() || createAppOrder())
-  const skipNextPersistenceRef = useRef(false)
-
-  useEffect(() => {
-    if (skipNextPersistenceRef.current) {
-      skipNextPersistenceRef.current = false
-      return
-    }
-
-    localStorage.setItem(NEW_ORDER_DRAFT_STORAGE_KEY, JSON.stringify(serializeDraft(order)))
-  }, [order])
+  const [order, setOrder] = useState(
+    () => readOrderDraft(NEW_ORDER_DRAFT_STORAGE_KEY) || createAppOrder()
+  )
+  const { clearDraft, skipNextPersistence } = useOrderDraft(NEW_ORDER_DRAFT_STORAGE_KEY, {
+    value: order,
+  })
 
   const transformedOrderContainerRef = useRef(null)
 
   const reset = useCallback(() => {
-    localStorage.removeItem(NEW_ORDER_DRAFT_STORAGE_KEY)
-    skipNextPersistenceRef.current = true
+    clearDraft()
+    skipNextPersistence()
     setTransformedOrder({ text: '', id: null })
     setOrder(createAppOrder())
-  }, [])
+  }, [clearDraft, skipNextPersistence])
 
   const handleOrderChange = useCallback(
     (key, value) => setOrder((previous) => updateOrderField(previous, key, value)),

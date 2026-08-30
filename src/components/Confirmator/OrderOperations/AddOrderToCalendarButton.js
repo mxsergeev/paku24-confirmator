@@ -2,9 +2,7 @@
 import React, { useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import EventIcon from '@material-ui/icons/Event'
-import addEventToCalendar from '../../../services/calendarAPI'
-import orderPoolAPI from '../../../services/orderPoolAPI'
-import { toCommunicationOrder, toCreateOrderPayload } from '../../../shared/orderSerialization'
+import addOrderToCalendar from '../../../services/orderCalendarWorkflow'
 
 import CustomButton from './CustomButton'
 
@@ -21,19 +19,7 @@ export default function AddOrderToCalendarButton({
   const handleAddingToCalendar = useCallback(async () => {
     try {
       changeStatus(CALENDAR, 'Working', true)
-      const response = await addEventToCalendar({
-        order: toCommunicationOrder(order),
-        orderId,
-      })
-      let oId = orderId
-
-      if (!oId) {
-        const { id } = await orderPoolAPI.add({
-          order: toCreateOrderPayload(order),
-        })
-        oId = id
-      }
-      await orderPoolAPI.confirm(oId)
+      const response = await addOrderToCalendar({ order, orderId })
       changeStatus(CALENDAR, 'Done', true)
       enqueueSnackbar(`${response?.message}\n${response?.createdEvent}`)
     } catch (err) {

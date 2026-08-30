@@ -18,22 +18,11 @@ import {
   revertToInitial,
   updateOrderField,
 } from '../../shared/orderModel'
-import { deserializeDraft, serializeDraft } from '../../shared/orderSerialization'
+import { readOrderDraft, useOrderDraft } from '../../hooks/useOrderDraft'
 import { formatOrder } from '../../shared/render/text'
 import { isObjectId } from '../../shared/validators'
 
 const CONFIRMATOR_DRAFT_STORAGE_KEY = 'confirmator_order'
-
-function readConfirmatorDraft() {
-  try {
-    const savedOrder = localStorage.getItem(CONFIRMATOR_DRAFT_STORAGE_KEY)
-    if (!savedOrder) return null
-    return deserializeDraft(JSON.parse(savedOrder))
-  } catch {
-    localStorage.removeItem(CONFIRMATOR_DRAFT_STORAGE_KEY)
-    return null
-  }
-}
 
 export default function Confirmator() {
   const params = useParams()
@@ -45,12 +34,19 @@ export default function Confirmator() {
   })
 
   const [order, setOrder] = useState(() =>
-    hasExplicitOrderId ? createAppOrder() : readConfirmatorDraft() || createAppOrder()
+    hasExplicitOrderId
+      ? createAppOrder()
+      : readOrderDraft(CONFIRMATOR_DRAFT_STORAGE_KEY) || createAppOrder()
   )
   const [reverting, setReverting] = useState(false)
 
   const routeIdRef = useRef(params.id)
-  const skipNextPersistenceRef = useRef(false)
+  const routeChanged = routeIdRef.current !== params.id
+  const { readDraft, clearDraft, skipNextPersistence } = useOrderDraft(CONFIRMATOR_DRAFT_STORAGE_KEY, {
+    value: order,
+    enabled: !hasExplicitOrderId,
+    skipPersistence: !hasExplicitOrderId && routeChanged,
+  })
 
   useEffect(() => {
     let active = true
@@ -61,8 +57,7 @@ export default function Confirmator() {
       // The initial no-id render is hydrated lazily in useState. Hydrate again
       // only when the route changes while this component remains mounted.
       if (routeChanged) {
-        skipNextPersistenceRef.current = true
-        setOrder(readConfirmatorDraft() || createAppOrder())
+        setOrder(readDraft() || createAppOrder())
       }
       return () => {
         active = false
@@ -87,27 +82,16 @@ export default function Confirmator() {
     return () => {
       active = false
     }
-  }, [hasExplicitOrderId, params.id])
-
-  useEffect(() => {
-    if (hasExplicitOrderId) return
-
-    if (skipNextPersistenceRef.current) {
-      skipNextPersistenceRef.current = false
-      return
-    }
-
-    localStorage.setItem(CONFIRMATOR_DRAFT_STORAGE_KEY, JSON.stringify(serializeDraft(order)))
-  }, [hasExplicitOrderId, order])
+  }, [hasExplicitOrderId, params.id, readDraft, routeChanged, skipNextPersistence])
 
   const transformedOrderContainerRef = useRef(null)
 
   const reset = useCallback(() => {
-    localStorage.removeItem(CONFIRMATOR_DRAFT_STORAGE_KEY)
-    skipNextPersistenceRef.current = true
+    clearDraft()
+    skipNextPersistence()
     setTransformedOrder({ text: '', id: null })
     setOrder(createAppOrder())
-  }, [])
+  }, [clearDraft, skipNextPersistence])
 
   const handleOrderChange = useCallback(
     (key, value) => setOrder((previous) => updateOrderField(previous, key, value)),

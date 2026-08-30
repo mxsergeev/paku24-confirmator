@@ -7,9 +7,7 @@ import MessageBeforeButton from './MessageBeforeButton'
 import ConfirmationEmailSenderButton from './ConfirmationEmailSenderButton'
 import ConfirmationSMSSenderButton from './ConfirmationSMSSenderButton'
 import AddOrderToCalendarButton from './AddOrderToCalendarButton'
-import addEventToCalendar from '../../../services/calendarAPI'
-import orderPoolAPI from '../../../services/orderPoolAPI'
-import { toCommunicationOrder, toCreateOrderPayload } from '../../../shared/orderSerialization'
+import addOrderToCalendar from '../../../services/orderCalendarWorkflow'
 import './OrderOperations.css'
 
 export default function MainOperationsPanel({
@@ -48,19 +46,7 @@ export default function MainOperationsPanel({
 
     try {
       changeStatus('calendar', 'Working', true)
-      const response = await addEventToCalendar({
-        order: toCommunicationOrder(order),
-        orderId,
-      })
-      let oId = orderId
-
-      if (!oId) {
-        const { id } = await orderPoolAPI.add({
-          order: toCreateOrderPayload(order),
-        })
-        oId = id
-      }
-      await orderPoolAPI.confirm(oId)
+      const response = await addOrderToCalendar({ order, orderId })
       changeStatus('calendar', 'Done', true)
       enqueueSnackbar(`${response?.message}\n${response?.createdEvent}`)
 
