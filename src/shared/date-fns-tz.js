@@ -12,6 +12,8 @@ export const HELSINKI_TIMEZONE = 'Europe/Helsinki'
 
 const TIMEZONE = process.env.VITE_TIMEZONE || HELSINKI_TIMEZONE
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+const ISO_INSTANT_PATTERN = /^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:?\d{2})$/i
+const TIMEZONE_SUFFIX_PATTERN = /(?:Z|[+-]\d{2}:?\d{2})$/i
 
 /**
  * Return whether a value is a date-only string in the canonical API format.
@@ -45,6 +47,33 @@ export function parseDateOnly(value, fieldName = 'date') {
 }
 
 /**
+ * Return whether a value is a valid date-only string, including its calendar
+ * validity (for example, reject February 30).
+ */
+export function isValidDateOnly(value) {
+  if (!isDateOnly(value)) return false
+
+  try {
+    parseDateOnly(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Return whether a string has an explicit timezone suffix and ISO datetime
+ * shape. Calendar validity is checked separately by callers where needed.
+ */
+export function isIsoInstant(value) {
+  return typeof value === 'string' && ISO_INSTANT_PATTERN.test(value)
+}
+
+export function hasTimezoneSuffix(value) {
+  return typeof value === 'string' && TIMEZONE_SUFFIX_PATTERN.test(value)
+}
+
+/**
  * Parse a date/time value as an instant.
  *
  * Date instances and strings with an explicit timezone already represent an
@@ -62,7 +91,7 @@ export function parseDateTime(value, fieldName = 'date', timezone = HELSINKI_TIM
   let parsed
 
   if (typeof value === 'string') {
-    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value)
+    const hasTimezone = hasTimezoneSuffix(value)
     parsed = hasTimezone ? new Date(value) : zonedTimeToUtc(value, timezone)
   } else {
     parsed = new Date(value)

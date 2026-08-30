@@ -4,35 +4,18 @@ import {
   SNAPSHOT_FIELDS,
 } from './orderModel.js'
 import { resolveActivePricing } from './orderPricing.js'
-import { isDateOnly, parseDateOnly, parseDateTime } from './date-fns-tz.js'
+import { hasTimezoneSuffix, isDateOnly, parseDateOnly, parseDateTime } from './date-fns-tz.js'
+import {
+  cloneValue,
+  hasOwn,
+  isPlainObject,
+  ORDER_ORIGINS,
+  PRICING_COMPONENTS,
+  PRICING_SOURCES,
+} from './orderPrimitives.js'
 
 const DRAFT_VERSION = 1
-const PRICING_COMPONENTS = ['price', 'fees', 'boxesPrice']
-const PRICING_SOURCES = ['initial', 'auto', 'manual']
-const VALID_ORIGINS = ['app', 'wordpress']
-const TIMEZONE_SUFFIX = /(?:Z|[+-]\d{2}:?\d{2})$/i
 const ADDRESS_FIELDS = ['street', 'index', 'city', 'floor', 'elevator']
-
-function hasOwn(value, key) {
-  return Object.prototype.hasOwnProperty.call(value, key)
-}
-
-function isPlainObject(value) {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
-  const prototype = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
-}
-
-function cloneValue(value) {
-  if (value instanceof Date) return new Date(value.getTime())
-  if (Array.isArray(value)) return value.map((item) => cloneValue(item))
-
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneValue(item)]))
-  }
-
-  return value
-}
 
 function serializeAddress(value) {
   if (!isPlainObject(value)) return cloneValue(value)
@@ -51,7 +34,7 @@ function serializeExtraAddresses(value) {
 }
 
 function serializeDateTime(value, fieldName) {
-  if (typeof value === 'string' && !TIMEZONE_SUFFIX.test(value)) {
+  if (typeof value === 'string' && !hasTimezoneSuffix(value)) {
     throw new Error(`Invalid ${fieldName}: expected an absolute instant`)
   }
   return parseDateTime(value, fieldName).toISOString()
@@ -148,7 +131,7 @@ function serializePricing(value, fieldName = 'pricing') {
 }
 
 function requireOrigin(order) {
-  if (!VALID_ORIGINS.includes(order?.origin)) {
+  if (!ORDER_ORIGINS.includes(order?.origin)) {
     throw new Error(`Invalid order origin: ${String(order?.origin)}`)
   }
   return order.origin

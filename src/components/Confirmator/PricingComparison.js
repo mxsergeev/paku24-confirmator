@@ -9,12 +9,13 @@ import {
   setManualPricing,
   setPricingSource,
 } from '../../shared/orderModel'
+import { hasOwn, PRICING_COMPONENTS } from '../../shared/orderPrimitives'
 
-const PRICING_COMPONENTS = [
-  { key: 'price', label: 'Price', inputLabel: 'Manual price', unit: '€' },
-  { key: 'fees', label: 'Fees' },
-  { key: 'boxesPrice', label: 'Boxes price', inputLabel: 'Manual boxes price', unit: '€' },
-]
+const PRICING_COMPONENT_DETAILS = {
+  price: { label: 'Price', inputLabel: 'Manual price', unit: '€' },
+  fees: { label: 'Fees' },
+  boxesPrice: { label: 'Boxes price', inputLabel: 'Manual boxes price', unit: '€' },
+}
 
 function hasValue(value) {
   return value !== null && value !== undefined
@@ -24,7 +25,7 @@ function hasInitialValue(order, component) {
   return (
     order?.origin === 'wordpress' &&
     order.initialSnapshot &&
-    Object.prototype.hasOwnProperty.call(order.initialSnapshot, component) &&
+    hasOwn(order.initialSnapshot, component) &&
     hasValue(order.initialSnapshot[component])
   )
 }
@@ -185,17 +186,20 @@ export default function PricingComparison({ order, onChange, onRevert, reverting
 
   return (
     <div className="pricing-comparison" aria-label="Pricing comparison">
-      {PRICING_COMPONENTS.map((component) => (
-        <PricingRow
-          key={component.key}
-          order={order}
-          component={component}
-          initialVisible={initialVisible}
-          automaticValue={automaticPricing[component.key]}
-          activeValue={activePricing[component.key]}
-          onChange={onChange}
-        />
-      ))}
+      {PRICING_COMPONENTS.map((key) => {
+        const component = { key, ...PRICING_COMPONENT_DETAILS[key] }
+        return (
+          <PricingRow
+            key={component.key}
+            order={order}
+            component={component}
+            initialVisible={initialVisible}
+            automaticValue={automaticPricing[component.key]}
+            activeValue={activePricing[component.key]}
+            onChange={onChange}
+          />
+        )
+      })}
       {initialVisible && onRevert && (
         <button
           type="button"

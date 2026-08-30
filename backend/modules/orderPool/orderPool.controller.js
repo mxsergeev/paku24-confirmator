@@ -23,6 +23,7 @@ import {
   createAppOrder,
   createWordPressOrder,
 } from '../../../src/shared/orderModel.js'
+import { hasOwn, isPlainObject } from '../../../src/shared/orderPrimitives.js'
 import { normalizeWordPressOrderPayload } from '../../../src/shared/wordpressOrderPayload.js'
 
 const ORDER_POOL_PAGE_SIZE = 20
@@ -69,16 +70,6 @@ function checkKeyOrAuth(req, res, next) {
 
   req.orderPoolOrigin = 'app'
   return authMW.authenticateAccessToken(req, res, next)
-}
-
-function isPlainObject(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
-  const prototype = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
-}
-
-function hasOwn(value, key) {
-  return Object.prototype.hasOwnProperty.call(value, key)
 }
 
 function validationError(message) {

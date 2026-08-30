@@ -8,22 +8,15 @@ import {
   parseDateTime,
 } from './date-fns-tz.js'
 import { calculateAutomaticFees } from './fees.js'
+import { toFiniteNumberOrNull } from './orderPrimitives.js'
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
-
-function finiteNumber(value) {
-  if (value === null || value === undefined) return null
-  if (typeof value === 'string' && value.trim() === '') return null
-  if (typeof value !== 'number' && typeof value !== 'string') return null
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
 
 function normalizeFeeList(value, description) {
   if (!Array.isArray(value)) throw new Error(`${description} must be an array`)
 
   return value.map((fee) => {
-    const amount = finiteNumber(fee?.amount)
+    const amount = toFiniteNumberOrNull(fee?.amount)
     if (!fee || typeof fee !== 'object' || amount === null) {
       throw new Error(`${description} must contain finite fee amounts`)
     }
@@ -56,8 +49,8 @@ function sumFees(feeList) {
 function servicePrice(order) {
   const embeddedService = order?.service
   const catalogService = findServiceById(embeddedService?.id)
-  const hourlyRate = finiteNumber(catalogService?.pricePerHour ?? embeddedService?.pricePerHour)
-  const duration = finiteNumber(order?.duration)
+  const hourlyRate = toFiniteNumberOrNull(catalogService?.pricePerHour ?? embeddedService?.pricePerHour)
+  const duration = toFiniteNumberOrNull(order?.duration)
 
   if (hourlyRate === null || duration === null) return 0
   return hourlyRate * duration
@@ -65,14 +58,14 @@ function servicePrice(order) {
 
 function calculateAutomaticBoxesPrice(order) {
   const boxes = order?.boxes
-  const amount = finiteNumber(boxes?.amount)
+  const amount = toFiniteNumberOrNull(boxes?.amount)
 
   if (amount === null || amount <= 0) return 0
 
   const duration = calculateBoxPeriod(boxes?.deliveryDate, boxes?.returnDate)
-  const pricePerBox = finiteNumber(boxesSettings.price) ?? 0
-  const deliveryFee = finiteNumber(boxesSettings.deliveryFee) ?? 0
-  const pickupFee = finiteNumber(boxesSettings.pickupFee) ?? 0
+  const pricePerBox = toFiniteNumberOrNull(boxesSettings.price) ?? 0
+  const deliveryFee = toFiniteNumberOrNull(boxesSettings.deliveryFee) ?? 0
+  const pickupFee = toFiniteNumberOrNull(boxesSettings.pickupFee) ?? 0
 
   return amount * pricePerBox * duration + deliveryFee + pickupFee
 }
@@ -117,7 +110,7 @@ function resolveActiveBoxesPrice(order) {
 
   if (source === 'initial') {
     const value = order?.initialSnapshot?.boxesPrice
-    const number = finiteNumber(value)
+    const number = toFiniteNumberOrNull(value)
     if (number === null) {
       throw new Error('Cannot use initial boxesPrice: the snapshot value is missing or invalid')
     }
@@ -126,7 +119,7 @@ function resolveActiveBoxesPrice(order) {
 
   if (source === 'manual') {
     const value = order?.pricing?.manual?.boxesPrice
-    const number = finiteNumber(value)
+    const number = toFiniteNumberOrNull(value)
     if (number === null) {
       throw new Error('Cannot use manual boxesPrice: the manual value is missing or invalid')
     }
@@ -143,7 +136,7 @@ function resolveActivePrice(order, fees, boxesPrice) {
 
   if (source === 'initial') {
     const value = order?.initialSnapshot?.price
-    const number = finiteNumber(value)
+    const number = toFiniteNumberOrNull(value)
     if (number === null) {
       throw new Error('Cannot use initial price: the snapshot value is missing or invalid')
     }
@@ -152,7 +145,7 @@ function resolveActivePrice(order, fees, boxesPrice) {
 
   if (source === 'manual') {
     const value = order?.pricing?.manual?.price
-    const number = finiteNumber(value)
+    const number = toFiniteNumberOrNull(value)
     if (number === null) {
       throw new Error('Cannot use manual price: the manual value is missing or invalid')
     }

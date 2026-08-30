@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   HELSINKI_TIMEZONE,
   isDateOnly,
+  isIsoInstant,
+  isValidDateOnly,
   parseDateOnly,
   parseDateTime,
 } from './date-fns-tz.js'
@@ -28,9 +30,23 @@ describe('date-only values', () => {
     },
   )
 
+  it('exposes calendar validity separately from date-only shape', () => {
+    expect(isValidDateOnly('2026-03-12')).toBe(true)
+    expect(isValidDateOnly('2026-02-29')).toBe(false)
+    expect(isValidDateOnly('2026-3-12')).toBe(false)
+  })
+
   it('rejects values that are not date-only strings', () => {
     expect(() => parseDateOnly('2026-01-15T00:00:00Z')).toThrow('Invalid date')
     expect(() => parseDateOnly('2026-1-15')).toThrow('Invalid date')
+  })
+})
+
+describe('ISO instant helpers', () => {
+  it('recognizes only strings with an explicit timezone suffix', () => {
+    expect(isIsoInstant('2026-01-15T09:00:00Z')).toBe(true)
+    expect(isIsoInstant('2026-01-15T09:00:00+02:00')).toBe(true)
+    expect(isIsoInstant('2026-01-15T09:00:00')).toBe(false)
   })
 })
 

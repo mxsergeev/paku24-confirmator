@@ -7,6 +7,15 @@ import {
   normalizeFeeList,
   resolveActivePricing,
 } from './orderPricing.js'
+import {
+  cloneValue,
+  hasOwn,
+  isPlainObject,
+  ORDER_ORIGINS,
+  PRICING_COMPONENTS,
+  PRICING_SOURCES,
+  toFiniteNumberOrNull,
+} from './orderPrimitives.js'
 
 const BOOKING_FIELDS = [
   'distance',
@@ -49,9 +58,6 @@ const SNAPSHOT_FIELDS = [
   'comment',
 ]
 
-const PRICING_COMPONENTS = ['price', 'fees', 'boxesPrice']
-const PRICING_SOURCES = ['initial', 'auto', 'manual']
-
 const RESET_AFTER_EDIT = {
   duration: ['price'],
   service: ['fees', 'price'],
@@ -75,35 +81,6 @@ const LIFECYCLE_FIELDS = [
   'invoiceNumber',
   'googleEventId',
 ]
-
-function cloneValue(value) {
-  if (value instanceof Date) return new Date(value.getTime())
-  if (Array.isArray(value)) return value.map((item) => cloneValue(item))
-
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneValue(item)]))
-  }
-
-  return value
-}
-
-function hasOwn(value, key) {
-  return Object.prototype.hasOwnProperty.call(value, key)
-}
-
-function isPlainObject(value) {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
-  const prototype = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
-}
-
-function finiteNumber(value) {
-  if (value === null || value === undefined) return null
-  if (typeof value === 'string' && value.trim() === '') return null
-  if (typeof value !== 'number' && typeof value !== 'string') return null
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
 
 function isPresent(value) {
   return value !== null && value !== undefined
@@ -156,11 +133,11 @@ function makeDefaultState() {
     duration: 1,
     service: {
       ...cloneValue(service),
-      pricePerHour: finiteNumber(service.pricePerHour) ?? 0,
+      pricePerHour: toFiniteNumberOrNull(service.pricePerHour) ?? 0,
     },
     paymentType: {
       ...cloneValue(paymentType),
-      fee: finiteNumber(paymentType.fee) ?? 0,
+      fee: toFiniteNumberOrNull(paymentType.fee) ?? 0,
     },
     address: makeAddress(),
     extraAddresses: [],
@@ -212,7 +189,7 @@ function normalizeCurrentBoxes(value, fallback) {
     ...cloneValue(input),
   }
 
-  const amount = finiteNumber(boxes.amount)
+  const amount = toFiniteNumberOrNull(boxes.amount)
   if (amount === null || amount < 0) throw new Error('Invalid boxes.amount')
   boxes.amount = amount
 
@@ -238,7 +215,7 @@ function normalizeSnapshotBoxes(value) {
     }
   }
 
-  const amount = finiteNumber(value.amount)
+  const amount = toFiniteNumberOrNull(value.amount)
   if (amount === null || amount < 0) {
     throw new Error('Invalid initialSnapshot.boxes: amount must be finite and non-negative')
   }
@@ -256,7 +233,7 @@ function normalizePricingValue(component, value, fieldName) {
     return normalizeFeeList(value, `Invalid ${fieldName}`).map((fee) => cloneValue(fee))
   }
 
-  const number = finiteNumber(value)
+  const number = toFiniteNumberOrNull(value)
   if (number === null) throw new Error(`Invalid ${fieldName}`)
   return number
 }
@@ -405,7 +382,7 @@ function normalizeCanonicalAddress(value, field) {
   if (typeof value.index !== 'string') throw new Error(`Invalid ${field}.index`)
   if (typeof value.city !== 'string') throw new Error(`Invalid ${field}.city`)
 
-  const floor = finiteNumber(value.floor)
+  const floor = toFiniteNumberOrNull(value.floor)
   if (floor === null) throw new Error(`Invalid ${field}.floor`)
   if (typeof value.elevator !== 'boolean') throw new Error(`Invalid ${field}.elevator`)
 
@@ -437,7 +414,7 @@ function normalizeCanonicalBoxes(value, field = 'boxes') {
     }
   }
 
-  const amount = finiteNumber(value.amount)
+  const amount = toFiniteNumberOrNull(value.amount)
   if (amount === null || amount < 0) throw new Error(`Invalid ${field}.amount`)
 
   return {
@@ -468,7 +445,7 @@ function normalizeCanonicalBooking(input, fieldPrefix = '') {
         normalizeCanonicalAddress(address, `${fieldName}.${index}`),
       )
     } else if (field === 'duration') {
-      const duration = finiteNumber(value)
+      const duration = toFiniteNumberOrNull(value)
       if (duration === null) throw new Error(`Invalid ${fieldName}`)
       result[field] = duration
     } else if (['distance', 'name', 'email', 'phone', 'comment'].includes(field)) {
@@ -536,7 +513,7 @@ function hydrateCanonicalOrder(input) {
 
   const result = normalizeCanonicalBooking(input)
   const origin = requireField(input, 'origin')
-  if (!['app', 'wordpress'].includes(origin)) {
+  if (!ORDER_ORIGINS.includes(origin)) {
     throw new Error(`Invalid order origin: ${String(origin)}`)
   }
 

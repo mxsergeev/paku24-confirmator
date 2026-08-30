@@ -1,4 +1,11 @@
-import { isDateOnly, parseDateOnly } from './date-fns-tz.js'
+import { isDateOnly, isIsoInstant, parseDateOnly } from './date-fns-tz.js'
+import {
+  cloneValue,
+  hasOwn,
+  isPlainObject,
+  PRICING_COMPONENTS,
+  requireFiniteNumber,
+} from './orderPrimitives.js'
 
 const BOOKING_FIELDS = [
   'date',
@@ -16,43 +23,9 @@ const BOOKING_FIELDS = [
 ]
 
 const BOX_PRICE_FIELDS = ['pricePerBox', 'deliveryPrice', 'returnPrice']
-const PRICE_FIELDS = ['price', 'fees', 'boxesPrice']
-const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:?\d{2})$/i
-
-function isPlainObject(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
-  const prototype = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
-}
-
-function hasOwn(value, key) {
-  return Object.prototype.hasOwnProperty.call(value, key)
-}
-
-function finiteNumber(value, field) {
-  if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
-    throw new Error(`Invalid ${field}: expected a finite number`)
-  }
-  if (typeof value !== 'number' && typeof value !== 'string') {
-    throw new Error(`Invalid ${field}: expected a finite number`)
-  }
-
-  const number = Number(value)
-  if (!Number.isFinite(number)) throw new Error(`Invalid ${field}: expected a finite number`)
-  return number
-}
-
-function cloneValue(value) {
-  if (value instanceof Date) return new Date(value.getTime())
-  if (Array.isArray(value)) return value.map(cloneValue)
-  if (isPlainObject(value)) {
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneValue(item)]))
-  }
-  return value
-}
 
 function parseIsoInstant(value, field) {
-  if (typeof value !== 'string' || !ISO_INSTANT.test(value)) {
+  if (!isIsoInstant(value)) {
     throw new Error(`Invalid ${field}: expected an ISO instant with timezone`)
   }
 
@@ -81,7 +54,10 @@ function normalizeAddress(value, field) {
     street: value.street,
     index: value.index,
     city: value.city,
-    floor: value.floor === null || value.floor === undefined ? 0 : finiteNumber(value.floor, `${field}.floor`),
+    floor:
+      value.floor === null || value.floor === undefined
+        ? 0
+        : requireFiniteNumber(value.floor, `${field}.floor`),
     elevator: value.elevator ?? false,
   }
 }
@@ -98,7 +74,7 @@ function normalizeEmbedded(value, field, rateField) {
 
   return {
     ...cloneValue(value),
-    [rateField]: finiteNumber(value[rateField], `${field}.${rateField}`),
+    [rateField]: requireFiniteNumber(value[rateField], `${field}.${rateField}`),
   }
 }
 
@@ -110,7 +86,7 @@ function normalizeFees(value) {
       throw new Error(`Invalid fees.${index}.name`)
     }
     if (!hasOwn(fee, 'amount')) throw new Error(`Invalid fees.${index}.amount`)
-    return { ...cloneValue(fee), amount: finiteNumber(fee.amount, `fees.${index}.amount`) }
+    return { ...cloneValue(fee), amount: requireFiniteNumber(fee.amount, `fees.${index}.amount`) }
   })
 }
 
@@ -137,14 +113,14 @@ function normalizeBoxes(value, orderDate) {
   }
 
   const boxes = {
-    amount: finiteNumber(value.amount, 'boxes.amount'),
+    amount: requireFiniteNumber(value.amount, 'boxes.amount'),
     deliveryDate: normalizeBoxDate(value.deliveryDate, 'boxes.deliveryDate'),
     returnDate: normalizeBoxDate(value.returnDate, 'boxes.returnDate'),
   }
   if (boxes.amount < 0) throw new Error('Invalid boxes.amount: must be non-negative')
 
   BOX_PRICE_FIELDS.forEach((field) => {
-    if (hasOwn(value, field)) boxes[field] = finiteNumber(value[field], `boxes.${field}`)
+    if (hasOwn(value, field)) boxes[field] = requireFiniteNumber(value[field], `boxes.${field}`)
   })
   return boxes
 }
@@ -161,7 +137,7 @@ export function normalizeWordPressOrderPayload(input) {
     if (!hasOwn(input, field)) return
 
     if (field === 'date') result.date = parseIsoInstant(input.date, 'date')
-    else if (field === 'duration') result.duration = finiteNumber(input.duration, 'duration')
+    else if (field === 'duration') result.duration = requireFiniteNumber(input.duration, 'duration')
     else if (field === 'service') result.service = normalizeEmbedded(input.service, 'service', 'pricePerHour')
     else if (field === 'paymentType') result.paymentType = normalizeEmbedded(input.paymentType, 'paymentType', 'fee')
     else if (field === 'address' || field === 'destination') result[field] = normalizeAddress(input[field], field)
@@ -172,9 +148,9 @@ export function normalizeWordPressOrderPayload(input) {
     else result[field] = cloneValue(input[field])
   })
 
-  PRICE_FIELDS.forEach((field) => {
+  PRICING_COMPONENTS.forEach((field) => {
     if (!hasOwn(input, field) || input[field] === null || input[field] === undefined) return
-    result[field] = field === 'fees' ? normalizeFees(input.fees) : finiteNumber(input[field], field)
+    result[field] = field === 'fees' ? normalizeFees(input.fees) : requireFiniteNumber(input[field], field)
   })
 
   return result

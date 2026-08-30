@@ -1,22 +1,8 @@
 import mongoose from 'mongoose'
 import * as logger from '../utils/logger.js'
 import { syncOrderToCalendar, deleteOrderEvent } from '../modules/calendar/calendar.sync.js'
-
-const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
-const TIMEZONE_SUFFIX = /(?:Z|[+-]\d{2}:?\d{2})$/i
-
-function isValidDateOnly(value) {
-  const match = DATE_ONLY_PATTERN.exec(value)
-  if (!match) return false
-
-  const [, year, month, day] = match.map(Number)
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  )
-}
+import { isDateOnly, isIsoInstant, isValidDateOnly } from '../../src/shared/date-fns-tz.js'
+import { ORDER_ORIGINS, PRICING_SOURCES } from '../../src/shared/orderPrimitives.js'
 
 /**
  * A box date is either a calendar date (which must remain a string) or an
@@ -39,7 +25,7 @@ class DateOrDateOnly extends mongoose.SchemaType {
     }
 
     if (typeof value === 'string') {
-      if (DATE_ONLY_PATTERN.test(value)) {
+      if (isDateOnly(value)) {
         if (!isValidDateOnly(value)) {
           throw new mongoose.Error.CastError(this.instance, value, this.path)
         }
@@ -49,13 +35,7 @@ class DateOrDateOnly extends mongoose.SchemaType {
       // Datetime values use the ISO calendar portion. Check it separately
       // because JavaScript's Date parser normalizes some impossible dates
       // (for example, February 31) instead of rejecting them.
-      if (!DATE_ONLY_PATTERN.test(value.slice(0, 10)) || !value.includes('T')) {
-        throw new mongoose.Error.CastError(this.instance, value, this.path)
-      }
-      if (!TIMEZONE_SUFFIX.test(value)) {
-        throw new mongoose.Error.CastError(this.instance, value, this.path)
-      }
-      if (!isValidDateOnly(value.slice(0, 10))) {
+      if (!isIsoInstant(value) || !isValidDateOnly(value.slice(0, 10))) {
         throw new mongoose.Error.CastError(this.instance, value, this.path)
       }
 
@@ -184,9 +164,9 @@ const initialSnapshotSchema = nestedSchema({
 })
 
 const pricingSourceSchema = nestedSchema({
-  price: { type: String, enum: ['initial', 'auto', 'manual'], default: 'auto' },
-  fees: { type: String, enum: ['initial', 'auto', 'manual'], default: 'auto' },
-  boxesPrice: { type: String, enum: ['initial', 'auto', 'manual'], default: 'auto' },
+  price: { type: String, enum: PRICING_SOURCES, default: 'auto' },
+  fees: { type: String, enum: PRICING_SOURCES, default: 'auto' },
+  boxesPrice: { type: String, enum: PRICING_SOURCES, default: 'auto' },
 })
 
 const manualPricingSchema = nestedSchema({
@@ -222,7 +202,7 @@ const order = new mongoose.Schema({
   // Immutable source metadata
   origin: {
     type: String,
-    enum: ['wordpress', 'app'],
+    enum: ORDER_ORIGINS,
     immutable: true,
   },
   initialSnapshot: {
