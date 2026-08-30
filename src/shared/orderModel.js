@@ -91,6 +91,12 @@ function hasOwn(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key)
 }
 
+function isPlainObject(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
 function finiteNumber(value) {
   if (value === null || value === undefined) return null
   if (typeof value === 'string' && value.trim() === '') return null
@@ -255,7 +261,7 @@ function normalizePricingValue(component, value, fieldName) {
   return number
 }
 
-function normalizeSnapshot(value) {
+function normalizeSnapshot(value, { requireBooking = false } = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Invalid initialSnapshot')
   }
@@ -263,7 +269,16 @@ function normalizeSnapshot(value) {
   const snapshot = {}
 
   SNAPSHOT_FIELDS.forEach((field) => {
-    if (!hasOwn(value, field)) return
+    if (!hasOwn(value, field)) {
+      if (requireBooking && !PRICING_COMPONENTS.includes(field)) {
+        throw new Error(`Invalid initialSnapshot: ${field} is required`)
+      }
+      return
+    }
+
+    if (requireBooking && !PRICING_COMPONENTS.includes(field) && value[field] === undefined) {
+      throw new Error(`Invalid initialSnapshot.${field}`)
+    }
 
     if (field === 'date') {
       snapshot.date = parseDateTime(value.date, 'initialSnapshot.date')
@@ -279,8 +294,11 @@ function normalizeSnapshot(value) {
   return snapshot
 }
 
-function normalizePricing(value, initialSnapshot) {
-  if (value === null || value === undefined) return makePricing()
+function normalizePricing(value, initialSnapshot, { requireComplete = false } = {}) {
+  if (value === null || value === undefined) {
+    if (requireComplete) throw new Error('Invalid pricing: required')
+    return makePricing()
+  }
   if (typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid pricing')
 
   const sourceInput = value.source
@@ -302,6 +320,16 @@ function normalizePricing(value, initialSnapshot) {
   const pricing = makePricing()
 
   PRICING_COMPONENTS.forEach((component) => {
+    if (requireComplete && !sourceInput) throw new Error('Invalid pricing.source')
+    if (requireComplete && !manualInput) throw new Error('Invalid pricing.manual')
+
+    if (requireComplete && !hasOwn(sourceInput, component)) {
+      throw new Error(`Invalid pricing.source.${component}: required`)
+    }
+    if (requireComplete && !hasOwn(manualInput, component)) {
+      throw new Error(`Invalid pricing.manual.${component}: required`)
+    }
+
     const source = sourceInput && hasOwn(sourceInput, component) ? sourceInput[component] : 'auto'
     if (!PRICING_SOURCES.includes(source)) {
       throw new Error(`Invalid pricing source for ${component}: ${String(source)}`)
@@ -338,66 +366,202 @@ function normalizePricing(value, initialSnapshot) {
   return pricing
 }
 
-function normalizeLifecycleField(result, input, field) {
-  if (!hasOwn(input, field) || input[field] === undefined) return
-
-  if (field === 'confirmed' || field === 'markedForDeletion') {
-    result[field] = Boolean(input[field])
-  } else if (field.endsWith('At') || field === 'receivedAt') {
-    result[field] = input[field] === null ? null : parseDateTime(input[field], field)
-  } else {
-    result[field] = cloneValue(input[field])
+function defaultLifecycleState() {
+  return {
+    id: null,
+    _id: null,
+    confirmed: false,
+    confirmedBy: null,
+    confirmedAt: null,
+    receivedAt: null,
+    canceledAt: null,
+    deletedAt: null,
+    markedForDeletion: false,
+    invoiceNumber: null,
+    googleEventId: null,
   }
 }
 
-function normalizeOrder(input = {}) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new Error('Order must be an object')
+function requireField(input, field, { allowNull = false } = {}) {
+  if (!hasOwn(input, field) || input[field] === undefined || (!allowNull && input[field] === null)) {
+    throw new Error(`Invalid order: ${field} is required`)
+  }
+  return input[field]
+}
+
+function requireObject(value, field) {
+  if (!isPlainObject(value)) throw new Error(`Invalid ${field}`)
+  return value
+}
+
+function normalizeCanonicalAddress(value, field) {
+  requireObject(value, field)
+  for (const key of ['street', 'index', 'city', 'floor', 'elevator']) {
+    if (!hasOwn(value, key) || value[key] === undefined || value[key] === null) {
+      throw new Error(`Invalid ${field}.${key}: required`)
+    }
+  }
+  if (typeof value.street !== 'string') throw new Error(`Invalid ${field}.street`)
+  if (typeof value.index !== 'string') throw new Error(`Invalid ${field}.index`)
+  if (typeof value.city !== 'string') throw new Error(`Invalid ${field}.city`)
+
+  const floor = finiteNumber(value.floor)
+  if (floor === null) throw new Error(`Invalid ${field}.floor`)
+  if (typeof value.elevator !== 'boolean') throw new Error(`Invalid ${field}.elevator`)
+
+  return {
+    street: value.street,
+    index: value.index,
+    city: value.city,
+    floor,
+    elevator: value.elevator,
+  }
+}
+
+function stripAddressMetadata(value) {
+  if (!isPlainObject(value)) return cloneValue(value)
+
+  return Object.fromEntries(
+    ['street', 'index', 'city', 'floor', 'elevator']
+      .filter((field) => hasOwn(value, field))
+      .map((field) => [field, cloneValue(value[field])]),
+  )
+}
+
+function normalizeCanonicalBoxes(value, field = 'boxes') {
+  requireObject(value, field)
+
+  for (const key of ['deliveryDate', 'returnDate', 'amount']) {
+    if (!hasOwn(value, key) || value[key] === undefined || value[key] === null) {
+      throw new Error(`Invalid ${field}.${key}: required`)
+    }
   }
 
-  const defaults = makeDefaultState()
-  const result = {
-    ...defaults,
-    service: cloneValue(defaults.service),
-    paymentType: cloneValue(defaults.paymentType),
-    address: cloneValue(defaults.address),
-    extraAddresses: [],
-    destination: cloneValue(defaults.destination),
-    boxes: cloneValue(defaults.boxes),
-    pricing: makePricing(),
+  const amount = finiteNumber(value.amount)
+  if (amount === null || amount < 0) throw new Error(`Invalid ${field}.amount`)
+
+  return {
+    ...cloneValue(value),
+    deliveryDate: normalizeBoxDate(value.deliveryDate, `${field}.deliveryDate`),
+    returnDate: normalizeBoxDate(value.returnDate, `${field}.returnDate`),
+    amount,
   }
+}
+
+function normalizeCanonicalBooking(input, fieldPrefix = '') {
+  const result = {}
 
   BOOKING_FIELDS.forEach((field) => {
-    if (!hasOwn(input, field) || input[field] === undefined) return
+    const nullableField = ['eventColor', 'name', 'email', 'phone', 'comment'].includes(field)
+    const value = requireField(input, field, { allowNull: nullableField })
+    const fieldName = fieldPrefix ? `${fieldPrefix}.${field}` : field
 
     if (field === 'date') {
-      result.date = parseDateTime(input.date)
+      result[field] = parseDateTime(value, fieldName)
     } else if (field === 'boxes') {
-      result.boxes = normalizeCurrentBoxes(input.boxes, defaults.boxes)
+      result[field] = normalizeCanonicalBoxes(value, fieldName)
+    } else if (field === 'address' || field === 'destination') {
+      result[field] = normalizeCanonicalAddress(value, fieldName)
     } else if (field === 'extraAddresses') {
-      if (!Array.isArray(input.extraAddresses)) throw new Error('Invalid extraAddresses')
-      result.extraAddresses = cloneValue(input.extraAddresses)
+      if (!Array.isArray(value)) throw new Error(`Invalid ${fieldName}`)
+      result[field] = value.map((address, index) =>
+        normalizeCanonicalAddress(address, `${fieldName}.${index}`),
+      )
+    } else if (field === 'duration') {
+      const duration = finiteNumber(value)
+      if (duration === null) throw new Error(`Invalid ${fieldName}`)
+      result[field] = duration
+    } else if (['distance', 'name', 'email', 'phone', 'comment'].includes(field)) {
+      if (value !== null && typeof value !== 'string') throw new Error(`Invalid ${fieldName}`)
+      result[field] = value
+    } else if (field === 'eventColor') {
+      if (value !== null && typeof value !== 'string') throw new Error(`Invalid ${fieldName}`)
+      result[field] = value
+    } else if (field === 'hsy' || field === 'XL') {
+      if (typeof value !== 'boolean') throw new Error(`Invalid ${fieldName}`)
+      result[field] = value
     } else {
-      result[field] = cloneValue(input[field])
+      requireObject(value, fieldName)
+      result[field] = cloneValue(value)
     }
   })
 
-  if (hasOwn(input, 'origin') && input.origin !== undefined) {
-    if (!['app', 'wordpress'].includes(input.origin)) {
-      throw new Error(`Invalid order origin: ${String(input.origin)}`)
+  return result
+}
+
+function normalizeCanonicalSnapshot(value) {
+  const snapshot = normalizeSnapshot(value, { requireBooking: true })
+
+  // Snapshot booking fields use the exact same canonical shape as the current
+  // order. Pricing fields remain optional because WordPress may not provide
+  // every imported component.
+  const booking = normalizeCanonicalBooking(snapshot, 'initialSnapshot')
+  return {
+    ...booking,
+    ...PRICING_COMPONENTS.reduce((result, component) => {
+      if (hasOwn(snapshot, component)) result[component] = snapshot[component]
+      return result
+    }, {}),
+  }
+}
+
+function normalizeCanonicalLifecycle(input, result) {
+  const lifecycle = defaultLifecycleState()
+
+  LIFECYCLE_FIELDS.forEach((field) => {
+    if (!hasOwn(input, field) || input[field] === undefined) return
+
+    if (field === 'confirmed' || field === 'markedForDeletion') {
+      if (typeof input[field] !== 'boolean') throw new Error(`Invalid ${field}`)
+      lifecycle[field] = input[field]
+    } else if (field.endsWith('At') || field === 'receivedAt') {
+      lifecycle[field] = input[field] === null ? null : parseDateTime(input[field], field)
+    } else {
+      lifecycle[field] = cloneValue(input[field])
     }
-    result.origin = input.origin
+  })
+
+  return { ...result, ...lifecycle }
+}
+
+/**
+ * Hydrate a complete order returned by the API or persistence layer.
+ *
+ * Unlike the creation functions this intentionally has no booking defaults:
+ * a missing date, service, address, or boxes value is malformed persisted
+ * state, not a request to start a new order today.
+ */
+function hydrateCanonicalOrder(input) {
+  if (!isPlainObject(input)) throw new Error('Order must be a plain object')
+
+  const result = normalizeCanonicalBooking(input)
+  const origin = requireField(input, 'origin')
+  if (!['app', 'wordpress'].includes(origin)) {
+    throw new Error(`Invalid order origin: ${String(origin)}`)
   }
 
-  if (hasOwn(input, 'initialSnapshot') && input.initialSnapshot !== undefined) {
-    result.initialSnapshot = input.initialSnapshot === null ? null : normalizeSnapshot(input.initialSnapshot)
+  if (!hasOwn(input, 'initialSnapshot')) {
+    throw new Error('Invalid order: initialSnapshot is required')
+  }
+  if (origin === 'app' && input.initialSnapshot !== null) {
+    throw new Error('Invalid order: app orders cannot have an initialSnapshot')
+  }
+  if (origin === 'wordpress' && input.initialSnapshot === null) {
+    throw new Error('Invalid order: WordPress orders require an initialSnapshot')
   }
 
-  result.pricing = normalizePricing(input.pricing, result.initialSnapshot)
+  result.origin = origin
+  result.initialSnapshot =
+    input.initialSnapshot === null ? null : normalizeCanonicalSnapshot(input.initialSnapshot)
+  result.pricing = normalizePricing(input.pricing, result.initialSnapshot, { requireComplete: true })
 
-  LIFECYCLE_FIELDS.forEach((field) => normalizeLifecycleField(result, input, field))
+  return materializeActivePricing(normalizeCanonicalLifecycle(input, result))
+}
 
-  return materializeActivePricing(result)
+// Kept as a public compatibility name. New callers should use the explicit
+// hydrateCanonicalOrder name so construction and hydration cannot be confused.
+function normalizeOrder(input) {
+  return hydrateCanonicalOrder(input)
 }
 
 function rejectClientSnapshot(input) {
@@ -433,18 +597,48 @@ function importedPricingValues(input) {
   return imported
 }
 
+function constructBookingOrder(input, origin) {
+  const defaults = makeDefaultState()
+  const result = {
+    ...defaults,
+    service: cloneValue(defaults.service),
+    paymentType: cloneValue(defaults.paymentType),
+    address: cloneValue(defaults.address),
+    extraAddresses: [],
+    destination: cloneValue(defaults.destination),
+    boxes: cloneValue(defaults.boxes),
+    pricing: makePricing(),
+    origin,
+    initialSnapshot: null,
+  }
+
+  BOOKING_FIELDS.forEach((field) => {
+    if (!hasOwn(input, field) || input[field] === undefined) return
+
+    if (field === 'date') {
+      result.date = parseDateTime(input.date, 'date')
+    } else if (field === 'boxes') {
+      result.boxes = normalizeCurrentBoxes(input.boxes, defaults.boxes)
+    } else if (field === 'extraAddresses') {
+      if (!Array.isArray(input.extraAddresses)) throw new Error('Invalid extraAddresses')
+      result.extraAddresses = input.extraAddresses.map(stripAddressMetadata)
+    } else if (field === 'address' || field === 'destination') {
+      result[field] = stripAddressMetadata(input[field])
+    } else {
+      result[field] = cloneValue(input[field])
+    }
+  })
+
+  return result
+}
+
 function createAppOrder(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new Error('Order must be an object')
   }
   rejectClientSnapshot(input)
 
-  return normalizeOrder({
-    ...input,
-    origin: 'app',
-    initialSnapshot: null,
-    pricing: makePricing(),
-  })
+  return materializeActivePricing(constructBookingOrder(input, 'app'))
 }
 
 function createWordPressOrder(input = {}) {
@@ -454,12 +648,7 @@ function createWordPressOrder(input = {}) {
   rejectClientSnapshot(input)
 
   const imported = importedPricingValues(input)
-  const normalized = normalizeOrder({
-    ...input,
-    origin: 'wordpress',
-    initialSnapshot: null,
-    pricing: makePricing(),
-  })
+  const normalized = materializeActivePricing(constructBookingOrder(input, 'wordpress'))
   const snapshot = snapshotFromOrder(normalized, imported)
   const source = {
     price: hasOwn(imported, 'price') ? 'initial' : 'auto',
@@ -516,12 +705,6 @@ function resetInitialPricing(order, components) {
       },
     },
   }
-}
-
-function isPlainObject(value) {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
-  const prototype = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
 }
 
 function assertOrderPatch(patch) {
@@ -742,15 +925,21 @@ function revertToInitial(order) {
   return restored
 }
 
-function defaultOrder() {
+function createDefaultAppOrder() {
   return materializeActivePricing(makeDefaultState())
+}
+
+function defaultOrder() {
+  return createDefaultAppOrder()
 }
 
 export {
   BOOKING_FIELDS,
   SNAPSHOT_FIELDS,
   LIFECYCLE_FIELDS,
+  createDefaultAppOrder,
   defaultOrder,
+  hydrateCanonicalOrder,
   normalizeOrder,
   createAppOrder,
   createWordPressOrder,

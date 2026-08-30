@@ -6,7 +6,7 @@ import {
 import {
   createAppOrder,
   createWordPressOrder,
-  normalizeOrder,
+  hydrateCanonicalOrder,
 } from './orderModel.js'
 import {
   makeAppOrder,
@@ -186,7 +186,7 @@ describe('API and communication payloads', () => {
 
   it('keeps imported pricing sources unchanged when a persisted order is reopened and saved', () => {
     const persistedOrder = createWordPressOrder(makeWordPressStructuredJsonComplete())
-    const reopenedOrder = normalizeOrder(persistedOrder)
+    const reopenedOrder = hydrateCanonicalOrder(persistedOrder)
     const payload = toUpdateOrderPayload(reopenedOrder)
 
     expect(payload.pricing.source).toEqual({

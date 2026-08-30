@@ -3,7 +3,7 @@ import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import {
   BOOKING_FIELDS,
   applyOrderPatch,
-  normalizeOrder,
+  hydrateCanonicalOrder,
   revertToInitial,
 } from '../../../src/shared/orderModel.js'
 
@@ -12,7 +12,7 @@ function validationError(message) {
 }
 
 function canonicalOrderObject(order) {
-  return normalizeOrder(order.toObject())
+  return hydrateCanonicalOrder(order.toObject())
 }
 
 function assignCanonicalState(order, canonical) {
@@ -65,7 +65,7 @@ async function revertOrder(id) {
     // Revert before assigning anything to the document. The shared helper
     // replaces pricing sources first, so a stale current source cannot block
     // the required automatic fallback for a missing snapshot component.
-    reverted = revertToInitial(order.toObject())
+    reverted = revertToInitial(canonicalOrderObject(order))
   } catch (err) {
     throw validationError(err.message)
   }

@@ -35,7 +35,7 @@ import {
 import iconsData from '../../data/icons.json'
 import colors from '../../shared/colors'
 import {
-  normalizeOrder,
+  hydrateCanonicalOrder,
   updateOrderField,
 } from '../../shared/orderModel'
 import { toCommunicationOrder, toUpdateOrderPayload } from '../../shared/orderSerialization'
@@ -146,7 +146,7 @@ export default function OrderDialog({
 
     try {
       const response = await orderPoolAPI.confirm(order.id)
-      const updatedOrder = normalizeOrder(response.order || response)
+      const updatedOrder = hydrateCanonicalOrder(response.order || response)
       setOrder(updatedOrder)
       if (onOrderUpdate) {
         onOrderUpdate(updatedOrder)
@@ -161,7 +161,7 @@ export default function OrderDialog({
   const handleEdit = useCallback(() => {
     if (!order) return
 
-    setEditableOrder(normalizeOrder(order))
+    setEditableOrder(hydrateCanonicalOrder(order))
     setEditOpen(true)
   }, [order])
 
@@ -183,7 +183,7 @@ export default function OrderDialog({
       const updateData = toUpdateOrderPayload(editableOrder)
 
       const response = await orderPoolAPI.update(orderId, updateData)
-      setOrder(normalizeOrder(response.order || response))
+      setOrder(hydrateCanonicalOrder(response.order || response))
       enqueueSnackbar(response.message || 'Order changes saved.')
       setEditOpen(false)
       setEditableOrder(null)
@@ -204,7 +204,7 @@ export default function OrderDialog({
     try {
       setRevertingEdit(true)
       const response = await orderPoolAPI.revert(orderId)
-      const updatedOrder = normalizeOrder(response.order || response)
+      const updatedOrder = hydrateCanonicalOrder(response.order || response)
 
       setOrder(updatedOrder)
       setEditableOrder(updatedOrder)
@@ -265,7 +265,7 @@ export default function OrderDialog({
     async (eventColor) => {
       if (!orderId || !order) return
 
-      const previousOrder = normalizeOrder(order)
+      const previousOrder = hydrateCanonicalOrder(order)
       const previousCalendarOrdersCache = queryClient.getQueriesData(['calendar-orders'])
 
       try {
@@ -284,7 +284,7 @@ export default function OrderDialog({
         // Use lightweight color-only endpoint to avoid sending full order
         const response = await orderPoolAPI.updateColor(orderId, eventColor)
 
-        const resolvedOrder = normalizeOrder(response?.order || response || nextOrder)
+        const resolvedOrder = hydrateCanonicalOrder(response?.order || response || nextOrder)
 
         setOrder(resolvedOrder)
         applyOrderColorInCache(resolvedOrder?.eventColor ?? null)
@@ -387,7 +387,7 @@ export default function OrderDialog({
   )
 
   useEffect(() => {
-    setOrder(incomingOrder ? normalizeOrder(incomingOrder) : null)
+    setOrder(incomingOrder ? hydrateCanonicalOrder(incomingOrder) : null)
   }, [incomingOrder])
 
   const title = order
@@ -450,7 +450,7 @@ export default function OrderDialog({
     if (!orderId) return
     try {
       const response = await orderPoolAPI.restore(orderId)
-      const updated = normalizeOrder(response.order || response)
+      const updated = hydrateCanonicalOrder(response.order || response)
       setOrder(updated)
       enqueueSnackbar(response.message || 'Order restored')
       queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
@@ -475,7 +475,7 @@ export default function OrderDialog({
     async (id) => {
       if (!id) throw new Error('missing order id')
       const response = await orderPoolAPI.cancel(id)
-      const updatedOrder = normalizeOrder(response.order || response)
+      const updatedOrder = hydrateCanonicalOrder(response.order || response)
       setOrder(updatedOrder)
       queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
       if (onOrderUpdate) onOrderUpdate(updatedOrder)

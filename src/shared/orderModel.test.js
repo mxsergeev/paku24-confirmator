@@ -5,7 +5,7 @@ import {
   createWordPressOrder,
   defaultOrder,
   applyOrderPatch,
-  normalizeOrder,
+  hydrateCanonicalOrder,
   revertToInitial,
   SNAPSHOT_FIELDS,
   setManualPricing,
@@ -50,7 +50,7 @@ describe('default and boundary order state', () => {
   })
 
   it('normalizes instants and date-only box values while rematerializing projections', () => {
-    const normalized = normalizeOrder({
+    const normalized = createAppOrder({
       date: '2026-01-15T07:00:00.000Z',
       boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount: 10 },
       price: 999,
@@ -65,60 +65,83 @@ describe('default and boundary order state', () => {
     expect(normalized.boxesPrice).toBe(52)
     expect(normalized.price).toBe(102)
     expect(normalized.fees).toEqual([])
-    expect(() => normalizeOrder({ date: 'not-a-date' })).toThrow(/invalid date/i)
+    expect(() => createAppOrder({ date: 'not-a-date' })).toThrow(/invalid date/i)
   })
 
   it('rejects incomplete persisted snapshot boxes instead of filling fresh defaults', () => {
-    expect(() => normalizeOrder({ initialSnapshot: { boxes: { amount: 10 } } })).toThrow(
-      /initialSnapshot\.boxes: deliveryDate is required/i,
-    )
+    const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const malformed = {
+      ...order,
+      initialSnapshot: { ...order.initialSnapshot, boxes: { amount: 10 } },
+    }
+    expect(() => hydrateCanonicalOrder(malformed)).toThrow(/initialSnapshot\.boxes.*deliveryDate/i)
 
-    expect(() =>
-      normalizeOrder({
-        initialSnapshot: {
-          boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20' },
-        },
-      }),
-    ).toThrow(/initialSnapshot\.boxes: amount is required/i)
+    expect(() => hydrateCanonicalOrder({
+      ...order,
+      initialSnapshot: {
+        ...order.initialSnapshot,
+        boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20' },
+      },
+    })).toThrow(/initialSnapshot\.boxes.*amount/i)
   })
 
   it('still fills missing dates from fresh defaults for a current order', () => {
-    const normalized = normalizeOrder({ boxes: { amount: 2 } })
+    const normalized = createAppOrder({ boxes: { amount: 2 } })
 
     expect(normalized.boxes.amount).toBe(2)
     expect(normalized.boxes.deliveryDate).toBeInstanceOf(Date)
     expect(normalized.boxes.returnDate).toBeInstanceOf(Date)
   })
 
+  it.each(['date', 'service', 'address', 'destination', 'boxes'])(
+    'rejects persisted app state missing %s instead of applying creation defaults',
+    (field) => {
+      const order = createAppOrder()
+      const malformed = { ...order }
+      delete malformed[field]
+
+      expect(() => hydrateCanonicalOrder(malformed)).toThrow(new RegExp(`${field}.*required`, 'i'))
+    },
+  )
+
   it.each([null, undefined, true, false, [], {}, ' ', NaN, Infinity, -1, '-1'])(
     'rejects invalid current box amount %p',
     (amount) => {
-      expect(() => normalizeOrder({ boxes: { amount } })).toThrow(/boxes\.amount/i)
-      expect(() =>
-        normalizeOrder({
-          initialSnapshot: {
-            boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount },
-          },
-        }),
-      ).toThrow(/initialSnapshot\.boxes.*amount/i)
+      expect(() => createAppOrder({ boxes: { amount } })).toThrow(/boxes\.amount/i)
+      const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+      expect(() => hydrateCanonicalOrder({
+        ...order,
+        initialSnapshot: {
+          ...order.initialSnapshot,
+          boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount },
+        },
+      })).toThrow(/initialSnapshot\.boxes.*amount/i)
     },
   )
 
   it('normalizes valid numeric string box amounts in current and snapshot data', () => {
-    const normalized = normalizeOrder({
+    const normalized = createAppOrder({
       boxes: { amount: '2' },
+    })
+    const persisted = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const hydrated = hydrateCanonicalOrder({
+      ...persisted,
       initialSnapshot: {
+        ...persisted.initialSnapshot,
         boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount: '3' },
       },
     })
 
     expect(normalized.boxes.amount).toBe(2)
-    expect(normalized.initialSnapshot.boxes.amount).toBe(3)
+    expect(hydrated.initialSnapshot.boxes.amount).toBe(3)
   })
 
   it('validates and preserves date-only values in a normalized snapshot', () => {
-    const normalized = normalizeOrder({
+    const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const normalized = hydrateCanonicalOrder({
+      ...order,
       initialSnapshot: {
+        ...order.initialSnapshot,
         boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount: 10 },
       },
     })
@@ -367,7 +390,10 @@ describe('manual pricing and explicit source selection', () => {
   )
 
   it.each(['source', 'manual'])('rejects array-shaped pricing.%s', (field) => {
-    expect(() => normalizeOrder({ pricing: { [field]: [] } })).toThrow(
+    expect(() => hydrateCanonicalOrder({
+      ...createAppOrder(),
+      pricing: { [field]: [] },
+    })).toThrow(
       `Invalid pricing.${field}`,
     )
   })

@@ -1,6 +1,6 @@
 import {
   BOOKING_FIELDS,
-  normalizeOrder,
+  hydrateCanonicalOrder,
   SNAPSHOT_FIELDS,
 } from './orderModel.js'
 import { resolveActivePricing } from './orderPricing.js'
@@ -194,7 +194,7 @@ function deserializeDraft(payload) {
 
   // Selecting the draft fields also ensures lifecycle and materialized projections
   // supplied by stale or hand-edited drafts never become hydrated order state.
-  return normalizeOrder(extractDraftOrder(payload.order))
+  return hydrateCanonicalOrder(extractDraftOrder(payload.order))
 }
 
 function toCreateOrderPayload(order) {

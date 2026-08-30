@@ -14,7 +14,7 @@ import OrderPoolDialog from './OrderPool/OrderPoolDialog'
 import orderPoolAPI from '../../services/orderPoolAPI'
 import {
   createAppOrder,
-  normalizeOrder,
+  hydrateCanonicalOrder,
   revertToInitial,
   updateOrderField,
 } from '../../shared/orderModel'
@@ -75,7 +75,7 @@ export default function Confirmator() {
 
         if (!active || !responseOrder) return
 
-        const normalizedOrder = normalizeOrder(responseOrder)
+        const normalizedOrder = hydrateCanonicalOrder(responseOrder)
         setOrder(normalizedOrder)
       } catch {
         // Keep the fresh app state when the requested order cannot be loaded.
@@ -123,7 +123,7 @@ export default function Confirmator() {
       setReverting(true)
       if (orderId) {
         const response = await orderPoolAPI.revert(orderId)
-        const updatedOrder = normalizeOrder(response.order || response)
+        const updatedOrder = hydrateCanonicalOrder(response.order || response)
         setOrder(updatedOrder)
         enqueueSnackbar(response.message || 'Order reverted.')
       } else {
@@ -150,7 +150,7 @@ export default function Confirmator() {
 
   const handleOrderPoolExport = useCallback(
     (o) => {
-      const ord = normalizeOrder(o)
+      const ord = hydrateCanonicalOrder(o)
       const orderId = ord.id || ord._id || o.id || o._id || null
 
       setOrder(ord)
