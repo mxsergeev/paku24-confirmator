@@ -13,7 +13,12 @@ function validationError(message) {
 }
 
 function canonicalOrderObject(order) {
-  return hydrateCanonicalOrder(order.toObject())
+  const { _id, ...persisted } = order.toObject()
+  const id = _id === null || _id === undefined ? persisted.id : _id.toString()
+  return hydrateCanonicalOrder({
+    ...persisted,
+    ...(id === undefined ? {} : { id }),
+  })
 }
 
 function assignCanonicalState(order, canonical) {

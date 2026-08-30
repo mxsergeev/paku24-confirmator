@@ -166,7 +166,6 @@ export function makePersistedApiOrder() {
   return {
     ...makeCanonicalWordPressOrder(),
     id: '66c000000000000000000001',
-    _id: '66c000000000000000000001',
     confirmed: true,
     confirmedBy: '66c000000000000000000002',
     confirmedAt: '2026-01-10T12:00:00.000Z',

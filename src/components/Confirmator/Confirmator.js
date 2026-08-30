@@ -128,7 +128,7 @@ export default function Confirmator() {
   const handleRevert = useCallback(async () => {
     if (!order) return
 
-    const orderId = order.id || order._id
+    const orderId = order.id
 
     try {
       setReverting(true)
@@ -155,14 +155,14 @@ export default function Confirmator() {
   }, [])
 
   const handleOrderTransformFromEditor = useCallback(
-    () => setTransformedOrder({ id: order?.id || order?._id || null, text: formatOrder(order) }),
+    () => setTransformedOrder({ id: order?.id || null, text: formatOrder(order) }),
     [order]
   )
 
   const handleOrderPoolExport = useCallback(
     (o) => {
       const ord = hydrateCanonicalOrder(o)
-      const orderId = ord.id || ord._id || o.id || o._id || null
+      const orderId = ord.id || null
 
       setOrder(ord)
       setTransformedOrder({
@@ -214,7 +214,7 @@ export default function Confirmator() {
       <ValidationDisplay order={order} shouldValidate={transformedOrder.text} />
       <MainOperationsPanel
         order={order}
-        orderId={order?.id || order?._id || null}
+        orderId={order?.id || null}
         transformedOrder={transformedOrder}
         handleResetClick={reset}
         orderPoolUrl="/confirmator/order-pool"

@@ -29,9 +29,7 @@ calendarRouter.post('/', async (req, res, next) => {
 
     // If this request was made for an existing order, delegate persisting googleEventId
     try {
-      // `orderId` is the migrated boundary. Keep embedded IDs only for callers
-      // that still send the pre-migration calendar payload.
-      const linkedOrderId = req.body.orderId || order._id || order.id
+      const linkedOrderId = req.body.orderId || order.id
       if (eventId && linkedOrderId) {
         await linkOrderToEvent(linkedOrderId, eventId)
       }

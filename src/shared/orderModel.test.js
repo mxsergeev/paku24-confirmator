@@ -40,6 +40,7 @@ describe('default and boundary order state', () => {
     expect(first.pricing).not.toBe(second.pricing)
     expect(first.origin).toBe('app')
     expect(first.initialSnapshot).toBeNull()
+    expect(first).not.toHaveProperty('_id')
     expect(first.pricing.source).toEqual({ price: 'auto', fees: 'auto', boxesPrice: 'auto' })
     expect(first.pricing.manual).toEqual({ price: null, fees: null, boxesPrice: null })
     expect(first.price).toBeTypeOf('number')
@@ -408,7 +409,6 @@ describe('revertToInitial', () => {
     order = {
       ...order,
       id: 'id-1',
-      _id: 'mongo-id-1',
       confirmed: true,
       confirmedBy: 'operator',
       confirmedAt: new Date('2026-01-10T12:00:00.000Z'),
@@ -433,7 +433,7 @@ describe('revertToInitial', () => {
     expect(reverted.fees).toEqual(snapshot.fees)
     expect(reverted.boxesPrice).toBe(snapshot.boxesPrice)
     expect(reverted.id).toBe('id-1')
-    expect(reverted._id).toBe('mongo-id-1')
+    expect(reverted).not.toHaveProperty('_id')
     expect(reverted.confirmed).toBe(true)
     expect(reverted.confirmedBy).toBe('operator')
     expect(reverted.confirmedAt).toEqual(new Date('2026-01-10T12:00:00.000Z'))

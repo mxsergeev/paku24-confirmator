@@ -71,7 +71,6 @@ const RESET_AFTER_EDIT = {
 
 const LIFECYCLE_FIELDS = [
   'id',
-  '_id',
   'confirmed',
   'confirmedBy',
   'confirmedAt',
@@ -155,7 +154,6 @@ function makeDefaultState() {
     fees: [],
     boxesPrice: null,
     id: null,
-    _id: null,
     confirmed: false,
     confirmedBy: null,
     confirmedAt: null,
@@ -347,7 +345,6 @@ function normalizePricing(value, initialSnapshot, { requireComplete = false } = 
 function defaultLifecycleState() {
   return {
     id: null,
-    _id: null,
     confirmed: false,
     confirmedBy: null,
     confirmedAt: null,

@@ -18,7 +18,7 @@ function hashToFourDigits(value) {
  * The frontend can opt into today's date for malformed orders while the
  * backend keeps its strict validation by using the default "throw" behavior.
  *
- * @param {Object} order - Order object with date, id, _id, name, email, phone
+ * @param {Object} order - Order object with date, id, name, email, phone
  * @param {String} existingInvoiceNumber - Existing invoice number (if any)
  * @param {Object} options - Invalid-date handling options
  * @param {'throw'|'today'} options.invalidDate - Whether to throw or use today's date
@@ -49,7 +49,7 @@ export function buildStableInvoiceNumber(
     )
   }
 
-  const stableSeed = [order?.id, order?._id, order?.name, order?.email, order?.phone, order?.date]
+  const stableSeed = [order?.id, order?.name, order?.email, order?.phone, order?.date]
     .filter(Boolean)
     .join('|')
 
