@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { makeWordPressStructuredJsonComplete, makeWordPressStructuredJsonMissingPricing } from './testFixtures/orderFixtures.js'
+import {
+  makeWordPressPayload,
+  makeWordPressPayloadMissingPricing,
+} from './testFixtures/orderFixtures.js'
 import {
   createAppOrder,
   createWordPressOrder,
@@ -69,7 +72,7 @@ describe('default and boundary order state', () => {
   })
 
   it('rejects incomplete persisted snapshot boxes instead of filling fresh defaults', () => {
-    const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const order = createWordPressOrder(makeWordPressPayload())
     const malformed = {
       ...order,
       initialSnapshot: { ...order.initialSnapshot, boxes: { amount: 10 } },
@@ -108,7 +111,7 @@ describe('default and boundary order state', () => {
     'rejects invalid current box amount %p',
     (amount) => {
       expect(() => createAppOrder({ boxes: { amount } })).toThrow(/boxes\.amount/i)
-      const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+      const order = createWordPressOrder(makeWordPressPayload())
       expect(() => hydrateCanonicalOrder({
         ...order,
         initialSnapshot: {
@@ -123,7 +126,7 @@ describe('default and boundary order state', () => {
     const normalized = createAppOrder({
       boxes: { amount: '2' },
     })
-    const persisted = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const persisted = createWordPressOrder(makeWordPressPayload())
     const hydrated = hydrateCanonicalOrder({
       ...persisted,
       initialSnapshot: {
@@ -137,7 +140,7 @@ describe('default and boundary order state', () => {
   })
 
   it('validates and preserves date-only values in a normalized snapshot', () => {
-    const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const order = createWordPressOrder(makeWordPressPayload())
     const normalized = hydrateCanonicalOrder({
       ...order,
       initialSnapshot: {
@@ -168,7 +171,7 @@ describe('default and boundary order state', () => {
   })
 
   it('creates isolated WordPress snapshots with complete or missing pricing components', () => {
-    const input = makeWordPressStructuredJsonComplete()
+    const input = makeWordPressPayload()
     const order = createWordPressOrder(input)
 
     expect(order.origin).toBe('wordpress')
@@ -189,7 +192,7 @@ describe('default and boundary order state', () => {
     expect(order.initialSnapshot.boxes.amount).not.toBe(999)
     expect(order.initialSnapshot.fees[0].amount).toBe(15)
 
-    const missing = createWordPressOrder(makeWordPressStructuredJsonMissingPricing())
+    const missing = createWordPressOrder(makeWordPressPayloadMissingPricing())
     expect(missing.pricing.source).toEqual({ price: 'auto', fees: 'auto', boxesPrice: 'auto' })
     expect(missing.initialSnapshot).not.toHaveProperty('price')
     expect(missing.initialSnapshot).not.toHaveProperty('fees')
@@ -200,7 +203,7 @@ describe('default and boundary order state', () => {
 describe('immutable booking updates and pricing transitions', () => {
   const initialOrder = () =>
     createWordPressOrder({
-      ...makeWordPressStructuredJsonComplete(),
+      ...makeWordPressPayload(),
       date: '2026-01-15T07:00:00.000Z',
     })
 
@@ -367,7 +370,7 @@ describe('manual pricing and explicit source selection', () => {
   })
 
   it('rejects malformed manual values and selects only requested sources', () => {
-    const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const order = createWordPressOrder(makeWordPressPayload())
     expect(() => setManualPricing(order, 'price', NaN)).toThrow(/invalid/i)
     expect(() => setManualPricing(order, 'price', ' ')).toThrow(/invalid/i)
     expect(() => setManualPricing(order, 'fees', [{ name: 'bad', amount: 'nope' }])).toThrow(/invalid/i)
@@ -401,7 +404,7 @@ describe('manual pricing and explicit source selection', () => {
 
 describe('revertToInitial', () => {
   it('restores snapshot fields, clears manual state, and preserves lifecycle metadata', () => {
-    let order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    let order = createWordPressOrder(makeWordPressPayload())
     order = {
       ...order,
       id: 'id-1',
@@ -446,7 +449,7 @@ describe('revertToInitial', () => {
   })
 
   it('uses automatic sources after reverting missing imported components', () => {
-    const order = createWordPressOrder(makeWordPressStructuredJsonMissingPricing())
+    const order = createWordPressOrder(makeWordPressPayloadMissingPricing())
     const reverted = revertToInitial(updateOrderField(order, 'name', 'edited'))
 
     expect(reverted.pricing.source).toEqual({ price: 'auto', fees: 'auto', boxesPrice: 'auto' })
@@ -455,7 +458,7 @@ describe('revertToInitial', () => {
 
   it('shares untouched lifecycle values and isolates restored mutable values', () => {
     const order = {
-      ...createWordPressOrder(makeWordPressStructuredJsonComplete()),
+      ...createWordPressOrder(makeWordPressPayload()),
       confirmedAt: new Date('2026-01-10T12:00:00.000Z'),
       extraState: { keep: true },
     }

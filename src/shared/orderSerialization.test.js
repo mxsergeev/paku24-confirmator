@@ -9,9 +9,10 @@ import {
   hydrateCanonicalOrder,
 } from './orderModel.js'
 import {
-  makeAppOrder,
-  makeWordPressStructuredJsonComplete,
-  makeWordPressOrder,
+  makeAppBooking,
+  makeCanonicalAppOrder,
+  makeCanonicalWordPressOrder,
+  makeWordPressPayload,
 } from './testFixtures/orderFixtures.js'
 import {
   deserializeDraft,
@@ -23,7 +24,7 @@ import {
 
 describe('draft serialization', () => {
   it('round-trips booking, snapshot, and pricing state without projections', () => {
-    const order = makeWordPressOrder()
+    const order = makeCanonicalWordPressOrder()
     const payload = serializeDraft(order)
 
     expect(payload.version).toBe(1)
@@ -45,7 +46,7 @@ describe('draft serialization', () => {
   })
 
   it('keeps automatic pricing live after deserialization', () => {
-    const order = createAppOrder(makeAppOrder())
+    const order = makeCanonicalAppOrder()
     const payload = serializeDraft(order)
     payload.order.duration = 3
 
@@ -55,7 +56,7 @@ describe('draft serialization', () => {
   })
 
   it('hydrates an app draft from stored fields and ignores stale outbound state', () => {
-    const payload = JSON.parse(JSON.stringify(serializeDraft(makeAppOrder())))
+    const payload = JSON.parse(JSON.stringify(serializeDraft(makeCanonicalAppOrder())))
     payload.order.price = 999
     payload.order.fees = [{ name: 'stale', amount: 999 }]
     payload.order.boxesPrice = 999
@@ -70,7 +71,7 @@ describe('draft serialization', () => {
   })
 
   it('hydrates a WordPress draft with serialized snapshot and manual pricing state', () => {
-    const order = makeWordPressOrder()
+    const order = makeCanonicalWordPressOrder()
     const manualPricing = {
       source: { ...order.pricing.source, price: 'manual' },
       manual: { ...order.pricing.manual, price: 321 },
@@ -95,7 +96,7 @@ describe('draft serialization', () => {
 
   it('preserves date-only boxes and converts datetime values symmetrically', () => {
     const order = createWordPressOrder({
-      ...makeWordPressStructuredJsonComplete(),
+      ...makeWordPressPayload(),
       date: '2026-03-12T07:00:00.000Z',
       boxes: {
         amount: 2,
@@ -120,19 +121,19 @@ describe('draft serialization', () => {
   })
 
   it('rejects unsupported or malformed versions and invalid dates', () => {
-    const payload = serializeDraft(makeAppOrder())
+    const payload = serializeDraft(makeCanonicalAppOrder())
 
     expect(() => deserializeDraft({ ...payload, version: 2 })).toThrow(/version/i)
     expect(() => deserializeDraft({ version: 1 })).toThrow(/order/i)
-    expect(() => serializeDraft({ ...makeAppOrder(), date: 'not-a-date' })).toThrow(/date/i)
-    expect(() => serializeDraft({ ...makeAppOrder(), date: '2026-01-15T09:00:00' })).toThrow(
+    expect(() => serializeDraft({ ...makeCanonicalAppOrder(), date: 'not-a-date' })).toThrow(/date/i)
+    expect(() => serializeDraft({ ...makeCanonicalAppOrder(), date: '2026-01-15T09:00:00' })).toThrow(
       /absolute instant/i,
     )
-    expect(() => serializeDraft({ ...makeAppOrder(), pricing: { source: {}, manual: {} } })).toThrow(
+    expect(() => serializeDraft({ ...makeCanonicalAppOrder(), pricing: { source: {}, manual: {} } })).toThrow(
       /pricing\.source\.price/i,
     )
     expect(() =>
-      serializeDraft({ ...makeAppOrder(), initialSnapshot: makeWordPressOrder().initialSnapshot }),
+      serializeDraft({ ...makeCanonicalAppOrder(), initialSnapshot: makeCanonicalWordPressOrder().initialSnapshot }),
     ).toThrow(/app orders.*initialSnapshot/i)
     expect(() => deserializeDraft({
       ...payload,
@@ -141,7 +142,7 @@ describe('draft serialization', () => {
   })
 
   it('deeply isolates drafts from the source order and nested values', () => {
-    const order = makeWordPressOrder()
+    const order = makeCanonicalWordPressOrder()
     const payload = serializeDraft(order)
 
     payload.order.service.name = 'Changed'
@@ -158,7 +159,7 @@ describe('draft serialization', () => {
 
 describe('API and communication payloads', () => {
   it('creates only app-origin payloads with booking fields', () => {
-    const payload = toCreateOrderPayload(makeAppOrder())
+    const payload = toCreateOrderPayload(makeCanonicalAppOrder())
 
     expect(payload.origin).toBe('app')
     expect(payload).toMatchObject({ date: '2026-06-15T06:00:00.000Z' })
@@ -167,11 +168,11 @@ describe('API and communication payloads', () => {
     expect(payload).not.toHaveProperty('price')
     expect(payload).not.toHaveProperty('fees')
     expect(payload).not.toHaveProperty('boxesPrice')
-    expect(() => toCreateOrderPayload(makeWordPressOrder())).toThrow(/app-origin/i)
+    expect(() => toCreateOrderPayload(makeCanonicalWordPressOrder())).toThrow(/app-origin/i)
   })
 
   it('includes complete update pricing while preserving zero, empty, and null values', () => {
-    let order = createAppOrder(makeAppOrder())
+    let order = makeCanonicalAppOrder()
     order = {
       ...order,
       pricing: {
@@ -194,7 +195,7 @@ describe('API and communication payloads', () => {
   })
 
   it('strips editor-only identity metadata from extra addresses at the update boundary', () => {
-    const appOrder = makeAppOrder()
+    const appOrder = makeAppBooking()
     const order = createAppOrder({
       ...appOrder,
       extraAddresses: [
@@ -224,7 +225,7 @@ describe('API and communication payloads', () => {
   })
 
   it('keeps imported pricing sources unchanged when a persisted order is reopened and saved', () => {
-    const persistedOrder = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const persistedOrder = makeCanonicalWordPressOrder()
     const reopenedOrder = hydrateCanonicalOrder(persistedOrder)
     const payload = toUpdateOrderPayload(reopenedOrder)
 
@@ -237,7 +238,7 @@ describe('API and communication payloads', () => {
   })
 
   it('uses resolved active pricing and excludes internal state for communication', () => {
-    const order = createAppOrder(makeAppOrder())
+    const order = makeCanonicalAppOrder()
     const payload = toCommunicationOrder({
       ...order,
       pricing: {

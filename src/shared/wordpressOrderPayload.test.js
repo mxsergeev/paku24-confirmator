@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { makeWordPressStructuredJsonComplete } from './testFixtures/orderFixtures.js'
+import { makeWordPressPayload } from './testFixtures/orderFixtures.js'
 import { createWordPressOrder } from './orderModel.js'
 import { normalizeWordPressOrderPayload } from './wordpressOrderPayload.js'
 
 function wordpressPayload(overrides = {}) {
   return {
-    ...makeWordPressStructuredJsonComplete(),
+    ...makeWordPressPayload(),
     date: '2026-01-15T07:00:00.000Z',
     boxes: {
       amount: '10',
@@ -22,6 +22,12 @@ function wordpressPayload(overrides = {}) {
 describe('normalizeWordPressOrderPayload', () => {
   it('normalizes the real booking app payload without catalog remapping', () => {
     const payload = wordpressPayload({ servicePrice: 100, unknown: 'ignored' })
+
+    expect(payload).not.toHaveProperty('distance')
+    expect(payload).not.toHaveProperty('hsy')
+    expect(payload).not.toHaveProperty('XL')
+    expect(payload).not.toHaveProperty('eventColor')
+
     const order = normalizeWordPressOrderPayload(payload)
 
     expect(order.date).toEqual(new Date('2026-01-15T07:00:00.000Z'))

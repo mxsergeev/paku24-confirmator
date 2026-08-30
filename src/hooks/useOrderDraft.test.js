@@ -4,10 +4,9 @@ import React from 'react'
 import { fireEvent, render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createAppOrder, createWordPressOrder } from '../shared/orderModel'
 import {
-  makeAppOrder,
-  makeWordPressStructuredJsonComplete,
+  makeCanonicalAppOrder,
+  makeCanonicalWordPressOrder,
 } from '../shared/testFixtures/orderFixtures'
 import { serializeDraft } from '../shared/orderSerialization'
 import { readOrderDraft, useOrderDraft } from './useOrderDraft'
@@ -30,8 +29,8 @@ describe('useOrderDraft', () => {
   })
 
   it.each([
-    ['app', createAppOrder(makeAppOrder())],
-    ['WordPress', createWordPressOrder(makeWordPressStructuredJsonComplete())],
+    ['app', makeCanonicalAppOrder()],
+    ['WordPress', makeCanonicalWordPressOrder()],
   ])('reloads a %s draft through the browser storage boundary', (_name, order) => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeDraft(order)))
 
@@ -51,8 +50,8 @@ describe('useOrderDraft', () => {
   })
 
   it('skips one write after reset-style state replacement', () => {
-    const firstOrder = createAppOrder(makeAppOrder())
-    const nextOrder = createAppOrder({ ...makeAppOrder(), name: 'Next customer' })
+    const firstOrder = makeCanonicalAppOrder()
+    const nextOrder = makeCanonicalAppOrder({ name: 'Next customer' })
     const { rerender, getByRole } = render(<DraftHarness order={firstOrder} />)
     const firstDraft = window.localStorage.getItem(STORAGE_KEY)
 
@@ -66,7 +65,7 @@ describe('useOrderDraft', () => {
   })
 
   it('does not persist while disabled for an explicitly loaded order', () => {
-    const order = createAppOrder(makeAppOrder())
+    const order = makeCanonicalAppOrder()
 
     render(<DraftHarness order={order} enabled={false} />)
 

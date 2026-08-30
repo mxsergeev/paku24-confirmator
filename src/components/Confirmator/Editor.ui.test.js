@@ -8,7 +8,7 @@ import Editor from './Editor'
 import { createWordPressOrder, updateOrderField } from '../../shared/orderModel'
 import { toUpdateOrderPayload } from '../../shared/orderSerialization'
 import {
-  makeWordPressStructuredJsonComplete,
+  makeWordPressPayload,
 } from '../../shared/testFixtures/orderFixtures'
 
 vi.mock('./Address', () => ({
@@ -54,7 +54,7 @@ vi.mock('@material-ui/pickers', () => ({
 }))
 
 function makeOrderWithTwoExtraAddresses() {
-  const input = makeWordPressStructuredJsonComplete()
+  const input = makeWordPressPayload()
   input.extraAddresses = [
     input.extraAddresses[0],
     {
@@ -117,7 +117,7 @@ describe('Editor extra address identity', () => {
       <EditorHarness
         key="reopened"
         initialOrder={createWordPressOrder({
-          ...makeWordPressStructuredJsonComplete(),
+          ...makeWordPressPayload(),
           extraAddresses: updatePayload.extraAddresses,
         })}
       />,

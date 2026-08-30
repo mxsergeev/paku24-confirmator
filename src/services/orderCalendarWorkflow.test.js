@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeAppOrder } from '../shared/testFixtures/orderFixtures'
+import { makeCanonicalAppOrder } from '../shared/testFixtures/orderFixtures'
 import { toCommunicationOrder, toCreateOrderPayload } from '../shared/orderSerialization'
 
 const mocks = vi.hoisted(() => ({
@@ -27,7 +27,7 @@ describe('addOrderToCalendar', () => {
   })
 
   it('adds and confirms an existing order without creating a duplicate', async () => {
-    const order = makeAppOrder()
+    const order = makeCanonicalAppOrder()
 
     const response = await addOrderToCalendar({ order, orderId: 'existing-order-id' })
 
@@ -41,7 +41,7 @@ describe('addOrderToCalendar', () => {
   })
 
   it('creates an app order before confirming when no order id exists', async () => {
-    const order = makeAppOrder()
+    const order = makeCanonicalAppOrder()
 
     await addOrderToCalendar({ order, orderId: null })
 

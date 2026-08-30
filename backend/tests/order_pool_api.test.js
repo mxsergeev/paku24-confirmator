@@ -3,6 +3,10 @@ import app from '../app.js'
 import Order from '../models/order.js'
 import { generateJWT } from '../modules/authentication/auth.middleware.js'
 import useTestDatabase from './database_harness.js'
+import {
+  makeAppBooking,
+  makeWordPressPayloadMissingPricing,
+} from '../../src/shared/testFixtures/orderFixtures.js'
 
 const api = supertest(app)
 useTestDatabase()
@@ -88,7 +92,7 @@ describe('Order pool v2/add', () => {
   })
 
   function makeOrder(overrides = {}) {
-    return {
+    return makeWordPressPayloadMissingPricing({
       date: '2026-04-10T08:00:00.000Z',
       duration: 2,
       service: { id: 'external-service', name: 'Service', pricePerHour: 50 },
@@ -106,7 +110,15 @@ describe('Order pool v2/add', () => {
         returnDate: '2026-04-12T08:00:00.000Z',
       },
       ...overrides,
-    }
+    })
+  }
+
+  function makeAppRequest(overrides = {}) {
+    return makeAppBooking({
+      ...makeOrder(),
+      name: 'App Order',
+      ...overrides,
+    })
   }
 
   test('key creates a WordPress order with an immutable imported snapshot', async () => {
@@ -172,7 +184,7 @@ describe('Order pool v2/add', () => {
       .post('/api/order-pool/v2/add')
       .set('Cookie', [`at=${appToken}`])
       .send({
-        order: makeOrder({
+        order: makeAppRequest({
           name: 'App Order',
           origin: 'app',
           confirmed: true,
@@ -209,7 +221,7 @@ describe('Order pool v2/add', () => {
     ],
     [
       'with an invalid app origin',
-      { order: makeOrder({ origin: 'wordpress' }) },
+      { order: makeAppRequest({ origin: 'wordpress' }) },
       400,
     ],
   ])('rejects create request %s', async (_description, payload, status) => {
@@ -223,7 +235,7 @@ describe('Order pool v2/add', () => {
     await api
       .post('/api/order-pool/v2/add')
       .set('Cookie', [`at=${appToken}`])
-      .send({ order: makeOrder({ name: 'App Order', origin: undefined }) })
+      .send({ order: makeAppRequest({ name: 'App Order', origin: undefined }) })
       .expect(400)
   })
 
@@ -232,7 +244,7 @@ describe('Order pool v2/add', () => {
       .post('/api/order-pool/v2/add')
       .set('Cookie', [`at=${appToken}`])
       .send({
-        order: makeOrder({
+        order: makeAppRequest({
           name: 'App Order',
           origin: 'app',
           initialSnapshot: null,
@@ -256,7 +268,7 @@ describe('Order pool v2/add', () => {
       .post('/api/order-pool/v2/add')
       .set('Cookie', [`at=${appToken}`])
       .send({
-        order: makeOrder({
+        order: makeAppRequest({
           name: 'App Order',
           origin: 'app',
           from: makeMinimalAddress('Legacy start'),

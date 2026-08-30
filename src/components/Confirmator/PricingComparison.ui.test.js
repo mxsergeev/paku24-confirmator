@@ -5,10 +5,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import PricingComparison from './PricingComparison'
-import { createAppOrder, createWordPressOrder, setManualPricing } from '../../shared/orderModel'
+import { setManualPricing } from '../../shared/orderModel'
 import {
-  makeWordPressStructuredJsonComplete,
-  makeWordPressStructuredJsonMissingPricing,
+  makeCanonicalAppOrder,
+  makeCanonicalWordPressOrder,
 } from '../../shared/testFixtures/orderFixtures'
 
 function getUpdatedOrder(onChange) {
@@ -24,7 +24,7 @@ function renderComparison(order, props = {}) {
 
 describe('PricingComparison', () => {
   it('shows active, automatic, manual, and initial values for a WordPress order', () => {
-    const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const order = makeCanonicalWordPressOrder()
 
     renderComparison(order)
 
@@ -36,7 +36,7 @@ describe('PricingComparison', () => {
   })
 
   it('switches pricing sources independently without copying values', () => {
-    const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const order = makeCanonicalWordPressOrder()
     const { onChange, rerender } = renderComparison(order)
 
     fireEvent.click(screen.getByRole('button', { name: 'Use automatic price' }))
@@ -65,7 +65,7 @@ describe('PricingComparison', () => {
   })
 
   it('commits a manual zero price and an empty manual fee list', () => {
-    const order = createAppOrder(makeWordPressStructuredJsonMissingPricing())
+    const order = makeCanonicalAppOrder()
     const { onChange, rerender } = renderComparison(order)
 
     fireEvent.change(screen.getByLabelText('Manual price'), { target: { value: '0' } })
@@ -85,7 +85,7 @@ describe('PricingComparison', () => {
   })
 
   it('uses committed manual values as the numeric input and fee selection defaults', () => {
-    let order = createAppOrder(makeWordPressStructuredJsonMissingPricing())
+    let order = makeCanonicalAppOrder()
     order = setManualPricing(order, 'price', 0)
     order = setManualPricing(order, 'fees', [{ name: 'customFee', amount: 9 }])
 
@@ -97,7 +97,7 @@ describe('PricingComparison', () => {
   })
 
   it('supports manual fee selection and manual box price input', () => {
-    const order = createAppOrder(makeWordPressStructuredJsonMissingPricing())
+    const order = makeCanonicalAppOrder()
     const { onChange, rerender } = renderComparison(order)
 
     const feeCheckbox = screen.getAllByRole('checkbox')[0]
@@ -117,7 +117,7 @@ describe('PricingComparison', () => {
   })
 
   it('clears manual values and returns that component to automatic pricing', () => {
-    let order = createAppOrder(makeWordPressStructuredJsonMissingPricing())
+    let order = makeCanonicalAppOrder()
     order = setManualPricing(order, 'price', 0)
     const { onChange } = renderComparison(order)
 
@@ -128,7 +128,11 @@ describe('PricingComparison', () => {
   })
 
   it('disables initial controls when the WordPress component is missing', () => {
-    const order = createWordPressOrder(makeWordPressStructuredJsonMissingPricing())
+    const order = makeCanonicalWordPressOrder({
+      price: undefined,
+      fees: undefined,
+      boxesPrice: undefined,
+    })
 
     renderComparison(order)
 
@@ -138,7 +142,7 @@ describe('PricingComparison', () => {
   })
 
   it('does not show initial controls for app orders', () => {
-    const order = createAppOrder(makeWordPressStructuredJsonMissingPricing())
+    const order = makeCanonicalAppOrder()
 
     renderComparison(order, { onRevert: vi.fn() })
 
@@ -148,7 +152,7 @@ describe('PricingComparison', () => {
   })
 
   it('confirms before reverting a WordPress order and invokes the handler when accepted', () => {
-    const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const order = makeCanonicalWordPressOrder()
     const onRevert = vi.fn()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
@@ -161,7 +165,7 @@ describe('PricingComparison', () => {
   })
 
   it('does not invoke the revert handler when confirmation is canceled', () => {
-    const order = createWordPressOrder(makeWordPressStructuredJsonComplete())
+    const order = makeCanonicalWordPressOrder()
     const onRevert = vi.fn()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
 
