@@ -1,5 +1,6 @@
 import Order from '../../models/order.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
+import { DEFAULT_EVENT_COLOR_ID } from '../../utils/colors.js'
 import {
   BOOKING_FIELDS,
   applyOrderPatch,
@@ -84,7 +85,76 @@ async function revertOrder(id) {
   return order
 }
 
-export { getOrderById, updateOrder, revertOrder }
+async function confirmOrder(id, userId) {
+  if (!id) return null
+
+  return Order.findByIdAndUpdate(
+    { _id: id },
+    {
+      confirmed: true,
+      confirmedBy: userId,
+      confirmedAt: new Date().toISOString(),
+    },
+    { new: true },
+  )
+}
+
+async function cancelOrder(id) {
+  if (!id) return null
+
+  return Order.findByIdAndUpdate(
+    { _id: id },
+    {
+      canceledAt: new Date().toISOString(),
+      eventColor: '8',
+    },
+    { new: true },
+  )
+}
+
+async function updateOrderColor(id, eventColor) {
+  if (!id) return null
+
+  return Order.findOneAndUpdate({ _id: id }, { $set: { eventColor } }, { new: true })
+}
+
+async function deleteOrder(id) {
+  if (!id) return null
+
+  return Order.findByIdAndUpdate(
+    { _id: id },
+    { deletedAt: new Date().toISOString() },
+    { new: true },
+  )
+}
+
+async function retrieveOrder(id) {
+  if (!id) return null
+
+  return Order.findByIdAndUpdate({ _id: id }, { $unset: { deletedAt: 1 } }, { new: true })
+}
+
+async function restoreOrder(id) {
+  if (!id) return null
+
+  return Order.findByIdAndUpdate(
+    { _id: id },
+    { $unset: { deletedAt: 1, canceledAt: 1 }, $set: { eventColor: DEFAULT_EVENT_COLOR_ID } },
+    { new: true },
+  )
+}
+
+export {
+  getOrderById,
+  updateOrder,
+  revertOrder,
+  confirmOrder,
+  cancelOrder,
+  updateOrderColor,
+  deleteOrder,
+  retrieveOrder,
+  restoreOrder,
+}
 
 async function deleteOrderPermanently(id) {
   if (!id) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')

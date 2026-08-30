@@ -10,12 +10,17 @@ import * as authMW from '../authentication/auth.middleware.js'
 import Order from '../../models/order.js'
 import User from '../../models/user.js'
 import dayjs from '../../../src/shared/dayjs.js'
-import { DEFAULT_EVENT_COLOR_ID } from '../../utils/colors.js'
 import {
   updateOrder,
   getOrderById,
   revertOrder,
   deleteOrderPermanently,
+  confirmOrder,
+  cancelOrder,
+  updateOrderColor,
+  deleteOrder,
+  retrieveOrder,
+  restoreOrder,
 } from './orderPool.service.js'
 import { buildStableInvoiceNumber } from '../../utils/invoiceNumber.js'
 import {
@@ -27,40 +32,6 @@ import { hasOwn, isPlainObject } from '../../../src/shared/orderPrimitives.js'
 import { normalizeWordPressOrderPayload } from '../../../src/shared/wordpressOrderPayload.js'
 
 const ORDER_POOL_PAGE_SIZE = 20
-
-// Helpers to centralize order state changes
-async function confirmOrder(id, userId) {
-  if (!id) return null
-  const order = await Order.findByIdAndUpdate(
-    { _id: id },
-    {
-      confirmed: true,
-      confirmedBy: userId,
-      confirmedAt: new Date().toISOString(),
-    },
-    { new: true },
-  )
-  return order
-}
-
-async function cancelOrder(id) {
-  if (!id) return null
-  const order = await Order.findByIdAndUpdate(
-    { _id: id },
-    {
-      canceledAt: new Date().toISOString(),
-      eventColor: '8',
-    },
-    { new: true },
-  )
-  return order
-}
-
-async function updateOrderColor(id, eventColor) {
-  if (!id) return null
-  const order = await Order.findOneAndUpdate({ _id: id }, { $set: { eventColor } }, { new: true })
-  return order
-}
 
 function checkKeyOrAuth(req, res, next) {
   if (ORDER_POOL_KEY && req.body?.key === ORDER_POOL_KEY) {
@@ -272,13 +243,7 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
 orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    const order = await Order.findByIdAndUpdate(
-      { _id: id },
-      {
-        deletedAt: new Date().toISOString(),
-      },
-      { new: true },
-    )
+    const order = await deleteOrder(id)
 
     if (!order) {
       return res.status(404).send({ error: 'Order not found' })
@@ -294,31 +259,7 @@ orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
 orderPoolRouter.put('/v2/retrieve/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    const order = await Order.findByIdAndUpdate(
-      { _id: id },
-      { $unset: { deletedAt: 1 } },
-      { new: true },
-    )
-
-    if (!order) {
-      return res.status(404).send({ error: 'Order not found' })
-    }
-
-    return res.status(200).send({ message: 'Order retrieved', order })
-  } catch (err) {
-    return next(err)
-  }
-})
-
-// Legacy restore alias
-orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
-  const { id } = req.params
-  try {
-    const order = await Order.findByIdAndUpdate(
-      { _id: id },
-      { $unset: { deletedAt: 1 } },
-      { new: true },
-    )
+    const order = await retrieveOrder(id)
 
     if (!order) {
       return res.status(404).send({ error: 'Order not found' })
@@ -331,17 +272,6 @@ orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
 })
 
 orderPoolRouter.put('/v2/confirm/:id', async (req, res, next) => {
-  const { id } = req.params
-  try {
-    const order = await confirmOrder(id, req.user.id)
-    if (!order) return res.status(404).send({ error: 'Order not found' })
-    return res.status(200).send({ message: 'Order confirmed', order })
-  } catch (err) {
-    return next(err)
-  }
-})
-
-orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
   const { id } = req.params
   try {
     const order = await confirmOrder(id, req.user.id)
@@ -389,12 +319,7 @@ orderPoolRouter.post('/v2/restore/:id', async (req, res, next) => {
       return res.status(403).send({ error: 'Forbidden' })
     }
 
-    // Clear deletedAt and canceledAt, set default event color
-    const order = await Order.findByIdAndUpdate(
-      { _id: id },
-      { $unset: { deletedAt: 1, canceledAt: 1 }, $set: { eventColor: DEFAULT_EVENT_COLOR_ID } },
-      { new: true },
-    )
+    const order = await restoreOrder(id)
 
     if (!order) {
       return res.status(404).send({ error: 'Order not found' })
