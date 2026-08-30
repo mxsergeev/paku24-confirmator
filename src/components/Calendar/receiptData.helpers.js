@@ -1,29 +1,8 @@
 import dayjs from 'dayjs'
-
-function hashToFourDigits(value) {
-  const source = String(value || '')
-  let hash = 0
-
-  for (let i = 0; i < source.length; i += 1) {
-    hash = (hash * 31 + source.charCodeAt(i)) % 10000
-  }
-
-  return String(hash).padStart(4, '0')
-}
+import { buildStableInvoiceNumber as buildSharedStableInvoiceNumber } from '../../shared/invoiceNumber.js'
 
 export function buildStableInvoiceNumber(order, existingInvoiceNumber = '') {
-  const normalizedExisting = String(existingInvoiceNumber || '').trim()
-  if (normalizedExisting) return normalizedExisting
-
-  const orderDate = dayjs(order?.date)
-  const datePart = orderDate.isValid() ? orderDate.format('YYYYMMDD') : dayjs().format('YYYYMMDD')
-
-  const stableSeed = [order?.id, order?._id, order?.name, order?.email, order?.phone, order?.date]
-    .filter(Boolean)
-    .join('|')
-
-  const suffix = hashToFourDigits(stableSeed || datePart)
-  return `${datePart}${suffix}`
+  return buildSharedStableInvoiceNumber(order, existingInvoiceNumber, { invalidDate: 'today' })
 }
 
 function formatAddressForReceipt(address) {
@@ -32,18 +11,6 @@ function formatAddressForReceipt(address) {
 
   const parts = [address.street, address.index, address.city].filter(Boolean)
   return parts.join(', ')
-}
-
-export function getReceiptServicePrice(order, fallback = '') {
-  return order?.service?.pricePerHour ?? fallback
-}
-
-export function getReceiptBoxesPrice(order, fallback) {
-  return order?.boxesPrice ?? fallback
-}
-
-export function getReceiptTotal(value, fallback) {
-  return value === null || value === undefined || String(value).trim() === '' ? fallback : value
 }
 
 export function buildReceiptDraftFromOrder(order = {}) {
@@ -62,7 +29,7 @@ export function buildReceiptDraftFromOrder(order = {}) {
     totalAmount,
     serviceName: safeOrder.service?.name || '',
     serviceHours: safeOrder.duration || '',
-    unitPrice: getReceiptServicePrice(safeOrder),
+    unitPrice: safeOrder?.service?.pricePerHour ?? '',
     dueDate,
     invoiceNumber: buildStableInvoiceNumber(safeOrder, safeOrder.invoiceNumber),
   }

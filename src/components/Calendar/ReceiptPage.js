@@ -9,9 +9,6 @@ import receiptLogo from '../../assets/laskuLogo.png'
 import {
   buildStableInvoiceNumber,
   buildReceiptDraftFromOrder,
-  getReceiptBoxesPrice,
-  getReceiptServicePrice,
-  getReceiptTotal,
   formatDateForReceipt,
   normalizeDocumentType,
   normalizeReceiptDraft,
@@ -207,7 +204,7 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
     )
     const isInvoice = resolvedDocumentType === 'invoice'
 
-    const unitBruttoPrice = num(getReceiptServicePrice(order, mergedReceipt.unitPrice))
+    const unitBruttoPrice = num(order?.service?.pricePerHour ?? mergedReceipt.unitPrice)
     const unitAlvPrice = roundMoney(unitBruttoPrice - unitBruttoPrice / ALV_FACTOR)
 
     return {
@@ -230,7 +227,7 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
     const rows = []
 
     const serviceHours = num(receipt.serviceHours)
-    const serviceUnitBruttoPrice = num(getReceiptServicePrice(order, receipt.unitPrice))
+    const serviceUnitBruttoPrice = num(order?.service?.pricePerHour ?? receipt.unitPrice)
     const serviceUnitNettoPrice = roundMoney(serviceUnitBruttoPrice / ALV_FACTOR)
     const serviceBrutto = roundMoney(serviceHours * serviceUnitBruttoPrice)
     const serviceNetto = roundMoney(serviceUnitNettoPrice * serviceHours)
@@ -253,7 +250,7 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
       boxesAmount * num(order?.boxes?.pricePerBox) +
       num(order?.boxes?.deliveryPrice) +
       num(order?.boxes?.returnPrice)
-    const boxesBrutto = roundMoney(getReceiptBoxesPrice(order, boxesFromFields))
+    const boxesBrutto = roundMoney(order?.boxesPrice ?? boxesFromFields)
 
     if (boxesBrutto > 0) {
       const boxesUnitBruttoPrice = boxesAmount > 0 ? roundMoney(boxesBrutto / boxesAmount) : 0
@@ -319,7 +316,12 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
     const alv = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.alv), 0))
     const calculatedBrutto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.brutto), 0))
 
-    const brutto = roundMoney(getReceiptTotal(receipt?.totalAmount, calculatedBrutto))
+    const totalAmount = receipt?.totalAmount
+    const brutto = roundMoney(
+      totalAmount === null || totalAmount === undefined || String(totalAmount).trim() === ''
+        ? calculatedBrutto
+        : totalAmount,
+    )
 
     return {
       netto,
