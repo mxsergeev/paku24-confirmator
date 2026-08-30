@@ -610,6 +610,29 @@ describe('Order pool v2/:id read and partial update', () => {
     expect(res.body.order.boxesPrice).toBe(0)
   })
 
+  test('materializes pricing from the final state of a multi-field update', async () => {
+    const order = await createOrder()
+
+    const res = await api
+      .put(`/api/order-pool/v2/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .send({
+        updateData: {
+          service: { id: '2', name: 'Changed service', pricePerHour: 70, multiplier: 1 },
+          paymentType: { id: '3', name: 'Invoice', fee: 5 },
+          duration: 3,
+        },
+      })
+      .expect(200)
+
+    expect(res.body.order.service.id).toBe('2')
+    expect(res.body.order.duration).toBe(3)
+    expect(res.body.order.fees).toEqual([
+      { name: 'paymentTypeFee', label: 'MAKSUTAPALISÄ', amount: 5 },
+    ])
+    expect(res.body.order.price).toBe(70 * 3 + 22 + 5)
+  })
+
   test.each([
     ['non-object updateData', { updateData: [] }],
     ['unknown field', { updateData: { madeUp: true } }],

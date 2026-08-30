@@ -4,6 +4,7 @@ import {
   createAppOrder,
   createWordPressOrder,
   defaultOrder,
+  applyOrderPatch,
   normalizeOrder,
   revertToInitial,
   SNAPSHOT_FIELDS,
@@ -286,6 +287,28 @@ describe('immutable booking updates and pricing transitions', () => {
     expect(transitioned.pricing.source).not.toBe(order.pricing.source)
     expect(transitioned.pricing.manual).toBe(order.pricing.manual)
     expect(transitioned.initialSnapshot).toBe(order.initialSnapshot)
+  })
+
+  it('materializes pricing from the final state of a multi-field patch', () => {
+    const order = createAppOrder({
+      date: '2026-01-15T07:00:00.000Z',
+      duration: 1,
+      service: { id: '1', name: 'Service', pricePerHour: 50 },
+      paymentType: { id: '1', name: 'Card', fee: 0 },
+      address: { street: 'Start', floor: 0, elevator: false },
+      destination: { street: 'End', floor: 0, elevator: false },
+    })
+
+    const updated = applyOrderPatch(order, {
+      service: { id: '2', name: 'Changed service', pricePerHour: 70, multiplier: 1 },
+      paymentType: { id: '3', name: 'Invoice', fee: 5 },
+      duration: 3,
+    })
+
+    expect(updated.service.id).toBe('2')
+    expect(updated.duration).toBe(3)
+    expect(updated.fees).toEqual([{ name: 'paymentTypeFee', label: 'MAKSUTAPALISÄ', amount: 5 }])
+    expect(updated.price).toBe(updated.duration * updated.service.pricePerHour + updated.boxesPrice + 5)
   })
 })
 

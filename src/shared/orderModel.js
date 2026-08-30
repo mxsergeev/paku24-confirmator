@@ -489,8 +489,11 @@ function sameValue(left, right) {
 }
 
 function boxPricingFieldsChanged(previous = {}, next = {}) {
+  const previousBoxes = previous || {}
+  const nextBoxes = next || {}
+
   return ['amount', 'deliveryDate', 'returnDate'].some(
-    (field) => !sameValue(previous[field], next[field]),
+    (field) => !sameValue(previousBoxes[field], nextBoxes[field]),
   )
 }
 
@@ -515,24 +518,105 @@ function resetInitialPricing(order, components) {
   }
 }
 
-function updateOrderField(order, key, value) {
-  if (!order || typeof order !== 'object') throw new Error('Order must be an object')
-  if (!BOOKING_FIELDS.includes(key)) throw new Error(`Field is not editable: ${String(key)}`)
+function isPlainObject(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
 
-  let updated = {
-    ...order,
-    [key]: cloneValue(value),
+function assertOrderPatch(patch) {
+  if (!isPlainObject(patch)) throw new Error('updateData must be a plain object')
+
+  for (const key of Object.keys(patch)) {
+    if (key !== 'pricing' && !BOOKING_FIELDS.includes(key)) {
+      throw new Error(`Field is not editable: ${key}`)
+    }
+  }
+}
+
+function normalizePatchBoxes(value, currentBoxes) {
+  if (value === null || value === undefined) return value
+
+  if (!isPlainObject(value)) {
+    throw new Error('Invalid boxes')
   }
 
-  if (key === 'boxes') {
-    if (boxPricingFieldsChanged(order.boxes, value)) {
-      updated = resetInitialPricing(updated, ['boxesPrice', 'price'])
+  return normalizeCurrentBoxes(value, currentBoxes)
+}
+
+/**
+ * Apply an update patch to an already canonical order.
+ *
+ * Pricing is intentionally applied before booking fields. This lets a patch
+ * which selects an initial source and edits a dependent booking field retain
+ * the existing transition semantics: only components still using `initial`
+ * are moved to `auto`. Active pricing is resolved once, from the final state.
+ */
+function applyOrderPatch(currentOrder, patch) {
+  if (!currentOrder || typeof currentOrder !== 'object' || Array.isArray(currentOrder)) {
+    throw new Error('Order must be an object')
+  }
+  assertOrderPatch(patch)
+
+  let updated = currentOrder
+
+  if (hasOwn(patch, 'pricing')) {
+    const pricing = patch.pricing
+    if (!isPlainObject(pricing)) throw new Error('pricing must be a plain object')
+    if (!isPlainObject(pricing.source)) {
+      throw new Error('pricing.source must be a plain object')
     }
-  } else if (RESET_AFTER_EDIT[key] && !sameValue(order[key], value)) {
-    updated = resetInitialPricing(updated, RESET_AFTER_EDIT[key])
+    if (!isPlainObject(pricing.manual)) {
+      throw new Error('pricing.manual must be a plain object')
+    }
+
+    PRICING_COMPONENTS.forEach((component) => {
+      if (!hasOwn(pricing.source, component)) {
+        throw new Error(`pricing.source.${component} is required`)
+      }
+      if (!hasOwn(pricing.manual, component)) {
+        throw new Error(`pricing.manual.${component} is required`)
+      }
+    })
+
+    updated = {
+      ...updated,
+      pricing: normalizePricing(pricing, updated.initialSnapshot),
+    }
+  }
+
+  for (const field of BOOKING_FIELDS) {
+    if (!hasOwn(patch, field)) continue
+
+    const value = patch[field]
+    let nextValue = value
+
+    if (field === 'date' && value !== null && value !== undefined) {
+      nextValue = parseDateTime(value, 'date')
+    } else if (field === 'boxes') {
+      nextValue = normalizePatchBoxes(value, updated.boxes)
+    }
+
+    const previousValue = updated[field]
+    updated = {
+      ...updated,
+      [field]: cloneValue(nextValue),
+    }
+
+    if (field === 'boxes') {
+      if (boxPricingFieldsChanged(previousValue, nextValue)) {
+        updated = resetInitialPricing(updated, ['boxesPrice', 'price'])
+      }
+    } else if (RESET_AFTER_EDIT[field] && !sameValue(previousValue, nextValue)) {
+      updated = resetInitialPricing(updated, RESET_AFTER_EDIT[field])
+    }
   }
 
   return materializeActivePricing(updated)
+}
+
+function updateOrderField(order, key, value) {
+  return applyOrderPatch(order, { [key]: value })
 }
 
 function setManualPricing(order, component, value) {
@@ -670,6 +754,7 @@ export {
   normalizeOrder,
   createAppOrder,
   createWordPressOrder,
+  applyOrderPatch,
   updateOrderField,
   setPricingSource,
   setManualPricing,
