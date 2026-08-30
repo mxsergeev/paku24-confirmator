@@ -20,13 +20,12 @@ import {
 } from '../../shared/orderModel'
 import { readOrderDraft, useOrderDraft } from '../../hooks/useOrderDraft'
 import { formatOrder } from '../../shared/render/text'
-import { isObjectId } from '../../shared/validators'
 
 const CONFIRMATOR_DRAFT_STORAGE_KEY = 'confirmator_order'
 
 export default function Confirmator() {
   const params = useParams()
-  const hasExplicitOrderId = Boolean(params.id && isObjectId(params.id))
+  const hasExplicitOrderId = Boolean(params.id)
 
   const [transformedOrder, setTransformedOrder] = useState({
     text: '',
@@ -35,9 +34,14 @@ export default function Confirmator() {
 
   const [order, setOrder] = useState(() =>
     hasExplicitOrderId
-      ? createAppOrder()
+      ? null
       : readOrderDraft(CONFIRMATOR_DRAFT_STORAGE_KEY) || createAppOrder()
   )
+  const [orderLoadState, setOrderLoadState] = useState(() =>
+    hasExplicitOrderId ? 'loading' : 'ready'
+  )
+  const [orderLoadMessage, setOrderLoadMessage] = useState('')
+  const [loadedOrderId, setLoadedOrderId] = useState(null)
   const [reverting, setReverting] = useState(false)
 
   const routeIdRef = useRef(params.id)
@@ -58,22 +62,45 @@ export default function Confirmator() {
       // only when the route changes while this component remains mounted.
       if (routeChanged) {
         setOrder(readDraft() || createAppOrder())
+        setOrderLoadState('ready')
+        setOrderLoadMessage('')
+        setLoadedOrderId(null)
       }
       return () => {
         active = false
       }
     }
 
+    setOrderLoadState('loading')
+    setOrderLoadMessage('')
+    setLoadedOrderId(null)
+
     const fetchOrder = async () => {
       try {
         const { order: responseOrder } = await orderPoolAPI.getOrderById(params.id)
 
-        if (!active || !responseOrder) return
+        if (!active) return
+        if (!responseOrder) {
+          setOrder(null)
+          setLoadedOrderId(params.id)
+          setOrderLoadState('not-found')
+          setOrderLoadMessage('Order not found.')
+          return
+        }
 
         const normalizedOrder = hydrateCanonicalOrder(responseOrder)
         setOrder(normalizedOrder)
-      } catch {
-        // Keep the fresh app state when the requested order cannot be loaded.
+        setLoadedOrderId(params.id)
+        setOrderLoadState('ready')
+      } catch (err) {
+        if (!active) return
+
+        setOrder(null)
+        setLoadedOrderId(params.id)
+        const orderWasNotFound =
+          err?.response?.status === 404 || /not found/i.test(err?.response?.data?.error || '')
+        setOrderLoadState(orderWasNotFound ? 'not-found' : 'error')
+        setOrderLoadMessage(orderWasNotFound ? 'Order not found.' : 'Could not load order.')
       }
     }
 
@@ -145,6 +172,21 @@ export default function Confirmator() {
     },
     []
   )
+
+  const isExplicitOrderReady =
+    !hasExplicitOrderId ||
+    (orderLoadState === 'ready' && loadedOrderId === params.id && Boolean(order))
+
+  if (!isExplicitOrderReady) {
+    const orderLoadFailed =
+      ['not-found', 'error'].includes(orderLoadState) && loadedOrderId === params.id
+
+    return (
+      <div className="confirmator-order-state" role={orderLoadFailed ? 'alert' : 'status'}>
+        {orderLoadFailed ? orderLoadMessage : 'Loading order...'}
+      </div>
+    )
+  }
 
   return (
     <div className="flex-container">

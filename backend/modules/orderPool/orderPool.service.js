@@ -6,6 +6,7 @@ import {
   hydrateCanonicalOrder,
   revertToInitial,
 } from '../../../src/shared/orderModel.js'
+import { isOrderValidationError } from '../../../src/shared/orderPrimitives.js'
 
 function validationError(message) {
   return newErrorWithCustomName('ValidationError', message)
@@ -43,6 +44,7 @@ async function updateOrder(id, updateData) {
   try {
     updated = applyOrderPatch(canonicalOrderObject(order), updateData)
   } catch (err) {
+    if (!isOrderValidationError(err)) throw err
     throw validationError(err.message)
   }
 
@@ -67,6 +69,7 @@ async function revertOrder(id) {
     // the required automatic fallback for a missing snapshot component.
     reverted = revertToInitial(canonicalOrderObject(order))
   } catch (err) {
+    if (!isOrderValidationError(err)) throw err
     throw validationError(err.message)
   }
 

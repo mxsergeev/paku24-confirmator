@@ -7,6 +7,7 @@
  */
 
 import { zonedTimeToUtc, utcToZonedTime, formatInTimeZone as _formatInTimeZone } from 'date-fns-tz'
+import { OrderValidationError } from './orderPrimitives.js'
 
 export const HELSINKI_TIMEZONE = 'Europe/Helsinki'
 
@@ -24,7 +25,7 @@ export function isDateOnly(value) {
 
 // Validate once and produce UTC midnight for the conversion helper below.
 function parseCalendarDateToUtc(value, fieldName) {
-  if (!isDateOnly(value)) throw new Error(`Invalid ${fieldName}`)
+  if (!isDateOnly(value)) throw new OrderValidationError(`Invalid ${fieldName}`)
 
   const [year, month, day] = value.split('-').map(Number)
   const parsed = new Date(0)
@@ -37,7 +38,7 @@ function parseCalendarDateToUtc(value, fieldName) {
     parsed.getUTCMonth() !== month - 1 ||
     parsed.getUTCDate() !== day
   ) {
-    throw new Error(`Invalid ${fieldName}`)
+    throw new OrderValidationError(`Invalid ${fieldName}`)
   }
 
   return parsed
@@ -93,22 +94,22 @@ export function isIsoInstant(value) {
  * input must convert it explicitly for the relevant timezone.
  */
 export function parseInstant(value, fieldName = 'date') {
-  if (value === null || value === undefined) throw new Error(`Invalid ${fieldName}`)
+  if (value === null || value === undefined) throw new OrderValidationError(`Invalid ${fieldName}`)
 
   if (value instanceof Date) {
-    if (!Number.isFinite(value.getTime())) throw new Error(`Invalid ${fieldName}`)
+    if (!Number.isFinite(value.getTime())) throw new OrderValidationError(`Invalid ${fieldName}`)
     return new Date(value.getTime())
   }
 
   if (!isIsoInstant(value)) {
-    throw new Error(`Invalid ${fieldName}: expected an absolute instant`)
+    throw new OrderValidationError(`Invalid ${fieldName}: expected an absolute instant`)
   }
 
   // JavaScript normalizes impossible dates in some ISO strings, so validate
   // the calendar portion before accepting the parsed instant.
   parseCalendarDate(value.slice(0, 10), fieldName)
   const parsed = new Date(value)
-  if (!Number.isFinite(parsed.getTime())) throw new Error(`Invalid ${fieldName}`)
+  if (!Number.isFinite(parsed.getTime())) throw new OrderValidationError(`Invalid ${fieldName}`)
   return parsed
 }
 

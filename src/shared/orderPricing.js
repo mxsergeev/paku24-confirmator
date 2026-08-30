@@ -9,17 +9,17 @@ import {
   parseInstant,
 } from './date-fns-tz.js'
 import { calculateAutomaticFees } from './fees.js'
-import { toFiniteNumberOrNull } from './orderPrimitives.js'
+import { OrderValidationError, toFiniteNumberOrNull } from './orderPrimitives.js'
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 
 function normalizeFeeList(value, description) {
-  if (!Array.isArray(value)) throw new Error(`${description} must be an array`)
+  if (!Array.isArray(value)) throw new OrderValidationError(`${description} must be an array`)
 
   return value.map((fee) => {
     const amount = toFiniteNumberOrNull(fee?.amount)
     if (!fee || typeof fee !== 'object' || amount === null) {
-      throw new Error(`${description} must contain finite fee amounts`)
+      throw new OrderValidationError(`${description} must contain finite fee amounts`)
     }
 
     return { ...fee, amount }
@@ -96,7 +96,7 @@ function resolveActiveFees(order) {
   if (source === 'initial') {
     const value = order?.initialSnapshot?.fees
     if (value === null || value === undefined) {
-      throw new Error('Cannot use initial fees: the snapshot value is missing')
+      throw new OrderValidationError('Cannot use initial fees: the snapshot value is missing')
     }
     return normalizeFeeList(value, 'Initial fees')
   }
@@ -104,14 +104,14 @@ function resolveActiveFees(order) {
   if (source === 'manual') {
     const value = order?.pricing?.manual?.fees
     if (value === null || value === undefined) {
-      throw new Error('Cannot use manual fees: the manual value is missing')
+      throw new OrderValidationError('Cannot use manual fees: the manual value is missing')
     }
     return normalizeFeeList(value, 'Manual fees')
   }
 
   if (source === 'auto') return normalizeFeeList(calculateAutomaticFees(order), 'Automatic fees')
 
-  throw new Error(`Invalid pricing source for fees: ${String(source)}`)
+  throw new OrderValidationError(`Invalid pricing source for fees: ${String(source)}`)
 }
 
 function resolveActiveBoxesPrice(order) {
@@ -121,7 +121,7 @@ function resolveActiveBoxesPrice(order) {
     const value = order?.initialSnapshot?.boxesPrice
     const number = toFiniteNumberOrNull(value)
     if (number === null) {
-      throw new Error('Cannot use initial boxesPrice: the snapshot value is missing or invalid')
+      throw new OrderValidationError('Cannot use initial boxesPrice: the snapshot value is missing or invalid')
     }
     return number
   }
@@ -130,14 +130,14 @@ function resolveActiveBoxesPrice(order) {
     const value = order?.pricing?.manual?.boxesPrice
     const number = toFiniteNumberOrNull(value)
     if (number === null) {
-      throw new Error('Cannot use manual boxesPrice: the manual value is missing or invalid')
+      throw new OrderValidationError('Cannot use manual boxesPrice: the manual value is missing or invalid')
     }
     return number
   }
 
   if (source === 'auto') return calculateAutomaticBoxesPrice(order)
 
-  throw new Error(`Invalid pricing source for boxesPrice: ${String(source)}`)
+  throw new OrderValidationError(`Invalid pricing source for boxesPrice: ${String(source)}`)
 }
 
 function resolveActivePrice(order, fees, boxesPrice) {
@@ -147,7 +147,7 @@ function resolveActivePrice(order, fees, boxesPrice) {
     const value = order?.initialSnapshot?.price
     const number = toFiniteNumberOrNull(value)
     if (number === null) {
-      throw new Error('Cannot use initial price: the snapshot value is missing or invalid')
+      throw new OrderValidationError('Cannot use initial price: the snapshot value is missing or invalid')
     }
     return number
   }
@@ -156,7 +156,7 @@ function resolveActivePrice(order, fees, boxesPrice) {
     const value = order?.pricing?.manual?.price
     const number = toFiniteNumberOrNull(value)
     if (number === null) {
-      throw new Error('Cannot use manual price: the manual value is missing or invalid')
+      throw new OrderValidationError('Cannot use manual price: the manual value is missing or invalid')
     }
     return number
   }
@@ -167,7 +167,7 @@ function resolveActivePrice(order, fees, boxesPrice) {
     return servicePrice(order) + activeBoxesPrice + sumFees(activeFees)
   }
 
-  throw new Error(`Invalid pricing source for price: ${String(source)}`)
+  throw new OrderValidationError(`Invalid pricing source for price: ${String(source)}`)
 }
 
 function resolveActivePricing(order) {
@@ -181,7 +181,7 @@ function resolveActivePricing(order) {
 }
 
 function materializeActivePricing(order) {
-  if (!order || typeof order !== 'object') throw new Error('Cannot materialize pricing for an empty order')
+  if (!order || typeof order !== 'object') throw new OrderValidationError('Cannot materialize pricing for an empty order')
 
   const active = resolveActivePricing(order)
   return {

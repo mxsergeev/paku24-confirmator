@@ -9,6 +9,23 @@ export const PRICING_COMPONENTS = Object.freeze(['price', 'fees', 'boxesPrice'])
 export const PRICING_SOURCES = Object.freeze(['initial', 'auto', 'manual'])
 export const ORDER_ORIGINS = Object.freeze(['app', 'wordpress'])
 
+/**
+ * Errors caused by invalid order input or an invalid order-domain state.
+ *
+ * API boundaries may turn these into a client-facing validation response.
+ * Unexpected runtime errors must retain their original type and propagate.
+ */
+export class OrderValidationError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = 'OrderValidationError'
+  }
+}
+
+export function isOrderValidationError(error) {
+  return error instanceof OrderValidationError
+}
+
 export function hasOwn(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key)
 }
@@ -42,7 +59,7 @@ export function toFiniteNumberOrNull(value) {
 export function requireFiniteNumber(value, fieldName) {
   const number = toFiniteNumberOrNull(value)
   if (number === null) {
-    throw new Error(`Invalid ${fieldName}: expected a finite number`)
+    throw new OrderValidationError(`Invalid ${fieldName}: expected a finite number`)
   }
   return number
 }

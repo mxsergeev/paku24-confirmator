@@ -11,6 +11,7 @@ import {
   cloneValue,
   hasOwn,
   isPlainObject,
+  OrderValidationError,
   ORDER_ORIGINS,
   PRICING_COMPONENTS,
   PRICING_SOURCES,
@@ -177,11 +178,11 @@ function normalizeBoxDate(value, fieldName) {
 }
 
 function normalizeCurrentBoxes(value, fallback) {
-  if (value === null) throw new Error('Invalid boxes')
+  if (value === null) throw new OrderValidationError('Invalid boxes')
 
   const input = value === undefined ? {} : value
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new Error('Invalid boxes')
+    throw new OrderValidationError('Invalid boxes')
   }
 
   const boxes = {
@@ -190,7 +191,7 @@ function normalizeCurrentBoxes(value, fallback) {
   }
 
   const amount = toFiniteNumberOrNull(boxes.amount)
-  if (amount === null || amount < 0) throw new Error('Invalid boxes.amount')
+  if (amount === null || amount < 0) throw new OrderValidationError('Invalid boxes.amount')
   boxes.amount = amount
 
   if (hasOwn(input, 'deliveryDate')) {
@@ -206,18 +207,18 @@ function normalizeCurrentBoxes(value, fallback) {
 
 function normalizeSnapshotBoxes(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Invalid initialSnapshot.boxes')
+    throw new OrderValidationError('Invalid initialSnapshot.boxes')
   }
 
   for (const field of ['deliveryDate', 'returnDate', 'amount']) {
     if (!hasOwn(value, field) || value[field] === null || value[field] === undefined) {
-      throw new Error(`Invalid initialSnapshot.boxes: ${field} is required`)
+      throw new OrderValidationError(`Invalid initialSnapshot.boxes: ${field} is required`)
     }
   }
 
   const amount = toFiniteNumberOrNull(value.amount)
   if (amount === null || amount < 0) {
-    throw new Error('Invalid initialSnapshot.boxes: amount must be finite and non-negative')
+    throw new OrderValidationError('Invalid initialSnapshot.boxes: amount must be finite and non-negative')
   }
 
   return {
@@ -234,13 +235,13 @@ function normalizePricingValue(component, value, fieldName) {
   }
 
   const number = toFiniteNumberOrNull(value)
-  if (number === null) throw new Error(`Invalid ${fieldName}`)
+  if (number === null) throw new OrderValidationError(`Invalid ${fieldName}`)
   return number
 }
 
 function normalizeSnapshot(value, { requireBooking = false } = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Invalid initialSnapshot')
+    throw new OrderValidationError('Invalid initialSnapshot')
   }
 
   const snapshot = {}
@@ -248,13 +249,13 @@ function normalizeSnapshot(value, { requireBooking = false } = {}) {
   SNAPSHOT_FIELDS.forEach((field) => {
     if (!hasOwn(value, field)) {
       if (requireBooking && !PRICING_COMPONENTS.includes(field)) {
-        throw new Error(`Invalid initialSnapshot: ${field} is required`)
+        throw new OrderValidationError(`Invalid initialSnapshot: ${field} is required`)
       }
       return
     }
 
     if (requireBooking && !PRICING_COMPONENTS.includes(field) && value[field] === undefined) {
-      throw new Error(`Invalid initialSnapshot.${field}`)
+      throw new OrderValidationError(`Invalid initialSnapshot.${field}`)
     }
 
     if (field === 'date') {
@@ -273,17 +274,17 @@ function normalizeSnapshot(value, { requireBooking = false } = {}) {
 
 function normalizePricing(value, initialSnapshot, { requireComplete = false } = {}) {
   if (value === null || value === undefined) {
-    if (requireComplete) throw new Error('Invalid pricing: required')
+    if (requireComplete) throw new OrderValidationError('Invalid pricing: required')
     return makePricing()
   }
-  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid pricing')
+  if (typeof value !== 'object' || Array.isArray(value)) throw new OrderValidationError('Invalid pricing')
 
   const sourceInput = value.source
   if (
     sourceInput !== undefined &&
     (!sourceInput || typeof sourceInput !== 'object' || Array.isArray(sourceInput))
   ) {
-    throw new Error('Invalid pricing.source')
+    throw new OrderValidationError('Invalid pricing.source')
   }
 
   const manualInput = value.manual
@@ -291,25 +292,25 @@ function normalizePricing(value, initialSnapshot, { requireComplete = false } = 
     manualInput !== undefined &&
     (!manualInput || typeof manualInput !== 'object' || Array.isArray(manualInput))
   ) {
-    throw new Error('Invalid pricing.manual')
+    throw new OrderValidationError('Invalid pricing.manual')
   }
 
   const pricing = makePricing()
 
   PRICING_COMPONENTS.forEach((component) => {
-    if (requireComplete && !sourceInput) throw new Error('Invalid pricing.source')
-    if (requireComplete && !manualInput) throw new Error('Invalid pricing.manual')
+    if (requireComplete && !sourceInput) throw new OrderValidationError('Invalid pricing.source')
+    if (requireComplete && !manualInput) throw new OrderValidationError('Invalid pricing.manual')
 
     if (requireComplete && !hasOwn(sourceInput, component)) {
-      throw new Error(`Invalid pricing.source.${component}: required`)
+      throw new OrderValidationError(`Invalid pricing.source.${component}: required`)
     }
     if (requireComplete && !hasOwn(manualInput, component)) {
-      throw new Error(`Invalid pricing.manual.${component}: required`)
+      throw new OrderValidationError(`Invalid pricing.manual.${component}: required`)
     }
 
     const source = sourceInput && hasOwn(sourceInput, component) ? sourceInput[component] : 'auto'
     if (!PRICING_SOURCES.includes(source)) {
-      throw new Error(`Invalid pricing source for ${component}: ${String(source)}`)
+      throw new OrderValidationError(`Invalid pricing source for ${component}: ${String(source)}`)
     }
     pricing.source[component] = source
 
@@ -330,13 +331,13 @@ function normalizePricing(value, initialSnapshot, { requireComplete = false } = 
     if (source === 'initial') {
       const valueFromSnapshot = initialSnapshot?.[component]
       if (!isPresent(valueFromSnapshot)) {
-        throw new Error(`Cannot use initial ${component}: the snapshot value is missing`)
+        throw new OrderValidationError(`Cannot use initial ${component}: the snapshot value is missing`)
       }
       normalizePricingValue(component, valueFromSnapshot, `initialSnapshot.${component}`)
     }
 
     if (source === 'manual' && pricing.manual[component] === null) {
-      throw new Error(`Cannot use manual ${component}: the manual value is missing`)
+      throw new OrderValidationError(`Cannot use manual ${component}: the manual value is missing`)
     }
   })
 
@@ -361,13 +362,13 @@ function defaultLifecycleState() {
 
 function requireField(input, field, { allowNull = false } = {}) {
   if (!hasOwn(input, field) || input[field] === undefined || (!allowNull && input[field] === null)) {
-    throw new Error(`Invalid order: ${field} is required`)
+    throw new OrderValidationError(`Invalid order: ${field} is required`)
   }
   return input[field]
 }
 
 function requireObject(value, field) {
-  if (!isPlainObject(value)) throw new Error(`Invalid ${field}`)
+  if (!isPlainObject(value)) throw new OrderValidationError(`Invalid ${field}`)
   return value
 }
 
@@ -375,16 +376,16 @@ function normalizeCanonicalAddress(value, field) {
   requireObject(value, field)
   for (const key of ['street', 'index', 'city', 'floor', 'elevator']) {
     if (!hasOwn(value, key) || value[key] === undefined || value[key] === null) {
-      throw new Error(`Invalid ${field}.${key}: required`)
+      throw new OrderValidationError(`Invalid ${field}.${key}: required`)
     }
   }
-  if (typeof value.street !== 'string') throw new Error(`Invalid ${field}.street`)
-  if (typeof value.index !== 'string') throw new Error(`Invalid ${field}.index`)
-  if (typeof value.city !== 'string') throw new Error(`Invalid ${field}.city`)
+  if (typeof value.street !== 'string') throw new OrderValidationError(`Invalid ${field}.street`)
+  if (typeof value.index !== 'string') throw new OrderValidationError(`Invalid ${field}.index`)
+  if (typeof value.city !== 'string') throw new OrderValidationError(`Invalid ${field}.city`)
 
   const floor = toFiniteNumberOrNull(value.floor)
-  if (floor === null) throw new Error(`Invalid ${field}.floor`)
-  if (typeof value.elevator !== 'boolean') throw new Error(`Invalid ${field}.elevator`)
+  if (floor === null) throw new OrderValidationError(`Invalid ${field}.floor`)
+  if (typeof value.elevator !== 'boolean') throw new OrderValidationError(`Invalid ${field}.elevator`)
 
   return {
     street: value.street,
@@ -410,12 +411,12 @@ function normalizeCanonicalBoxes(value, field = 'boxes') {
 
   for (const key of ['deliveryDate', 'returnDate', 'amount']) {
     if (!hasOwn(value, key) || value[key] === undefined || value[key] === null) {
-      throw new Error(`Invalid ${field}.${key}: required`)
+      throw new OrderValidationError(`Invalid ${field}.${key}: required`)
     }
   }
 
   const amount = toFiniteNumberOrNull(value.amount)
-  if (amount === null || amount < 0) throw new Error(`Invalid ${field}.amount`)
+  if (amount === null || amount < 0) throw new OrderValidationError(`Invalid ${field}.amount`)
 
   return {
     ...cloneValue(value),
@@ -440,22 +441,22 @@ function normalizeCanonicalBooking(input, fieldPrefix = '') {
     } else if (field === 'address' || field === 'destination') {
       result[field] = normalizeCanonicalAddress(value, fieldName)
     } else if (field === 'extraAddresses') {
-      if (!Array.isArray(value)) throw new Error(`Invalid ${fieldName}`)
+      if (!Array.isArray(value)) throw new OrderValidationError(`Invalid ${fieldName}`)
       result[field] = value.map((address, index) =>
         normalizeCanonicalAddress(address, `${fieldName}.${index}`),
       )
     } else if (field === 'duration') {
       const duration = toFiniteNumberOrNull(value)
-      if (duration === null) throw new Error(`Invalid ${fieldName}`)
+      if (duration === null) throw new OrderValidationError(`Invalid ${fieldName}`)
       result[field] = duration
     } else if (['distance', 'name', 'email', 'phone', 'comment'].includes(field)) {
-      if (value !== null && typeof value !== 'string') throw new Error(`Invalid ${fieldName}`)
+      if (value !== null && typeof value !== 'string') throw new OrderValidationError(`Invalid ${fieldName}`)
       result[field] = value
     } else if (field === 'eventColor') {
-      if (value !== null && typeof value !== 'string') throw new Error(`Invalid ${fieldName}`)
+      if (value !== null && typeof value !== 'string') throw new OrderValidationError(`Invalid ${fieldName}`)
       result[field] = value
     } else if (field === 'hsy' || field === 'XL') {
-      if (typeof value !== 'boolean') throw new Error(`Invalid ${fieldName}`)
+      if (typeof value !== 'boolean') throw new OrderValidationError(`Invalid ${fieldName}`)
       result[field] = value
     } else {
       requireObject(value, fieldName)
@@ -489,7 +490,7 @@ function normalizeCanonicalLifecycle(input, result) {
     if (!hasOwn(input, field) || input[field] === undefined) return
 
     if (field === 'confirmed' || field === 'markedForDeletion') {
-      if (typeof input[field] !== 'boolean') throw new Error(`Invalid ${field}`)
+      if (typeof input[field] !== 'boolean') throw new OrderValidationError(`Invalid ${field}`)
       lifecycle[field] = input[field]
     } else if (field.endsWith('At') || field === 'receivedAt') {
       lifecycle[field] = input[field] === null ? null : parseInstant(input[field], field)
@@ -509,22 +510,22 @@ function normalizeCanonicalLifecycle(input, result) {
  * state, not a request to start a new order today.
  */
 function hydrateCanonicalOrder(input) {
-  if (!isPlainObject(input)) throw new Error('Order must be a plain object')
+  if (!isPlainObject(input)) throw new OrderValidationError('Order must be a plain object')
 
   const result = normalizeCanonicalBooking(input)
   const origin = requireField(input, 'origin')
   if (!ORDER_ORIGINS.includes(origin)) {
-    throw new Error(`Invalid order origin: ${String(origin)}`)
+    throw new OrderValidationError(`Invalid order origin: ${String(origin)}`)
   }
 
   if (!hasOwn(input, 'initialSnapshot')) {
-    throw new Error('Invalid order: initialSnapshot is required')
+    throw new OrderValidationError('Invalid order: initialSnapshot is required')
   }
   if (origin === 'app' && input.initialSnapshot !== null) {
-    throw new Error('Invalid order: app orders cannot have an initialSnapshot')
+    throw new OrderValidationError('Invalid order: app orders cannot have an initialSnapshot')
   }
   if (origin === 'wordpress' && input.initialSnapshot === null) {
-    throw new Error('Invalid order: WordPress orders require an initialSnapshot')
+    throw new OrderValidationError('Invalid order: WordPress orders require an initialSnapshot')
   }
 
   result.origin = origin
@@ -543,7 +544,7 @@ function normalizeOrder(input) {
 
 function rejectClientSnapshot(input) {
   if (hasOwn(input, 'initialSnapshot') && input.initialSnapshot !== null && input.initialSnapshot !== undefined) {
-    throw new Error('initialSnapshot is server-managed and cannot be supplied')
+    throw new OrderValidationError('initialSnapshot is server-managed and cannot be supplied')
   }
 }
 
@@ -597,7 +598,7 @@ function constructBookingOrder(input, origin) {
     } else if (field === 'boxes') {
       result.boxes = normalizeCurrentBoxes(input.boxes, defaults.boxes)
     } else if (field === 'extraAddresses') {
-      if (!Array.isArray(input.extraAddresses)) throw new Error('Invalid extraAddresses')
+      if (!Array.isArray(input.extraAddresses)) throw new OrderValidationError('Invalid extraAddresses')
       result.extraAddresses = input.extraAddresses.map(stripAddressMetadata)
     } else if (field === 'address' || field === 'destination') {
       result[field] = stripAddressMetadata(input[field])
@@ -611,7 +612,7 @@ function constructBookingOrder(input, origin) {
 
 function createAppOrder(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new Error('Order must be an object')
+    throw new OrderValidationError('Order must be an object')
   }
   rejectClientSnapshot(input)
 
@@ -620,7 +621,7 @@ function createAppOrder(input = {}) {
 
 function createWordPressOrder(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new Error('Order must be an object')
+    throw new OrderValidationError('Order must be an object')
   }
   rejectClientSnapshot(input)
 
@@ -685,11 +686,11 @@ function resetInitialPricing(order, components) {
 }
 
 function assertOrderPatch(patch) {
-  if (!isPlainObject(patch)) throw new Error('updateData must be a plain object')
+  if (!isPlainObject(patch)) throw new OrderValidationError('updateData must be a plain object')
 
   for (const key of Object.keys(patch)) {
     if (key !== 'pricing' && !BOOKING_FIELDS.includes(key)) {
-      throw new Error(`Field is not editable: ${key}`)
+      throw new OrderValidationError(`Field is not editable: ${key}`)
     }
   }
 }
@@ -698,7 +699,7 @@ function normalizePatchBoxes(value, currentBoxes) {
   if (value === null || value === undefined) return value
 
   if (!isPlainObject(value)) {
-    throw new Error('Invalid boxes')
+    throw new OrderValidationError('Invalid boxes')
   }
 
   return normalizeCurrentBoxes(value, currentBoxes)
@@ -714,7 +715,7 @@ function normalizePatchBoxes(value, currentBoxes) {
  */
 function applyOrderPatch(currentOrder, patch) {
   if (!currentOrder || typeof currentOrder !== 'object' || Array.isArray(currentOrder)) {
-    throw new Error('Order must be an object')
+    throw new OrderValidationError('Order must be an object')
   }
   assertOrderPatch(patch)
 
@@ -722,20 +723,20 @@ function applyOrderPatch(currentOrder, patch) {
 
   if (hasOwn(patch, 'pricing')) {
     const pricing = patch.pricing
-    if (!isPlainObject(pricing)) throw new Error('pricing must be a plain object')
+    if (!isPlainObject(pricing)) throw new OrderValidationError('pricing must be a plain object')
     if (!isPlainObject(pricing.source)) {
-      throw new Error('pricing.source must be a plain object')
+      throw new OrderValidationError('pricing.source must be a plain object')
     }
     if (!isPlainObject(pricing.manual)) {
-      throw new Error('pricing.manual must be a plain object')
+      throw new OrderValidationError('pricing.manual must be a plain object')
     }
 
     PRICING_COMPONENTS.forEach((component) => {
       if (!hasOwn(pricing.source, component)) {
-        throw new Error(`pricing.source.${component} is required`)
+        throw new OrderValidationError(`pricing.source.${component} is required`)
       }
       if (!hasOwn(pricing.manual, component)) {
-        throw new Error(`pricing.manual.${component} is required`)
+        throw new OrderValidationError(`pricing.manual.${component} is required`)
       }
     })
 
@@ -780,9 +781,9 @@ function updateOrderField(order, key, value) {
 }
 
 function setManualPricing(order, component, value) {
-  if (!order || typeof order !== 'object') throw new Error('Order must be an object')
+  if (!order || typeof order !== 'object') throw new OrderValidationError('Order must be an object')
   if (!PRICING_COMPONENTS.includes(component)) {
-    throw new Error(`Unknown pricing component: ${String(component)}`)
+    throw new OrderValidationError(`Unknown pricing component: ${String(component)}`)
   }
 
   const normalizedValue = normalizePricingValue(component, value, `pricing.manual.${component}`)
@@ -809,9 +810,9 @@ function setManualPricing(order, component, value) {
 }
 
 function clearManualPricing(order, component) {
-  if (!order || typeof order !== 'object') throw new Error('Order must be an object')
+  if (!order || typeof order !== 'object') throw new OrderValidationError('Order must be an object')
   if (!PRICING_COMPONENTS.includes(component)) {
-    throw new Error(`Unknown pricing component: ${String(component)}`)
+    throw new OrderValidationError(`Unknown pricing component: ${String(component)}`)
   }
 
   const updated = {
@@ -832,24 +833,24 @@ function clearManualPricing(order, component) {
 }
 
 function setPricingSource(order, component, source) {
-  if (!order || typeof order !== 'object') throw new Error('Order must be an object')
+  if (!order || typeof order !== 'object') throw new OrderValidationError('Order must be an object')
   if (!PRICING_COMPONENTS.includes(component)) {
-    throw new Error(`Unknown pricing component: ${String(component)}`)
+    throw new OrderValidationError(`Unknown pricing component: ${String(component)}`)
   }
   if (!PRICING_SOURCES.includes(source)) {
-    throw new Error(`Invalid pricing source for ${component}: ${String(source)}`)
+    throw new OrderValidationError(`Invalid pricing source for ${component}: ${String(source)}`)
   }
 
   if (source === 'initial') {
     const value = order.initialSnapshot?.[component]
     if (!isPresent(value)) {
-      throw new Error(`Cannot use initial ${component}: the snapshot value is missing`)
+      throw new OrderValidationError(`Cannot use initial ${component}: the snapshot value is missing`)
     }
     normalizePricingValue(component, value, `initialSnapshot.${component}`)
   }
 
   if (source === 'manual' && order.pricing?.manual?.[component] === null) {
-    throw new Error(`Cannot use manual ${component}: the manual value is missing`)
+    throw new OrderValidationError(`Cannot use manual ${component}: the manual value is missing`)
   }
 
   const updated = {
@@ -866,14 +867,14 @@ function setPricingSource(order, component, source) {
 }
 
 function revertToInitial(order) {
-  if (!order || typeof order !== 'object') throw new Error('Order must be an object')
+  if (!order || typeof order !== 'object') throw new OrderValidationError('Order must be an object')
   if (order.origin === 'app' || !order.initialSnapshot) {
-    throw new Error('App-created orders do not have an initial snapshot to revert to')
+    throw new OrderValidationError('App-created orders do not have an initial snapshot to revert to')
   }
 
   const snapshot = order.initialSnapshot
   if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
-    throw new Error('Invalid initialSnapshot')
+    throw new OrderValidationError('Invalid initialSnapshot')
   }
 
   const restored = { ...order }
