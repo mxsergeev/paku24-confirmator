@@ -86,4 +86,51 @@ describe('Calendar controls', () => {
       right: 'createOrderButton refreshOrdersButton',
     })
   })
+
+  it('passes order and box colors through FullCalendar event props', () => {
+    mocks.useCalendarOrders.mockReturnValue({
+      data: [
+        {
+          id: 'order-1',
+          date: '2026-01-15T07:00:00.000Z',
+          duration: 2,
+          service: { id: '1', name: "Van and driver (doesn't assist in carrying)" },
+          address: { street: 'Mannerheimintie 10' },
+          name: 'Test Customer',
+          boxes: {
+            deliveryDate: '2026-01-16T07:00:00.000Z',
+            returnDate: '2026-01-24T07:00:00.000Z',
+            amount: 1,
+          },
+          confirmed: true,
+          eventColor: '7',
+        },
+      ],
+      refetch: vi.fn(),
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+    })
+
+    render(<Calendar />)
+
+    const events = mocks.calendarProps.events
+    expect(events).toHaveLength(3)
+    expect(events[0]).toMatchObject({
+      backgroundColor: '#039be5',
+      borderColor: '#039be5',
+      extendedProps: { color: '#039be5', eventType: 'order' },
+    })
+    expect(events[1]).toMatchObject({
+      backgroundColor: '#7986cb',
+      borderColor: '#7986cb',
+      extendedProps: { color: '#7986cb', eventType: 'boxDelivery' },
+    })
+    expect(events[2]).toMatchObject({
+      backgroundColor: '#7986cb',
+      borderColor: '#7986cb',
+      extendedProps: { color: '#7986cb', eventType: 'boxReturn' },
+    })
+  })
 })

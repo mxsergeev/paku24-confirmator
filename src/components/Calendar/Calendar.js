@@ -315,6 +315,8 @@ export default function Calendar() {
             order.address ? `${eventTime}(${order.duration}h) ${order.name}` : ''
           }`,
           start: calendarEventStart(order.date, 'order date'),
+          backgroundColor: color,
+          borderColor: color,
           extendedProps: {
             color,
             eventType: 'order',
@@ -344,6 +346,8 @@ export default function Calendar() {
           title: `${addIcon}${getBoxEventTitle(order, 'boxDelivery', deliveryTime, iconsData)}`,
           start: calendarEventStart(order.boxes.deliveryDate, 'box delivery date'),
           ...(deliveryDateOnly ? { allDay: true } : {}),
+          backgroundColor: boxColor,
+          borderColor: boxColor,
           extendedProps: {
             color: boxColor,
             eventType: 'boxDelivery',
@@ -370,6 +374,8 @@ export default function Calendar() {
           title: `${addIcon}${getBoxEventTitle(order, 'boxReturn', returnTime, iconsData)}`,
           start: calendarEventStart(order.boxes.returnDate, 'box return date'),
           ...(returnDateOnly ? { allDay: true } : {}),
+          backgroundColor: boxColor,
+          borderColor: boxColor,
           extendedProps: {
             color: boxColor,
             eventType: 'boxReturn',
@@ -391,24 +397,6 @@ export default function Calendar() {
         </div>
       </div>
     )
-  }
-
-  function handleEventDidMount(eventInfo) {
-    const bgColor = eventInfo.event.extendedProps.color
-    if (!bgColor || !eventInfo.el) return
-
-    if (
-      eventInfo.el.classList.contains('fc-v-event') ||
-      eventInfo.el.classList.contains('fc-timegrid-event')
-    ) {
-      eventInfo.el.style.backgroundColor = bgColor
-      eventInfo.el.style.borderColor = bgColor
-
-      const eventMain = eventInfo.el.querySelector('.fc-event-main')
-      if (eventMain) {
-        eventMain.style.backgroundColor = bgColor
-      }
-    }
   }
 
   function handleEventClick(info) {
@@ -492,7 +480,6 @@ export default function Calendar() {
         }}
         events={events}
         eventContent={renderEventContent}
-        eventDidMount={handleEventDidMount}
         firstDay={1}
         eventClick={handleEventClick}
         datesSet={(dateInfo) => {
