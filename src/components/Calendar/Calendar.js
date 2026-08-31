@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { useHistory, useLocation, useRouteMatch } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import OrderDialog from './OrderDialog'
@@ -56,6 +55,7 @@ export default function Calendar() {
     try {
       return window.localStorage.getItem(SHOW_DELETED_ORDERS_STORAGE_KEY) === 'true'
     } catch {
+      // Browser storage can be unavailable in private or restricted contexts.
       return false
     }
   })
@@ -66,10 +66,10 @@ export default function Calendar() {
       const savedView = window.localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY)
       return AVAILABLE_CALENDAR_VIEWS.includes(savedView) ? savedView : DEFAULT_CALENDAR_VIEW
     } catch {
+      // Browser storage can be unavailable in private or restricted contexts.
       return DEFAULT_CALENDAR_VIEW
     }
   })
-  const [toolbarPortalNode, setToolbarPortalNode] = useState(null)
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date())
   const [dateRange, setDateRange] = useState({
     from: null,
@@ -138,88 +138,6 @@ export default function Calendar() {
   }, [])
 
   useEffect(() => {
-    const calendarWrap = calendarWrapRef.current
-    if (!calendarWrap) return undefined
-
-    let frameId = null
-    let portalNode = null
-    let attempts = 0
-
-    const attachPortalNode = () => {
-      const toolbar = calendarWrap.querySelector('.fc .fc-header-toolbar')
-
-      if (toolbar) {
-        portalNode = document.createElement('div')
-        // Try to place the portal right after the Refresh button. Fallback to appending to toolbar.
-        portalNode.className = 'calendar-toolbar-toggle-wrapper'
-        const refreshButton =
-          toolbar.querySelector('.fc-refreshOrdersButton-button') ||
-          toolbar.querySelector('.fc-button')
-        try {
-          if (refreshButton && refreshButton.parentNode) {
-            refreshButton.insertAdjacentElement('afterend', portalNode)
-          } else {
-            toolbar.appendChild(portalNode)
-          }
-        } catch (e) {
-          toolbar.appendChild(portalNode)
-        }
-        // On mobile, move the Create Order button next to Refresh for compact layout
-        try {
-          const isMobile = window.innerWidth <= 600
-          if (isMobile) {
-            const createBtn = toolbar.querySelector('.fc-createOrderButton-button')
-            const refreshBtn = toolbar.querySelector('.fc-refreshOrdersButton-button')
-            if (createBtn && refreshBtn) {
-              refreshBtn.insertAdjacentElement('beforebegin', createBtn)
-            }
-
-            // Move view buttons to left of navigation arrows (prev/today/next)
-            try {
-              const prevBtn = toolbar.querySelector('.fc-prev-button')
-              const insertBeforeEl = prevBtn || toolbar.querySelector('.fc-button')
-              const viewSelectors = [
-                '.fc-dayGridMonth-button',
-                '.fc-timeGridWeek-button',
-                '.fc-listWeek-button',
-                '.fc-multiMonthYear-button',
-              ]
-              if (insertBeforeEl) {
-                viewSelectors.forEach((sel) => {
-                  const btn = toolbar.querySelector(sel)
-                  if (btn) {
-                    insertBeforeEl.parentNode.insertBefore(btn, insertBeforeEl)
-                  }
-                })
-              }
-            } catch (e) {}
-          }
-        } catch (e) {}
-
-        setToolbarPortalNode(portalNode)
-        return
-      }
-
-      if (attempts < 30) {
-        attempts += 1
-        frameId = window.requestAnimationFrame(attachPortalNode)
-      }
-    }
-
-    attachPortalNode()
-
-    return () => {
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId)
-      }
-      if (portalNode?.parentNode) {
-        portalNode.parentNode.removeChild(portalNode)
-      }
-      setToolbarPortalNode(null)
-    }
-  }, [])
-
-  useEffect(() => {
     if (typeof window === 'undefined') return
 
     try {
@@ -227,7 +145,9 @@ export default function Calendar() {
         SHOW_DELETED_ORDERS_STORAGE_KEY,
         showDeletedOrders ? 'true' : 'false'
       )
-    } catch {}
+    } catch {
+      // Calendar preferences are optional when browser storage is unavailable.
+    }
   }, [showDeletedOrders])
 
   // Mobile: enable swipe left/right to navigate calendar (prev/next)
@@ -264,13 +184,9 @@ export default function Calendar() {
       const threshold = 40
       if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > threshold) {
         if (dx < 0) {
-          try {
-            api.next()
-          } catch (err) {}
+          api.next()
         } else {
-          try {
-            api.prev()
-          } catch (err) {}
+          api.prev()
         }
       }
     }
@@ -289,7 +205,9 @@ export default function Calendar() {
 
     try {
       window.localStorage.setItem(CALENDAR_VIEW_STORAGE_KEY, calendarView)
-    } catch {}
+    } catch {
+      // Calendar preferences are optional when browser storage is unavailable.
+    }
   }, [calendarView])
 
   const { data: orders = [], refetch, isLoading, isFetching, isError, error } = useCalendarOrders({
@@ -534,6 +452,19 @@ export default function Calendar() {
       className={`calendar ${calendarView === 'timeGridWeek' ? 'calendar--week-view' : ''}`}
       ref={calendarWrapRef}
     >
+      <div className="calendar-toolbar" role="toolbar" aria-label="Calendar options">
+        <label className="calendar-toolbar-toggle" htmlFor="calendar-show-deleted-orders">
+          <span className="calendar-toolbar-toggle-label">Show deleted</span>
+          <input
+            id="calendar-show-deleted-orders"
+            className="calendar-toolbar-toggle-input"
+            type="checkbox"
+            checked={showDeletedOrders}
+            onChange={(event) => setShowDeletedOrders(event.target.checked)}
+          />
+          <span className="calendar-toolbar-toggle-slider" aria-hidden="true" />
+        </label>
+      </div>
       <FullCalendar
         ref={calendarRef}
         timeZone={HELSINKI_TIMEZONE}
@@ -590,21 +521,6 @@ export default function Calendar() {
         }}
         {...mobileCalendarProps}
       />
-      {toolbarPortalNode &&
-        createPortal(
-          <label className="calendar-toolbar-toggle" htmlFor="calendar-show-deleted-orders">
-            <span className="calendar-toolbar-toggle-label">Show deleted</span>
-            <input
-              id="calendar-show-deleted-orders"
-              className="calendar-toolbar-toggle-input"
-              type="checkbox"
-              checked={showDeletedOrders}
-              onChange={(event) => setShowDeletedOrders(event.target.checked)}
-            />
-            <span className="calendar-toolbar-toggle-slider" aria-hidden="true" />
-          </label>,
-          toolbarPortalNode
-        )}
       {isMonthViewActive && hasDateRange && !isInitialLoading && !isError && isHasOrders && (
         <div className="calendar-month-summary" role="status" aria-live="polite">
           <div className="calendar-month-summary-header">
