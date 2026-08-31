@@ -88,7 +88,9 @@ const completePricing = (source, manual) => ({
 
 describe('Order pool v2/add', () => {
   afterEach(async () => {
-    await Order.deleteMany({ name: { $in: ['WordPress Order', 'WordPress Auto Order', 'App Order'] } })
+    await Order.deleteMany({
+      name: { $in: ['WordPress Order', 'WordPress Auto Order', 'WordPress Service Metadata', 'App Order'] },
+    })
   })
 
   function makeOrder(overrides = {}) {
@@ -177,6 +179,27 @@ describe('Order pool v2/add', () => {
     expect(saved.price).toEqual(expect.any(Number))
     expect(saved.boxesPrice).toEqual(expect.any(Number))
     expect(saved.fees).toEqual(expect.any(Array))
+  })
+
+  test('preserves embedded WordPress service metadata through persistence', async () => {
+    const service = {
+      id: 'external-service',
+      name: 'External',
+      pricePerHour: 61,
+      details: { source: 'wordpress' },
+    }
+    const res = await api
+      .post('/api/order-pool/v2/add')
+      .send({
+        key,
+        order: makeOrder({ name: 'WordPress Service Metadata', service }),
+      })
+      .expect(200)
+
+    const saved = await Order.findById(res.body.id).lean()
+
+    expect(saved.service).toMatchObject(service)
+    expect(saved.initialSnapshot.service).toMatchObject(service)
   })
 
   test('authenticated app creation uses only booking fields and automatic pricing', async () => {

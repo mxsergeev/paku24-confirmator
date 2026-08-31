@@ -96,15 +96,21 @@ const addressSchema = nestedSchema({
   elevator: Boolean,
 })
 
-const serviceSchema = nestedSchema({
-  id: String,
-  name: String,
-  pricePerHour: finiteNumberPath(),
-  price: finiteNumberPath(),
-  eventColor: String,
-  hsy: Boolean,
-  multiplier: finiteNumberPath(),
-})
+// WordPress can provide service metadata that is not part of the local
+// catalog. Keep the embedded source object intact, just as paymentType does,
+// so normalization and persistence expose the same contract.
+const serviceSchema = nestedSchema(
+  {
+    id: String,
+    name: String,
+    pricePerHour: finiteNumberPath(),
+    price: finiteNumberPath(),
+    eventColor: String,
+    hsy: Boolean,
+    multiplier: finiteNumberPath(),
+  },
+  { strict: false },
+)
 
 const paymentTypeSchema = nestedSchema(
   {

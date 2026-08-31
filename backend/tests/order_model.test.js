@@ -17,6 +17,7 @@ const service = {
   price: 122,
   eventColor: '7',
   multiplier: 1,
+  details: { source: 'wordpress' },
 }
 
 const paymentType = {
@@ -131,6 +132,8 @@ describe('Order Mongoose schema', () => {
     expect(wordpress.XL).toBe(false)
     expect(wordpress.origin).toBe('wordpress')
     expect(wordpress.initialSnapshot).toBeTruthy()
+    expect(wordpress.service.details).toEqual({ source: 'wordpress' })
+    expect(wordpress.initialSnapshot.service.details).toEqual({ source: 'wordpress' })
     expect(wordpress.paymentType.details).toEqual({ source: 'wordpress' })
     expect(app.initialSnapshot).toBeNull()
     expect(app.pricing.manual.price).toBe(0)
