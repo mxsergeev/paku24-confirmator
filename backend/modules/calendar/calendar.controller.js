@@ -14,16 +14,15 @@ calendarRouter.use(authMW.authenticateAccessToken)
 
 calendarRouter.post('/', async (req, res, next) => {
   try {
-    const requestedOrder = req.body.order || {}
-    const linkedOrderId = req.body.orderId || requestedOrder.id || requestedOrder._id
-    let order = requestedOrder
+    const orderId = req.body?.orderId
+    if (!orderId) {
+      throw newErrorWithCustomName('ValidationError', 'orderId is required')
+    }
 
     // Persisted orders are authoritative: the request payload is a rendered
     // view and must not replace stored role IDs or booking data.
-    if (linkedOrderId) {
-      order = await OrderModel.findById(linkedOrderId)
-      if (!order) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-    }
+    const order = await OrderModel.findById(orderId)
+    if (!order) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
 
     const result = await syncOrderToCalendar(order)
     const eventCount = Object.keys(result?.events || {}).length

@@ -91,4 +91,41 @@ describe('permanent order deletion', () => {
     await expect(deleteOrderPermanently('66c000000000000000000001')).rejects.toBe(failure)
     expect(mocks.deleteOne).not.toHaveBeenCalled()
   })
+
+  it('can retry row deletion after calendar cleanup partially succeeds', async () => {
+    const order = makeOrder()
+    const failure = new Error('one calendar role failed')
+    order.calendarEventIds = {
+      main: 'main-remaining',
+      boxDelivery: null,
+      boxReturn: null,
+    }
+    mocks.findById.mockResolvedValue(order)
+    mocks.deleteOrderEvent
+      .mockImplementationOnce(async () => {
+        order.calendarEventIds.main = null
+        throw failure
+      })
+      .mockResolvedValueOnce(true)
+
+    await expect(deleteOrderPermanently('66c000000000000000000001')).rejects.toBe(failure)
+    expect(mocks.deleteOne).not.toHaveBeenCalled()
+
+    await expect(deleteOrderPermanently('66c000000000000000000001')).resolves.toBe(order)
+    expect(mocks.deleteOrderEvent).toHaveBeenCalledTimes(2)
+    expect(mocks.deleteOne).toHaveBeenCalledTimes(1)
+  })
+
+  it('can retry row deletion when the database fails after calendar cleanup', async () => {
+    const order = makeOrder()
+    const failure = new Error('database unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.deleteOrderEvent.mockResolvedValue(true)
+    mocks.deleteOne.mockRejectedValueOnce(failure).mockResolvedValueOnce({ deletedCount: 1 })
+
+    await expect(deleteOrderPermanently('66c000000000000000000001')).rejects.toBe(failure)
+    await expect(deleteOrderPermanently('66c000000000000000000001')).resolves.toBe(order)
+    expect(mocks.deleteOrderEvent).toHaveBeenCalledTimes(2)
+    expect(mocks.deleteOne).toHaveBeenCalledTimes(2)
+  })
 })

@@ -106,6 +106,79 @@ describe('calendar reconciliation', () => {
     )
   })
 
+  it('clears successful stale deletions before surfacing a later failure', async () => {
+    const failure = new Error('return deletion failed')
+    mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
+    mocks.deleteEventFromCalendar
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(failure)
+
+    const order = {
+      _id: 'order-partial-delete',
+      calendarEventIds: {
+        main: 'main-existing',
+        boxDelivery: 'delivery-stale',
+        boxReturn: 'return-stale',
+      },
+    }
+
+    await expect(syncOrderToCalendar(order)).rejects.toBe(failure)
+
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { _id: 'order-partial-delete' },
+      {
+        $set: {
+          calendarEventIds: {
+            main: 'main-existing',
+            boxDelivery: null,
+            boxReturn: 'return-stale',
+          },
+        },
+      },
+    )
+    expect(order.calendarEventIds).toEqual({
+      main: 'main-existing',
+      boxDelivery: null,
+      boxReturn: 'return-stale',
+    })
+    expect(mocks.updateEventInCalendar).not.toHaveBeenCalled()
+    expect(mocks.addEventToCalendar).not.toHaveBeenCalled()
+  })
+
+  it('treats not-found stale events as already deleted', async () => {
+    mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
+    mocks.deleteEventFromCalendar.mockRejectedValueOnce({ response: { status: 404 } })
+
+    const order = {
+      _id: 'order-not-found-delete',
+      calendarEventIds: {
+        main: 'main-existing',
+        boxDelivery: 'delivery-missing',
+        boxReturn: null,
+      },
+    }
+
+    await expect(syncOrderToCalendar(order)).resolves.toMatchObject({
+      calendarEventIds: {
+        main: 'main-existing',
+        boxDelivery: null,
+        boxReturn: null,
+      },
+    })
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { _id: 'order-not-found-delete' },
+      {
+        $set: {
+          calendarEventIds: {
+            main: 'main-existing',
+            boxDelivery: null,
+            boxReturn: null,
+          },
+        },
+      },
+    )
+  })
+
   it('rolls back events already created when a later create fails', async () => {
     const failure = new Error('delivery create failed')
     mocks.addEventToCalendar
@@ -179,5 +252,63 @@ describe('calendar reconciliation', () => {
 
     expect(mocks.deleteEventFromCalendar).toHaveBeenCalledTimes(3)
     expect(mocks.updateOne).not.toHaveBeenCalled()
+  })
+
+  it('clears each deleted role and lets a retry finish after a partial failure', async () => {
+    const failure = new Error('main delete failed')
+    const order = {
+      _id: 'order-retry-delete',
+      calendarEventIds: {
+        main: 'main-existing',
+        boxDelivery: 'delivery-existing',
+        boxReturn: 'return-existing',
+      },
+    }
+    mocks.deleteEventFromCalendar
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(failure)
+      .mockResolvedValueOnce(undefined)
+
+    await expect(deleteOrderEvent(order)).rejects.toBe(failure)
+    expect(order.calendarEventIds).toEqual({
+      main: null,
+      boxDelivery: 'delivery-existing',
+      boxReturn: null,
+    })
+
+    await expect(deleteOrderEvent(order)).resolves.toBe(true)
+    expect(mocks.deleteEventFromCalendar).toHaveBeenCalledTimes(4)
+    expect(order.calendarEventIds).toEqual({ main: null, boxDelivery: null, boxReturn: null })
+  })
+
+  it('does not create duplicate role triplets when sync calls overlap', async () => {
+    const order = { _id: 'order-concurrent', calendarEventIds: {} }
+    let releaseFirstCreate
+    let firstCreateStarted
+    const firstCreateGate = new Promise((resolve) => {
+      releaseFirstCreate = resolve
+    })
+    const firstCreateStartedSignal = new Promise((resolve) => {
+      firstCreateStarted = resolve
+    })
+    let createCount = 0
+
+    mocks.addEventToCalendar.mockImplementation(async (event) => {
+      createCount += 1
+      if (createCount === 1) {
+        firstCreateStarted()
+        await firstCreateGate
+      }
+      return { data: { id: `${event.summary}-created` } }
+    })
+
+    const first = syncOrderToCalendar(order)
+    await firstCreateStartedSignal
+    const second = syncOrderToCalendar(order)
+    releaseFirstCreate()
+    await Promise.all([first, second])
+
+    expect(mocks.addEventToCalendar).toHaveBeenCalledTimes(3)
+    expect(mocks.updateEventInCalendar).toHaveBeenCalledTimes(3)
   })
 })

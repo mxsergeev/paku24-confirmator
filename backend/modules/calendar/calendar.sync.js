@@ -40,6 +40,58 @@ function eventId(response) {
   return response?.data?.id || response?.id || null
 }
 
+function orderLockKey(order) {
+  const id = order?._id ?? order?.id
+  if (id === null || id === undefined || id === '') return null
+  return typeof id.toString === 'function' ? id.toString() : String(id)
+}
+
+// Calendar operations for the same persisted order must not overlap. This is
+// intentionally local to this service: the app runs as one process and a
+// small promise queue is enough to serialize retries and model-hook calls.
+const orderLocks = new Map()
+
+function withOrderCalendarLock(order, operation) {
+  const key = orderLockKey(order)
+  if (!key) return operation(order)
+
+  const previous = orderLocks.get(key)
+  const predecessor = previous || Promise.resolve()
+  const current = predecessor.then(operation, operation)
+  orderLocks.set(key, current)
+
+  // Do not leave rejected promises in the queue, and only remove this call's
+  // entry so a newer operation cannot be detached from its predecessor.
+  current.then(
+    () => {
+      if (orderLocks.get(key) === current) orderLocks.delete(key)
+    },
+    () => {
+      if (orderLocks.get(key) === current) orderLocks.delete(key)
+    },
+  )
+
+  return current
+}
+
+function canReloadPersistedOrder(order) {
+  const key = orderLockKey(order)
+  return typeof OrderModel.findById === 'function' && /^[a-f\d]{24}$/i.test(key || '')
+}
+
+async function loadLatestPersistedOrder(order) {
+  if (!canReloadPersistedOrder(order)) return order
+  return OrderModel.findById(order._id ?? order.id)
+}
+
+function isCalendarEventNotFound(error) {
+  const responseStatus = error?.response?.status
+  const responseCode = error?.response?.data?.error?.code
+  return [error?.code, error?.status, error?.statusCode, responseStatus, responseCode].some(
+    (value) => Number(value) === 404,
+  )
+}
+
 function assertPersistenceSucceeded(result, orderId) {
   if (!orderId) return
   if (!result) {
@@ -90,11 +142,11 @@ function throwDeletionFailures(failures, context) {
  *
  * A role with a stored ID is updated in place. A desired role without an ID is
  * created and linked. A stored role which is no longer desired is deleted.
- * Persistence happens only after the calendar operations have completed; any
- * event created during this attempt is rolled back when a later operation or
- * the database link fails.
+ * Stale event IDs are cleared after each successful deletion. This means a
+ * later failure leaves only the failed role linked, so a retry can safely
+ * continue. Newly-created events are still linked in one final write.
  */
-async function syncOrderToCalendar(order) {
+async function reconcileOrderToCalendar(order) {
   if (!order) return null
 
   const desired = desiredEvents(order)
@@ -104,6 +156,36 @@ async function syncOrderToCalendar(order) {
   const createdIds = []
 
   try {
+    // Clear stale roles before creating missing roles. Successful clears are
+    // persisted immediately, so a later deletion failure remains retry-safe.
+    const deletionFailures = []
+    for (const role of CALENDAR_EVENT_ROLES) {
+      if (desired[role] || !previousIds[role]) continue
+
+      let deletionError = null
+      try {
+        await deleteEventFromCalendar(previousIds[role])
+      } catch (error) {
+        if (!isCalendarEventNotFound(error)) deletionError = error
+      }
+
+      if (deletionError) {
+        deletionFailures.push({ role, eventId: previousIds[role], error: deletionError })
+        logger.error(`Failed to delete stale calendar event ${previousIds[role]}`, deletionError)
+        continue
+      }
+
+      nextIds[role] = null
+      try {
+        await persistCalendarEventIds(order, nextIds)
+        order.calendarEventIds = { ...nextIds }
+      } catch (error) {
+        deletionFailures.push({ role, eventId: previousIds[role], error })
+        logger.error(`Failed to clear stale calendar event ID ${previousIds[role]}`, error)
+      }
+    }
+    throwDeletionFailures(deletionFailures, 'Calendar reconciliation')
+
     for (const role of CALENDAR_EVENT_ROLES) {
       if (!desired[role]) continue
 
@@ -121,20 +203,6 @@ async function syncOrderToCalendar(order) {
       createdIds.push(id)
     }
 
-    const deletionFailures = []
-    for (const role of CALENDAR_EVENT_ROLES) {
-      if (desired[role] || !previousIds[role]) continue
-
-      try {
-        await deleteEventFromCalendar(previousIds[role])
-        nextIds[role] = null
-      } catch (error) {
-        deletionFailures.push({ role, eventId: previousIds[role], error })
-        logger.error(`Failed to delete stale calendar event ${previousIds[role]}`, error)
-      }
-    }
-    throwDeletionFailures(deletionFailures, 'Calendar reconciliation')
-
     await persistCalendarEventIds(order, nextIds)
     order.calendarEventIds = { ...nextIds }
 
@@ -150,7 +218,20 @@ async function syncOrderToCalendar(order) {
   }
 }
 
-async function deleteOrderEvent(order, { clearStoredIds = true } = {}) {
+async function syncOrderToCalendar(order) {
+  if (!order) return null
+
+  return withOrderCalendarLock(order, async () => {
+    const latestOrder = await loadLatestPersistedOrder(order)
+    const result = await reconcileOrderToCalendar(latestOrder)
+    if (latestOrder && latestOrder !== order && result?.calendarEventIds) {
+      order.calendarEventIds = { ...result.calendarEventIds }
+    }
+    return result
+  })
+}
+
+async function removeOrderEvents(order, { clearStoredIds = true } = {}) {
   if (!order) return null
 
   const ids = storedCalendarEventIds(order)
@@ -158,26 +239,54 @@ async function deleteOrderEvent(order, { clearStoredIds = true } = {}) {
   if (activeRoles.length === 0) return null
 
   const deletionFailures = []
+  const nextIds = { ...ids }
   for (const role of activeRoles) {
     try {
       await deleteEventFromCalendar(ids[role])
+      nextIds[role] = null
     } catch (error) {
-      deletionFailures.push({ role, eventId: ids[role], error })
-      logger.error(`Failed to delete calendar event ${ids[role]}`, error)
+      if (isCalendarEventNotFound(error)) {
+        nextIds[role] = null
+      } else {
+        deletionFailures.push({ role, eventId: ids[role], error })
+        logger.error(`Failed to delete calendar event ${ids[role]}`, error)
+        continue
+      }
+    }
+
+    if (clearStoredIds) {
+      try {
+        await persistCalendarEventIds(order, nextIds)
+        order.calendarEventIds = { ...nextIds }
+      } catch (error) {
+        deletionFailures.push({ role, eventId: ids[role], error })
+        logger.error(`Failed to clear calendar event ID ${ids[role]}`, error)
+      }
+    } else {
+      order.calendarEventIds = { ...nextIds }
     }
   }
+
   throwDeletionFailures(deletionFailures, 'Calendar order deletion')
 
-  if (clearStoredIds && order._id) {
-    const result = await OrderModel.updateOne(
-      { _id: order._id },
-      { $set: { calendarEventIds: makeCalendarEventIds() } },
-    )
-    assertPersistenceSucceeded(result, order._id)
-    order.calendarEventIds = makeCalendarEventIds()
-  }
-
   return true
+}
+
+async function deleteOrderEvent(order, options = {}) {
+  if (!order) return null
+
+  return withOrderCalendarLock(order, async () => {
+    // A post findOneAndDelete hook intentionally receives a document that is
+    // no longer in Mongo, so it must use that document rather than reloading.
+    const latestOrder = options.clearStoredIds === false
+      ? order
+      : await loadLatestPersistedOrder(order)
+    const result = await removeOrderEvents(latestOrder, options)
+    if (latestOrder && latestOrder !== order) {
+      order.calendarEventIds = { ...latestOrder.calendarEventIds }
+    }
+    return result
+  })
 }
 
 export {
