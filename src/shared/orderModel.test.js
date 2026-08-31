@@ -38,6 +38,8 @@ describe('default and boundary order state', () => {
     expect(first.boxes.deliveryDate).not.toBe(second.boxes.deliveryDate)
     expect(first.extraAddresses).not.toBe(second.extraAddresses)
     expect(first.pricing).not.toBe(second.pricing)
+    expect(first.calendarEventIds).not.toBe(second.calendarEventIds)
+    expect(first.calendarEventIds).toEqual({ main: null, boxDelivery: null, boxReturn: null })
     expect(first.origin).toBe('app')
     expect(first.initialSnapshot).toBeNull()
     expect(first).not.toHaveProperty('_id')
@@ -198,6 +200,24 @@ describe('default and boundary order state', () => {
     expect(missing.initialSnapshot).not.toHaveProperty('price')
     expect(missing.initialSnapshot).not.toHaveProperty('fees')
     expect(missing.initialSnapshot).not.toHaveProperty('boxesPrice')
+  })
+
+  it('hydrates role-specific calendar IDs and rejects malformed IDs', () => {
+    const order = createWordPressOrder(makeWordPressPayload())
+    const hydrated = hydrateCanonicalOrder({
+      ...order,
+      calendarEventIds: { main: 'main-id', boxDelivery: null, boxReturn: 'return-id' },
+    })
+
+    expect(hydrated.calendarEventIds).toEqual({
+      main: 'main-id',
+      boxDelivery: null,
+      boxReturn: 'return-id',
+    })
+    expect(() => hydrateCanonicalOrder({
+      ...order,
+      calendarEventIds: { main: 123 },
+    })).toThrow(/calendarEventIds\.main/i)
   })
 })
 
@@ -417,7 +437,11 @@ describe('revertToInitial', () => {
       deletedAt: new Date('2026-01-12T11:00:00.000Z'),
       markedForDeletion: true,
       invoiceNumber: 'invoice-1',
-      googleEventId: 'event-1',
+      calendarEventIds: {
+        main: 'event-1',
+        boxDelivery: 'delivery-event-1',
+        boxReturn: 'return-event-1',
+      },
     }
     const changed = updateOrderField(order, 'address', { street: 'edited', floor: 0, elevator: false })
     const manual = setManualPricing(changed, 'price', 999)
@@ -442,7 +466,11 @@ describe('revertToInitial', () => {
     expect(reverted.deletedAt).toEqual(new Date('2026-01-12T11:00:00.000Z'))
     expect(reverted.markedForDeletion).toBe(true)
     expect(reverted.invoiceNumber).toBe('invoice-1')
-    expect(reverted.googleEventId).toBe('event-1')
+    expect(reverted.calendarEventIds).toEqual({
+      main: 'event-1',
+      boxDelivery: 'delivery-event-1',
+      boxReturn: 'return-event-1',
+    })
     expect(reverted.initialSnapshot).toBe(snapshot)
     expect(revertToInitial(reverted)).toEqual(reverted)
     expect(() => revertToInitial(createAppOrder())).toThrow(/do not have an initial snapshot/i)

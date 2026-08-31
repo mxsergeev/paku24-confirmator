@@ -5,6 +5,7 @@ import { promises as fs } from 'fs'
 import { formatAddressLocation } from '../../../src/shared/addressFormatter.js'
 import {
   HELSINKI_TIMEZONE,
+  calendarDateToUtc,
   isDateOnly,
   parseCalendarDate,
   parseInstant,
@@ -106,6 +107,17 @@ function makeColor(order) {
   return order.eventColor
 }
 
+function nextCalendarDate(value, fieldName) {
+  const date = calendarDateToUtc(value, fieldName)
+  date.setUTCDate(date.getUTCDate() + 1)
+  return date.toISOString().slice(0, 10)
+}
+
+function formatCalendarLocation(address) {
+  if (typeof address === 'string') return address
+  return formatAddressLocation(address)
+}
+
 /**
  * Creates move, boxes delivery and pickup event objects for Google Calendar API.
  * @param {Object} eventInfo
@@ -126,12 +138,13 @@ function makeGoogleEventObjects(order) {
 
   const events = [
     {
+      role: 'main',
       summary: entries.move.title,
       description: entries.move.description,
       colorId: color,
-      location: [formatAddressLocation(order.address)]
-        .concat(order.extraAddresses?.map((ea) => formatAddressLocation(ea)))
-        .concat([formatAddressLocation(order.destination)])
+      location: [formatCalendarLocation(order.address)]
+        .concat((order.extraAddresses || []).map((ea) => formatCalendarLocation(ea)))
+        .concat([formatCalendarLocation(order.destination)])
         .join('\n'),
       start: {
         dateTime: typeof order.date === 'string' ? order.date : order.date.toISOString(),
@@ -158,15 +171,12 @@ function makeGoogleEventObjects(order) {
 
       let location = ''
 
-      if (f === 'deliveryDate') {
-        location = order.address
-      }
+      if (f === 'deliveryDate') location = formatCalendarLocation(order.address)
 
-      if (f === 'returnDate') {
-        location = order.destination
-      }
+      if (f === 'returnDate') location = formatCalendarLocation(order.destination)
 
       events.push({
+        role: f === 'deliveryDate' ? 'boxDelivery' : 'boxReturn',
         summary: entries[f].title,
         description: entries[f].description,
         colorId: '1',
@@ -185,8 +195,8 @@ function makeGoogleEventObjects(order) {
               timeZone: HELSINKI_TIMEZONE,
             }
           : {
-              date: dateStr,
-            },
+              date: nextCalendarDate(dateStr, `${fieldName} end`),
+          },
         reminders: {
           useDefault: false,
         },

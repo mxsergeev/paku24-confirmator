@@ -4,114 +4,184 @@ import {
   addEventToCalendar,
   updateEventInCalendar,
   deleteEventFromCalendar,
-  findEventByStartAndSummary,
 } from './calendar.googleAPI.js'
 import * as logger from '../../utils/logger.js'
+import {
+  CALENDAR_EVENT_ROLES,
+  makeCalendarEventIds,
+} from '../../../src/shared/orderModel.js'
+
+function storedCalendarEventIds(order) {
+  const ids = order?.calendarEventIds || {}
+  return CALENDAR_EVENT_ROLES.reduce((result, role) => {
+    result[role] = ids[role] || null
+    return result
+  }, makeCalendarEventIds())
+}
+
+function desiredEvents(order) {
+  const events = makeGoogleEventObjects(order) || []
+  const desired = {}
+
+  events.forEach((event) => {
+    const role = event?.role
+    if (!CALENDAR_EVENT_ROLES.includes(role)) {
+      throw new Error(`Calendar event is missing a valid role: ${String(role)}`)
+    }
+    if (desired[role]) throw new Error(`Duplicate calendar event role: ${role}`)
+    const { role: _role, ...resource } = event
+    desired[role] = resource
+  })
+
+  return desired
+}
+
+function eventId(response) {
+  return response?.data?.id || response?.id || null
+}
+
+function assertPersistenceSucceeded(result, orderId) {
+  if (!orderId) return
+  if (!result) {
+    throw new Error(`Calendar event IDs could not be persisted for order ${orderId}`)
+  }
+
+  const matched = result.matchedCount ?? result.n
+  if (matched === 0) {
+    throw new Error(`Calendar event IDs could not be persisted for order ${orderId}`)
+  }
+}
+
+async function persistCalendarEventIds(order, ids) {
+  if (!order?._id) return null
+
+  const result = await OrderModel.updateOne(
+    { _id: order._id },
+    { $set: { calendarEventIds: ids } },
+  )
+  assertPersistenceSucceeded(result, order._id)
+  return result
+}
+
+async function rollbackCreatedEvents(createdIds) {
+  for (const createdId of [...createdIds].reverse()) {
+    try {
+      await deleteEventFromCalendar(createdId)
+    } catch (rollbackError) {
+      logger.error(`Failed to roll back newly-created calendar event ${createdId}`, rollbackError)
+    }
+  }
+}
+
+function throwDeletionFailures(failures, context) {
+  if (failures.length === 0) return
+  if (failures.length === 1) throw failures[0].error
+
+  const aggregate = new AggregateError(
+    failures.map(({ error }) => error),
+    `${context}: ${failures.length} calendar events could not be deleted`,
+  )
+  aggregate.failures = failures
+  throw aggregate
+}
 
 /**
- * Synchronize order to Google Calendar. Creates or updates main event (first entry).
- * Does not block caller; caller should handle errors/logging as appropriate.
+ * Reconcile all calendar events owned by an order using role-specific IDs.
+ *
+ * A role with a stored ID is updated in place. A desired role without an ID is
+ * created and linked. A stored role which is no longer desired is deleted.
+ * Persistence happens only after the calendar operations have completed; any
+ * event created during this attempt is rolled back when a later operation or
+ * the database link fails.
  */
 async function syncOrderToCalendar(order) {
   if (!order) return null
 
+  const desired = desiredEvents(order)
+  const previousIds = storedCalendarEventIds(order)
+  const nextIds = { ...previousIds }
+  const responses = {}
+  const createdIds = []
+
   try {
-    const events = makeGoogleEventObjects(order)
-    if (!events || events.length === 0) return null
+    for (const role of CALENDAR_EVENT_ROLES) {
+      if (!desired[role]) continue
 
-    const mainEvent = events[0]
+      if (previousIds[role]) {
+        responses[role] = await updateEventInCalendar(previousIds[role], desired[role])
+        continue
+      }
 
-    logger.info(`syncOrderToCalendar: order=${order._id} googleEventId=${order.googleEventId}`)
+      const response = await addEventToCalendar(desired[role])
+      const id = eventId(response)
+      if (!id) throw new Error(`Calendar create returned no event ID for role ${role}`)
 
-    if (order.googleEventId) {
-      // update existing event
-      logger.info(
-        `syncOrderToCalendar: updating event ${order.googleEventId} for order ${order._id}`
-      )
-      const ev = await updateEventInCalendar(order.googleEventId, mainEvent)
-      logger.info(`syncOrderToCalendar: update result for order=${order._id} evId=${ev?.data?.id}`)
-      return ev
+      responses[role] = response
+      nextIds[role] = id
+      createdIds.push(id)
     }
 
-    // Before inserting, re-check DB in case a concurrent sync already wrote googleEventId
-    const fresh = await OrderModel.findById(order._id).select('googleEventId').lean()
-    if (fresh && fresh.googleEventId) {
-      logger.info(
-        `syncOrderToCalendar: detected googleEventId=${fresh.googleEventId} (concurrent), updating instead of inserting for order ${order._id}`
-      )
-      const evUpdate = await updateEventInCalendar(fresh.googleEventId, mainEvent)
-      logger.info(`syncOrderToCalendar: concurrent-update result evId=${evUpdate?.data?.id}`)
-      return evUpdate
-    }
+    const deletionFailures = []
+    for (const role of CALENDAR_EVENT_ROLES) {
+      if (desired[role] || !previousIds[role]) continue
 
-    // Before inserting, try to find an existing event in Google that matches
-    // the main event (created earlier by the UI). This handles the case when
-    // the client created a provisional event before the order was saved.
-    let ev = null
-    const startIso = mainEvent.start?.dateTime || mainEvent.start?.date
-    if (startIso && mainEvent.summary) {
-      const existing = await findEventByStartAndSummary(startIso, mainEvent.summary)
-      if (existing && existing.id) {
-        logger.info(
-          `syncOrderToCalendar: found existing event ${existing.id} matching summary/start for order ${order._id}, using it instead of inserting`
-        )
-        // ensure DB points to this event
-        await OrderModel.updateOne({ _id: order._id }, { $set: { googleEventId: existing.id } })
-        // fetch full event structure via updateEventInCalendar to normalize shape
-        ev = await updateEventInCalendar(existing.id, mainEvent)
-        logger.info(`syncOrderToCalendar: linked to existing event id=${existing.id}`)
-        return ev
+      try {
+        await deleteEventFromCalendar(previousIds[role])
+        nextIds[role] = null
+      } catch (error) {
+        deletionFailures.push({ role, eventId: previousIds[role], error })
+        logger.error(`Failed to delete stale calendar event ${previousIds[role]}`, error)
       }
     }
+    throwDeletionFailures(deletionFailures, 'Calendar reconciliation')
 
-    // insert new event
-    logger.info(`syncOrderToCalendar: inserting new event for order ${order._id}`)
-    ev = await addEventToCalendar(mainEvent)
-    const eventId = ev?.data?.id
-    logger.info(`syncOrderToCalendar: inserted event id=${eventId} for order ${order._id}`)
-    if (eventId) {
-      const res = await OrderModel.updateOne(
-        { _id: order._id },
-        { $set: { googleEventId: eventId } }
-      )
-      logger.info(
-        `syncOrderToCalendar: wrote googleEventId for order=${order._id} result=${JSON.stringify(
-          res
-        )}`
-      )
+    await persistCalendarEventIds(order, nextIds)
+    order.calendarEventIds = { ...nextIds }
+
+    return {
+      main: responses.main || null,
+      events: responses,
+      calendarEventIds: nextIds,
     }
-    return ev
   } catch (err) {
+    await rollbackCreatedEvents(createdIds)
     logger.error('syncOrderToCalendar failed', err)
     throw err
   }
 }
 
-async function deleteOrderEvent(order) {
-  if (!order || !order.googleEventId) return null
-  try {
-    await deleteEventFromCalendar(order.googleEventId)
-    // clear googleEventId in DB
-    await OrderModel.updateOne({ _id: order._id }, { $unset: { googleEventId: '' } })
-    return true
-  } catch (err) {
-    logger.error('deleteOrderEvent failed', err)
-    throw err
-  }
-}
+async function deleteOrderEvent(order, { clearStoredIds = true } = {}) {
+  if (!order) return null
 
-async function linkOrderToEvent(orderId, eventId) {
-  if (!orderId || !eventId) return null
-  try {
-    const res = await OrderModel.updateOne({ _id: orderId }, { $set: { googleEventId: eventId } })
-    logger.info(
-      `linkOrderToEvent: order=${orderId} -> event=${eventId} result=${JSON.stringify(res)}`
+  const ids = storedCalendarEventIds(order)
+  const activeRoles = CALENDAR_EVENT_ROLES.filter((role) => ids[role])
+  if (activeRoles.length === 0) return null
+
+  const deletionFailures = []
+  for (const role of activeRoles) {
+    try {
+      await deleteEventFromCalendar(ids[role])
+    } catch (error) {
+      deletionFailures.push({ role, eventId: ids[role], error })
+      logger.error(`Failed to delete calendar event ${ids[role]}`, error)
+    }
+  }
+  throwDeletionFailures(deletionFailures, 'Calendar order deletion')
+
+  if (clearStoredIds && order._id) {
+    const result = await OrderModel.updateOne(
+      { _id: order._id },
+      { $set: { calendarEventIds: makeCalendarEventIds() } },
     )
-    return res
-  } catch (err) {
-    logger.error('linkOrderToEvent failed', err)
-    throw err
+    assertPersistenceSucceeded(result, order._id)
+    order.calendarEventIds = makeCalendarEventIds()
   }
+
+  return true
 }
 
-export { syncOrderToCalendar, deleteOrderEvent, linkOrderToEvent }
+export {
+  CALENDAR_EVENT_ROLES,
+  syncOrderToCalendar,
+  deleteOrderEvent,
+}

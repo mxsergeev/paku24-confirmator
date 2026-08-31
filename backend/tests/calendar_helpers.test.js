@@ -53,6 +53,30 @@ describe('makeGoogleEventObjects', () => {
     )
     expect(eventObject2.start.dateTime).toBe(d2.toISOString())
     expect(eventObject2.end.dateTime).toBe(dayjs(d2).add(4, 'hour').toISOString())
+    expect(eventObject.role).toBe('main')
+  })
+
+  test('labels each event role explicitly and formats box locations as strings', () => {
+    const events = makeGoogleEventObjects({
+      ...exampleOrder,
+      address: { street: 'Asematie 1', index: '00100', city: 'Helsinki' },
+      destination: { street: 'Satamakatu 2', index: '00160', city: 'Helsinki' },
+      boxes: {
+        deliveryDate: '2026-03-12T07:00:00.000Z',
+        returnDate: '2026-03-20T07:00:00.000Z',
+        amount: 10,
+      },
+    })
+
+    expect(events.map(({ role }) => role)).toEqual(['main', 'boxDelivery', 'boxReturn'])
+    expect(events.every((event) => !event.resource)).toBe(true)
+    expect(events[0].location).toBe(
+      'Asematie 1, 00100 Helsinki\n\nSatamakatu 2, 00160 Helsinki\n'
+    )
+    expect(typeof events[1].location).toBe('string')
+    expect(typeof events[2].location).toBe('string')
+    expect(events[1].location).toBe('Asematie 1, 00100 Helsinki\n')
+    expect(events[2].location).toBe('Satamakatu 2, 00160 Helsinki\n')
   })
 
   test('renders Date and date-only box values in calendar descriptions and event times', () => {
@@ -94,6 +118,10 @@ describe('makeGoogleEventObjects', () => {
       dateTime: '2026-03-12T07:00:00.000Z',
       timeZone: 'Europe/Helsinki',
     })
+    expect(offsetEvents[1].end).toEqual({
+      dateTime: '2026-03-12T08:00:00.000Z',
+      timeZone: 'Europe/Helsinki',
+    })
 
     const dateOnlyEvents = makeGoogleEventObjects({
       ...dateBoxes,
@@ -101,7 +129,9 @@ describe('makeGoogleEventObjects', () => {
     })
 
     expect(dateOnlyEvents[1].start).toEqual({ date: '2026-03-12' })
-    expect(dateOnlyEvents[1].end).toEqual({ date: '2026-03-12' })
+    expect(dateOnlyEvents[1].end).toEqual({ date: '2026-03-13' })
+    expect(dateOnlyEvents[2].start).toEqual({ date: '2026-03-20' })
+    expect(dateOnlyEvents[2].end).toEqual({ date: '2026-03-21' })
     expect(dateOnlyEvents[1].description).toContain('12-03-2026 - 20-03-2026')
   })
 })

@@ -79,11 +79,32 @@ const LIFECYCLE_FIELDS = [
   'deletedAt',
   'markedForDeletion',
   'invoiceNumber',
-  'googleEventId',
+  'calendarEventIds',
 ]
+
+const CALENDAR_EVENT_ROLES = ['main', 'boxDelivery', 'boxReturn']
 
 function isPresent(value) {
   return value !== null && value !== undefined
+}
+
+function makeCalendarEventIds() {
+  return Object.fromEntries(CALENDAR_EVENT_ROLES.map((role) => [role, null]))
+}
+
+function normalizeCalendarEventIds(value) {
+  if (value === null || value === undefined) return makeCalendarEventIds()
+  if (!isPlainObject(value)) throw new OrderValidationError('Invalid calendarEventIds')
+
+  return Object.fromEntries(
+    CALENDAR_EVENT_ROLES.map((role) => {
+      const eventId = value[role]
+      if (eventId !== null && eventId !== undefined && typeof eventId !== 'string') {
+        throw new OrderValidationError(`Invalid calendarEventIds.${role}`)
+      }
+      return [role, eventId || null]
+    }),
+  )
 }
 
 function makeAddress() {
@@ -162,7 +183,7 @@ function makeDefaultState() {
     deletedAt: null,
     markedForDeletion: false,
     invoiceNumber: null,
-    googleEventId: null,
+    calendarEventIds: makeCalendarEventIds(),
   }
 }
 
@@ -353,7 +374,7 @@ function defaultLifecycleState() {
     deletedAt: null,
     markedForDeletion: false,
     invoiceNumber: null,
-    googleEventId: null,
+    calendarEventIds: makeCalendarEventIds(),
   }
 }
 
@@ -489,6 +510,8 @@ function normalizeCanonicalLifecycle(input, result) {
     if (field === 'confirmed' || field === 'markedForDeletion') {
       if (typeof input[field] !== 'boolean') throw new OrderValidationError(`Invalid ${field}`)
       lifecycle[field] = input[field]
+    } else if (field === 'calendarEventIds') {
+      lifecycle[field] = normalizeCalendarEventIds(input[field])
     } else if (field.endsWith('At') || field === 'receivedAt') {
       lifecycle[field] = input[field] === null ? null : parseInstant(input[field], field)
     } else {
@@ -912,6 +935,8 @@ export {
   BOOKING_FIELDS,
   SNAPSHOT_FIELDS,
   LIFECYCLE_FIELDS,
+  CALENDAR_EVENT_ROLES,
+  makeCalendarEventIds,
   createDefaultAppOrder,
   defaultOrder,
   hydrateCanonicalOrder,

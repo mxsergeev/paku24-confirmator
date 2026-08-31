@@ -239,9 +239,13 @@ const order = new mongoose.Schema({
     default: null,
   },
   canceledAt: Date,
-  googleEventId: {
-    type: String,
-    default: null,
+  calendarEventIds: {
+    type: nestedSchema({
+      main: { type: String, default: null },
+      boxDelivery: { type: String, default: null },
+      boxReturn: { type: String, default: null },
+    }),
+    default: () => ({ main: null, boxDelivery: null, boxReturn: null }),
   },
 })
 
@@ -253,52 +257,51 @@ order.set('toJSON', {
   },
 })
 
-// Synchronize with Google Calendar for confirmed orders
-order.post('save', function (doc) {
+function hasCalendarEventIds(order) {
+  return Object.values(order?.calendarEventIds || {}).some(Boolean)
+}
+
+// Synchronize with Google Calendar for confirmed orders. Awaiting the hook is
+// intentional: a calendar failure must reject the originating write instead
+// of allowing the API to report success after a partial side effect.
+order.post('save', async function (doc) {
+  if (!doc || !doc.confirmed || doc.deletedAt) return
+
   try {
-    // Only sync if order is confirmed and not deleted
-    if (doc && doc.confirmed && !doc.deletedAt) {
-      setImmediate(() => {
-        syncOrderToCalendar(doc).catch((err) => logger.error('syncOrderToCalendar error', err))
-      })
-    }
+    await syncOrderToCalendar(doc)
   } catch (err) {
-    logger.error('post save hook error', err)
+    logger.error('syncOrderToCalendar error', err)
+    throw err
   }
 })
 
-order.post('findOneAndUpdate', function (doc) {
-  try {
-    if (doc) {
-      // If the document was marked as deleted (soft delete), remove the Google event
-      if (doc.deletedAt && doc.googleEventId) {
-        setImmediate(() => {
-          deleteOrderEvent(doc).catch((err) => logger.error('deleteOrderEvent error', err))
-        })
-        return
-      }
+order.post('findOneAndUpdate', async function (doc) {
+  if (!doc) return
 
-      // Otherwise, only sync on update if order is confirmed and not deleted
-      if (doc.confirmed && !doc.deletedAt) {
-        setImmediate(() => {
-          syncOrderToCalendar(doc).catch((err) => logger.error('syncOrderToCalendar error', err))
-        })
-      }
+  try {
+    if (doc.deletedAt && hasCalendarEventIds(doc)) {
+      await deleteOrderEvent(doc)
+      return
     }
+
+    if (doc.confirmed && !doc.deletedAt) await syncOrderToCalendar(doc)
   } catch (err) {
     logger.error('post findOneAndUpdate hook error', err)
+    throw err
   }
 })
 
-order.post('findOneAndDelete', function (doc) {
+order.post('findOneAndDelete', async function (doc) {
+  if (!doc || !hasCalendarEventIds(doc)) return
+
   try {
-    if (doc && doc.googleEventId) {
-      setImmediate(() => {
-        deleteOrderEvent(doc).catch((err) => logger.error('deleteOrderEvent error', err))
-      })
-    }
+    // The row has already been removed by findOneAndDelete. External events
+    // still need deleting, but clearing IDs in Mongo would always match zero
+    // rows and turn a successful permanent delete into a 500 response.
+    await deleteOrderEvent(doc, { clearStoredIds: false })
   } catch (err) {
     logger.error('post findOneAndDelete hook error', err)
+    throw err
   }
 })
 

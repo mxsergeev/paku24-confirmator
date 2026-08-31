@@ -174,7 +174,11 @@ export function makePersistedApiOrder() {
     deletedAt: null,
     markedForDeletion: false,
     invoiceNumber: '2026-001',
-    googleEventId: 'fixture-google-event-id',
+    calendarEventIds: {
+      main: 'fixture-google-event-id',
+      boxDelivery: null,
+      boxReturn: null,
+    },
   }
 }
 

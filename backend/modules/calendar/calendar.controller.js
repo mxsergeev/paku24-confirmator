@@ -4,44 +4,37 @@ const calendarRouter = express.Router()
 
 import * as authMW from '../authentication/auth.middleware.js'
 
-import { addEventToCalendar, deleteEventFromCalendar } from './calendar.googleAPI.js'
-import { linkOrderToEvent } from './calendar.sync.js'
-import * as logger from '../../utils/logger.js'
+import { deleteEventFromCalendar } from './calendar.googleAPI.js'
+import { syncOrderToCalendar } from './calendar.sync.js'
+import OrderModel from '../../models/order.js'
+import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import { orderTime } from '../../../src/shared/orderPricing.js'
-
-import { makeGoogleEventObjects } from './calendar.helpers.js'
 
 calendarRouter.use(authMW.authenticateAccessToken)
 
 calendarRouter.post('/', async (req, res, next) => {
   try {
-    const order = req.body.order || {}
-    const events = makeGoogleEventObjects(order)
-    const results = await Promise.allSettled(events.map((ev) => addEventToCalendar(ev)))
+    const requestedOrder = req.body.order || {}
+    const linkedOrderId = req.body.orderId || requestedOrder.id || requestedOrder._id
+    let order = requestedOrder
+
+    // Persisted orders are authoritative: the request payload is a rendered
+    // view and must not replace stored role IDs or booking data.
+    if (linkedOrderId) {
+      order = await OrderModel.findById(linkedOrderId)
+      if (!order) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
+    }
+
+    const result = await syncOrderToCalendar(order)
+    const eventCount = Object.keys(result?.events || {}).length
 
     const createdEvent = `🚛🚛💳${orderTime(order)}(${order.duration}h)${req.body.entry || ''}`
 
-    // pick the first fulfilled result that contains an id
-    const fulfilled = results.find(
-      (r) => r.status === 'fulfilled' && r.value && r.value.data && r.value.data.id
-    )
-    const eventId = fulfilled ? fulfilled.value.data.id : null
-
-    // If this request was made for an existing order, delegate persisting googleEventId
-    try {
-      const linkedOrderId = req.body.orderId || order.id
-      if (eventId && linkedOrderId) {
-        await linkOrderToEvent(linkedOrderId, eventId)
-      }
-    } catch (err) {
-      // non-fatal: log and continue
-      logger.error('Failed to link googleEventId from /api/calendar', err)
-    }
-
     return res.status(200).send({
-      message: events.length > 1 ? 'Events added to calendar.' : 'Event added to calendar.',
+      message: eventCount > 1 ? 'Events added to calendar.' : 'Event added to calendar.',
       createdEvent,
-      eventId,
+      eventId: result?.calendarEventIds?.main || null,
+      calendarEventIds: result?.calendarEventIds || null,
     })
   } catch (err) {
     return next(err)

@@ -520,7 +520,11 @@ describe('Order pool v2/:id read and partial update', () => {
       deletedAt: new Date('2026-04-12T09:00:00.000Z'),
       markedForDeletion: true,
       invoiceNumber: 'invoice-1',
-      googleEventId: 'google-event-1',
+      calendarEventIds: {
+        main: 'google-event-1',
+        boxDelivery: null,
+        boxReturn: null,
+      },
     })
 
     const res = await api
@@ -732,7 +736,11 @@ describe('Order pool v2/:id/revert', () => {
       deletedAt: new Date('2026-04-12T09:00:00.000Z'),
       markedForDeletion: true,
       invoiceNumber: 'invoice-revert-1',
-      googleEventId: 'google-event-revert-1',
+      calendarEventIds: {
+        main: 'google-event-revert-1',
+        boxDelivery: null,
+        boxReturn: null,
+      },
     })
 
     await api
@@ -769,7 +777,11 @@ describe('Order pool v2/:id/revert', () => {
     expect(reverted.body.order.confirmed).toBe(true)
     expect(reverted.body.order.confirmedBy).toBe('66c000000000000000000002')
     expect(reverted.body.order.invoiceNumber).toBe('invoice-revert-1')
-    expect(reverted.body.order.googleEventId).toBe('google-event-revert-1')
+    expect(reverted.body.order.calendarEventIds).toEqual({
+      main: 'google-event-revert-1',
+      boxDelivery: null,
+      boxReturn: null,
+    })
     expect(reverted.body.order.markedForDeletion).toBe(true)
     expect(reverted.body.order.deletedAt).toBe('2026-04-12T09:00:00.000Z')
 

@@ -49,32 +49,6 @@ async function addEventToCalendar(event) {
   }
 }
 
-async function findEventByStartAndSummary(startIso, summary) {
-  if (env === 'test') return null
-
-  const calendar = await getCalendar()
-  try {
-    // Search a small window around the start time to find matching events
-    const timeMin = new Date(new Date(startIso).getTime() - 2 * 60 * 1000).toISOString()
-    const timeMax = new Date(new Date(startIso).getTime() + 2 * 60 * 1000).toISOString()
-    const res = await calendar.events.list({
-      calendarId: 'primary',
-      timeMin,
-      timeMax,
-      singleEvents: true,
-      orderBy: 'startTime',
-      q: summary,
-    })
-    const items = res.data.items || []
-    // Find exact summary match if possible
-    const found = items.find((it) => (it.summary || '').trim() === (summary || '').trim())
-    return found || null
-  } catch (err) {
-    logger.error('findEventByStartAndSummary failed', err)
-    return null
-  }
-}
-
 async function deleteEventFromCalendar(eventId) {
   if (env === 'test') {
     logger.info(`(test) Pretend deleted event ${eventId}`)
@@ -91,8 +65,8 @@ async function deleteEventFromCalendar(eventId) {
 
     logger.info(`Event with id ${eventId} deleted.`)
   } catch (err) {
-    logger.info(`There was an error contacting the Calendar service: ${err}`)
-    return err
+    logger.error(`There was an error contacting the Calendar service: ${err}`)
+    throw err
   }
 }
 
@@ -131,5 +105,4 @@ export {
   addEventToCalendar,
   deleteEventFromCalendar,
   updateEventInCalendar,
-  findEventByStartAndSummary,
 }

@@ -8,6 +8,7 @@ import {
   revertToInitial,
 } from '../../../src/shared/orderModel.js'
 import { isOrderValidationError } from '../../../src/shared/orderPrimitives.js'
+import { deleteOrderEvent } from '../calendar/calendar.sync.js'
 
 function validationError(message) {
   return newErrorWithCustomName('ValidationError', message)
@@ -159,9 +160,20 @@ export {
 async function deleteOrderPermanently(id) {
   if (!id) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
 
-  const order = await Order.findByIdAndDelete(id)
+  const order = await Order.findById(id)
 
   if (!order) {
+    throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
+  }
+
+  // Remove external calendar state before deleting the row so a Google
+  // failure leaves the order and its IDs available for a retry. deleteOne is
+  // used after this preflight to avoid running the post findOneAndDelete hook
+  // a second time for the same events.
+  await deleteOrderEvent(order)
+  const result = await Order.deleteOne({ _id: id })
+  const deleted = result?.deletedCount ?? result?.n
+  if (deleted === 0) {
     throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
   }
 
