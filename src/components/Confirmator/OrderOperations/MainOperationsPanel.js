@@ -58,12 +58,20 @@ export default function MainOperationsPanel({
         onOrderPersisted,
         onOrderUpdated,
       })
-      changeStatus('calendar', 'Done', true)
-      enqueueSnackbar(`${response?.message}\n${response?.createdEvent}`)
+      const hasWarning = Boolean(response?.warning)
+      changeStatus('calendar', hasWarning ? 'Warning' : 'Done', !hasWarning)
+      const message = [response?.message, response?.createdEvent].filter(Boolean).join('\n')
+      if (message) enqueueSnackbar(message)
+      if (response?.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+      }
 
-      // Reset after successful calendar addition
-      setStatuses(defaultStatuses)
-      handleResetClick()
+      // Reset only after the complete operation succeeds. A warning means the
+      // Mongo edit was saved but calendar reconciliation still needs a retry.
+      if (!hasWarning) {
+        setStatuses(defaultStatuses)
+        handleResetClick()
+      }
     } catch (err) {
       if (err.message === 'logout') return
       changeStatus('calendar', 'Error', false)

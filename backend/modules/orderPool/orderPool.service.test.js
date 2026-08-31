@@ -167,6 +167,7 @@ describe('explicit calendar side effects', () => {
     const result = await updateOrder('66c000000000000000000001', { name: 'Updated' })
 
     expect(order.save).toHaveBeenCalledTimes(1)
+    expect(mocks.syncOrderToCalendar).toHaveBeenCalledWith(order, { lock: false })
     expect(result).toMatchObject({ order, warning: { code: 'CALENDAR_SYNC_FAILED' } })
   })
 
@@ -181,6 +182,19 @@ describe('explicit calendar side effects', () => {
     })
     expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
     expect(order.confirmed).toBe(false)
+  })
+
+  it('returns an already-confirmed order idempotently without contacting calendar', async () => {
+    const order = makeOrder()
+    order.confirmed = true
+    const failure = new Error('calendar unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockRejectedValue(failure)
+
+    await expect(confirmOrder('66c000000000000000000001', 'user-id')).resolves.toBe(order)
+
+    expect(mocks.syncOrderToCalendar).not.toHaveBeenCalled()
+    expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
   })
 
   it('rechecks deletion under the confirmation lock', async () => {

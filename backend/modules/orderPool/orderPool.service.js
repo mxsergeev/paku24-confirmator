@@ -149,6 +149,10 @@ async function confirmOrder(id, userId) {
       throw validationError('Deleted orders cannot be confirmed')
     }
 
+    // Confirmation is idempotent. A repeated request must not depend on a
+    // transient calendar provider response once the lifecycle flag is true.
+    if (currentOrder.confirmed) return currentOrder
+
     // Confirmation has an external precondition. Reconcile the persisted order
     // first, so a calendar failure cannot leave Mongo marked as confirmed.
     try {

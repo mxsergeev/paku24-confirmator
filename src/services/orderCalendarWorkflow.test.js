@@ -1,19 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeCanonicalAppOrder } from '../shared/testFixtures/orderFixtures'
-import { toCreateOrderPayload } from '../shared/orderSerialization'
+import { toCreateOrderPayload, toUpdateOrderPayload } from '../shared/orderSerialization'
 
 const mocks = vi.hoisted(() => ({
-  syncOrder: vi.fn(),
   add: vi.fn(),
+  update: vi.fn(),
   confirm: vi.fn(),
 }))
 
-vi.mock('./calendarAPI', () => ({
-  default: { syncOrder: mocks.syncOrder },
-}))
 vi.mock('./orderPoolAPI', () => ({
   default: {
     add: mocks.add,
+    update: mocks.update,
     confirm: mocks.confirm,
   },
 }))
@@ -23,65 +21,95 @@ import addOrderToCalendar from './orderCalendarWorkflow'
 describe('addOrderToCalendar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.syncOrder.mockResolvedValue({ message: 'Added', createdEvent: 'event' })
     mocks.add.mockResolvedValue({ id: 'new-order-id' })
+    mocks.update.mockResolvedValue({ message: 'Updated' })
     mocks.confirm.mockResolvedValue({ message: 'Confirmed' })
   })
 
-  it('persists a new order, syncs by its ID, then confirms it', async () => {
+  it('persists a new order, then lets confirmation own calendar synchronization', async () => {
     const order = makeCanonicalAppOrder()
 
     const response = await addOrderToCalendar({ order, orderId: null })
 
-    expect(response).toEqual({ message: 'Added', createdEvent: 'event' })
+    expect(response).toEqual({ message: 'Confirmed' })
     expect(mocks.add).toHaveBeenCalledWith({ order: toCreateOrderPayload(order) })
-    expect(mocks.syncOrder).toHaveBeenCalledWith('new-order-id')
     expect(mocks.confirm).toHaveBeenCalledWith('new-order-id')
+    expect(mocks.update).not.toHaveBeenCalled()
     expect(mocks.add.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.syncOrder.mock.invocationCallOrder[0],
-    )
-    expect(mocks.syncOrder.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.confirm.mock.invocationCallOrder[0],
     )
   })
 
-  it('does not sync or confirm when persistence fails', async () => {
+  it('does not confirm when persistence fails', async () => {
     const order = makeCanonicalAppOrder()
     const failure = new Error('database unavailable')
     mocks.add.mockRejectedValue(failure)
 
     await expect(addOrderToCalendar({ order })).rejects.toBe(failure)
 
-    expect(mocks.syncOrder).not.toHaveBeenCalled()
     expect(mocks.confirm).not.toHaveBeenCalled()
   })
 
-  it('does not confirm when calendar synchronization fails', async () => {
+  it('does not confirm when the calendar precondition fails', async () => {
     const order = makeCanonicalAppOrder()
     const failure = new Error('calendar unavailable')
     const onOrderPersisted = vi.fn()
-    mocks.syncOrder.mockRejectedValue(failure)
+    mocks.confirm.mockRejectedValue(failure)
 
     await expect(addOrderToCalendar({ order, onOrderPersisted })).rejects.toBe(failure)
 
     expect(mocks.add).toHaveBeenCalledTimes(1)
     expect(onOrderPersisted).toHaveBeenCalledWith('new-order-id', expect.any(Object))
-    expect(mocks.syncOrder).toHaveBeenCalledWith('new-order-id')
+    expect(mocks.confirm).toHaveBeenCalledWith('new-order-id')
+  })
+
+  it('persists current edits for an existing unconfirmed order before confirmation', async () => {
+    const order = {
+      ...makeCanonicalAppOrder(),
+      id: 'existing-order-id',
+      name: 'Edited locally before calendar action',
+    }
+    const updatedOrder = { ...order, confirmed: false }
+    const confirmedOrder = { ...updatedOrder, confirmed: true }
+    mocks.update.mockResolvedValue({ message: 'Updated', order: updatedOrder })
+    mocks.confirm.mockResolvedValue({ message: 'Confirmed', order: confirmedOrder })
+    const onOrderUpdated = vi.fn()
+
+    const response = await addOrderToCalendar({ order, onOrderUpdated })
+
+    expect(response).toEqual({ message: 'Confirmed', order: confirmedOrder })
+    expect(mocks.add).not.toHaveBeenCalled()
+    expect(mocks.update).toHaveBeenCalledWith('existing-order-id', toUpdateOrderPayload(order))
+    expect(mocks.confirm).toHaveBeenCalledWith('existing-order-id')
+    expect(onOrderUpdated).toHaveBeenNthCalledWith(1, updatedOrder, expect.any(Object))
+    expect(onOrderUpdated).toHaveBeenNthCalledWith(2, confirmedOrder, expect.any(Object))
+    expect(mocks.update.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.confirm.mock.invocationCallOrder[0],
+    )
+  })
+
+  it('rejects an authoritative deleted order without confirming it', async () => {
+    const order = { ...makeCanonicalAppOrder(), id: 'existing-order-id' }
+    const deletedOrder = { ...order, deletedAt: '2026-01-01T00:00:00.000Z', confirmed: true }
+    mocks.update.mockResolvedValue({ message: 'Updated', order: deletedOrder })
+
+    await expect(addOrderToCalendar({ order })).rejects.toThrow(
+      'Deleted orders cannot be synchronized to calendar.',
+    )
+
     expect(mocks.confirm).not.toHaveBeenCalled()
   })
 
-  it('confirms an existing order without adding a duplicate', async () => {
-    const order = { ...makeCanonicalAppOrder(), id: 'existing-order-id' }
+  it('confirms a newly-created order even if stale lifecycle data says confirmed', async () => {
+    const order = { ...makeCanonicalAppOrder(), confirmed: true }
 
-    const response = await addOrderToCalendar({ order })
+    await addOrderToCalendar({ order })
 
-    expect(response).toEqual({ message: 'Added', createdEvent: 'event' })
-    expect(mocks.add).not.toHaveBeenCalled()
-    expect(mocks.syncOrder).toHaveBeenCalledWith('existing-order-id')
-    expect(mocks.confirm).toHaveBeenCalledWith('existing-order-id')
+    expect(mocks.add).toHaveBeenCalledTimes(1)
+    expect(mocks.confirm).toHaveBeenCalledWith('new-order-id')
   })
 
-  it('uses a persisted ID on retry after a successful sync but failed confirmation', async () => {
+  it('uses a persisted ID on retry after persistence succeeds but confirmation fails', async () => {
     let retryOrder = makeCanonicalAppOrder()
     const failure = new Error('confirmation unavailable')
     mocks.confirm.mockRejectedValueOnce(failure)
@@ -98,29 +126,43 @@ describe('addOrderToCalendar', () => {
     await addOrderToCalendar({ order: retryOrder })
 
     expect(mocks.add).toHaveBeenCalledTimes(1)
-    expect(mocks.syncOrder).toHaveBeenNthCalledWith(1, 'new-order-id')
-    expect(mocks.syncOrder).toHaveBeenNthCalledWith(2, 'new-order-id')
+    expect(mocks.update).toHaveBeenCalledTimes(1)
+    expect(mocks.update).toHaveBeenCalledWith('new-order-id', toUpdateOrderPayload(retryOrder))
     expect(mocks.confirm).toHaveBeenNthCalledWith(2, 'new-order-id')
   })
 
-  it('uses an explicit order ID when it is provided', async () => {
+  it('uses an explicit order ID and persists its current state', async () => {
     const order = { ...makeCanonicalAppOrder(), id: 'order-from-object' }
+    mocks.update.mockResolvedValue({ message: 'Updated', order: { ...order, confirmed: true } })
 
     await addOrderToCalendar({ order, orderId: 'explicit-order-id' })
 
     expect(mocks.add).not.toHaveBeenCalled()
-    expect(mocks.syncOrder).toHaveBeenCalledWith('explicit-order-id')
-    expect(mocks.confirm).toHaveBeenCalledWith('explicit-order-id')
+    expect(mocks.update).toHaveBeenCalledWith('explicit-order-id', toUpdateOrderPayload(order))
+    expect(mocks.confirm).not.toHaveBeenCalled()
   })
 
-  it('does not reconfirm an order that is already confirmed', async () => {
+  it('updates an already-confirmed order once without a second calendar call', async () => {
     const order = { ...makeCanonicalAppOrder(), id: 'confirmed-order-id', confirmed: true }
+    mocks.update.mockResolvedValue({ message: 'Updated', order })
 
     await addOrderToCalendar({ order })
 
     expect(mocks.add).not.toHaveBeenCalled()
-    expect(mocks.syncOrder).toHaveBeenCalledWith('confirmed-order-id')
+    expect(mocks.update).toHaveBeenCalledWith('confirmed-order-id', toUpdateOrderPayload(order))
     expect(mocks.confirm).not.toHaveBeenCalled()
+  })
+
+  it('returns a calendar warning from the persisted confirmed-order update', async () => {
+    const order = { ...makeCanonicalAppOrder(), id: 'confirmed-order-id', confirmed: true }
+    const updateResponse = {
+      message: 'Order updated',
+      order,
+      warning: { code: 'CALENDAR_SYNC_FAILED', message: 'Calendar unavailable' },
+    }
+    mocks.update.mockResolvedValue(updateResponse)
+
+    await expect(addOrderToCalendar({ order })).resolves.toBe(updateResponse)
   })
 
   it('rejects deleted orders before persistence or calendar calls', async () => {
@@ -135,7 +177,6 @@ describe('addOrderToCalendar', () => {
     )
 
     expect(mocks.add).not.toHaveBeenCalled()
-    expect(mocks.syncOrder).not.toHaveBeenCalled()
     expect(mocks.confirm).not.toHaveBeenCalled()
   })
 })

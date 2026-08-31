@@ -26,8 +26,13 @@ export default function AddOrderToCalendarButton({
       }
       changeStatus(CALENDAR, 'Working', true)
       const response = await addOrderToCalendar({ order, orderId, onOrderPersisted, onOrderUpdated })
-      changeStatus(CALENDAR, 'Done', true)
-      enqueueSnackbar(`${response?.message}\n${response?.createdEvent}`)
+      const hasWarning = Boolean(response?.warning)
+      changeStatus(CALENDAR, hasWarning ? 'Warning' : 'Done', !hasWarning)
+      const message = [response?.message, response?.createdEvent].filter(Boolean).join('\n')
+      if (message) enqueueSnackbar(message)
+      if (response?.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+      }
     } catch (err) {
       if (err.message === 'logout') return
       changeStatus(CALENDAR, 'Error', false)
