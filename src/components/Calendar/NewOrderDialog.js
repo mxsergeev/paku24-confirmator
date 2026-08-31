@@ -35,6 +35,7 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   )
   const { clearDraft, skipNextPersistence } = useOrderDraft(NEW_ORDER_DRAFT_STORAGE_KEY, {
     value: order,
+    enabled: !order?.id,
   })
 
   const transformedOrderContainerRef = useRef(null)
@@ -56,8 +57,10 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   }, [])
 
   const handleOrderPersisted = useCallback((id) => {
+    clearDraft()
+    skipNextPersistence()
     setOrder((previous) => (previous ? { ...previous, id } : previous))
-  }, [])
+  }, [clearDraft, skipNextPersistence])
 
   const handleOrderTransformFromEditor = useCallback(
     () => setTransformedOrder({ id: null, text: formatOrder(order) }),
@@ -121,7 +124,7 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
             <ValidationDisplay order={order} shouldValidate={transformedOrder.text} />
             <MainOperationsPanel
               order={order}
-              orderId={null}
+              orderId={order?.id || null}
               transformedOrder={transformedOrder}
               handleResetClick={handleComplete}
               hideOrderPool={true}

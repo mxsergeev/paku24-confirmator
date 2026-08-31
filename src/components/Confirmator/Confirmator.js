@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useHistory, useParams } from 'react-router-dom'
 import { enqueueSnackbar } from 'notistack'
 
 import './Confirmator.css'
@@ -25,6 +25,7 @@ const CONFIRMATOR_DRAFT_STORAGE_KEY = 'confirmator_order'
 
 export default function Confirmator() {
   const params = useParams()
+  const history = useHistory()
   const hasExplicitOrderId = Boolean(params.id)
 
   const [transformedOrder, setTransformedOrder] = useState({
@@ -109,7 +110,7 @@ export default function Confirmator() {
     return () => {
       active = false
     }
-  }, [hasExplicitOrderId, params.id, readDraft, routeChanged, skipNextPersistence])
+  }, [hasExplicitOrderId, params.id, readDraft])
 
   const transformedOrderContainerRef = useRef(null)
 
@@ -118,7 +119,8 @@ export default function Confirmator() {
     skipNextPersistence()
     setTransformedOrder({ text: '', id: null })
     setOrder(createAppOrder())
-  }, [clearDraft, skipNextPersistence])
+    if (hasExplicitOrderId) history.replace('/confirmator')
+  }, [clearDraft, hasExplicitOrderId, history, skipNextPersistence])
 
   const handleOrderChange = useCallback(
     (key, value) => setOrder((previous) => updateOrderField(previous, key, value)),
@@ -155,7 +157,14 @@ export default function Confirmator() {
   }, [])
 
   const handleOrderPersisted = useCallback((id) => {
+    clearDraft()
+    skipNextPersistence()
     setOrder((previous) => (previous ? { ...previous, id } : previous))
+    history.replace(`/confirmator/${id}`)
+  }, [clearDraft, history, skipNextPersistence])
+
+  const handleOrderUpdated = useCallback((updatedOrder) => {
+    setOrder(hydrateCanonicalOrder(updatedOrder))
   }, [])
 
   const handleOrderTransformFromEditor = useCallback(
@@ -168,13 +177,18 @@ export default function Confirmator() {
       const ord = hydrateCanonicalOrder(o)
       const orderId = ord.id || null
 
+      if (orderId) {
+        clearDraft()
+        skipNextPersistence()
+        history.replace(`/confirmator/${orderId}`)
+      }
       setOrder(ord)
       setTransformedOrder({
         id: orderId,
         text: formatOrder(ord),
       })
     },
-    []
+    [clearDraft, history, skipNextPersistence]
   )
 
   const isExplicitOrderReady =
@@ -223,6 +237,7 @@ export default function Confirmator() {
         handleResetClick={reset}
         orderPoolUrl="/confirmator/order-pool"
         onOrderPersisted={handleOrderPersisted}
+        onOrderUpdated={handleOrderUpdated}
       />
       <OrderPoolDialog path="/confirmator/order-pool" handleExport={handleOrderPoolExport} />
     </div>

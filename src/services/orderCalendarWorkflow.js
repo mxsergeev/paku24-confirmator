@@ -8,7 +8,12 @@ import { toCreateOrderPayload } from '../shared/orderSerialization'
  * the canonical persisted order by ID.
  * UI callers own status, loading, and notification state around this operation.
  */
-export default async function addOrderToCalendar({ order, orderId, onOrderPersisted } = {}) {
+export default async function addOrderToCalendar({
+  order,
+  orderId,
+  onOrderPersisted,
+  onOrderUpdated,
+} = {}) {
   let persistedOrderId = orderId || order?.id
   if (!persistedOrderId) {
     const { id } = await orderPoolAPI.add({
@@ -20,6 +25,9 @@ export default async function addOrderToCalendar({ order, orderId, onOrderPersis
   }
 
   const response = await calendarAPI.syncOrder(persistedOrderId)
-  if (!order?.confirmed) await orderPoolAPI.confirm(persistedOrderId)
+  if (!order?.confirmed) {
+    const confirmation = await orderPoolAPI.confirm(persistedOrderId)
+    if (confirmation?.order) onOrderUpdated?.(confirmation.order)
+  }
   return response
 }

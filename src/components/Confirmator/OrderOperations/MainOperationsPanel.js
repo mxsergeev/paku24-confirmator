@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { Button } from '@material-ui/core'
 import { enqueueSnackbar } from 'notistack'
 import NewOrderButton from '../NewOrderButton'
@@ -18,6 +18,7 @@ export default function MainOperationsPanel({
   orderPoolUrl,
   hideOrderPool,
   onOrderPersisted,
+  onOrderUpdated,
 }) {
   const defaultStatuses = {
     email: {
@@ -34,20 +35,28 @@ export default function MainOperationsPanel({
     },
   }
   const [statuses, setStatuses] = useState(defaultStatuses)
+  const addingOrderRef = useRef(false)
 
   const changeStatus = useCallback((name, status, disable) => {
     setStatuses((prev) => ({ ...prev, [name]: { status, disable } }))
   }, [])
 
   const handleNewOrderWithCalendar = useCallback(async () => {
+    if (addingOrderRef.current) return
     if (!transformedOrder.text) {
       enqueueSnackbar('Order is empty or not transformed', { variant: 'error' })
       return
     }
 
     try {
+      addingOrderRef.current = true
       changeStatus('calendar', 'Working', true)
-      const response = await addOrderToCalendar({ order, orderId, onOrderPersisted })
+      const response = await addOrderToCalendar({
+        order,
+        orderId,
+        onOrderPersisted,
+        onOrderUpdated,
+      })
       changeStatus('calendar', 'Done', true)
       enqueueSnackbar(`${response?.message}\n${response?.createdEvent}`)
 
@@ -58,6 +67,8 @@ export default function MainOperationsPanel({
       if (err.message === 'logout') return
       changeStatus('calendar', 'Error', false)
       enqueueSnackbar(err.response?.data.error || err?.toString(), { variant: 'error' })
+    } finally {
+      addingOrderRef.current = false
     }
   }, [
     order,
@@ -67,6 +78,7 @@ export default function MainOperationsPanel({
     handleResetClick,
     defaultStatuses,
     onOrderPersisted,
+    onOrderUpdated,
   ])
 
   function emailBlock() {
@@ -116,6 +128,7 @@ export default function MainOperationsPanel({
         <NewOrderButton
           className="share-space"
           text={hideOrderPool ? 'Add order' : 'New order'}
+          disabled={hideOrderPool && (statuses.calendar.disable || !transformedOrder.text)}
           handleClick={
             hideOrderPool
               ? handleNewOrderWithCalendar
@@ -138,6 +151,7 @@ export default function MainOperationsPanel({
             transformedOrderText={transformedOrder.text}
             changeStatus={changeStatus}
             onOrderPersisted={onOrderPersisted}
+            onOrderUpdated={onOrderUpdated}
           />
         )}
       </div>

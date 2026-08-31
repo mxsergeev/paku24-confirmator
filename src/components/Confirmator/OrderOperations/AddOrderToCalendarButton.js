@@ -15,12 +15,13 @@ export default function AddOrderToCalendarButton({
   isDisabled,
   changeStatus,
   onOrderPersisted,
+  onOrderUpdated,
   className,
 }) {
   const handleAddingToCalendar = useCallback(async () => {
     try {
       changeStatus(CALENDAR, 'Working', true)
-      const response = await addOrderToCalendar({ order, orderId, onOrderPersisted })
+      const response = await addOrderToCalendar({ order, orderId, onOrderPersisted, onOrderUpdated })
       changeStatus(CALENDAR, 'Done', true)
       enqueueSnackbar(`${response?.message}\n${response?.createdEvent}`)
     } catch (err) {
@@ -28,7 +29,7 @@ export default function AddOrderToCalendarButton({
       changeStatus(CALENDAR, 'Error', false)
       enqueueSnackbar(err.response?.data.error || err?.toString(), { variant: 'error' })
     }
-  }, [order, orderId, changeStatus, onOrderPersisted])
+  }, [order, orderId, changeStatus, onOrderPersisted, onOrderUpdated])
 
   const buttonContent = statusText || (
     <>
