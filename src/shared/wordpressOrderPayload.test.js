@@ -84,7 +84,6 @@ describe('normalizeWordPressOrderPayload', () => {
         pricePerBox: '2',
         deliveryPrice: '10',
         returnPrice: '10',
-        selfPickup: true,
         metadata: { source: 'wordpress' },
       },
     }))
@@ -96,7 +95,6 @@ describe('normalizeWordPressOrderPayload', () => {
       pricePerBox: 2,
       deliveryPrice: 10,
       returnPrice: 10,
-      selfPickup: true,
     })
     expect(order.boxes).not.toHaveProperty('metadata')
   })

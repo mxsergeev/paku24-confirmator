@@ -89,11 +89,8 @@ const BOX_FIELDS = [
   'pricePerBox',
   'deliveryPrice',
   'returnPrice',
-  'selfPickup',
-  'selfReturn',
 ]
 const BOX_NUMBER_FIELDS = ['amount', 'pricePerBox', 'deliveryPrice', 'returnPrice']
-const BOX_BOOLEAN_FIELDS = ['selfPickup', 'selfReturn']
 
 function isPresent(value) {
   return value !== null && value !== undefined
@@ -223,12 +220,6 @@ function normalizeBoxesShape(value, fieldName, fallback = null) {
       throw new OrderValidationError(`Invalid ${fieldName}.${field}`)
     }
     boxes[field] = number
-  }
-
-  for (const field of BOX_BOOLEAN_FIELDS) {
-    if (hasOwn(boxes, field) && typeof boxes[field] !== 'boolean') {
-      throw new OrderValidationError(`Invalid ${fieldName}.${field}`)
-    }
   }
 
   for (const field of ['deliveryDate', 'returnDate']) {

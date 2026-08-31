@@ -24,7 +24,6 @@ const BOOKING_FIELDS = [
 ]
 
 const BOX_PRICE_FIELDS = ['pricePerBox', 'deliveryPrice', 'returnPrice']
-const BOX_BOOLEAN_FIELDS = ['selfPickup', 'selfReturn']
 
 function normalizeAddress(value, field) {
   if (!isPlainObject(value)) throw new OrderValidationError(`Invalid ${field}: expected a structured address`)
@@ -109,12 +108,6 @@ function normalizeBoxes(value, orderDate) {
 
   BOX_PRICE_FIELDS.forEach((field) => {
     if (hasOwn(value, field)) boxes[field] = requireFiniteNumber(value[field], `boxes.${field}`)
-  })
-  BOX_BOOLEAN_FIELDS.forEach((field) => {
-    if (hasOwn(value, field)) {
-      if (typeof value[field] !== 'boolean') throw new OrderValidationError(`Invalid boxes.${field}`)
-      boxes[field] = value[field]
-    }
   })
   return boxes
 }

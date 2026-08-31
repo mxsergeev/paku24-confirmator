@@ -139,8 +139,6 @@ const boxesSchema = nestedSchema({
   pricePerBox: finiteNumberPath(),
   deliveryPrice: finiteNumberPath(),
   returnPrice: finiteNumberPath(),
-  selfPickup: Boolean,
-  selfReturn: Boolean,
 })
 
 const initialSnapshotSchema = nestedSchema({

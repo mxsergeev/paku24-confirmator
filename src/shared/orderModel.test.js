@@ -80,7 +80,6 @@ describe('default and boundary order state', () => {
         deliveryDate: '2026-03-12',
         returnDate: '2026-03-20',
         pricePerBox: 2,
-        selfReturn: false,
         metadata: { source: 'caller' },
       },
     })
@@ -90,7 +89,6 @@ describe('default and boundary order state', () => {
       deliveryDate: '2026-03-12',
       returnDate: '2026-03-20',
       pricePerBox: 2,
-      selfReturn: false,
     })
     expect(normalized.boxes).not.toHaveProperty('metadata')
   })
