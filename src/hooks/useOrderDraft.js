@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { deserializeDraft, serializeDraft } from '../shared/orderSerialization'
 
 function getStorage() {
@@ -64,30 +64,15 @@ function clearOrderDraft(storageKey) {
  */
 export function useOrderDraft(
   storageKey,
-  { value, enabled = true, skipPersistence = false } = {}
+  { value, enabled = true } = {}
 ) {
-  const skipNextPersistenceRef = useRef(false)
-
   useEffect(() => {
     if (!enabled || typeof value === 'undefined') return
-
-    if (skipPersistence || skipNextPersistenceRef.current) {
-      skipNextPersistenceRef.current = false
-      return
-    }
-
     writeOrderDraft(storageKey, value)
-  }, [enabled, skipPersistence, storageKey, value])
-
-  const readDraft = useCallback(() => readOrderDraft(storageKey), [storageKey])
-  const clearDraft = useCallback(() => clearOrderDraft(storageKey), [storageKey])
-  const skipNextPersistence = useCallback(() => {
-    skipNextPersistenceRef.current = true
-  }, [])
+  }, [enabled, storageKey, value])
 
   return {
-    readDraft,
-    clearDraft,
-    skipNextPersistence,
+    saveDraft: (order) => writeOrderDraft(storageKey, order),
+    clearDraft: () => clearOrderDraft(storageKey),
   }
 }

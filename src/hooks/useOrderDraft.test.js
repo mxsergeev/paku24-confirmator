@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import React from 'react'
-import { fireEvent, render } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
@@ -13,14 +13,13 @@ import { readOrderDraft, useOrderDraft } from './useOrderDraft'
 
 const STORAGE_KEY = 'order-draft-test'
 
-function DraftHarness({ order, enabled = true, skipPersistence = false }) {
-  const { skipNextPersistence } = useOrderDraft(STORAGE_KEY, {
+function DraftHarness({ order, enabled = true }) {
+  useOrderDraft(STORAGE_KEY, {
     value: order,
     enabled,
-    skipPersistence,
   })
 
-  return <button onClick={skipNextPersistence}>Skip next save</button>
+  return null
 }
 
 describe('useOrderDraft', () => {
@@ -47,21 +46,6 @@ describe('useOrderDraft', () => {
 
     expect(readOrderDraft(STORAGE_KEY)).toBeNull()
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull()
-  })
-
-  it('skips one write after reset-style state replacement', () => {
-    const firstOrder = makeCanonicalAppOrder()
-    const nextOrder = makeCanonicalAppOrder({ name: 'Next customer' })
-    const { rerender, getByRole } = render(<DraftHarness order={firstOrder} />)
-    const firstDraft = window.localStorage.getItem(STORAGE_KEY)
-
-    fireEvent.click(getByRole('button', { name: 'Skip next save' }))
-    rerender(<DraftHarness order={nextOrder} />)
-
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBe(firstDraft)
-
-    rerender(<DraftHarness order={firstOrder} />)
-    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY)).order.name).toBe('App Customer')
   })
 
   it('does not persist while disabled for an explicitly loaded order', () => {

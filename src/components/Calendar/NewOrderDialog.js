@@ -1,77 +1,115 @@
-import React, { useState, useRef, useCallback } from 'react'
-import { Dialog, DialogContent, DialogTitle, IconButton } from '@material-ui/core'
+import React, { useState } from 'react'
+import { Button, Dialog, DialogContent, DialogTitle, IconButton } from '@material-ui/core'
 import useMediaQuery from '@material-ui/core/useMediaQuery'
 import CloseIcon from '@material-ui/icons/Close'
+import NoteAddIcon from '@material-ui/icons/NoteAdd'
 import { useQueryClient } from '@tanstack/react-query'
+import { enqueueSnackbar } from 'notistack'
 
-import '../Confirmator/Confirmator.css'
 import './Calendar.css'
 import Editor from '../Confirmator/Editor'
 
 import OrderSettings from '../Confirmator/OrderSettings'
 import ValidationDisplay from '../Confirmator/ValidationDisplay'
-import TransformedOrderContainer from '../Confirmator/OrderContainers/TransformedOrderContainer'
-import TransformPanel from '../Confirmator/OrderOperations/TransformPanel'
-import MainOperationsPanel from '../Confirmator/OrderOperations/MainOperationsPanel'
 import {
   createAppOrder,
   updateOrderField,
 } from '../../shared/orderModel'
 import { readOrderDraft, useOrderDraft } from '../../hooks/useOrderDraft'
-import { formatOrder } from '../../shared/render/text'
+import orderPoolAPI from '../../services/orderPoolAPI'
+import { toCreateOrderPayload } from '../../shared/orderSerialization'
 
 const NEW_ORDER_DRAFT_STORAGE_KEY = 'new_order'
+const PENDING_NEW_ORDER_ID_STORAGE_KEY = 'pending_new_order_id'
+
+function readPendingOrderId() {
+  try {
+    return window.localStorage.getItem(PENDING_NEW_ORDER_ID_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function savePendingOrderId(id) {
+  try {
+    window.localStorage.setItem(PENDING_NEW_ORDER_ID_STORAGE_KEY, id)
+  } catch {
+    // A pending ID is only reload recovery; the in-memory order remains usable.
+  }
+}
+
+function clearPendingOrderId() {
+  try {
+    window.localStorage.removeItem(PENDING_NEW_ORDER_ID_STORAGE_KEY)
+  } catch {
+    // Best effort cleanup when browser storage is unavailable.
+  }
+}
 
 export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   const queryClient = useQueryClient()
   const isMobile = useMediaQuery('(max-width:600px)')
-  const [transformedOrder, setTransformedOrder] = useState({
-    text: '',
-    id: null,
-  })
-
   const [order, setOrder] = useState(
-    () => readOrderDraft(NEW_ORDER_DRAFT_STORAGE_KEY) || createAppOrder()
+    () => {
+      const draft = readOrderDraft(NEW_ORDER_DRAFT_STORAGE_KEY) || createAppOrder()
+      const pendingId = readPendingOrderId()
+      return pendingId ? { ...draft, id: pendingId } : draft
+    },
   )
-  const { clearDraft, skipNextPersistence } = useOrderDraft(NEW_ORDER_DRAFT_STORAGE_KEY, {
+  const [addStatus, setAddStatus] = useState(null)
+  const { saveDraft, clearDraft } = useOrderDraft(NEW_ORDER_DRAFT_STORAGE_KEY, {
     value: order,
     enabled: !order?.id,
   })
 
-  const transformedOrderContainerRef = useRef(null)
-
-  const reset = useCallback(() => {
+  function reset() {
     clearDraft()
-    skipNextPersistence()
-    setTransformedOrder({ text: '', id: null })
+    clearPendingOrderId()
+    setAddStatus(null)
     setOrder(createAppOrder())
-  }, [clearDraft, skipNextPersistence])
+  }
 
-  const handleOrderChange = useCallback(
-    (key, value) => setOrder((previous) => updateOrderField(previous, key, value)),
-    []
-  )
+  function handleOrderChange(key, value) {
+    setOrder((previous) => updateOrderField(previous, key, value))
+  }
 
-  const handleTransformedOrderUpdate = useCallback((transO) => {
-    setTransformedOrder((prev) => ({ ...prev, text: transO }))
-  }, [])
-
-  const handleOrderPersisted = useCallback((id) => {
+  function handleOrderPersisted(id) {
     clearDraft()
-    skipNextPersistence()
+    savePendingOrderId(id)
     setOrder((previous) => (previous ? { ...previous, id } : previous))
-  }, [clearDraft, skipNextPersistence])
+  }
 
-  const handleOrderTransformFromEditor = useCallback(
-    () => setTransformedOrder({ id: null, text: formatOrder(order) }),
-    [order]
-  )
-
-  const handleComplete = useCallback(() => {
+  function handleComplete() {
     queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
     onOrderCreated && onOrderCreated()
     reset()
-  }, [queryClient, onOrderCreated, reset])
+  }
+
+  async function handleAddOrder() {
+    if (addStatus === 'Working' || order?.deletedAt) return
+
+    try {
+      setAddStatus('Working')
+      let id = order?.id
+      if (!id) {
+        saveDraft(order)
+        const response = await orderPoolAPI.add({ order: toCreateOrderPayload(order) })
+        id = response?.id
+        if (!id) throw new Error('Order was added but no ID was returned')
+        handleOrderPersisted(id)
+      }
+
+      const response = await orderPoolAPI.confirm(id)
+      clearPendingOrderId()
+      setAddStatus('Done')
+      if (response?.message) enqueueSnackbar(response.message)
+      handleComplete()
+    } catch (err) {
+      if (err.message === 'logout') return
+      setAddStatus('Error')
+      enqueueSnackbar(err.response?.data?.error || err.message || String(err), { variant: 'error' })
+    }
+  }
 
   return (
     <Dialog
@@ -107,28 +145,21 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
           <div className="flex-container calendar-new-order-flex-container">
             <Editor order={order} handleChange={handleOrderChange} onOrderChange={setOrder} />
 
-            <TransformPanel
-              elementRef={transformedOrderContainerRef}
-              copyDisabled={!transformedOrder.text}
-              onClear={reset}
-              handleOrderTransformFromEditor={handleOrderTransformFromEditor}
-            />
-
-            <TransformedOrderContainer
-              elementRef={transformedOrderContainerRef}
-              transformedOrderText={transformedOrder.text}
-              handleClick={handleTransformedOrderUpdate}
-            />
-
             <OrderSettings handleChange={handleOrderChange} order={order} />
-            <ValidationDisplay order={order} shouldValidate={transformedOrder.text} />
-            <MainOperationsPanel
-              order={order}
-              orderId={order?.id || null}
-              transformedOrder={transformedOrder}
-              handleResetClick={handleComplete}
-              onOrderPersisted={handleOrderPersisted}
-            />
+            <ValidationDisplay order={order} />
+            <div className="order-operations">
+              <div className="block">
+                <Button
+                  className="share-space"
+                  variant="contained"
+                  size="small"
+                  onClick={handleAddOrder}
+                  disabled={addStatus === 'Working' || Boolean(order?.deletedAt)}
+                >
+                  {addStatus || 'Add order'} <NoteAddIcon />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>
