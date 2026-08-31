@@ -92,6 +92,8 @@ const BOX_FIELDS = [
 ]
 const BOX_NUMBER_FIELDS = ['amount', 'pricePerBox', 'deliveryPrice', 'returnPrice']
 
+const NULLABLE_BOOKING_FIELDS = new Set(['eventColor', 'name', 'email', 'phone', 'comment'])
+
 function isPresent(value) {
   return value !== null && value !== undefined
 }
@@ -373,14 +375,34 @@ function normalizeCanonicalAddress(value, field) {
   }
 }
 
-function stripAddressMetadata(value) {
-  if (!isPlainObject(value)) return cloneValue(value)
+function normalizeAddressWithFallback(value, field, fallback = makeAddress()) {
+  const input = requireObject(value, field)
+  return normalizeCanonicalAddress({ ...fallback, ...input }, field)
+}
 
-  return Object.fromEntries(
-    ['street', 'index', 'city', 'floor', 'elevator']
-      .filter((field) => hasOwn(value, field))
-      .map((field) => [field, cloneValue(value[field])]),
-  )
+function normalizeEmbeddedWithFallback(value, field, requiredNumberField, fallback = null) {
+  const input = requireObject(value, field)
+  const embedded = fallback ? { ...fallback, ...input } : input
+
+  if (!hasOwn(embedded, 'id') || embedded.id === null || embedded.id === undefined || embedded.id === '') {
+    throw new OrderValidationError(`Invalid ${field}.id: required`)
+  }
+  if (typeof embedded.name !== 'string' || embedded.name.trim() === '') {
+    throw new OrderValidationError(`Invalid ${field}.name: required`)
+  }
+  if (requiredNumberField && !hasOwn(embedded, requiredNumberField)) {
+    throw new OrderValidationError(`Invalid ${field}.${requiredNumberField}: required`)
+  }
+
+  const normalized = cloneValue(embedded)
+  for (const key of [requiredNumberField, 'fee']) {
+    if (!key || !hasOwn(normalized, key)) continue
+    const number = toFiniteNumberOrNull(normalized[key])
+    if (number === null) throw new OrderValidationError(`Invalid ${field}.${key}`)
+    normalized[key] = number
+  }
+
+  return normalized
 }
 
 function normalizeCanonicalBoxes(value, field = 'boxes') {
@@ -399,7 +421,7 @@ function normalizeCanonicalBooking(input, fieldPrefix = '') {
   const result = {}
 
   BOOKING_FIELDS.forEach((field) => {
-    const nullableField = ['eventColor', 'name', 'email', 'phone', 'comment'].includes(field)
+    const nullableField = NULLABLE_BOOKING_FIELDS.has(field)
     const value = requireField(input, field, { allowNull: nullableField })
     const fieldName = fieldPrefix ? `${fieldPrefix}.${field}` : field
 
@@ -418,6 +440,10 @@ function normalizeCanonicalBooking(input, fieldPrefix = '') {
       const duration = toFiniteNumberOrNull(value)
       if (duration === null) throw new OrderValidationError(`Invalid ${fieldName}`)
       result[field] = duration
+    } else if (field === 'service') {
+      result[field] = normalizeEmbeddedWithFallback(value, fieldName, 'pricePerHour')
+    } else if (field === 'paymentType') {
+      result[field] = normalizeEmbeddedWithFallback(value, fieldName, null)
     } else if (['distance', 'name', 'email', 'phone', 'comment'].includes(field)) {
       if (value !== null && typeof value !== 'string') throw new OrderValidationError(`Invalid ${fieldName}`)
       result[field] = value
@@ -564,15 +590,25 @@ function constructBookingOrder(input, origin) {
   BOOKING_FIELDS.forEach((field) => {
     if (!hasOwn(input, field) || input[field] === undefined) return
 
+    if (input[field] === null && !NULLABLE_BOOKING_FIELDS.has(field)) {
+      throw new OrderValidationError(`Invalid ${field}`)
+    }
+
     if (field === 'date') {
       result.date = parseInstant(input.date, 'date')
     } else if (field === 'boxes') {
       result.boxes = normalizeCurrentBoxes(input.boxes, defaults.boxes)
     } else if (field === 'extraAddresses') {
       if (!Array.isArray(input.extraAddresses)) throw new OrderValidationError('Invalid extraAddresses')
-      result.extraAddresses = input.extraAddresses.map(stripAddressMetadata)
+      result.extraAddresses = input.extraAddresses.map((address, index) =>
+        normalizeAddressWithFallback(address, `extraAddresses.${index}`),
+      )
     } else if (field === 'address' || field === 'destination') {
-      result[field] = stripAddressMetadata(input[field])
+      result[field] = normalizeAddressWithFallback(input[field], field, result[field])
+    } else if (field === 'service') {
+      result[field] = normalizeEmbeddedWithFallback(input[field], field, 'pricePerHour')
+    } else if (field === 'paymentType') {
+      result[field] = normalizeEmbeddedWithFallback(input[field], field, null)
     } else {
       result[field] = cloneValue(input[field])
     }
@@ -721,12 +757,26 @@ function applyOrderPatch(currentOrder, patch) {
     if (!hasOwn(patch, field)) continue
 
     const value = patch[field]
+    if ((value === null || value === undefined) && !NULLABLE_BOOKING_FIELDS.has(field)) {
+      throw new OrderValidationError(`Invalid ${field}`)
+    }
     let nextValue = value
 
     if (field === 'date' && value !== null && value !== undefined) {
       nextValue = parseInstant(value, 'date')
     } else if (field === 'boxes') {
       nextValue = normalizePatchBoxes(value, updated.boxes)
+    } else if (field === 'address' || field === 'destination') {
+      nextValue = normalizeAddressWithFallback(value, field, updated[field])
+    } else if (field === 'service') {
+      nextValue = normalizeEmbeddedWithFallback(value, field, 'pricePerHour', updated[field])
+    } else if (field === 'paymentType') {
+      nextValue = normalizeEmbeddedWithFallback(value, field, null, updated[field])
+    } else if (field === 'extraAddresses') {
+      if (!Array.isArray(value)) throw new OrderValidationError('Invalid extraAddresses')
+      nextValue = value.map((address, index) =>
+        normalizeAddressWithFallback(address, `extraAddresses.${index}`, updated.extraAddresses?.[index]),
+      )
     }
 
     const previousValue = updated[field]

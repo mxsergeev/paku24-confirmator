@@ -192,6 +192,59 @@ describe('default and boundary order state', () => {
     expect(() => createAppOrder({ initialSnapshot: { price: 1 } })).toThrow(/server-managed/i)
   })
 
+  it.each([
+    'date',
+    'duration',
+    'service',
+    'paymentType',
+    'address',
+    'extraAddresses',
+    'destination',
+    'boxes',
+  ])('rejects explicit null for required %s during app creation', (field) => {
+    expect(() => createAppOrder({ [field]: null })).toThrow(new RegExp(`Invalid ${field}`, 'i'))
+  })
+
+  it.each([
+    'date',
+    'duration',
+    'service',
+    'paymentType',
+    'address',
+    'extraAddresses',
+    'destination',
+    'boxes',
+  ])('rejects explicit null for required %s in an update patch', (field) => {
+    const order = createAppOrder()
+    expect(() => applyOrderPatch(order, { [field]: null })).toThrow(new RegExp(`Invalid ${field}`, 'i'))
+  })
+
+  it.each([
+    ['service', { id: 'service', name: 'Service', pricePerHour: null }, /service\.pricePerHour/i],
+    ['paymentType', { id: null, name: 'Payment' }, /paymentType\.id/i],
+  ])('rejects malformed nested %s values at the order boundary', (field, value, errorPattern) => {
+    expect(() => createAppOrder({ [field]: value })).toThrow(errorPattern)
+    const order = createAppOrder()
+    expect(() => applyOrderPatch(order, { [field]: value })).toThrow(errorPattern)
+  })
+
+  it.each([
+    ['address', { street: null, index: '00100', city: 'Helsinki', floor: 0, elevator: false }],
+    ['destination', { street: 'Street', index: null, city: 'Helsinki', floor: 0, elevator: false }],
+    ['extraAddresses', [{ street: 'Street', index: '00100', city: 'Helsinki', floor: null, elevator: false }]],
+  ])('rejects malformed nested %s values during app creation', (field, value) => {
+    expect(() => createAppOrder({ [field]: value })).toThrow(new RegExp(`Invalid ${field}`, 'i'))
+  })
+
+  it.each([
+    ['address', { street: null }],
+    ['destination', { elevator: null }],
+    ['extraAddresses', [{ city: null }]],
+  ])('rejects malformed nested %s values in an update patch', (field, value) => {
+    const order = createAppOrder()
+    expect(() => applyOrderPatch(order, { [field]: value })).toThrow(new RegExp(`Invalid ${field}`, 'i'))
+  })
+
   it('creates isolated WordPress snapshots with complete or missing pricing components', () => {
     const input = makeWordPressPayload()
     const order = createWordPressOrder(input)

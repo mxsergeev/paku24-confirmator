@@ -65,7 +65,7 @@ describe('addOrderToCalendar', () => {
     await expect(addOrderToCalendar({ order, onOrderPersisted })).rejects.toBe(failure)
 
     expect(mocks.add).toHaveBeenCalledTimes(1)
-    expect(onOrderPersisted).toHaveBeenCalledWith('new-order-id')
+    expect(onOrderPersisted).toHaveBeenCalledWith('new-order-id', expect.any(Object))
     expect(mocks.syncOrder).toHaveBeenCalledWith('new-order-id')
     expect(mocks.confirm).not.toHaveBeenCalled()
   })

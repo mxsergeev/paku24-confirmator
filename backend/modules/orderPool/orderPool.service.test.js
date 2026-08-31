@@ -227,6 +227,7 @@ describe('explicit calendar side effects', () => {
     const order = makeOrder()
     order.confirmed = true
     const failure = new Error('calendar unavailable')
+    mocks.findById.mockResolvedValue(order)
     mocks.findOneAndUpdate.mockResolvedValue(order)
     mocks.syncOrderToCalendar.mockRejectedValue(failure)
 

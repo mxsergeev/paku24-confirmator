@@ -15,6 +15,8 @@ export default async function addOrderToCalendar({
   onOrderPersisted,
   onOrderUpdated,
 } = {}) {
+  const workflowToken = {}
+
   if (isDeleted(order)) {
     throw new Error('Deleted orders cannot be synchronized to calendar.')
   }
@@ -26,13 +28,13 @@ export default async function addOrderToCalendar({
     })
     persistedOrderId = id
     if (!persistedOrderId) throw new Error('Order was added but no ID was returned')
-    onOrderPersisted?.(persistedOrderId)
+    onOrderPersisted?.(persistedOrderId, workflowToken)
   }
 
   const response = await calendarAPI.syncOrder(persistedOrderId)
   if (!order?.confirmed) {
     const confirmation = await orderPoolAPI.confirm(persistedOrderId)
-    if (confirmation?.order) onOrderUpdated?.(confirmation.order)
+    if (confirmation?.order) onOrderUpdated?.(confirmation.order, workflowToken)
   }
   return response
 }

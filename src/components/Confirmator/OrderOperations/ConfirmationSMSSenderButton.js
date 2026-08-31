@@ -34,7 +34,7 @@ export default function ConfirmationSMSSenderButton({
     } catch (err) {
       if (err.message === 'logout') return
       changeStatus(SMS, 'Error', false)
-      enqueueSnackbar(err.response?.data.error, { variant: 'error' })
+      enqueueSnackbar(err.response?.data?.error || err?.message || err?.toString(), { variant: 'error' })
     }
   }, [order, changeStatus])
 

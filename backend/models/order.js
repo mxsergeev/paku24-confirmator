@@ -227,7 +227,13 @@ const order = new mongoose.Schema({
   },
   receivedAt: Date,
   confirmedAt: Date,
-  deletedAt: Date,
+  // An active order has no deletion timestamp. Treat an explicit null as
+  // missing so canonical creation state does not materialize a null field in
+  // MongoDB, while real deletion timestamps remain ordinary Dates.
+  deletedAt: {
+    type: Date,
+    set: (value) => (value === null ? undefined : value),
+  },
   confirmedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

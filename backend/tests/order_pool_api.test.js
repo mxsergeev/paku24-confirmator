@@ -89,7 +89,15 @@ const completePricing = (source, manual) => ({
 describe('Order pool v2/add', () => {
   afterEach(async () => {
     await Order.deleteMany({
-      name: { $in: ['WordPress Order', 'WordPress Auto Order', 'WordPress Service Metadata', 'App Order'] },
+      name: {
+        $in: [
+          'WordPress Order',
+          'WordPress Auto Order',
+          'WordPress Service Metadata',
+          'App Order',
+          'Active null deletion',
+        ],
+      },
     })
   })
 
@@ -232,6 +240,29 @@ describe('Order pool v2/add', () => {
     expect(saved.confirmed).toBe(false)
     expect(saved.receivedAt).not.toEqual(new Date('1999-01-01T00:00:00.000Z'))
     expect(saved.invoiceNumber).not.toBe('attacker-invoice')
+  })
+
+  test('API-created orders with null deletedAt remain in the active list', async () => {
+    const created = await api
+      .post('/api/order-pool/v2/add')
+      .set('Cookie', [`at=${appToken}`])
+      .send({ order: makeAppRequest({ name: 'Active null deletion', origin: 'app' }) })
+      .expect(200)
+
+    const saved = await Order.findById(created.body.id).lean()
+    expect(saved).not.toHaveProperty('deletedAt')
+
+    const active = await api
+      .get('/api/order-pool/v2/?deleted=false&pages[]=1')
+      .set('Cookie', [`at=${appToken}`])
+      .expect(200)
+    const deleted = await api
+      .get('/api/order-pool/v2/?deleted=true&pages[]=1')
+      .set('Cookie', [`at=${appToken}`])
+      .expect(200)
+
+    expect(active.body.orders.map((order) => order.name)).toContain('Active null deletion')
+    expect(deleted.body.orders.map((order) => order.name)).not.toContain('Active null deletion')
   })
 
   test.each([
@@ -452,6 +483,35 @@ describe('Order pool v2 list', () => {
     ['partial range', '/api/order-pool/v2/?from=2026-04-01'],
   ])('rejects %s', async (_description, url) => {
     await api.get(url).set('Cookie', [`at=${appToken}`]).expect(400)
+  })
+})
+
+describe('Order pool confirmed-by-user', () => {
+  const confirmedUserId = '66c000000000000000000003'
+  const confirmedUserToken = generateJWT(
+    { name: 'Confirmed tester', username: 'confirmed-tester', id: confirmedUserId },
+    { expiresIn: '10m' },
+  )
+
+  afterEach(async () => {
+    await Order.deleteMany({ name: 'Confirmed null deletion' })
+  })
+
+  test('includes a confirmed API order whose active deletedAt value is null', async () => {
+    await makeUpdateOrder({
+      name: 'Confirmed null deletion',
+      confirmed: true,
+      confirmedBy: confirmedUserId,
+      confirmedAt: new Date('2026-04-10T09:00:00.000Z'),
+      deletedAt: null,
+    }).save()
+
+    const result = await api
+      .get('/api/order-pool/confirmed-by-user/?periodFrom=2026-04-01T00:00:00.000Z&periodTo=2026-05-01T00:00:00.000Z')
+      .set('Cookie', [`at=${confirmedUserToken}`])
+      .expect(200)
+
+    expect(result.body.confirmedOrders.map((order) => order.name)).toContain('Confirmed null deletion')
   })
 })
 

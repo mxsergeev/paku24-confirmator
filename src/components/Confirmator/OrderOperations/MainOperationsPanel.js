@@ -67,7 +67,7 @@ export default function MainOperationsPanel({
     } catch (err) {
       if (err.message === 'logout') return
       changeStatus('calendar', 'Error', false)
-      enqueueSnackbar(err.response?.data.error || err?.toString(), { variant: 'error' })
+      enqueueSnackbar(err.response?.data?.error || err?.message || err?.toString(), { variant: 'error' })
     } finally {
       addingOrderRef.current = false
     }

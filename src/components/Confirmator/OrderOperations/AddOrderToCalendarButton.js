@@ -31,7 +31,7 @@ export default function AddOrderToCalendarButton({
     } catch (err) {
       if (err.message === 'logout') return
       changeStatus(CALENDAR, 'Error', false)
-      enqueueSnackbar(err.response?.data.error || err?.toString(), { variant: 'error' })
+      enqueueSnackbar(err.response?.data?.error || err?.message || err?.toString(), { variant: 'error' })
     }
   }, [order, orderId, changeStatus, onOrderPersisted, onOrderUpdated])
 

@@ -41,7 +41,7 @@ export default function ConfirmationEmailSenderButton({
         .catch((err) => {
           if (err.message === 'logout') return
           changeStatus(EMAIL, 'Error', false)
-          enqueueSnackbar(err.response.data.error, { variant: 'error' })
+          enqueueSnackbar(err.response?.data?.error || err?.message || err?.toString(), { variant: 'error' })
         })
     }
     return enqueueSnackbar('No confirmation found or recipients defined.', {

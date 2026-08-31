@@ -71,7 +71,7 @@ export default function Login({ updateUser }) {
       setInputError(true)
       setIsButtonDisabled(true)
       setTimeout(() => setIsButtonDisabled(false), 2000)
-      setNotification(`Error: ${err.response?.data.error || 'Mystery 👻'}`)
+      setNotification(`Error: ${err.response?.data?.error || 'Mystery 👻'}`)
     }
   }
 

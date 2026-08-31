@@ -179,8 +179,10 @@ orderPoolRouter.patch('/v2/:id/color', async (req, res, next) => {
 })
 
 function makeDeletedFilter(deleted) {
-  if (deleted === 'true') return { deletedAt: { $exists: true } }
-  if (deleted === 'false') return { deletedAt: { $exists: false } }
+  if (deleted === 'true') return { deletedAt: { $exists: true, $ne: null } }
+  if (deleted === 'false') {
+    return { $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }] }
+  }
   return {}
 }
 
@@ -218,7 +220,7 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
         throw validationError('from and to must be provided together')
       }
 
-      const match = {
+      const rangeFilter = {
         $or: [
           { date: { $gte: from, $lte: to } },
           { 'boxes.deliveryDate': { $gte: from, $lte: to } },
@@ -236,8 +238,10 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
             },
           },
         ],
-        ...deletedFilter,
       }
+      const match = Object.keys(deletedFilter).length
+        ? { $and: [rangeFilter, deletedFilter] }
+        : rangeFilter
 
       const ordersInPool = await Order.find(match).sort({ _id: -1 })
 
@@ -350,25 +354,29 @@ orderPoolRouter.post('/v2/restore/:id', async (req, res, next) => {
   }
 })
 
-orderPoolRouter.get('/confirmed-by-user/', async (req, res) => {
-  const periodFrom = isISO8601(req.query.periodFrom)
-    ? req.query.periodFrom
-    : dayjs().startOf('month')
-  const periodTo = isISO8601(req.query.periodTo)
-    ? req.query.periodTo
-    : dayjs().add(1, 'month').startOf('month')
+orderPoolRouter.get('/confirmed-by-user/', async (req, res, next) => {
+  try {
+    const periodFrom = isISO8601(req.query.periodFrom)
+      ? req.query.periodFrom
+      : dayjs().startOf('month')
+    const periodTo = isISO8601(req.query.periodTo)
+      ? req.query.periodTo
+      : dayjs().add(1, 'month').startOf('month')
 
-  const confirmedOrders = await Order.find({
-    confirmed: true,
-    deletedAt: { $exists: false },
-    confirmedBy: req.user.id,
-    confirmedAt: {
-      $gte: periodFrom,
-      $lt: periodTo,
-    },
-  })
+    const confirmedOrders = await Order.find({
+      confirmed: true,
+      ...makeDeletedFilter('false'),
+      confirmedBy: req.user.id,
+      confirmedAt: {
+        $gte: periodFrom,
+        $lt: periodTo,
+      },
+    })
 
-  return res.status(200).send({ confirmedOrders })
+    return res.status(200).send({ confirmedOrders })
+  } catch (err) {
+    return next(err)
+  }
 })
 
 export default orderPoolRouter

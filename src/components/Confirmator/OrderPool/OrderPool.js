@@ -132,16 +132,31 @@ export default function OrderPool({ handleExport }) {
 
   const handleOrderDeletion = useCallback(
     async (id) => {
-      await orderPoolAPI.remove(id)
-      setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id))
+      try {
+        await orderPoolAPI.remove(id)
+        setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id))
+      } catch (err) {
+        enqueueSnackbar(err?.response?.data?.error || err?.message || err?.toString(), {
+          variant: 'error',
+        })
+      }
     },
     []
   )
 
   const handleRetrieval = useCallback(
     async (id) => {
-      await orderPoolAPI.retrieve(id)
-      setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id))
+      try {
+        const response = await orderPoolAPI.retrieve(id)
+        setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id))
+        if (response?.warning) {
+          enqueueSnackbar(response.warning.message, { variant: 'warning' })
+        }
+      } catch (err) {
+        enqueueSnackbar(err?.response?.data?.error || err?.message || err?.toString(), {
+          variant: 'error',
+        })
+      }
     },
     []
   )

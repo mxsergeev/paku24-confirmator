@@ -42,11 +42,13 @@ function isConfirmedAndActive(order) {
   return Boolean(order?.confirmed && !order?.deletedAt)
 }
 
+// Callers invoke this while holding the order calendar lock. Calendar sync
+// must not reacquire that lock before the mutation request can finish.
 async function syncAfterMutation(order, warning = CALENDAR_SYNC_WARNING) {
   if (!isConfirmedAndActive(order)) return order
 
   try {
-    await syncOrderToCalendar(order)
+    await syncOrderToCalendar(order, { lock: false })
     return order
   } catch (err) {
     // Calendar reconciliation is deliberately best effort for ordinary order
@@ -94,43 +96,42 @@ async function getOrderById(id) {
 async function updateOrder(id, updateData) {
   const order = await getOrderById(id)
 
-  let updated
-  try {
-    updated = applyOrderPatch(canonicalOrderObject(order), updateData)
-  } catch (err) {
-    if (!isOrderValidationError(err)) throw err
-    throw validationError(err.message)
-  }
+  return withOrderCalendarLock(order, async () => {
+    const currentOrder = await getOrderById(id)
+    let updated
+    try {
+      updated = applyOrderPatch(canonicalOrderObject(currentOrder), updateData)
+    } catch (err) {
+      if (!isOrderValidationError(err)) throw err
+      throw validationError(err.message)
+    }
 
-  assignCanonicalState(order, updated)
-
-  await order.save()
-
-  return syncAfterMutation(order)
+    assignCanonicalState(currentOrder, updated)
+    await currentOrder.save()
+    return syncAfterMutation(currentOrder)
+  })
 }
 
 async function revertOrder(id) {
-  const order = await Order.findById(id)
+  const order = await getOrderById(id)
 
-  if (!order) {
-    throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-  }
+  return withOrderCalendarLock(order, async () => {
+    const currentOrder = await getOrderById(id)
+    let reverted
+    try {
+      // Revert before assigning anything to the document. The shared helper
+      // replaces pricing sources first, so a stale current source cannot block
+      // the required automatic fallback for a missing snapshot component.
+      reverted = revertToInitial(canonicalOrderObject(currentOrder))
+    } catch (err) {
+      if (!isOrderValidationError(err)) throw err
+      throw validationError(err.message)
+    }
 
-  let reverted
-  try {
-    // Revert before assigning anything to the document. The shared helper
-    // replaces pricing sources first, so a stale current source cannot block
-    // the required automatic fallback for a missing snapshot component.
-    reverted = revertToInitial(canonicalOrderObject(order))
-  } catch (err) {
-    if (!isOrderValidationError(err)) throw err
-    throw validationError(err.message)
-  }
-
-  assignCanonicalState(order, reverted)
-  await order.save()
-
-  return syncAfterMutation(order)
+    assignCanonicalState(currentOrder, reverted)
+    await currentOrder.save()
+    return syncAfterMutation(currentOrder)
+  })
 }
 
 async function confirmOrder(id, userId) {
@@ -191,13 +192,13 @@ async function cancelOrder(id) {
 
   const order = await getOrderById(id)
 
-  const canceled = await withOrderCalendarLock(order, async () => {
+  return withOrderCalendarLock(order, async () => {
     const currentOrder = await getOrderById(id)
     if (currentOrder.deletedAt) {
       throw validationError('Deleted orders cannot be canceled')
     }
 
-    return Order.findByIdAndUpdate(
+    const canceled = await Order.findByIdAndUpdate(
       { _id: id },
       {
         canceledAt: new Date().toISOString(),
@@ -205,17 +206,26 @@ async function cancelOrder(id) {
       },
       { new: true },
     )
-  })
 
-  return canceled ? syncAfterMutation(canceled) : null
+    return canceled ? syncAfterMutation(canceled) : null
+  })
 }
 
 async function updateOrderColor(id, eventColor) {
   if (!id) return null
 
-  const order = await Order.findOneAndUpdate({ _id: id }, { $set: { eventColor } }, { new: true })
-
-  return order ? syncAfterMutation(order) : null
+  const order = await getOrderById(id)
+  return withOrderCalendarLock(order, async () => {
+    await getOrderById(id)
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: id },
+      { $set: { eventColor } },
+      { new: true },
+    )
+    return updatedOrder
+      ? syncAfterMutation(updatedOrder)
+      : null
+  })
 }
 
 async function deleteOrder(id) {
@@ -245,21 +255,35 @@ async function deleteOrder(id) {
 async function retrieveOrder(id) {
   if (!id) return null
 
-  const order = await Order.findByIdAndUpdate({ _id: id }, { $unset: { deletedAt: 1 } }, { new: true })
-
-  return order ? syncAfterMutation(order) : null
+  const order = await getOrderById(id)
+  return withOrderCalendarLock(order, async () => {
+    await getOrderById(id)
+    const retrievedOrder = await Order.findByIdAndUpdate(
+      { _id: id },
+      { $unset: { deletedAt: 1 } },
+      { new: true },
+    )
+    return retrievedOrder
+      ? syncAfterMutation(retrievedOrder)
+      : null
+  })
 }
 
 async function restoreOrder(id) {
   if (!id) return null
 
-  const order = await Order.findByIdAndUpdate(
-    { _id: id },
-    { $unset: { deletedAt: 1, canceledAt: 1 }, $set: { eventColor: DEFAULT_EVENT_COLOR_ID } },
-    { new: true },
-  )
-
-  return order ? syncAfterMutation(order) : null
+  const order = await getOrderById(id)
+  return withOrderCalendarLock(order, async () => {
+    await getOrderById(id)
+    const restoredOrder = await Order.findByIdAndUpdate(
+      { _id: id },
+      { $unset: { deletedAt: 1, canceledAt: 1 }, $set: { eventColor: DEFAULT_EVENT_COLOR_ID } },
+      { new: true },
+    )
+    return restoredOrder
+      ? syncAfterMutation(restoredOrder)
+      : null
+  })
 }
 
 export {

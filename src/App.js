@@ -99,7 +99,15 @@ function App() {
             {user === null ? <Login updateUser={setUser} /> : <Redirect to="/" />}
           </Route>
 
-          <ProtectedRoute dependsOn={user} path={['/confirmator/:id', '/confirmator']}>
+          <ProtectedRoute
+            dependsOn={user}
+            exact
+            path={[
+              '/confirmator/order-pool',
+              '/confirmator/:id([0-9a-fA-F]{24})',
+              '/confirmator',
+            ]}
+          >
             <Confirmator />
           </ProtectedRoute>
           <ProtectedRoute dependsOn={user} path="/statistics">

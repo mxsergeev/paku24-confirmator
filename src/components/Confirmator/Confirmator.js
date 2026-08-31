@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { useHistory, useParams } from 'react-router-dom'
+import { useHistory, useLocation, useParams } from 'react-router-dom'
 import { enqueueSnackbar } from 'notistack'
 
 import './Confirmator.css'
@@ -25,6 +25,7 @@ const CONFIRMATOR_DRAFT_STORAGE_KEY = 'confirmator_order'
 
 export default function Confirmator() {
   const params = useParams()
+  const location = useLocation()
   const history = useHistory()
   const hasExplicitOrderId = Boolean(params.id)
 
@@ -46,6 +47,17 @@ export default function Confirmator() {
   const [reverting, setReverting] = useState(false)
 
   const routeIdRef = useRef(params.id)
+  const currentRouteIdRef = useRef(params.id)
+  currentRouteIdRef.current = params.id
+  const renderedRoutePathRef = useRef(location.pathname)
+  const routeGenerationRef = useRef(0)
+  if (renderedRoutePathRef.current !== location.pathname) {
+    renderedRoutePathRef.current = location.pathname
+    routeGenerationRef.current += 1
+  }
+  const callbackGeneration = routeGenerationRef.current
+  const orderUpdateVersionRef = useRef(0)
+  const pendingPersistedWorkflowRef = useRef(null)
   const routeChanged = routeIdRef.current !== params.id
   const { readDraft, clearDraft, skipNextPersistence } = useOrderDraft(CONFIRMATOR_DRAFT_STORAGE_KEY, {
     value: order,
@@ -77,10 +89,11 @@ export default function Confirmator() {
     setLoadedOrderId(null)
 
     const fetchOrder = async () => {
+      const requestVersion = orderUpdateVersionRef.current
       try {
         const { order: responseOrder } = await orderPoolAPI.getOrderById(params.id)
 
-        if (!active) return
+        if (!active || requestVersion !== orderUpdateVersionRef.current) return
         if (!responseOrder) {
           setOrder(null)
           setLoadedOrderId(params.id)
@@ -94,7 +107,10 @@ export default function Confirmator() {
         setLoadedOrderId(params.id)
         setOrderLoadState('ready')
       } catch (err) {
-        if (!active) return
+        // A mutation may have installed a newer order while this route load
+        // was in flight. Do not let the stale request turn that ready order
+        // into an error state.
+        if (!active || requestVersion !== orderUpdateVersionRef.current) return
 
         setOrder(null)
         setLoadedOrderId(params.id)
@@ -139,6 +155,9 @@ export default function Confirmator() {
         const updatedOrder = hydrateCanonicalOrder(response.order || response)
         setOrder(updatedOrder)
         enqueueSnackbar(response.message || 'Order reverted.')
+        if (response.warning) {
+          enqueueSnackbar(response.warning.message, { variant: 'warning' })
+        }
       } else {
         setOrder((previous) => revertToInitial(previous))
       }
@@ -156,16 +175,45 @@ export default function Confirmator() {
     setTransformedOrder((prev) => ({ ...prev, text: transO }))
   }, [])
 
-  const handleOrderPersisted = useCallback((id) => {
+  const handleOrderPersisted = useCallback((id, workflowToken = null) => {
+    if (routeGenerationRef.current !== callbackGeneration) return
+
+    const currentRouteId = currentRouteIdRef.current
+    if (currentRouteId && currentRouteId !== id) return
+
+    pendingPersistedWorkflowRef.current = {
+      id,
+      token: workflowToken,
+      targetGeneration: callbackGeneration + 1,
+    }
     clearDraft()
     skipNextPersistence()
     setOrder((previous) => (previous ? { ...previous, id } : previous))
     history.replace(`/confirmator/${id}`)
-  }, [clearDraft, history, skipNextPersistence])
+  }, [callbackGeneration, clearDraft, history, skipNextPersistence])
 
-  const handleOrderUpdated = useCallback((updatedOrder) => {
-    setOrder(hydrateCanonicalOrder(updatedOrder))
-  }, [])
+  const handleOrderUpdated = useCallback((updatedOrder, workflowToken = null) => {
+    const currentRouteId = currentRouteIdRef.current
+    const workflowContinuation = pendingPersistedWorkflowRef.current
+    const isPersistedWorkflowContinuation =
+      workflowToken &&
+      workflowContinuation?.token === workflowToken &&
+      workflowContinuation.id === updatedOrder?.id &&
+      workflowContinuation.targetGeneration === routeGenerationRef.current
+
+    if (routeGenerationRef.current !== callbackGeneration && !isPersistedWorkflowContinuation) return
+    if (currentRouteId && updatedOrder?.id !== currentRouteId) return
+
+    const normalizedOrder = hydrateCanonicalOrder(updatedOrder)
+    orderUpdateVersionRef.current += 1
+    setOrder(normalizedOrder)
+    if (isPersistedWorkflowContinuation) pendingPersistedWorkflowRef.current = null
+    if (currentRouteId) {
+      setLoadedOrderId(currentRouteId)
+      setOrderLoadState('ready')
+      setOrderLoadMessage('')
+    }
+  }, [callbackGeneration])
 
   const handleOrderTransformFromEditor = useCallback(
     () => setTransformedOrder({ id: order?.id || null, text: formatOrder(order) }),

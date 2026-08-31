@@ -153,6 +153,13 @@ describe('Order Mongoose schema', () => {
     expect(order.validateSync()).toBeUndefined()
   })
 
+  it('does not persist a null deletedAt value for an active order', () => {
+    const order = new Order(makeOrder({ deletedAt: null }))
+
+    expect(order.deletedAt).toBeUndefined()
+    expect(order.toObject()).not.toHaveProperty('deletedAt')
+  })
+
   it.each([
     ['origin', { origin: 'email' }, /origin/],
     [
