@@ -1,22 +1,10 @@
-import {
-  BOOKING_FIELDS,
-  hydrateCanonicalOrder,
-  SNAPSHOT_FIELDS,
-} from './orderModel.js'
-import { resolveActivePricing } from './orderPricing.js'
+import { BOOKING_FIELDS, hydrateCanonicalOrder } from './orderModel.js'
+import { getOrderPricing, normalizeFeeList } from './orderPricing.js'
 import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
-import {
-  cloneValue,
-  hasOwn,
-  isPlainObject,
-  ORDER_ORIGINS,
-  PRICING_COMPONENTS,
-  PRICING_SOURCES,
-} from './orderPrimitives.js'
+import { cloneValue, hasOwn, isPlainObject, PRICING_COMPONENTS, toFiniteNumberOrNull } from './orderPrimitives.js'
 
-const DRAFT_VERSION = 1
+const DRAFT_VERSION = 2
 const ADDRESS_FIELDS = ['street', 'index', 'city', 'floor', 'elevator']
-const DRAFT_ORDER_FIELDS = [...BOOKING_FIELDS, 'origin', 'initialSnapshot', 'pricing']
 
 function serializeAddress(value) {
   if (!isPlainObject(value)) return cloneValue(value)
@@ -43,7 +31,6 @@ function serializeBoxDate(value, fieldName) {
     parseCalendarDate(value, fieldName)
     return value
   }
-
   return serializeDateTime(value, fieldName)
 }
 
@@ -52,9 +39,7 @@ function serializeBoxes(value, fieldName) {
 
   const boxes = cloneValue(value)
   for (const field of ['deliveryDate', 'returnDate']) {
-    if (hasOwn(value, field)) {
-      boxes[field] = serializeBoxDate(value[field], `${fieldName}.${field}`)
-    }
+    if (hasOwn(value, field)) boxes[field] = serializeBoxDate(value[field], `${fieldName}.${field}`)
   }
   return boxes
 }
@@ -71,120 +56,50 @@ function serializeBookingFields(order) {
       result[field] = serializeAddress(order[field])
     } else if (field === 'extraAddresses') {
       result.extraAddresses = serializeExtraAddresses(order.extraAddresses)
-    } else result[field] = cloneValue(order[field])
-  })
-
-  return result
-}
-
-function serializeSnapshot(value) {
-  if (value === null) return null
-  if (!isPlainObject(value)) throw new Error('Invalid initialSnapshot')
-
-  const result = {}
-  SNAPSHOT_FIELDS.forEach((field) => {
-    if (!hasOwn(value, field)) return
-
-    if (field === 'date') result.date = serializeDateTime(value.date, 'initialSnapshot.date')
-    else if (field === 'boxes') {
-      result.boxes = serializeBoxes(value.boxes, 'initialSnapshot.boxes')
-    } else if (field === 'address' || field === 'destination') {
-      result[field] = serializeAddress(value[field])
-    } else if (field === 'extraAddresses') {
-      result.extraAddresses = serializeExtraAddresses(value.extraAddresses)
     } else {
-      result[field] = cloneValue(value[field])
+      result[field] = cloneValue(order[field])
     }
   })
 
   return result
 }
 
-function serializePricing(value, fieldName = 'pricing') {
+function serializePricingOverrides(value, fieldName = 'pricingOverrides') {
   if (!isPlainObject(value)) throw new Error(`Invalid ${fieldName}`)
 
-  if (!isPlainObject(value.source)) throw new Error(`Invalid ${fieldName}.source`)
-  if (!isPlainObject(value.manual)) throw new Error(`Invalid ${fieldName}.manual`)
+  return Object.fromEntries(
+    PRICING_COMPONENTS.map((component) => {
+      const componentValue = value[component]
+      if (componentValue === null || componentValue === undefined) return [component, null]
 
-  PRICING_COMPONENTS.forEach((component) => {
-    if (!PRICING_SOURCES.includes(value.source[component])) {
-      throw new Error(`Invalid ${fieldName}.source.${component}`)
-    }
-    if (!hasOwn(value.manual, component)) {
-      throw new Error(`Invalid ${fieldName}.manual.${component}`)
-    }
-    if (value.source[component] === 'manual' && value.manual[component] === null) {
-      throw new Error(`Invalid ${fieldName}.manual.${component}`)
-    }
-  })
+      if (component === 'fees') {
+        return [component, normalizeFeeList(componentValue, `${fieldName}.${component}`)]
+      }
 
-  return {
-    source: Object.fromEntries(
-      PRICING_COMPONENTS.map((component) => [component, cloneValue(value.source[component])]),
-    ),
-    manual: Object.fromEntries(
-      PRICING_COMPONENTS.map((component) => [component, cloneValue(value.manual[component])]),
-    ),
-  }
-}
-
-function requireOrigin(order) {
-  if (!ORDER_ORIGINS.includes(order?.origin)) {
-    throw new Error(`Invalid order origin: ${String(order?.origin)}`)
-  }
-  return order.origin
+      const number = toFiniteNumberOrNull(componentValue)
+      if (number === null) throw new Error(`Invalid ${fieldName}.${component}`)
+      return [component, number]
+    }),
+  )
 }
 
 function serializeDraftOrder(order) {
   if (!isPlainObject(order)) throw new Error('Invalid draft order')
 
-  if (!hasOwn(order, 'origin')) throw new Error('Invalid draft order: origin is required')
-  if (!hasOwn(order, 'initialSnapshot')) {
-    throw new Error('Invalid draft order: initialSnapshot is required')
+  return {
+    ...serializeBookingFields(order),
+    pricingOverrides: serializePricingOverrides(order.pricingOverrides),
+    originalOrder: order.originalOrder === null || order.originalOrder === undefined
+      ? null
+      : cloneValue(order.originalOrder),
   }
-  if (!hasOwn(order, 'pricing')) throw new Error('Invalid draft order: pricing is required')
-
-  const result = serializeBookingFields(order)
-  result.origin = requireOrigin(order)
-  result.initialSnapshot = serializeSnapshot(order.initialSnapshot)
-  if (result.origin === 'app' && result.initialSnapshot !== null) {
-    throw new Error('Invalid draft order: app orders cannot have an initialSnapshot')
-  }
-  if (result.origin === 'wordpress' && result.initialSnapshot === null) {
-    throw new Error('Invalid draft order: WordPress orders require an initialSnapshot')
-  }
-  result.pricing = serializePricing(order.pricing)
-  return result
 }
 
 function serializeDraft(order) {
-  const serialized = serializeDraftOrder(order)
-
   return {
     version: DRAFT_VERSION,
-    order: serialized,
+    order: serializeDraftOrder(order),
   }
-}
-
-function deserializeDraftOrder(order) {
-  if (!isPlainObject(order)) throw new Error('Invalid draft order')
-
-  if (!hasOwn(order, 'origin')) throw new Error('Invalid draft order: origin is required')
-  if (!hasOwn(order, 'initialSnapshot')) {
-    throw new Error('Invalid draft order: initialSnapshot is required')
-  }
-  if (!hasOwn(order, 'pricing')) throw new Error('Invalid draft order: pricing is required')
-
-  // Draft JSON has the same value representation as persisted canonical data.
-  // Select draft-owned fields first so lifecycle metadata and materialized
-  // projections cannot leak into the canonical hydrator.
-  const draftOrder = Object.fromEntries(
-    DRAFT_ORDER_FIELDS
-      .filter((field) => hasOwn(order, field))
-      .map((field) => [field, cloneValue(order[field])]),
-  )
-
-  return hydrateCanonicalOrder(draftOrder)
 }
 
 function deserializeDraft(payload) {
@@ -194,21 +109,21 @@ function deserializeDraft(payload) {
   }
   if (!isPlainObject(payload.order)) throw new Error('Invalid draft payload: order is required')
 
-  // Selecting the draft fields also ensures lifecycle and materialized projections
-  // supplied by stale or hand-edited drafts never become hydrated order state.
-  return deserializeDraftOrder(payload.order)
+  const order = payload.order
+  const draftOrder = {
+    ...Object.fromEntries(
+      BOOKING_FIELDS.filter((field) => hasOwn(order, field)).map((field) => [field, cloneValue(order[field])]),
+    ),
+    pricingOverrides: cloneValue(order.pricingOverrides),
+    originalOrder: cloneValue(order.originalOrder),
+  }
+
+  return hydrateCanonicalOrder(draftOrder)
 }
 
 function toCreateOrderPayload(order) {
   if (!isPlainObject(order)) throw new Error('Order must be an object')
-  if (requireOrigin(order) !== 'app') {
-    throw new Error('Only app-origin orders can be created with this payload')
-  }
-
-  return {
-    ...serializeBookingFields(order),
-    origin: 'app',
-  }
+  return serializeBookingFields(order)
 }
 
 function toUpdateOrderPayload(order) {
@@ -216,19 +131,24 @@ function toUpdateOrderPayload(order) {
 
   return {
     ...serializeBookingFields(order),
-    pricing: serializePricing(order.pricing),
+    pricingOverrides: serializePricingOverrides(order.pricingOverrides),
   }
 }
 
 function toCommunicationOrder(order) {
   if (!isPlainObject(order)) throw new Error('Order must be an object')
 
-  const activePricing = resolveActivePricing(order)
+  const pricing = getOrderPricing(order)
   return {
     ...serializeBookingFields(order),
-    price: cloneValue(activePricing.price),
-    fees: cloneValue(activePricing.fees),
-    boxesPrice: cloneValue(activePricing.boxesPrice),
+    pricingOverrides: {
+      price: pricing.price,
+      fees: cloneValue(pricing.fees),
+      boxesPrice: pricing.boxesPrice,
+    },
+    price: cloneValue(pricing.price),
+    fees: cloneValue(pricing.fees),
+    boxesPrice: cloneValue(pricing.boxesPrice),
   }
 }
 

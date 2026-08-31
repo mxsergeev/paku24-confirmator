@@ -8,7 +8,7 @@ import RadioGroup from '@material-ui/core/RadioGroup'
 import colors from '../../shared/colors'
 import ColorSelector from '../common/ColorSelector'
 
-export default function CheckboxGroup(props) {
+export default function OrderSettings(props) {
   const { handleChange, order } = props
 
   return (

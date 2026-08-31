@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import { useQueryClient } from '@tanstack/react-query'
 
-import orderPoolAPI from '../../services/orderPoolAPI'
+import ordersAPI from '../../services/ordersAPI'
 import sendConfirmationEmail, { sendCancellationEmail } from '../../services/emailAPI'
 import sendSMS, { sendCancellationSMS } from '../../services/smsAPI'
 import { hydrateCanonicalOrder, updateOrderField } from '../../shared/orderModel'
@@ -30,7 +30,6 @@ export default function useOrderDialogActions({
   const [editOpen, setEditOpen] = useState(false)
   const [editableOrder, setEditableOrder] = useState(null)
   const [savingEdit, setSavingEdit] = useState(false)
-  const [revertingEdit, setRevertingEdit] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteMode, setDeleteMode] = useState('soft')
   const [deleting, setDeleting] = useState(false)
@@ -38,12 +37,10 @@ export default function useOrderDialogActions({
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const [canceling, setCanceling] = useState(false)
 
-  const invalidateCalendarOrders = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: CALENDAR_ORDERS_QUERY_KEY }),
-    [queryClient]
-  )
+  const invalidateCalendarOrders = () =>
+    queryClient.invalidateQueries({ queryKey: CALENDAR_ORDERS_QUERY_KEY })
 
-  const handleSendEmail = useCallback(async () => {
+  const handleSendEmail = async () => {
     if (isDeleted(order)) {
       enqueueSnackbar('Deleted orders cannot send messages.', { variant: 'warning' })
       return
@@ -69,9 +66,9 @@ export default function useOrderDialogActions({
     } finally {
       setSendingEmail(false)
     }
-  }, [order])
+  }
 
-  const handleSendSMS = useCallback(async () => {
+  const handleSendSMS = async () => {
     if (isDeleted(order)) {
       enqueueSnackbar('Deleted orders cannot send messages.', { variant: 'warning' })
       return
@@ -97,13 +94,13 @@ export default function useOrderDialogActions({
     } finally {
       setSendingSMS(false)
     }
-  }, [order])
+  }
 
-  const handleConfirm = useCallback(async () => {
+  const handleConfirm = async () => {
     if (!order?.id) return
 
     try {
-      const response = await orderPoolAPI.confirm(order.id)
+      const response = await ordersAPI.confirm(order.id)
       const updatedOrder = hydrateCanonicalOrder(response.order || response)
       setOrder(updatedOrder)
       onOrderUpdate?.(updatedOrder)
@@ -112,31 +109,29 @@ export default function useOrderDialogActions({
     } finally {
       setConfirmDialogOpen(false)
     }
-  }, [onOrderUpdate, order, setOrder])
+  }
 
-  const handleEdit = useCallback(() => {
+  const handleEdit = () => {
     if (!order) return
 
     setEditableOrder(hydrateCanonicalOrder(order))
     setEditOpen(true)
-  }, [order])
+  }
 
-  const handleEditClose = useCallback(() => {
+  const handleEditClose = () => {
     setEditOpen(false)
     setEditableOrder(null)
-  }, [])
+  }
 
-  const handleEditChange = useCallback(
-    (key, value) => setEditableOrder((previous) => (previous ? updateOrderField(previous, key, value) : previous)),
-    []
-  )
+  const handleEditChange = (key, value) =>
+    setEditableOrder((previous) => (previous ? updateOrderField(previous, key, value) : previous))
 
-  const handleSaveChanges = useCallback(async () => {
+  const handleSaveChanges = async () => {
     if (!orderId || !editableOrder) return
 
     try {
       setSavingEdit(true)
-      const response = await orderPoolAPI.update(orderId, toUpdateOrderPayload(editableOrder))
+      const response = await ordersAPI.update(orderId, toUpdateOrderPayload(editableOrder))
       setOrder(hydrateCanonicalOrder(response.order || response))
       enqueueSnackbar(response.message || 'Order changes saved.')
       if (response.warning?.message) {
@@ -153,53 +148,27 @@ export default function useOrderDialogActions({
     } finally {
       setSavingEdit(false)
     }
-  }, [editableOrder, invalidateCalendarOrders, orderId, setOrder])
+  }
 
-  const handleRevertEdit = useCallback(async () => {
-    if (!orderId || !editableOrder) return
-
-    try {
-      setRevertingEdit(true)
-      const response = await orderPoolAPI.revert(orderId)
-      const updatedOrder = hydrateCanonicalOrder(response.order || response)
-
-      setOrder(updatedOrder)
-      setEditableOrder(updatedOrder)
-      onOrderUpdate?.(updatedOrder)
-      invalidateCalendarOrders()
-      enqueueSnackbar(response.message || 'Order reverted.')
-      if (response.warning?.message) {
-        enqueueSnackbar(response.warning.message, { variant: 'warning' })
-      }
-    } catch (err) {
-      if (err.message === 'logout') return
-      enqueueSnackbar(err.response?.data?.error || 'Could not revert order. Please try again.', {
-        variant: 'error',
-      })
-    } finally {
-      setRevertingEdit(false)
-    }
-  }, [editableOrder, invalidateCalendarOrders, onOrderUpdate, orderId, setOrder])
-
-  const handleDeleteClick = useCallback(() => {
+  const handleDeleteClick = () => {
     setDeleteMode(isDeleted(order) ? 'permanent' : 'soft')
     setDeleteConfirmOpen(true)
-  }, [order])
+  }
 
-  const handleDeleteConfirmClose = useCallback(() => {
+  const handleDeleteConfirmClose = () => {
     setDeleteConfirmOpen(false)
     setDeleteMode('soft')
-  }, [])
+  }
 
-  const handleDeleteConfirm = useCallback(async () => {
+  const handleDeleteConfirm = async () => {
     if (!orderId) return
 
     try {
       setDeleting(true)
       const response =
         deleteMode === 'permanent'
-          ? await orderPoolAPI.removePermanently(orderId)
-          : await orderPoolAPI.remove(orderId)
+          ? await ordersAPI.removePermanently(orderId)
+          : await ordersAPI.remove(orderId)
       enqueueSnackbar(
         response.message ||
           (deleteMode === 'permanent' ? 'Order permanently deleted.' : 'Order marked as deleted.')
@@ -217,12 +186,12 @@ export default function useOrderDialogActions({
     } finally {
       setDeleting(false)
     }
-  }, [deleteMode, invalidateCalendarOrders, onClose, orderId])
+  }
 
-  const handleRestore = useCallback(async () => {
+  const handleRestore = async () => {
     if (!orderId) return
     try {
-      const response = await orderPoolAPI.restore(orderId)
+      const response = await ordersAPI.restore(orderId)
       const updatedOrder = hydrateCanonicalOrder(response.order || response)
       setOrder(updatedOrder)
       enqueueSnackbar(response.message || 'Order restored')
@@ -237,30 +206,27 @@ export default function useOrderDialogActions({
         variant: 'error',
       })
     }
-  }, [invalidateCalendarOrders, onOrderUpdate, orderId, setOrder])
+  }
 
-  const handleCancelConfirmOpen = useCallback(() => {
+  const handleCancelConfirmOpen = () => {
     setCancelConfirmOpen(true)
-  }, [])
+  }
 
-  const handleCancelConfirmClose = useCallback(() => {
+  const handleCancelConfirmClose = () => {
     setCancelConfirmOpen(false)
-  }, [])
+  }
 
-  const cancelAndUpdate = useCallback(
-    async (id) => {
-      if (!id) throw new Error('missing order id')
-      const response = await orderPoolAPI.cancel(id)
-      const updatedOrder = hydrateCanonicalOrder(response.order || response)
-      setOrder(updatedOrder)
-      invalidateCalendarOrders()
-      onOrderUpdate?.(updatedOrder)
-      return { response, updatedOrder }
-    },
-    [invalidateCalendarOrders, onOrderUpdate, setOrder]
-  )
+  const cancelAndUpdate = async (id) => {
+    if (!id) throw new Error('missing order id')
+    const response = await ordersAPI.cancel(id)
+    const updatedOrder = hydrateCanonicalOrder(response.order || response)
+    setOrder(updatedOrder)
+    invalidateCalendarOrders()
+    onOrderUpdate?.(updatedOrder)
+    return { response, updatedOrder }
+  }
 
-  const handleCancelConfirmDirect = useCallback(async () => {
+  const handleCancelConfirmDirect = async () => {
     if (!orderId) return
     if (isDeleted(order)) {
       enqueueSnackbar('Deleted orders cannot be canceled.', { variant: 'warning' })
@@ -283,9 +249,9 @@ export default function useOrderDialogActions({
     } finally {
       setCanceling(false)
     }
-  }, [cancelAndUpdate, order, orderId])
+  }
 
-  const handleCancelAndNotify = useCallback(async () => {
+  const handleCancelAndNotify = async () => {
     if (!orderId) return
     if (isDeleted(order)) {
       enqueueSnackbar('Deleted orders cannot be canceled or notified.', { variant: 'warning' })
@@ -331,7 +297,7 @@ export default function useOrderDialogActions({
     } finally {
       setCanceling(false)
     }
-  }, [cancelAndUpdate, order, orderId])
+  }
 
   return {
     cancelConfirmOpen,
@@ -353,12 +319,10 @@ export default function useOrderDialogActions({
     handleEdit,
     handleEditChange,
     handleEditClose,
-    handleRevertEdit,
     handleRestore,
     handleSaveChanges,
     handleSendEmail,
     handleSendSMS,
-    revertingEdit,
     savingEdit,
     sendingEmail,
     sendingSMS,

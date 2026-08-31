@@ -11,7 +11,7 @@ import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import Paper from '@material-ui/core/Paper'
 import IconButton from '@material-ui/core/IconButton'
 import './Statistics.css'
-import orderPoolApi from '../../services/orderPoolAPI'
+import ordersAPI from '../../services/ordersAPI'
 import dayjs from '../../shared/dayjs'
 import { formatHelsinkiInstant } from '../../shared/date-fns-tz'
 
@@ -104,7 +104,7 @@ export default function Statistics() {
 
       const {
         confirmedOrders: confirmedOrdersOfAllWeeksOfPeriod,
-      } = await orderPoolApi.getConfirmedOrders({
+      } = await ordersAPI.getConfirmedOrders({
         periodFrom: firstWeek.periodFrom,
         periodTo: lastWeek.periodTo,
       })

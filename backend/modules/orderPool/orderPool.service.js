@@ -6,7 +6,6 @@ import {
   BOOKING_FIELDS,
   applyOrderPatch,
   hydrateCanonicalOrder,
-  revertToInitial,
 } from '../../../src/shared/orderModel.js'
 import { isOrderValidationError } from '../../../src/shared/orderPrimitives.js'
 import {
@@ -34,8 +33,11 @@ function calendarUnavailableError(message) {
   return newErrorWithCustomName('CalendarUnavailableError', message)
 }
 
-function resultWithWarning(order, warning) {
-  return warning ? { order, warning: { ...warning } } : order
+function resultWithWarning(order, warning = null) {
+  return {
+    order,
+    warning: warning ? { ...warning } : null,
+  }
 }
 
 function isConfirmedAndActive(order) {
@@ -45,11 +47,11 @@ function isConfirmedAndActive(order) {
 // Callers invoke this while holding the order calendar lock. Calendar sync
 // must not reacquire that lock before the mutation request can finish.
 async function syncAfterMutation(order, warning = CALENDAR_SYNC_WARNING) {
-  if (!isConfirmedAndActive(order)) return order
+  if (!isConfirmedAndActive(order)) return resultWithWarning(order)
 
   try {
     await syncOrderToCalendar(order, { lock: false })
-    return order
+    return resultWithWarning(order)
   } catch (err) {
     // Calendar reconciliation is deliberately best effort for ordinary order
     // mutations. Keep the API warning stable and log the provider detail only
@@ -77,10 +79,7 @@ function assignCanonicalState(order, canonical) {
     order[field] = canonical[field]
   })
 
-  order.pricing = canonical.pricing
-  order.price = canonical.price
-  order.fees = canonical.fees
-  order.boxesPrice = canonical.boxesPrice
+  order.pricingOverrides = canonical.pricingOverrides
 }
 
 async function getOrderById(id) {
@@ -112,28 +111,6 @@ async function updateOrder(id, updateData) {
   })
 }
 
-async function revertOrder(id) {
-  const order = await getOrderById(id)
-
-  return withOrderCalendarLock(order, async () => {
-    const currentOrder = await getOrderById(id)
-    let reverted
-    try {
-      // Revert before assigning anything to the document. The shared helper
-      // replaces pricing sources first, so a stale current source cannot block
-      // the required automatic fallback for a missing snapshot component.
-      reverted = revertToInitial(canonicalOrderObject(currentOrder))
-    } catch (err) {
-      if (!isOrderValidationError(err)) throw err
-      throw validationError(err.message)
-    }
-
-    assignCanonicalState(currentOrder, reverted)
-    await currentOrder.save()
-    return syncAfterMutation(currentOrder)
-  })
-}
-
 async function confirmOrder(id, userId) {
   if (!id) return null
 
@@ -151,27 +128,20 @@ async function confirmOrder(id, userId) {
 
     // Confirmation is idempotent. A repeated request must not depend on a
     // transient calendar provider response once the lifecycle flag is true.
-    if (currentOrder.confirmed) return currentOrder
+    if (currentOrder.confirmed) return resultWithWarning(currentOrder)
 
     // Confirmation has an external precondition. Reconcile the persisted order
     // first, so a calendar failure cannot leave Mongo marked as confirmed.
     try {
       await syncOrderToCalendar(currentOrder, { lock: false })
     } catch (err) {
-      logger.error(
-        currentOrder.confirmed
-          ? 'Order calendar synchronization failed while confirming'
-          : 'Order calendar synchronization failed before confirmation',
-        err,
-      )
+      logger.error('Order calendar synchronization failed before confirmation', err)
       throw calendarUnavailableError(
-        currentOrder.confirmed
-          ? CALENDAR_SYNC_WARNING.message
-          : CALENDAR_CONFIRMATION_WARNING.message,
+        CALENDAR_CONFIRMATION_WARNING.message,
       )
     }
 
-    if (currentOrder.confirmed) return currentOrder
+    if (currentOrder.confirmed) return resultWithWarning(currentOrder)
 
     const confirmed = await Order.findByIdAndUpdate(
       { _id: id },
@@ -187,7 +157,7 @@ async function confirmOrder(id, userId) {
       throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
     }
 
-    return confirmed
+    return resultWithWarning(confirmed)
   })
 }
 
@@ -248,28 +218,13 @@ async function deleteOrder(id) {
       throw calendarUnavailableError(CALENDAR_DELETE_WARNING.message)
     }
 
-    return Order.findByIdAndUpdate(
+    const deletedOrder = await Order.findByIdAndUpdate(
       { _id: id },
       { deletedAt: new Date().toISOString() },
       { new: true },
     )
-  })
-}
 
-async function retrieveOrder(id) {
-  if (!id) return null
-
-  const order = await getOrderById(id)
-  return withOrderCalendarLock(order, async () => {
-    await getOrderById(id)
-    const retrievedOrder = await Order.findByIdAndUpdate(
-      { _id: id },
-      { $unset: { deletedAt: 1 } },
-      { new: true },
-    )
-    return retrievedOrder
-      ? syncAfterMutation(retrievedOrder)
-      : null
+    return deletedOrder ? resultWithWarning(deletedOrder) : null
   })
 }
 
@@ -293,12 +248,10 @@ async function restoreOrder(id) {
 export {
   getOrderById,
   updateOrder,
-  revertOrder,
   confirmOrder,
   cancelOrder,
   updateOrderColor,
   deleteOrder,
-  retrieveOrder,
   restoreOrder,
 }
 

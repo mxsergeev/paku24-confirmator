@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, CircularProgress } from '@material-ui/core'
 import { enqueueSnackbar } from 'notistack'
-import orderPoolAPI from '../../services/orderPoolAPI'
+import ordersAPI from '../../services/ordersAPI'
 import { sendReceiptEmail } from '../../services/emailAPI'
 import feesConfig from '../../data/fees.json'
 import receiptLogo from '../../assets/laskuLogo.png'
@@ -15,27 +15,20 @@ import {
 import { jsPDF } from 'jspdf'
 import './Calendar.css'
 import { formatHelsinkiInstant } from '../../shared/date-fns-tz.js'
+import { getOrderPricing } from '../../shared/orderPricing.js'
+import {
+  getAddressForStairsFee,
+  getFeeBaseName,
+  getStairsFloorCount,
+  getStairsPaidFloorCount,
+  resolveFeeDisplayName,
+} from '../../shared/render/fees.js'
 
 const ALV_FACTOR = 1.255
 const STAIRS_FEE_BASE_NAME = 'stairsFee'
-
-const DEFAULT_FEE_LABELS = feesConfig.reduce((acc, fee) => {
-  if (!fee?.name) return acc
-  acc[fee.name] = fee.label || fee.name
-  return acc
-}, {})
-
-const STAIRS_START_FLOOR = Number(
-  feesConfig.find((fee) => fee?.name === STAIRS_FEE_BASE_NAME)?.startFloor
-)
 const STAIRS_UNIT_BRUTTO = Number(
-  feesConfig.find((fee) => fee?.name === STAIRS_FEE_BASE_NAME)?.baseFee
+  feesConfig.find((fee) => fee?.name === STAIRS_FEE_BASE_NAME)?.baseFee,
 )
-
-// Edit this object to quickly rename any fee label in receipts.
-const FEE_LABEL_OVERRIDES = {
-  paymentTypeFee: 'Laskutuslisä',
-}
 
 function num(value) {
   const parsed = Number(String(value || ''))
@@ -55,74 +48,6 @@ function toAlvParts(bruttoAmount) {
   const netto = roundMoney(brutto / ALV_FACTOR)
   const alv = roundMoney(brutto - netto)
   return { netto, alv, brutto }
-}
-
-function getFeeBaseName(feeName) {
-  if (String(feeName).startsWith(`${STAIRS_FEE_BASE_NAME}_`)) return STAIRS_FEE_BASE_NAME
-  return String(feeName || '')
-}
-
-function getAddressForStairsFee(order, feeName) {
-  const match = String(feeName || '').match(/^stairsFee_(\d+)$/)
-  if (!match) return null
-
-  const addressIndex = Number(match[1])
-  if (!Number.isFinite(addressIndex)) return null
-
-  const addresses = [order?.address, order?.destination, ...(order?.extraAddresses || [])]
-  return addresses[addressIndex] || null
-}
-
-function getStairsFloorCount(order, feeName) {
-  if (!Number.isFinite(STAIRS_START_FLOOR)) return 0
-
-  const address = getAddressForStairsFee(order, feeName)
-  const floor = Number(address?.floor)
-  if (!Number.isFinite(floor)) return 0
-
-  return Math.max(0, floor - STAIRS_START_FLOOR)
-}
-
-function getStairsPaidFloorCount(order, feeName, feeBrutto) {
-  if (Number.isFinite(STAIRS_UNIT_BRUTTO) && STAIRS_UNIT_BRUTTO > 0) {
-    return roundMoney(feeBrutto / STAIRS_UNIT_BRUTTO)
-  }
-
-  return getStairsFloorCount(order, feeName)
-}
-
-function toLabelCase(text) {
-  const source = String(text || '').trim()
-  if (!source) return ''
-
-  return source
-    .toLocaleLowerCase('fi-FI')
-    .replace(/(^|[\s\-/])(\p{L})/gu, (match, separator, letter) => {
-      return `${separator}${letter.toLocaleUpperCase('fi-FI')}`
-    })
-}
-
-export function resolveFeeDisplayName(order, fee) {
-  const feeName = String(fee?.name || '')
-  const baseName = getFeeBaseName(feeName)
-
-  if (fee?.label) return toLabelCase(fee.label)
-
-  const customLabel = FEE_LABEL_OVERRIDES[feeName] || FEE_LABEL_OVERRIDES[baseName]
-  if (customLabel) return toLabelCase(customLabel)
-
-  if (baseName === STAIRS_FEE_BASE_NAME) {
-    const address = getAddressForStairsFee(order, feeName)
-    const floorCount = getStairsFloorCount(order, feeName)
-    return toLabelCase(
-      `${DEFAULT_FEE_LABELS[baseName] || baseName} (${address?.street || ''}, ${floorCount} floors)`
-    )
-  }
-
-  const resolvedLabel =
-    DEFAULT_FEE_LABELS[feeName] || DEFAULT_FEE_LABELS[baseName] || feeName || 'Lisämaksu'
-
-  return toLabelCase(resolvedLabel)
 }
 
 function mergeReceiptData(order, draft = null) {
@@ -180,7 +105,7 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
   const loadOrder = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await orderPoolAPI.getOrderById(orderId)
+      const response = await ordersAPI.getById(orderId)
       const loadedOrder = response?.order || null
       setOrder(loadedOrder)
     } catch (err) {
@@ -232,6 +157,7 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
     if (!receipt || !order) return []
 
     const rows = []
+    const pricing = getOrderPricing(order)
 
     const serviceHours = num(receipt.serviceHours)
     const serviceUnitBruttoPrice = num(order?.service?.pricePerHour ?? receipt.unitPrice)
@@ -257,7 +183,7 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
       boxesAmount * num(order?.boxes?.pricePerBox) +
       num(order?.boxes?.deliveryPrice) +
       num(order?.boxes?.returnPrice)
-    const boxesBrutto = roundMoney(order?.boxesPrice ?? boxesFromFields)
+    const boxesBrutto = roundMoney(pricing.boxesPrice ?? boxesFromFields)
 
     if (boxesBrutto > 0) {
       const boxesUnitBruttoPrice = boxesAmount > 0 ? roundMoney(boxesBrutto / boxesAmount) : 0
@@ -280,7 +206,7 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
       })
     }
 
-    ;(order?.fees || []).forEach((fee, index) => {
+    pricing.fees.forEach((fee, index) => {
       const feeBrutto = roundMoney(fee?.amount)
       if (feeBrutto <= 0) return
 

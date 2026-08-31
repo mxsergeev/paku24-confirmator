@@ -13,13 +13,11 @@ import dayjs from '../../../src/shared/dayjs.js'
 import {
   updateOrder,
   getOrderById,
-  revertOrder,
   deleteOrderPermanently,
   confirmOrder,
   cancelOrder,
   updateOrderColor,
   deleteOrder,
-  retrieveOrder,
   restoreOrder,
 } from './orderPool.service.js'
 import { buildStableInvoiceNumber } from '../../utils/invoiceNumber.js'
@@ -51,16 +49,8 @@ function validationError(message) {
   return newErrorWithCustomName('ValidationError', message)
 }
 
-function orderResult(result) {
-  if (result && result.warning && Object.prototype.hasOwnProperty.call(result, 'order')) {
-    return { order: result.order, warning: result.warning }
-  }
-
-  return { order: result }
-}
-
 function sendOrderResult(res, result, message) {
-  const payload = orderResult(result)
+  const payload = { ...result }
   if (message) payload.message = message
   return res.status(200).send(payload)
 }
@@ -82,23 +72,13 @@ function buildOrderForCreate(req) {
     throw validationError('order must be an object')
   }
 
-  // The snapshot is immutable source metadata. It is always built by the
-  // server, including when a caller explicitly sends null.
-  if (hasOwn(orderData, 'initialSnapshot')) {
-    throw validationError('initialSnapshot is server-managed and cannot be supplied')
-  }
-
   try {
     if (req.orderPoolOrigin === 'wordpress') {
-      return createWordPressOrder(normalizeWordPressOrderPayload(orderData))
+      return createWordPressOrder(normalizeWordPressOrderPayload(orderData), orderData)
     }
 
-    if (orderData.origin !== 'app') {
-      throw validationError("Authenticated order creation requires origin: 'app'")
-    }
-
-    // App-origin creation accepts booking fields only. Lifecycle fields and
-    // materialized pricing projections are server-managed and are ignored.
+    // App creation accepts booking fields only. Lifecycle and pricing state are
+    // not trusted from the request.
     return createAppOrder(pickBookingFields(orderData))
   } catch (err) {
     if (err.name === 'ValidationError') throw err
@@ -146,18 +126,6 @@ orderPoolRouter.put('/v2/:id', authMW.authenticateAccessToken, async (req, res, 
     const result = await updateOrder(id, req.body?.updateData)
 
     return sendOrderResult(res, result, 'Order updated')
-  } catch (err) {
-    return next(err)
-  }
-})
-
-orderPoolRouter.post('/v2/:id/revert', authMW.authenticateAccessToken, async (req, res, next) => {
-  try {
-    const { id } = req.params
-
-    const result = await revertOrder(id)
-
-    return sendOrderResult(res, result, 'Order reverted')
   } catch (err) {
     return next(err)
   }
@@ -266,29 +234,13 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
 orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    const order = await deleteOrder(id)
-
-    if (!order) {
-      return res.status(404).send({ error: 'Order not found' })
-    }
-
-    return res.status(200).send({ message: 'Order marked for deletion', order })
-  } catch (err) {
-    return next(err)
-  }
-})
-
-// RESTORE - clears deletedAt to un-delete an Order
-orderPoolRouter.put('/v2/retrieve/:id', async (req, res, next) => {
-  const { id } = req.params
-  try {
-    const result = await retrieveOrder(id)
+    const result = await deleteOrder(id)
 
     if (!result) {
       return res.status(404).send({ error: 'Order not found' })
     }
 
-    return sendOrderResult(res, result, 'Order retrieved')
+    return res.status(200).send({ message: 'Order marked for deletion', ...result })
   } catch (err) {
     return next(err)
   }

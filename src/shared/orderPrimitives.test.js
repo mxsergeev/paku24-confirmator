@@ -3,9 +3,7 @@ import {
   cloneValue,
   hasOwn,
   isPlainObject,
-  ORDER_ORIGINS,
   PRICING_COMPONENTS,
-  PRICING_SOURCES,
   requireFiniteNumber,
   toFiniteNumberOrNull,
 } from './orderPrimitives.js'
@@ -13,8 +11,6 @@ import {
 describe('order primitives', () => {
   it('defines the shared order-domain constants', () => {
     expect(PRICING_COMPONENTS).toEqual(['price', 'fees', 'boxesPrice'])
-    expect(PRICING_SOURCES).toEqual(['initial', 'auto', 'manual'])
-    expect(ORDER_ORIGINS).toEqual(['app', 'wordpress'])
   })
 
   it('recognizes plain objects and own keys safely', () => {

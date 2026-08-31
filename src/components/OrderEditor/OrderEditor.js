@@ -11,9 +11,9 @@ import services from '../../data/services.json'
 import paymentTypes from '../../data/paymentTypes.json'
 import Boxes from './Boxes'
 import Address from './Address'
-import PricingComparison from './PricingComparison'
+import PricingEditor from './PricingEditor'
 
-export default function Editor({ order, handleChange, onOrderChange, onRevert, reverting }) {
+export default function OrderEditor({ order, handleChange, onOrderChange }) {
   const nextExtraAddressId = useRef(0)
   const [extraAddressIds, setExtraAddressIds] = useState(() =>
     (order?.extraAddresses || []).map(() => {
@@ -242,11 +242,9 @@ export default function Editor({ order, handleChange, onOrderChange, onRevert, r
         size="small"
       />
       <Boxes style={{ marginTop: margin.marginTop }} order={order} handleChange={handleChange} />
-      <PricingComparison
+      <PricingEditor
         order={order}
         onChange={onOrderChange}
-        onRevert={onRevert}
-        reverting={reverting}
       />
       <TextareaAutosize
         style={margin}

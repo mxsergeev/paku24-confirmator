@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   withOrderCalendarLock: vi.fn((_order, operation) => operation()),
   applyOrderPatch: vi.fn(),
   hydrateCanonicalOrder: vi.fn((order) => order),
-  revertToInitial: vi.fn(),
 }))
 
 vi.mock('../../models/order.js', () => ({
@@ -32,12 +31,10 @@ vi.mock('../../../src/shared/orderModel.js', () => ({
   BOOKING_FIELDS: ['name'],
   applyOrderPatch: mocks.applyOrderPatch,
   hydrateCanonicalOrder: mocks.hydrateCanonicalOrder,
-  revertToInitial: mocks.revertToInitial,
 }))
 
 const {
   deleteOrderPermanently,
-  revertOrder,
   updateOrder,
   confirmOrder,
   cancelOrder,
@@ -68,17 +65,6 @@ describe('order pool service error handling', () => {
     expect(order.save).not.toHaveBeenCalled()
   })
 
-  it('propagates unexpected revert errors without converting them to validation errors', async () => {
-    const order = makeOrder()
-    const failure = new TypeError('programmer failure')
-    mocks.findById.mockResolvedValue(order)
-    mocks.revertToInitial.mockImplementation(() => {
-      throw failure
-    })
-
-    await expect(revertOrder('66c000000000000000000001')).rejects.toBe(failure)
-    expect(order.save).not.toHaveBeenCalled()
-  })
 })
 
 describe('permanent order deletion', () => {
@@ -191,7 +177,10 @@ describe('explicit calendar side effects', () => {
     mocks.findById.mockResolvedValue(order)
     mocks.syncOrderToCalendar.mockRejectedValue(failure)
 
-    await expect(confirmOrder('66c000000000000000000001', 'user-id')).resolves.toBe(order)
+    await expect(confirmOrder('66c000000000000000000001', 'user-id')).resolves.toEqual({
+      order,
+      warning: null,
+    })
 
     expect(mocks.syncOrderToCalendar).not.toHaveBeenCalled()
     expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()

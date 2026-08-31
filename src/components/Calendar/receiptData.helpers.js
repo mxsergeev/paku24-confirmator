@@ -4,6 +4,7 @@ import {
   formatHelsinkiInstant,
   isIsoInstant,
 } from '../../shared/date-fns-tz.js'
+import { getOrderPricing } from '../../shared/orderPricing.js'
 
 export function buildStableInvoiceNumber(order, existingInvoiceNumber = '') {
   return buildSharedStableInvoiceNumber(order, existingInvoiceNumber, { invalidDate: 'today' })
@@ -21,10 +22,12 @@ export function buildReceiptDraftFromOrder(order = {}) {
   const safeOrder = order || {}
   const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
   const dueDate = formatHelsinkiCalendarDate(defaultDueDate, 'due date')
-  const totalAmount =
-    typeof safeOrder.price === 'number' || typeof safeOrder.price === 'string'
-      ? String(safeOrder.price)
-      : ''
+  let totalAmount = ''
+  try {
+    totalAmount = String(getOrderPricing(safeOrder).price)
+  } catch {
+    // The helper is also used while the receipt shell is initializing.
+  }
 
   return {
     customerName: safeOrder.name || '',

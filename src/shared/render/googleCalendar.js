@@ -7,11 +7,12 @@ import {
   parseInstant,
 } from '../date-fns-tz.js'
 import { formatOrder } from './text.js'
+import { getOrderPricing } from '../orderPricing.js'
 
 function makeIcons(order) {
   const sizeIcon = order.XL ? icons.size.XL : ''
   const distanceIcon = icons.misc[order.distance] || ''
-  const feeIcons = (order.fees || [])
+  const feeIcons = getOrderPricing(order).fees
     .map((fee) => icons.fees[fee.name])
     .filter((icon) => icon)
     .reduce((acc, icon) => acc + icon, '')

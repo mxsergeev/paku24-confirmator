@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import { useQueryClient } from '@tanstack/react-query'
 
-import orderPoolAPI from '../../services/orderPoolAPI'
+import ordersAPI from '../../services/ordersAPI'
 import { hydrateCanonicalOrder, updateOrderField } from '../../shared/orderModel'
 
 export const CALENDAR_ORDERS_QUERY_KEY = ['calendar-orders']
@@ -59,7 +59,7 @@ export default function useOrderDialogEventColor({
         setOrder(nextOrder)
         updateCalendarOrdersCache(queryClient, orderId, eventColor)
 
-        const response = await orderPoolAPI.updateColor(orderId, eventColor)
+      const response = await ordersAPI.updateColor(orderId, eventColor)
         const resolvedOrder = hydrateCanonicalOrder(response?.order || response || nextOrder)
 
         setOrder(resolvedOrder)

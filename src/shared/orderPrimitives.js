@@ -6,8 +6,6 @@
  */
 
 export const PRICING_COMPONENTS = Object.freeze(['price', 'fees', 'boxesPrice'])
-export const PRICING_SOURCES = Object.freeze(['initial', 'auto', 'manual'])
-export const ORDER_ORIGINS = Object.freeze(['app', 'wordpress'])
 
 /**
  * Errors caused by invalid order input or an invalid order-domain state.

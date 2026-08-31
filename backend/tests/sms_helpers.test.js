@@ -50,15 +50,17 @@ describe('SMS order rendering', () => {
         name: 'Active service',
         pricePerHour: 100,
       },
-      fees: [{ name: 'nightFee', label: 'YÖ/AAMULISÄ', amount: 20 }],
+      pricingOverrides: {
+        price: 308,
+        fees: [{ name: 'nightFee', label: 'YÖ/AAMULISÄ', amount: 20 }],
+        boxesPrice: 88,
+      },
       boxes: {
         ...smsOrderPayload.boxes,
         amount: 2,
         deliveryDate: new Date('2021-04-22T17:00:00.000Z'),
         returnDate: new Date('2021-04-24T17:00:00.000Z'),
       },
-      boxesPrice: 88,
-      price: 308,
     })
 
     expect(message).toContain('2h (50€/h, Active service)')

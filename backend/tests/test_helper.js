@@ -140,6 +140,7 @@ const smsOrderPayload = {
     amount: 0,
   },
   boxesPrice: 0,
+  pricingOverrides: { price: null, fees: null, boxesPrice: null },
   date: '2021-04-22T17:00:00.000Z',
   time: '17:00',
   duration: '2',

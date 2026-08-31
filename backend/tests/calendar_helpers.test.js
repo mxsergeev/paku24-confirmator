@@ -8,10 +8,14 @@ import { makeIcons } from '../../src/shared/render/googleCalendar.js'
 
 describe('makeIcons', () => {
   test('title created right', () => {
-    const title = makeIcons(exampleOrder)
+    const title = makeIcons({
+      ...exampleOrder,
+      pricingOverrides: { price: null, fees: [], boxesPrice: null },
+    })
     const title2 = makeIcons(
       {
         ...exampleOrder,
+        pricingOverrides: { price: null, fees: [], boxesPrice: null },
         service: services.find((s) => s.id === '3'),
         paymentType: paymentTypes.find((p) => p.id === '3'),
         time: new Date('2021-04-22 11:00'),
@@ -25,7 +29,7 @@ describe('makeIcons', () => {
         paymentType: paymentTypes.find((p) => p.id === '2'),
         time: new Date('2021-04-22 21:00'),
         duration: 1,
-        fees: fees.filter((f) => f.name === 'nightFee'),
+        pricingOverrides: { price: null, fees: fees.filter((f) => f.name === 'nightFee'), boxesPrice: null },
       },
     )
 
@@ -89,9 +93,11 @@ describe('makeGoogleEventObjects', () => {
         returnDate: new Date('2026-03-20T07:00:00.000Z'),
         amount: 10,
       },
-      fees: [{ name: 'nightFee', label: 'YÖ/AAMULISÄ', amount: 20 }],
-      boxesPrice: 200,
-      price: 320,
+      pricingOverrides: {
+        price: 320,
+        fees: [{ name: 'nightFee', label: 'YÖ/AAMULISÄ', amount: 20 }],
+        boxesPrice: 200,
+      },
       service: { ...exampleOrder.service, name: 'Active service', pricePerHour: 100 },
     }
     const dateEvents = makeGoogleEventObjects(dateBoxes)

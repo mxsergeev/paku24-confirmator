@@ -1,6 +1,5 @@
 import mongoose from 'mongoose'
 import { isDateOnly, parseCalendarDate, parseInstant } from '../../src/shared/date-fns-tz.js'
-import { ORDER_ORIGINS, PRICING_SOURCES } from '../../src/shared/orderPrimitives.js'
 
 /**
  * A box date is either a calendar date (which must remain a string) or an
@@ -141,43 +140,10 @@ const boxesSchema = nestedSchema({
   returnPrice: finiteNumberPath(),
 })
 
-const initialSnapshotSchema = nestedSchema({
-  distance: String,
-  hsy: Boolean,
-  XL: Boolean,
-  eventColor: String,
-  date: Date,
-  duration: finiteNumberPath(),
-  service: { type: serviceSchema, default: undefined },
-  paymentType: { type: paymentTypeSchema, default: undefined },
-  fees: { type: [feeSchema], default: undefined },
-  boxes: { type: boxesSchema, default: undefined },
-  boxesPrice: finiteNumberPath(),
-  price: finiteNumberPath(),
-  address: { type: addressSchema, default: undefined },
-  extraAddresses: { type: [addressSchema], default: undefined },
-  destination: { type: addressSchema, default: undefined },
-  name: String,
-  email: String,
-  phone: String,
-  comment: String,
-})
-
-const pricingSourceSchema = nestedSchema({
-  price: { type: String, enum: PRICING_SOURCES, default: 'auto' },
-  fees: { type: String, enum: PRICING_SOURCES, default: 'auto' },
-  boxesPrice: { type: String, enum: PRICING_SOURCES, default: 'auto' },
-})
-
-const manualPricingSchema = nestedSchema({
+const pricingOverridesSchema = nestedSchema({
   price: finiteNumberPath({ default: null }),
   fees: { type: [feeSchema], default: null },
   boxesPrice: finiteNumberPath({ default: null }),
-})
-
-const pricingSchema = nestedSchema({
-  source: { type: pricingSourceSchema, default: () => ({}) },
-  manual: { type: manualPricingSchema, default: () => ({}) },
 })
 
 const order = new mongoose.Schema({
@@ -199,26 +165,18 @@ const order = new mongoose.Schema({
   phone: String,
   comment: String,
 
-  // Immutable source metadata
-  origin: {
-    type: String,
-    enum: ORDER_ORIGINS,
-    immutable: true,
-  },
-  initialSnapshot: {
-    type: initialSnapshotSchema,
+  // Immutable source data retained for WordPress imports.
+  originalOrder: {
+    type: mongoose.Schema.Types.Mixed,
     default: null,
     immutable: true,
   },
 
-  // Pricing state and materialized active projections
-  pricing: {
-    type: pricingSchema,
+  // Null means that the automatic value is used.
+  pricingOverrides: {
+    type: pricingOverridesSchema,
     default: () => ({}),
   },
-  price: finiteNumberPath({ default: null }),
-  fees: { type: [feeSchema], default: [] },
-  boxesPrice: finiteNumberPath({ default: null }),
 
   // Lifecycle metadata
   confirmed: {

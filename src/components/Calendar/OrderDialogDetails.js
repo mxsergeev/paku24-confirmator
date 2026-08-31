@@ -1,10 +1,11 @@
 import React from 'react'
-import { resolveFeeDisplayName } from './ReceiptPage'
 import colors from '../../shared/colors'
 import ColorSelector from '../common/ColorSelector'
 import { isCanceled, isDeleted } from '../../shared/orderState.helpers'
 import { HELSINKI_TIMEZONE, formatInTimeZone, parseInstant } from '../../shared/date-fns-tz'
 import { formatBoxDate } from '../../shared/render/text'
+import { resolveFeeDisplayName } from '../../shared/render/fees'
+import { getOrderPricing } from '../../shared/orderPricing'
 
 export default function OrderDialogDetails({
   order,
@@ -13,6 +14,7 @@ export default function OrderDialogDetails({
 }) {
   const isCanceledOrder = isCanceled(order)
   const isDeletedOrder = isDeleted(order)
+  const pricing = order ? getOrderPricing(order) : null
   const hasClientNumber = Boolean(order?.phone)
   const hasBoxes = Number(order?.boxes?.amount) > 0
   const isBoxEvent = eventType === 'boxDelivery' || eventType === 'boxReturn'
@@ -39,7 +41,7 @@ export default function OrderDialogDetails({
           { label: 'Boxes', value: `${order.boxes.amount} pcs` },
           {
             label: 'Price',
-            value: `${order.boxesPrice ?? 0}€`,
+            value: `${pricing?.boxesPrice ?? 0}€`,
           },
         ]
       : []
@@ -74,9 +76,9 @@ export default function OrderDialogDetails({
           },
         hasBoxes && {
           label: 'Boxes',
-          value: `${order.boxes.amount} pcs, ${order.boxesPrice}€`,
+          value: `${order.boxes.amount} pcs, ${pricing.boxesPrice}€`,
         },
-        { label: 'Total price', value: `${order.price || 0}€` },
+        { label: 'Total price', value: `${pricing.price || 0}€` },
       ].filter(Boolean)
     : []
 
@@ -138,11 +140,11 @@ export default function OrderDialogDetails({
               <span className="order-dialog-details__value">{order.email}</span>
             </div>
           )}
-          {order.fees && Array.isArray(order.fees) && order.fees.length > 0 && (
+          {pricing.fees.length > 0 && (
             <div className="order-dialog-details__fees-section">
               <span className="order-dialog-details__label">Fees</span>
               <ul className="calendar-fee-list">
-                {order.fees.map((fee, index) => {
+                {pricing.fees.map((fee, index) => {
                   const label = resolveFeeDisplayName(order, fee)
                   return (
                     <li key={index} className="calendar-fee-item">

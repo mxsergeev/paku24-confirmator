@@ -8,7 +8,6 @@ import morgan from 'morgan'
 import errorHandler from './utils/errorHandler.middleware.js'
 import filterReqsBasedOnUrl from './utils/filterReqsBasedOnUrl.middleware.js'
 
-import calendarRouter from './modules/calendar/calendar.controller.js'
 import emailRouter from './modules/email/email.controller.js'
 import orderPoolRouter from './modules/orderPool/orderPool.controller.js'
 import smsRouter from './modules/sms/sms.controller.js'
@@ -49,7 +48,6 @@ app.use('/api/logout', logoutRouter)
 app.use('/api/registration', registrationRouter)
 
 app.use('/api/sms', smsRouter)
-app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 app.use('/api/order-pool/', orderPoolRouter)
 

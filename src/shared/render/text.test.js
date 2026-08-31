@@ -33,8 +33,11 @@ const makeOrder = (overrides = {}) => ({
     returnDate: '2026-03-20T07:00:00Z',
     amount: 10,
   },
-  boxesPrice: 200,
-  price: 320,
+  pricingOverrides: {
+    price: 320,
+    fees: [],
+    boxesPrice: 200,
+  },
   ...overrides,
 })
 
@@ -187,7 +190,7 @@ describe('formatOrder', () => {
           },
         }),
       ),
-    ).toThrow('Invalid box delivery date')
+    ).toThrow('Invalid boxes.deliveryDate')
   })
 
   it('omits the boxes section when boxes are missing', () => {
@@ -200,7 +203,7 @@ describe('formatOrder', () => {
     const output = formatOrder(
       makeOrder({
         destination: { street: 'Katu', index: '', city: 'Helsinki', floor: 0, elevator: false },
-        fees: [{ name: 'nightFee', amount: 20 }],
+        pricingOverrides: { price: 320, fees: [{ name: 'nightFee', amount: 20 }], boxesPrice: 200 },
       }),
     )
 

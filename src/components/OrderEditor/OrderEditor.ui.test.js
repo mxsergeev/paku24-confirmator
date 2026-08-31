@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import Editor from './Editor'
+import OrderEditor from './OrderEditor'
 import { createWordPressOrder, updateOrderField } from '../../shared/orderModel'
 import { toUpdateOrderPayload } from '../../shared/orderSerialization'
 import {
@@ -27,7 +27,7 @@ vi.mock('./Address', () => ({
 }))
 
 vi.mock('./Boxes', () => ({ default: () => null }))
-vi.mock('./PricingComparison', () => ({ default: () => null }))
+vi.mock('./PricingEditor', () => ({ default: () => null }))
 vi.mock('@material-ui/core', () => ({
   Button: ({ children, ...props }) => <button {...props}>{children}</button>,
   NativeSelect: ({ children, fullWidth, ...props }) => <select {...props}>{children}</select>,
@@ -68,7 +68,7 @@ function makeOrderWithTwoExtraAddresses() {
   return createWordPressOrder(input)
 }
 
-function EditorHarness({ initialOrder, onOrderChange }) {
+function OrderEditorHarness({ initialOrder, onOrderChange }) {
   const [order, setOrder] = useState(initialOrder)
 
   const handleChange = (key, value) => {
@@ -79,15 +79,15 @@ function EditorHarness({ initialOrder, onOrderChange }) {
     })
   }
 
-  return <Editor order={order} handleChange={handleChange} />
+  return <OrderEditor order={order} handleChange={handleChange} />
 }
 
-describe('Editor extra address identity', () => {
+describe('OrderEditor extra address identity', () => {
   it('edits only the second row, removes only the first, and serializes the surviving row', () => {
     const initialOrder = makeOrderWithTwoExtraAddresses()
     const onOrderChange = vi.fn()
     const view = render(
-      <EditorHarness initialOrder={initialOrder} onOrderChange={onOrderChange} />,
+      <OrderEditorHarness initialOrder={initialOrder} onOrderChange={onOrderChange} />,
     )
 
     fireEvent.change(screen.getByDisplayValue('Runeberginkatu 12'), {
@@ -114,7 +114,7 @@ describe('Editor extra address identity', () => {
     // Reopening from the serialized update keeps the second row and does not
     // resurrect the removed first row.
     view.rerender(
-      <EditorHarness
+      <OrderEditorHarness
         key="reopened"
         initialOrder={createWordPressOrder({
           ...makeWordPressPayload(),

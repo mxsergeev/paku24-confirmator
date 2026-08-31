@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildReceiptDraftFromOrder, formatDateForReceipt } from './receiptData.helpers'
+import { makeCanonicalAppOrder } from '../../shared/testFixtures/orderFixtures.js'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -8,8 +9,9 @@ afterEach(() => {
 describe('receipt data helpers', () => {
   it('preserves zero order and service prices in a receipt draft', () => {
     const draft = buildReceiptDraftFromOrder({
-      price: 0,
-      service: { name: 'Free service', pricePerHour: 0 },
+      ...makeCanonicalAppOrder(),
+      pricingOverrides: { price: 0, fees: null, boxesPrice: null },
+      service: { ...makeCanonicalAppOrder().service, name: 'Free service', pricePerHour: 0 },
     })
 
     expect(draft.totalAmount).toBe('0')

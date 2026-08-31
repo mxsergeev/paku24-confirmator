@@ -1,5 +1,5 @@
-import services from '../data/services.json' with { type: 'json' }
 import boxesSettings from '../data/boxes.json' with { type: 'json' }
+import services from '../data/services.json' with { type: 'json' }
 import {
   HELSINKI_TIMEZONE,
   calendarDateToUtc,
@@ -9,11 +9,15 @@ import {
   parseInstant,
 } from './date-fns-tz.js'
 import { calculateAutomaticFees } from './fees.js'
-import { OrderValidationError, toFiniteNumberOrNull } from './orderPrimitives.js'
+import {
+  OrderValidationError,
+  PRICING_COMPONENTS,
+  toFiniteNumberOrNull,
+} from './orderPrimitives.js'
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 
-function normalizeFeeList(value, description) {
+function normalizeFeeList(value, description = 'Fees') {
   if (!Array.isArray(value)) throw new OrderValidationError(`${description} must be an array`)
 
   return value.map((fee) => {
@@ -33,7 +37,6 @@ function findServiceById(id) {
 
 function parseBoxCalendarDate(value, fieldName) {
   if (isDateOnly(value)) return parseCalendarDate(value, fieldName)
-
   return formatInTimeZone(parseInstant(value, fieldName), 'yyyy-MM-dd', HELSINKI_TIMEZONE)
 }
 
@@ -62,17 +65,14 @@ function resolveServiceHourlyRate(order) {
 }
 
 function calculateServiceSubtotal(order) {
-  const hourlyRate = resolveServiceHourlyRate(order)
   const duration = toFiniteNumberOrNull(order?.duration)
-
   if (duration === null) return 0
-  return hourlyRate * duration
+  return resolveServiceHourlyRate(order) * duration
 }
 
 function calculateAutomaticBoxesPrice(order) {
   const boxes = order?.boxes
   const amount = toFiniteNumberOrNull(boxes?.amount)
-
   if (amount === null || amount <= 0) return 0
 
   const duration = calculateBoxPeriod(boxes?.deliveryDate, boxes?.returnDate)
@@ -84,115 +84,75 @@ function calculateAutomaticBoxesPrice(order) {
 }
 
 function calculateAutomaticPricing(order) {
-  const automaticFees = normalizeFeeList(calculateAutomaticFees(order), 'Automatic fees')
-  const automaticBoxesPrice = calculateAutomaticBoxesPrice(order)
+  const fees = normalizeFeeList(calculateAutomaticFees(order), 'Automatic fees')
+  const boxesPrice = calculateAutomaticBoxesPrice(order)
 
   return {
-    price: calculateServiceSubtotal(order) + automaticBoxesPrice + sumFees(automaticFees),
-    fees: automaticFees,
-    boxesPrice: automaticBoxesPrice,
-  }
-}
-
-function resolveActiveFees(order) {
-  const source = order?.pricing?.source?.fees
-
-  if (source === 'initial') {
-    const value = order?.initialSnapshot?.fees
-    if (value === null || value === undefined) {
-      throw new OrderValidationError('Cannot use initial fees: the snapshot value is missing')
-    }
-    return normalizeFeeList(value, 'Initial fees')
-  }
-
-  if (source === 'manual') {
-    const value = order?.pricing?.manual?.fees
-    if (value === null || value === undefined) {
-      throw new OrderValidationError('Cannot use manual fees: the manual value is missing')
-    }
-    return normalizeFeeList(value, 'Manual fees')
-  }
-
-  if (source === 'auto') return normalizeFeeList(calculateAutomaticFees(order), 'Automatic fees')
-
-  throw new OrderValidationError(`Invalid pricing source for fees: ${String(source)}`)
-}
-
-function resolveActiveBoxesPrice(order) {
-  const source = order?.pricing?.source?.boxesPrice
-
-  if (source === 'initial') {
-    const value = order?.initialSnapshot?.boxesPrice
-    const number = toFiniteNumberOrNull(value)
-    if (number === null) {
-      throw new OrderValidationError('Cannot use initial boxesPrice: the snapshot value is missing or invalid')
-    }
-    return number
-  }
-
-  if (source === 'manual') {
-    const value = order?.pricing?.manual?.boxesPrice
-    const number = toFiniteNumberOrNull(value)
-    if (number === null) {
-      throw new OrderValidationError('Cannot use manual boxesPrice: the manual value is missing or invalid')
-    }
-    return number
-  }
-
-  if (source === 'auto') return calculateAutomaticBoxesPrice(order)
-
-  throw new OrderValidationError(`Invalid pricing source for boxesPrice: ${String(source)}`)
-}
-
-function resolveActivePrice(order, fees, boxesPrice) {
-  const source = order?.pricing?.source?.price
-
-  if (source === 'initial') {
-    const value = order?.initialSnapshot?.price
-    const number = toFiniteNumberOrNull(value)
-    if (number === null) {
-      throw new OrderValidationError('Cannot use initial price: the snapshot value is missing or invalid')
-    }
-    return number
-  }
-
-  if (source === 'manual') {
-    const value = order?.pricing?.manual?.price
-    const number = toFiniteNumberOrNull(value)
-    if (number === null) {
-      throw new OrderValidationError('Cannot use manual price: the manual value is missing or invalid')
-    }
-    return number
-  }
-
-  if (source === 'auto') {
-    const activeFees = fees ?? resolveActiveFees(order)
-    const activeBoxesPrice = boxesPrice ?? resolveActiveBoxesPrice(order)
-    return calculateServiceSubtotal(order) + activeBoxesPrice + sumFees(activeFees)
-  }
-
-  throw new OrderValidationError(`Invalid pricing source for price: ${String(source)}`)
-}
-
-function resolveActivePricing(order) {
-  const fees = resolveActiveFees(order)
-  const boxesPrice = resolveActiveBoxesPrice(order)
-  return {
-    price: resolveActivePrice(order, fees, boxesPrice),
+    price: calculateServiceSubtotal(order) + boxesPrice + sumFees(fees),
     fees,
     boxesPrice,
   }
 }
 
-function materializeActivePricing(order) {
-  if (!order || typeof order !== 'object') throw new OrderValidationError('Cannot materialize pricing for an empty order')
+function getOrderPricing(order) {
+  const automatic = calculateAutomaticPricing(order)
+  const overrides = order?.pricingOverrides || {}
+  const fees = overrides.fees === null || overrides.fees === undefined
+    ? automatic.fees
+    : normalizeFeeList(overrides.fees, 'Manual fees')
+  const boxesPrice = overrides.boxesPrice === null || overrides.boxesPrice === undefined
+    ? automatic.boxesPrice
+    : toFiniteNumberOrNull(overrides.boxesPrice)
 
-  const active = resolveActivePricing(order)
+  if (boxesPrice === null) throw new OrderValidationError('Invalid pricingOverrides.boxesPrice')
+
+  const price = overrides.price === null || overrides.price === undefined
+    ? automatic.price
+    : toFiniteNumberOrNull(overrides.price)
+
+  if (price === null) throw new OrderValidationError('Invalid pricingOverrides.price')
+
+  return { price, fees, boxesPrice }
+}
+
+function setPricingOverride(order, component, value) {
+  if (!order || typeof order !== 'object') throw new OrderValidationError('Order must be an object')
+  if (!PRICING_COMPONENTS.includes(component)) {
+    throw new OrderValidationError(`Unknown pricing component: ${String(component)}`)
+  }
+
+  const normalized = component === 'fees'
+    ? normalizeFeeList(value, 'Manual fees')
+    : toFiniteNumberOrNull(value)
+  if (normalized === null) throw new OrderValidationError(`Invalid pricingOverrides.${component}`)
+
   return {
     ...order,
-    price: active.price,
-    fees: active.fees,
-    boxesPrice: active.boxesPrice,
+    pricingOverrides: {
+      price: null,
+      fees: null,
+      boxesPrice: null,
+      ...(order.pricingOverrides || {}),
+      [component]: normalized,
+    },
+  }
+}
+
+function clearPricingOverride(order, component) {
+  if (!order || typeof order !== 'object') throw new OrderValidationError('Order must be an object')
+  if (!PRICING_COMPONENTS.includes(component)) {
+    throw new OrderValidationError(`Unknown pricing component: ${String(component)}`)
+  }
+
+  return {
+    ...order,
+    pricingOverrides: {
+      price: null,
+      fees: null,
+      boxesPrice: null,
+      ...(order.pricingOverrides || {}),
+      [component]: null,
+    },
   }
 }
 
@@ -207,11 +167,9 @@ export {
   calculateAutomaticBoxesPrice,
   calculateBoxPeriod,
   calculateAutomaticPricing,
-  resolveActiveFees,
-  resolveActiveBoxesPrice,
-  resolveActivePrice,
-  resolveActivePricing,
-  materializeActivePricing,
+  getOrderPricing,
   normalizeFeeList,
+  setPricingOverride,
+  clearPricingOverride,
   orderTime,
 }

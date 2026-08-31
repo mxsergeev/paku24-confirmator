@@ -1,4 +1,3 @@
-import fees from '../../data/fees.json' with { type: 'json' }
 import {
   HELSINKI_TIMEZONE,
   formatInTimeZone,
@@ -6,7 +5,8 @@ import {
   parseCalendarDate,
   parseInstant,
 } from '../date-fns-tz.js'
-import { resolveServiceHourlyRate } from '../orderPricing.js'
+import { getOrderPricing, resolveServiceHourlyRate } from '../orderPricing.js'
+import { resolveFeeDisplayName } from './fees.js'
 
 function formatAddress(address) {
   let result = ''
@@ -95,6 +95,7 @@ function selectedSections(options) {
 
 function formatOrder(order, options = {}, { showBoxesHeading = true } = {}) {
   const sections = selectedSections(options)
+  const pricing = getOrderPricing(order)
 
   let transformed = ''
 
@@ -117,8 +118,8 @@ function formatOrder(order, options = {}, { showBoxesHeading = true } = {}) {
     transformed += `${order.paymentType.name}\n`
   }
   if (sections.has('fees')) {
-    ;(order.fees || []).forEach((fee) => {
-      const label = fee.label ?? fees.find((item) => item.name === fee.name)?.label ?? ''
+    pricing.fees.forEach((fee) => {
+      const label = resolveFeeDisplayName(order, fee)
 
       transformed += `${label.toUpperCase()}\n`
       transformed += `${fee.amount}€\n`
@@ -133,11 +134,11 @@ function formatOrder(order, options = {}, { showBoxesHeading = true } = {}) {
     }
     transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
     transformed += `Määrä: ${order.boxes.amount} kpl\n`
-    transformed += `Hinta: ${order.boxesPrice}€\n`
+    transformed += `Hinta: ${pricing.boxesPrice}€\n`
   }
   if (sections.has('price')) {
     transformed += 'ARVIOITU HINTA\n'
-    transformed += `${order.price}€\n`
+    transformed += `${pricing.price}€\n`
   }
   if (sections.has('address')) {
     transformed += 'LÄHTÖPAIKKA\n'

@@ -35,8 +35,11 @@ const makeOrder = (overrides = {}) => ({
     returnDate: '2026-03-20T07:00:00Z',
     amount: 10,
   },
-  boxesPrice: 200,
-  price: 320,
+  pricingOverrides: {
+    price: 320,
+    fees: [],
+    boxesPrice: 200,
+  },
   ...overrides,
 })
 
@@ -47,7 +50,11 @@ describe('makeIcons', () => {
         makeOrder({
           XL: true,
           distance: 'outsideCapital',
-          fees: [{ name: 'nightFee' }],
+          pricingOverrides: {
+            price: 320,
+            fees: [{ name: 'nightFee', amount: 20 }],
+            boxesPrice: 200,
+          },
         }),
       ),
     ).toEqual({ boxesDelivery: '📦', boxesPickup: '📦', move: 'XL🚧🌚🚚💳' })
@@ -127,6 +134,6 @@ describe('makeCalendarEntries', () => {
           },
         }),
       ),
-    ).toThrow('Invalid box delivery date')
+    ).toThrow('Invalid boxes.deliveryDate')
   })
 })

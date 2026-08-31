@@ -136,32 +136,6 @@ export function makeCanonicalAppOrder(overrides = {}) {
   return createAppOrder(makeAppBooking(overrides))
 }
 
-export function makeDraftPayload() {
-  const order = makeCanonicalWordPressOrder()
-
-  return {
-    version: 1,
-    order: {
-      ...order,
-      pricing: {
-        source: {
-          price: 'auto',
-          fees: 'manual',
-          boxesPrice: 'initial',
-        },
-        manual: {
-          price: null,
-          fees: [makeFee('nightFee')],
-          boxesPrice: null,
-        },
-      },
-      price: 172,
-      fees: [makeFee('nightFee')],
-      boxesPrice: 52,
-    },
-  }
-}
-
 export function makePersistedApiOrder() {
   return {
     ...makeCanonicalWordPressOrder(),

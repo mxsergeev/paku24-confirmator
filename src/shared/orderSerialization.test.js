@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  calculateAutomaticPricing,
-  resolveActivePricing,
-} from './orderPricing.js'
-import {
-  createAppOrder,
-  createWordPressOrder,
-  hydrateCanonicalOrder,
-} from './orderModel.js'
-import {
   makeAppBooking,
   makeCanonicalAppOrder,
   makeCanonicalWordPressOrder,
-  makeWordPressPayload,
 } from './testFixtures/orderFixtures.js'
 import {
   deserializeDraft,
@@ -23,26 +13,21 @@ import {
 } from './orderSerialization.js'
 
 describe('draft serialization', () => {
-  it('round-trips booking, snapshot, and pricing state without projections', () => {
+  it('round-trips booking, pricing overrides, and the WordPress reference', () => {
     const order = makeCanonicalWordPressOrder()
     const payload = serializeDraft(order)
 
-    expect(payload.version).toBe(1)
-    expect(payload.order).toMatchObject({
-      origin: 'wordpress',
-      initialSnapshot: expect.any(Object),
-      pricing: order.pricing,
-    })
+    expect(payload.version).toBe(2)
+    expect(payload.order.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
+    expect(payload.order.originalOrder).toEqual(order.originalOrder)
     expect(payload.order).not.toHaveProperty('price')
     expect(payload.order).not.toHaveProperty('fees')
     expect(payload.order).not.toHaveProperty('boxesPrice')
 
     const restored = deserializeDraft(payload)
-    expect(restored.origin).toBe('wordpress')
     expect(restored.date).toEqual(new Date('2026-01-15T07:00:00.000Z'))
-    expect(restored.initialSnapshot.date).toEqual(new Date('2026-01-15T07:00:00.000Z'))
-    expect(restored.pricing).toEqual(order.pricing)
-    expect(resolveActivePricing(restored)).toEqual(resolveActivePricing(order))
+    expect(restored.originalOrder).toEqual(order.originalOrder)
+    expect(restored.pricingOverrides).toEqual(order.pricingOverrides)
   })
 
   it('keeps automatic pricing live after deserialization', () => {
@@ -51,52 +36,24 @@ describe('draft serialization', () => {
     payload.order.duration = 3
 
     const restored = deserializeDraft(payload)
-    expect(restored.price).toBe(calculateAutomaticPricing(restored).price)
-    expect(restored.price).not.toBe(order.price)
+    expect(restored.duration).toBe(3)
+    expect(restored).not.toHaveProperty('price')
+    expect(restored).not.toHaveProperty('fees')
+    expect(restored).not.toHaveProperty('boxesPrice')
   })
 
-  it('hydrates an app draft from stored fields and ignores stale outbound state', () => {
-    const payload = JSON.parse(JSON.stringify(serializeDraft(makeCanonicalAppOrder())))
-    payload.order.price = 999
-    payload.order.fees = [{ name: 'stale', amount: 999 }]
-    payload.order.boxesPrice = 999
-    payload.order.confirmed = true
-
-    const restored = deserializeDraft(payload)
-
-    expect(restored.origin).toBe('app')
-    expect(restored.initialSnapshot).toBeNull()
-    expect(restored.confirmed).toBe(false)
-    expect(resolveActivePricing(restored)).toEqual(calculateAutomaticPricing(restored))
-  })
-
-  it('hydrates a WordPress draft with serialized snapshot and manual pricing state', () => {
-    const order = makeCanonicalWordPressOrder()
-    const manualPricing = {
-      source: { ...order.pricing.source, price: 'manual' },
-      manual: { ...order.pricing.manual, price: 321 },
+  it('preserves zero and empty manual overrides', () => {
+    const order = {
+      ...makeCanonicalAppOrder(),
+      pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },
     }
-    const payload = JSON.parse(JSON.stringify(serializeDraft({ ...order, pricing: manualPricing })))
-    payload.order.price = 1
-    payload.order.fees = [{ name: 'stale', amount: 1 }]
-    payload.order.boxesPrice = 1
-    payload.order.initialSnapshot.confirmed = true
+    const restored = deserializeDraft(JSON.parse(JSON.stringify(serializeDraft(order))))
 
-    const restored = deserializeDraft(payload)
-
-    expect(restored.origin).toBe('wordpress')
-    expect(restored.initialSnapshot).toMatchObject({
-      date: new Date('2026-01-15T07:00:00.000Z'),
-    })
-    expect(restored.pricing).toEqual(manualPricing)
-    expect(restored.price).toBe(321)
-    expect(restored).toHaveProperty('confirmed', false)
-    expect(restored.initialSnapshot).not.toHaveProperty('confirmed')
+    expect(restored.pricingOverrides).toEqual({ price: 0, fees: [], boxesPrice: 0 })
   })
 
-  it('preserves date-only boxes and converts datetime values symmetrically', () => {
-    const order = createWordPressOrder({
-      ...makeWordPressPayload(),
+  it('preserves date-only boxes and converts instant values symmetrically', () => {
+    const order = makeCanonicalWordPressOrder({
       date: '2026-03-12T07:00:00.000Z',
       boxes: {
         amount: 2,
@@ -109,98 +66,71 @@ describe('draft serialization', () => {
     expect(payload.order.date).toBe('2026-03-12T07:00:00.000Z')
     expect(payload.order.boxes.deliveryDate).toBe('2026-03-15')
     expect(payload.order.boxes.returnDate).toBe('2026-03-20T07:00:00.000Z')
-    expect(payload.order.initialSnapshot.date).toBe('2026-03-12T07:00:00.000Z')
-    expect(payload.order.initialSnapshot.boxes.deliveryDate).toBe('2026-03-15')
-    expect(payload.order.initialSnapshot.boxes.returnDate).toBe('2026-03-20T07:00:00.000Z')
 
     const restored = deserializeDraft(payload)
     expect(restored.boxes.deliveryDate).toBe('2026-03-15')
     expect(restored.boxes.returnDate).toEqual(new Date('2026-03-20T07:00:00.000Z'))
-    expect(restored.initialSnapshot.boxes.deliveryDate).toBe('2026-03-15')
-    expect(restored.initialSnapshot.boxes.returnDate).toEqual(new Date('2026-03-20T07:00:00.000Z'))
   })
 
-  it('rejects unsupported or malformed versions and invalid dates', () => {
+  it('rejects unsupported versions, invalid dates, and malformed overrides', () => {
     const payload = serializeDraft(makeCanonicalAppOrder())
 
-    expect(() => deserializeDraft({ ...payload, version: 2 })).toThrow(/version/i)
-    expect(() => deserializeDraft({ version: 1 })).toThrow(/order/i)
+    expect(() => deserializeDraft({ ...payload, version: 1 })).toThrow(/version/i)
+    expect(() => deserializeDraft({ version: 2 })).toThrow(/order/i)
     expect(() => serializeDraft({ ...makeCanonicalAppOrder(), date: 'not-a-date' })).toThrow(/date/i)
-    expect(() => serializeDraft({ ...makeCanonicalAppOrder(), date: '2026-01-15T09:00:00' })).toThrow(
-      /absolute instant/i,
+    expect(() => serializeDraft({ ...makeCanonicalAppOrder(), pricingOverrides: { price: 'bad' } })).toThrow(
+      /price/i,
     )
-    expect(() => serializeDraft({ ...makeCanonicalAppOrder(), pricing: { source: {}, manual: {} } })).toThrow(
-      /pricing\.source\.price/i,
-    )
-    expect(() =>
-      serializeDraft({ ...makeCanonicalAppOrder(), initialSnapshot: makeCanonicalWordPressOrder().initialSnapshot }),
-    ).toThrow(/app orders.*initialSnapshot/i)
-    expect(() => deserializeDraft({
-      ...payload,
-      order: { ...payload.order, boxes: { ...payload.order.boxes, deliveryDate: '2026-02-29' } },
-    })).toThrow(/boxes\.deliveryDate/i)
   })
 
-  it('deeply isolates drafts from the source order and nested values', () => {
+  it('deeply isolates the serialized reference and nested values', () => {
     const order = makeCanonicalWordPressOrder()
     const payload = serializeDraft(order)
 
     payload.order.service.name = 'Changed'
+    payload.order.originalOrder.name = 'Changed'
     payload.order.boxes.deliveryDate = '2026-02-01'
-    payload.order.initialSnapshot.address.street = 'Changed'
-    payload.order.pricing.manual.fees = [{ name: 'custom', amount: 3 }]
 
     expect(order.service.name).not.toBe('Changed')
+    expect(order.originalOrder.name).not.toBe('Changed')
     expect(order.boxes.deliveryDate).not.toBe('2026-02-01')
-    expect(order.initialSnapshot.address.street).not.toBe('Changed')
-    expect(order.pricing.manual.fees).toBeNull()
   })
 })
 
 describe('API and communication payloads', () => {
-  it('creates only app-origin payloads with booking fields', () => {
+  it('creates a booking-only payload for app persistence', () => {
     const payload = toCreateOrderPayload(makeCanonicalAppOrder())
 
-    expect(payload.origin).toBe('app')
     expect(payload).toMatchObject({ date: '2026-06-15T06:00:00.000Z' })
-    expect(payload).not.toHaveProperty('initialSnapshot')
-    expect(payload).not.toHaveProperty('pricing')
+    expect(payload).not.toHaveProperty('id')
+    expect(payload).not.toHaveProperty('originalOrder')
+    expect(payload).not.toHaveProperty('pricingOverrides')
     expect(payload).not.toHaveProperty('price')
     expect(payload).not.toHaveProperty('fees')
     expect(payload).not.toHaveProperty('boxesPrice')
-    expect(() => toCreateOrderPayload(makeCanonicalWordPressOrder())).toThrow(/app-origin/i)
   })
 
-  it('includes complete update pricing while preserving zero, empty, and null values', () => {
-    let order = makeCanonicalAppOrder()
-    order = {
-      ...order,
-      pricing: {
-        source: { price: 'manual', fees: 'manual', boxesPrice: 'manual' },
-        manual: { price: 0, fees: [], boxesPrice: 0 },
-      },
+  it('includes only pricing overrides in update payloads', () => {
+    const order = {
+      ...makeCanonicalAppOrder(),
+      pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },
     }
     const payload = toUpdateOrderPayload(order)
 
-    expect(payload.pricing).toEqual(order.pricing)
-    expect(payload.pricing.manual).toEqual({ price: 0, fees: [], boxesPrice: 0 })
-    expect(payload).not.toHaveProperty('origin')
-    expect(payload).not.toHaveProperty('initialSnapshot')
+    expect(payload.pricingOverrides).toEqual({ price: 0, fees: [], boxesPrice: 0 })
+    expect(payload).not.toHaveProperty('originalOrder')
     expect(payload).not.toHaveProperty('price')
     expect(payload).not.toHaveProperty('fees')
     expect(payload).not.toHaveProperty('boxesPrice')
-
-    order.pricing.manual.fees.push({ name: 'changed', amount: 1 })
-    expect(payload.pricing.manual.fees).toEqual([])
   })
 
-  it('strips editor-only identity metadata from extra addresses at the update boundary', () => {
-    const appOrder = makeAppBooking()
-    const order = createAppOrder({
-      ...appOrder,
+  it('strips editor-only identity metadata from extra addresses', () => {
+    const booking = makeAppBooking()
+    const payload = toUpdateOrderPayload({
+      ...makeCanonicalAppOrder(),
       extraAddresses: [
         {
-          ...appOrder.extraAddresses[0],
+          ...booking.extraAddresses[0],
           id: 'temporary-extra-address-0',
           _uiId: 'editor-row-0',
           key: 'row-0',
@@ -208,56 +138,20 @@ describe('API and communication payloads', () => {
       ],
     })
 
-    const payload = toUpdateOrderPayload(order)
-
-    expect(payload.extraAddresses).toEqual([
-      {
-        street: 'Mechelininkatu 20',
-        index: '00100',
-        city: 'Helsinki',
-        floor: 1,
-        elevator: false,
-      },
-    ])
+    expect(payload.extraAddresses[0]).toEqual(booking.extraAddresses[0])
     expect(payload.extraAddresses[0]).not.toHaveProperty('id')
     expect(payload.extraAddresses[0]).not.toHaveProperty('_uiId')
-    expect(payload.extraAddresses[0]).not.toHaveProperty('key')
   })
 
-  it('keeps imported pricing sources unchanged when a persisted order is reopened and saved', () => {
-    const persistedOrder = makeCanonicalWordPressOrder()
-    const reopenedOrder = hydrateCanonicalOrder(persistedOrder)
-    const payload = toUpdateOrderPayload(reopenedOrder)
-
-    expect(payload.pricing.source).toEqual({
-      price: 'initial',
-      fees: 'initial',
-      boxesPrice: 'initial',
-    })
-    expect(payload.extraAddresses).toEqual(persistedOrder.extraAddresses)
-  })
-
-  it('uses resolved active pricing and excludes internal state for communication', () => {
-    const order = makeCanonicalAppOrder()
+  it('materializes effective pricing only for communication payloads', () => {
     const payload = toCommunicationOrder({
-      ...order,
-      pricing: {
-        source: { price: 'manual', fees: 'manual', boxesPrice: 'manual' },
-        manual: { price: 0, fees: [], boxesPrice: 0 },
-      },
-      price: 99,
-      fees: [{ name: 'stale', amount: 99 }],
-      boxesPrice: 99,
-      initialSnapshot: { price: 99 },
+      ...makeCanonicalAppOrder(),
+      pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },
     })
 
     expect(payload).toMatchObject({ price: 0, fees: [], boxesPrice: 0 })
-    expect(payload).not.toHaveProperty('origin')
-    expect(payload).not.toHaveProperty('initialSnapshot')
-    expect(payload).not.toHaveProperty('pricing')
+    expect(payload.pricingOverrides).toEqual({ price: 0, fees: [], boxesPrice: 0 })
+    expect(payload).not.toHaveProperty('originalOrder')
     expect(payload).not.toHaveProperty('confirmed')
-
-    payload.fees.push({ name: 'changed', amount: 1 })
-    expect(order.fees).toEqual([])
   })
 })

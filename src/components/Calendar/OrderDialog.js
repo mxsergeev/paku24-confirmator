@@ -16,8 +16,8 @@ import DeleteIcon from '@material-ui/icons/Delete'
 import CheckIcon from '@material-ui/icons/Check'
 import './Calendar.css'
 import { getOrderIcons, parseBoxEventId, getBoxEventTitle } from './helpers'
-import Editor from '../Confirmator/Editor'
-import OrderSettings from '../Confirmator/OrderSettings'
+import OrderEditor from '../OrderEditor/OrderEditor'
+import OrderSettings from '../OrderEditor/OrderSettings'
 import OrderDialogDetails from './OrderDialogDetails'
 import ReceiptEditDialog from './ReceiptEditDialog'
 import iconsData from '../../data/icons.json'
@@ -98,12 +98,10 @@ export default function OrderDialog({
     handleEdit,
     handleEditChange,
     handleEditClose,
-    handleRevertEdit,
     handleRestore,
     handleSaveChanges,
     handleSendEmail,
     handleSendSMS,
-    revertingEdit,
     savingEdit,
     sendingEmail,
     sendingSMS,
@@ -382,12 +380,10 @@ export default function OrderDialog({
         <DialogContent className="calendar-new-order-dialog-content">
           <div className="calendar-new-order-dialog-content-wrap">
             <div className="calendar-new-order-flex-container">
-              <Editor
+              <OrderEditor
                 order={editableOrder}
                 handleChange={handleEditChange}
                 onOrderChange={setEditableOrder}
-                onRevert={handleRevertEdit}
-                reverting={revertingEdit}
               />
               {editableOrder && (
                 <OrderSettings order={editableOrder} handleChange={handleEditChange} />
@@ -401,7 +397,7 @@ export default function OrderDialog({
             color="primary"
             onClick={handleSaveChanges}
             className="calendar-dialog-button"
-            disabled={!editableOrder || savingEdit || revertingEdit}
+            disabled={!editableOrder || savingEdit}
           >
             Save changes
           </Button>
@@ -410,7 +406,7 @@ export default function OrderDialog({
             color="default"
             onClick={handleEditClose}
             className="calendar-dialog-button"
-            disabled={savingEdit || revertingEdit}
+            disabled={savingEdit}
           >
             Cancel
           </Button>

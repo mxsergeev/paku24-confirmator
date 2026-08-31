@@ -7,16 +7,16 @@ import { useQueryClient } from '@tanstack/react-query'
 import { enqueueSnackbar } from 'notistack'
 
 import './Calendar.css'
-import Editor from '../Confirmator/Editor'
+import OrderEditor from '../OrderEditor/OrderEditor'
 
-import OrderSettings from '../Confirmator/OrderSettings'
-import ValidationDisplay from '../Confirmator/ValidationDisplay'
+import OrderSettings from '../OrderEditor/OrderSettings'
+import ValidationDisplay from '../OrderEditor/ValidationDisplay'
 import {
   createAppOrder,
   updateOrderField,
 } from '../../shared/orderModel'
 import { readOrderDraft, useOrderDraft } from '../../hooks/useOrderDraft'
-import orderPoolAPI from '../../services/orderPoolAPI'
+import ordersAPI from '../../services/ordersAPI'
 import { toCreateOrderPayload } from '../../shared/orderSerialization'
 
 const NEW_ORDER_DRAFT_STORAGE_KEY = 'new_order'
@@ -93,13 +93,13 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
       let id = order?.id
       if (!id) {
         saveDraft(order)
-        const response = await orderPoolAPI.add({ order: toCreateOrderPayload(order) })
+        const response = await ordersAPI.add({ order: toCreateOrderPayload(order) })
         id = response?.id
         if (!id) throw new Error('Order was added but no ID was returned')
         handleOrderPersisted(id)
       }
 
-      const response = await orderPoolAPI.confirm(id)
+      const response = await ordersAPI.confirm(id)
       clearPendingOrderId()
       setAddStatus('Done')
       if (response?.message) enqueueSnackbar(response.message)
@@ -143,7 +143,7 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
       <DialogContent className="calendar-new-order-dialog-content">
         <div className="calendar-new-order-dialog-content-wrap">
           <div className="flex-container calendar-new-order-flex-container">
-            <Editor order={order} handleChange={handleOrderChange} onOrderChange={setOrder} />
+            <OrderEditor order={order} handleChange={handleOrderChange} onOrderChange={setOrder} />
 
             <OrderSettings handleChange={handleOrderChange} order={order} />
             <ValidationDisplay order={order} />
