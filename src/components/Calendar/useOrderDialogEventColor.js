@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -39,7 +39,6 @@ export default function useOrderDialogEventColor({
   setOrder,
 }) {
   const queryClient = useQueryClient()
-  const [changingEventColor, setChangingEventColor] = useState(false)
   const debounceTimerRef = useRef(null)
 
   const handleEventColorChange = useCallback(
@@ -52,8 +51,6 @@ export default function useOrderDialogEventColor({
       })
 
       try {
-        setChangingEventColor(true)
-
         if (!eventColor || typeof eventColor !== 'string') {
           throw new Error('Invalid event color provided.')
         }
@@ -79,8 +76,6 @@ export default function useOrderDialogEventColor({
           err.response?.data?.error || err.message || 'Could not update event color. Please try again.',
           { variant: 'error' }
         )
-      } finally {
-        setChangingEventColor(false)
       }
     },
     [order, orderId, queryClient, setOrder]
@@ -102,7 +97,6 @@ export default function useOrderDialogEventColor({
   )
 
   return {
-    changingEventColor,
     onEventColorChange: debouncedHandleEventColorChange,
   }
 }

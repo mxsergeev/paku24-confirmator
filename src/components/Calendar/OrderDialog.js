@@ -71,7 +71,7 @@ export default function OrderDialog({
     onOrderUpdate,
     onClose,
   })
-  const { changingEventColor, onEventColorChange } = useOrderDialogEventColor({
+  const { onEventColorChange } = useOrderDialogEventColor({
     order,
     orderId,
     setOrder,
@@ -208,7 +208,6 @@ export default function OrderDialog({
             order={order}
             eventType={eventType}
             onEventColorChange={onEventColorChange}
-            changingEventColor={changingEventColor}
           />
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">

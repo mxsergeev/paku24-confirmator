@@ -196,20 +196,6 @@ function materializeActivePricing(order) {
   }
 }
 
-function getEventColor(order) {
-  if (order && order.eventColor !== null && order.eventColor !== undefined) {
-    return order.eventColor
-  }
-
-  const embeddedService = order?.service
-  const catalogService = findServiceById(embeddedService?.id)
-  const catalogColor = catalogService?.eventColor
-  if (catalogColor !== null && catalogColor !== undefined) return catalogColor
-
-  const embeddedColor = embeddedService?.eventColor
-  return embeddedColor !== null && embeddedColor !== undefined ? embeddedColor : null
-}
-
 function orderTime(order) {
   const date = parseInstant(order?.date, 'order date')
   return formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)
@@ -227,6 +213,5 @@ export {
   resolveActivePricing,
   materializeActivePricing,
   normalizeFeeList,
-  getEventColor,
   orderTime,
 }

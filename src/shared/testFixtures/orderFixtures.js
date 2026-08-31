@@ -172,7 +172,6 @@ export function makePersistedApiOrder() {
     receivedAt: '2026-01-10T11:30:00.000Z',
     canceledAt: null,
     deletedAt: null,
-    markedForDeletion: false,
     invoiceNumber: '2026-001',
     calendarEventIds: {
       main: 'fixture-google-event-id',

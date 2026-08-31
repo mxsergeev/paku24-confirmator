@@ -5,7 +5,7 @@ export function isCanceled(order) {
 
 export function isDeleted(order) {
   if (!order) return false
-  return Boolean(order.markedForDeletion || order.deletedAt)
+  return Boolean(order.deletedAt)
 }
 
 export function isConfirmed(order) {

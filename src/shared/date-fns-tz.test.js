@@ -4,10 +4,10 @@ import {
   calendarDateToUtc,
   formatHelsinkiCalendarDate,
   formatHelsinkiInstant,
+  formatInTimeZone,
   isDateOnly,
   isIsoInstant,
   isSameHelsinkiCalendarDate,
-  isValidDateOnly,
   parseCalendarDate,
   parseInstant,
 } from './date-fns-tz.js'
@@ -33,12 +33,6 @@ describe('date-only values', () => {
       expect(() => parseCalendarDate(value, 'box date')).toThrow('Invalid box date')
     },
   )
-
-  it('exposes calendar validity separately from date-only shape', () => {
-    expect(isValidDateOnly('2026-03-12')).toBe(true)
-    expect(isValidDateOnly('2026-02-29')).toBe(false)
-    expect(isValidDateOnly('2026-3-12')).toBe(false)
-  })
 
   it('rejects values that are not date-only strings', () => {
     expect(() => parseCalendarDate('2026-01-15T00:00:00Z')).toThrow('Invalid date')
@@ -88,6 +82,12 @@ describe('parseInstant', () => {
 })
 
 describe('Helsinki display helpers', () => {
+  it('defaults generic formatting to Helsinki', () => {
+    expect(formatInTimeZone('2026-01-15T07:00:00.000Z', 'dd.MM.yyyy HH:mm')).toBe(
+      '15.01.2026 09:00',
+    )
+  })
+
   it('formats absolute instants in Helsinki regardless of host timezone', () => {
     expect(formatHelsinkiInstant('2026-01-15T07:00:00.000Z', 'dd.MM.yyyy HH:mm')).toBe(
       '15.01.2026 09:00',

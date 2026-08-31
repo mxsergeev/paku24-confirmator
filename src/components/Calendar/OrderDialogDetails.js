@@ -10,7 +10,6 @@ export default function OrderDialogDetails({
   order,
   eventType,
   onEventColorChange,
-  changingEventColor = false,
 }) {
   const isCanceledOrder = isCanceled(order)
   const isDeletedOrder = isDeleted(order)

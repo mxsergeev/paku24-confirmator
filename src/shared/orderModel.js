@@ -77,7 +77,6 @@ const LIFECYCLE_FIELDS = [
   'receivedAt',
   'canceledAt',
   'deletedAt',
-  'markedForDeletion',
   'invoiceNumber',
   'calendarEventIds',
 ]
@@ -193,7 +192,6 @@ function makeDefaultState() {
     receivedAt: null,
     canceledAt: null,
     deletedAt: null,
-    markedForDeletion: false,
     invoiceNumber: null,
     calendarEventIds: makeCalendarEventIds(),
   }
@@ -343,7 +341,6 @@ function defaultLifecycleState() {
     receivedAt: null,
     canceledAt: null,
     deletedAt: null,
-    markedForDeletion: false,
     invoiceNumber: null,
     calendarEventIds: makeCalendarEventIds(),
   }
@@ -476,7 +473,7 @@ function normalizeCanonicalLifecycle(input, result) {
   LIFECYCLE_FIELDS.forEach((field) => {
     if (!hasOwn(input, field) || input[field] === undefined) return
 
-    if (field === 'confirmed' || field === 'markedForDeletion') {
+    if (field === 'confirmed') {
       if (typeof input[field] !== 'boolean') throw new OrderValidationError(`Invalid ${field}`)
       lifecycle[field] = input[field]
     } else if (field === 'calendarEventIds') {
@@ -523,12 +520,6 @@ function hydrateCanonicalOrder(input) {
   result.pricing = normalizePricing(input.pricing, result.initialSnapshot, { requireComplete: true })
 
   return materializeActivePricing(normalizeCanonicalLifecycle(input, result))
-}
-
-// Kept as a public compatibility name. New callers should use the explicit
-// hydrateCanonicalOrder name so construction and hydration cannot be confused.
-function normalizeOrder(input) {
-  return hydrateCanonicalOrder(input)
 }
 
 function rejectClientSnapshot(input) {
@@ -896,20 +887,13 @@ function createDefaultAppOrder() {
   return materializeActivePricing(makeDefaultState())
 }
 
-function defaultOrder() {
-  return createDefaultAppOrder()
-}
-
 export {
   BOOKING_FIELDS,
   SNAPSHOT_FIELDS,
-  LIFECYCLE_FIELDS,
   CALENDAR_EVENT_ROLES,
   makeCalendarEventIds,
   createDefaultAppOrder,
-  defaultOrder,
   hydrateCanonicalOrder,
-  normalizeOrder,
   createAppOrder,
   createWordPressOrder,
   applyOrderPatch,

@@ -219,10 +219,6 @@ const order = new mongoose.Schema({
   boxesPrice: finiteNumberPath({ default: null }),
 
   // Lifecycle metadata
-  markedForDeletion: {
-    type: Boolean,
-    default: false,
-  },
   confirmed: {
     type: Boolean,
     default: false,

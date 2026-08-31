@@ -5,7 +5,6 @@ import {
   calculateAutomaticBoxesPrice,
   calculateAutomaticPricing,
   calculateBoxPeriod,
-  getEventColor,
   materializeActivePricing,
   orderTime,
   resolveActiveBoxesPrice,
@@ -250,17 +249,6 @@ describe('active pricing resolution', () => {
 })
 
 describe('catalog lookup and Helsinki time', () => {
-  it('looks up services by ID and falls back to embedded unknown-service fields', () => {
-    expect(getEventColor(makeOrder({ service: { id: '1', eventColor: 'wrong' } }))).toBe(
-      services[0].eventColor,
-    )
-    expect(getEventColor(makeOrder({ service: { id: 'unknown', eventColor: 'embedded' } }))).toBe(
-      'embedded',
-    )
-    expect(getEventColor(makeOrder({ eventColor: 'explicit', service: { id: '1' } }))).toBe('explicit')
-    expect(getEventColor(makeOrder({ service: { id: 'unknown', eventColor: null } }))).toBeNull()
-  })
-
   it('formats absolute instants in Europe/Helsinki', () => {
     expect(orderTime(makeOrder({ date: '2026-01-15T07:00:00.000Z' }))).toBe('09:00')
     expect(orderTime(makeOrder({ date: '2026-06-15T06:00:00.000Z' }))).toBe('09:00')

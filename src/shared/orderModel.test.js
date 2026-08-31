@@ -6,7 +6,6 @@ import {
 import {
   createAppOrder,
   createWordPressOrder,
-  defaultOrder,
   applyOrderPatch,
   hydrateCanonicalOrder,
   revertToInitial,
@@ -28,8 +27,8 @@ const clone = (value) => {
 
 describe('default and boundary order state', () => {
   it('creates fresh independent defaults with materialized automatic pricing', () => {
-    const first = defaultOrder()
-    const second = defaultOrder()
+    const first = createAppOrder()
+    const second = createAppOrder()
 
     expect(first).not.toBe(second)
     expect(first.service).not.toBe(second.service)
@@ -457,7 +456,6 @@ describe('revertToInitial', () => {
       receivedAt: new Date('2026-01-10T11:00:00.000Z'),
       canceledAt: new Date('2026-01-11T11:00:00.000Z'),
       deletedAt: new Date('2026-01-12T11:00:00.000Z'),
-      markedForDeletion: true,
       invoiceNumber: 'invoice-1',
       calendarEventIds: {
         main: 'event-1',
@@ -486,7 +484,6 @@ describe('revertToInitial', () => {
     expect(reverted.receivedAt).toEqual(new Date('2026-01-10T11:00:00.000Z'))
     expect(reverted.canceledAt).toEqual(new Date('2026-01-11T11:00:00.000Z'))
     expect(reverted.deletedAt).toEqual(new Date('2026-01-12T11:00:00.000Z'))
-    expect(reverted.markedForDeletion).toBe(true)
     expect(reverted.invoiceNumber).toBe('invoice-1')
     expect(reverted.calendarEventIds).toEqual({
       main: 'event-1',

@@ -6,12 +6,11 @@
  * Re-exporting the functions using names from the newer version for easier future migration.
  */
 
-import { zonedTimeToUtc, utcToZonedTime, formatInTimeZone as _formatInTimeZone } from 'date-fns-tz'
+import { formatInTimeZone as _formatInTimeZone } from 'date-fns-tz'
 import { OrderValidationError } from './orderPrimitives.js'
 
 export const HELSINKI_TIMEZONE = 'Europe/Helsinki'
 
-const TIMEZONE = process.env.VITE_TIMEZONE || HELSINKI_TIMEZONE
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const ISO_INSTANT_PATTERN = /^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:?\d{2})$/i
 
@@ -64,21 +63,6 @@ export function calendarDateToUtc(value, fieldName = 'date') {
 }
 
 /**
- * Return whether a value is a valid date-only string, including its calendar
- * validity (for example, reject February 30).
- */
-export function isValidDateOnly(value) {
-  if (!isDateOnly(value)) return false
-
-  try {
-    parseCalendarDate(value)
-    return true
-  } catch {
-    return false
-  }
-}
-
-/**
  * Return whether a string has an explicit timezone suffix and ISO datetime
  * shape. Calendar validity is checked separately by callers where needed.
  */
@@ -113,9 +97,8 @@ export function parseInstant(value, fieldName = 'date') {
   return parsed
 }
 
-export const fromZonedTime = (date, tz = TIMEZONE) => zonedTimeToUtc(date, tz)
-export const toZonedTime = (date, tz = TIMEZONE) => utcToZonedTime(date, tz)
-export const formatInTimeZone = (date, formatStr, tz = TIMEZONE) => _formatInTimeZone(date, tz, formatStr)
+export const formatInTimeZone = (date, formatStr, tz = HELSINKI_TIMEZONE) =>
+  _formatInTimeZone(date, tz, formatStr)
 
 /**
  * Format an absolute instant for customers and staff in the business timezone.

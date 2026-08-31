@@ -518,7 +518,6 @@ describe('Order pool v2/:id read and partial update', () => {
       receivedAt: new Date('2026-04-10T07:00:00.000Z'),
       canceledAt: new Date('2026-04-11T09:00:00.000Z'),
       deletedAt: new Date('2026-04-12T09:00:00.000Z'),
-      markedForDeletion: true,
       invoiceNumber: 'invoice-1',
       calendarEventIds: {
         main: 'google-event-1',
@@ -734,7 +733,6 @@ describe('Order pool v2/:id/revert', () => {
       receivedAt: new Date('2026-04-10T07:00:00.000Z'),
       canceledAt: new Date('2026-04-11T09:00:00.000Z'),
       deletedAt: new Date('2026-04-12T09:00:00.000Z'),
-      markedForDeletion: true,
       invoiceNumber: 'invoice-revert-1',
       calendarEventIds: {
         main: 'google-event-revert-1',
@@ -782,7 +780,6 @@ describe('Order pool v2/:id/revert', () => {
       boxDelivery: null,
       boxReturn: null,
     })
-    expect(reverted.body.order.markedForDeletion).toBe(true)
     expect(reverted.body.order.deletedAt).toBe('2026-04-12T09:00:00.000Z')
 
     const second = await api

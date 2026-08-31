@@ -42,7 +42,6 @@ print('Ensured admin user exists')
 if (db.orders.countDocuments() === 0) {
   db.orders.insertMany([
     {
-      markedForDeletion: false,
       confirmed: false,
       receivedAt: ISODate('2026-02-11T12:28:50.637Z'),
       date: ISODate('2026-02-14T11:00:00.000Z'),
@@ -111,7 +110,6 @@ if (db.orders.countDocuments() === 0) {
       comment: '',
     },
     {
-      markedForDeletion: false,
       confirmed: false,
       receivedAt: ISODate('2026-02-11T12:43:18.292Z'),
       date: ISODate('2026-03-02T20:00:00.000Z'),
@@ -155,7 +153,6 @@ if (db.orders.countDocuments() === 0) {
       comment: '',
     },
     {
-      markedForDeletion: false,
       confirmed: false,
       receivedAt: ISODate('2026-02-11T12:44:22.029Z'),
       date: ISODate('2026-03-05T13:00:00.000Z'),

@@ -2,7 +2,7 @@ import { authenticate } from '@google-cloud/local-auth'
 import { google } from 'googleapis'
 import path from 'path'
 import { promises as fs } from 'fs'
-import { formatAddressLocation } from '../../../src/shared/addressFormatter.js'
+import { formatAddressLocation } from '../../../src/shared/render/text.js'
 import {
   HELSINKI_TIMEZONE,
   calendarDateToUtc,
