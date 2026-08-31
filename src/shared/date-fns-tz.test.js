@@ -11,6 +11,7 @@ import {
   parseCalendarDate,
   parseInstant,
 } from './date-fns-tz.js'
+import { helsinkiDstTransitions } from './testFixtures/orderFixtures.js'
 
 describe('date-only values', () => {
   it('recognizes only the strict YYYY-MM-DD shape', () => {
@@ -109,5 +110,20 @@ describe('Helsinki display helpers', () => {
     expect(
       formatHelsinkiCalendarDate('2026-01-15T22:30:00.000Z', 'order date'),
     ).toBe('2026-01-16')
+  })
+
+  it('keeps both Helsinki DST transition boundaries tied to the correct instant', () => {
+    const { springForward, fallBack } = helsinkiDstTransitions
+
+    expect(parseInstant(springForward.before.local).toISOString()).toBe(
+      springForward.before.instant,
+    )
+    expect(formatHelsinkiInstant(springForward.after.instant, 'yyyy-MM-dd HH:mm:ss XXX')).toBe(
+      '2026-03-29 04:00:00 +03:00',
+    )
+    expect(parseInstant(fallBack.before.local).toISOString()).toBe(fallBack.before.instant)
+    expect(formatHelsinkiInstant(fallBack.after.instant, 'yyyy-MM-dd HH:mm:ss XXX')).toBe(
+      '2026-10-25 03:00:00 +02:00',
+    )
   })
 })

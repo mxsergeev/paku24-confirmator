@@ -33,8 +33,6 @@ import {
 } from '../../../src/shared/orderPrimitives.js'
 import { normalizeWordPressOrderPayload } from '../../../src/shared/wordpressOrderPayload.js'
 
-const ORDER_POOL_PAGE_SIZE = 20
-
 function checkKeyOrAuth(req, res, next) {
   if (ORDER_POOL_KEY && req.body?.key === ORDER_POOL_KEY) {
     req.orderPoolOrigin = 'wordpress'
@@ -154,78 +152,43 @@ function makeDeletedFilter(deleted) {
   return {}
 }
 
-function parsePages(rawPages) {
-  const values = Array.isArray(rawPages) ? rawPages : [rawPages]
-
-  if (values.length === 0) {
-    throw validationError('pages must contain at least one positive integer')
-  }
-
-  return values.map((value) => {
-    const normalized = String(value).trim()
-    if (!/^[1-9]\d*$/.test(normalized)) {
-      throw validationError('pages must contain only positive integers')
-    }
-
-    const page = Number(normalized)
-    if (!Number.isSafeInteger(page)) {
-      throw validationError('pages must contain only positive integers')
-    }
-
-    return page
-  })
-}
-
 orderPoolRouter.get('/v2/', async (req, res, next) => {
   try {
     const { from, to, deleted } = req.query
     const deletedFilter = makeDeletedFilter(deleted)
-    const hasFrom = typeof from !== 'undefined'
-    const hasTo = typeof to !== 'undefined'
-
-    if (hasFrom || hasTo) {
-      if (typeof from !== 'string' || typeof to !== 'string' || !from || !to) {
-        throw validationError('from and to must be provided together')
-      }
-
-      const rangeFilter = {
-        $or: [
-          { date: { $gte: from, $lte: to } },
-          { 'boxes.deliveryDate': { $gte: from, $lte: to } },
-          {
-            'boxes.deliveryDate': {
-              $gte: from.slice(0, 10),
-              $lte: to.slice(0, 10),
-            },
-          },
-          { 'boxes.returnDate': { $gte: from, $lte: to } },
-          {
-            'boxes.returnDate': {
-              $gte: from.slice(0, 10),
-              $lte: to.slice(0, 10),
-            },
-          },
-        ],
-      }
-      const match = Object.keys(deletedFilter).length
-        ? { $and: [rangeFilter, deletedFilter] }
-        : rangeFilter
-
-      const ordersInPool = await Order.find(match).sort({ _id: -1 })
-
-      return res.status(200).send({ orders: ordersInPool })
+    if (hasOwn(req.query, 'pages')) {
+      throw validationError('pages query is no longer supported')
+    }
+    if (typeof from !== 'string' || typeof to !== 'string' || !from || !to) {
+      throw validationError('from and to must be provided together')
     }
 
-    const pages = parsePages(req.query.pages ?? ['1'])
-    const firstPage = pages[0]
-    const skip = firstPage === 1 ? 0 : (firstPage - 1) * ORDER_POOL_PAGE_SIZE
-    const limit = pages.length * ORDER_POOL_PAGE_SIZE
-    const ordersInPool = await Order.find(deletedFilter)
-      .sort({ _id: -1 })
-      .skip(skip)
-      .limit(limit)
+    const rangeFilter = {
+      $or: [
+        { date: { $gte: from, $lte: to } },
+        { 'boxes.deliveryDate': { $gte: from, $lte: to } },
+        {
+          'boxes.deliveryDate': {
+            $gte: from.slice(0, 10),
+            $lte: to.slice(0, 10),
+          },
+        },
+        { 'boxes.returnDate': { $gte: from, $lte: to } },
+        {
+          'boxes.returnDate': {
+            $gte: from.slice(0, 10),
+            $lte: to.slice(0, 10),
+          },
+        },
+      ],
+    }
+    const match = Object.keys(deletedFilter).length
+      ? { $and: [rangeFilter, deletedFilter] }
+      : rangeFilter
 
-    return res.status(200).send({ orders: ordersInPool, limitPerPage: ORDER_POOL_PAGE_SIZE })
+    const ordersInPool = await Order.find(match).sort({ _id: -1 })
+
+    return res.status(200).send({ orders: ordersInPool })
   } catch (err) {
     return next(err)
   }

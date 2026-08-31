@@ -63,6 +63,16 @@ async function createPersistedOrder(overrides = {}) {
   }).save()
 }
 
+describe('Removed public calendar synchronization API', () => {
+  test('does not expose the legacy direct calendar route', async () => {
+    await api
+      .post('/api/calendar')
+      .set('Cookie', [`at=${appToken}`])
+      .send({ orderId: '66c000000000000000000001' })
+      .expect(404)
+  })
+})
+
 describe('Order pool v2/add', () => {
   const names = []
 
@@ -160,26 +170,33 @@ describe('Order pool listing and reads', () => {
     expect(res.body.order).not.toHaveProperty('price')
   })
 
-  test('filters deleted orders and rejects malformed list queries', async () => {
+  test('filters deleted orders by calendar range and rejects legacy pagination', async () => {
     const active = await createPersistedOrder({ name: 'Active listing order' })
     const deleted = await createPersistedOrder({ name: 'Deleted listing order', deletedAt: new Date() })
     orderIds.push(active.id, deleted.id)
 
     const activeResponse = await api
-      .get('/api/order-pool/v2/?deleted=false&pages[]=1')
+      .get(
+        '/api/order-pool/v2/?deleted=false&from=2026-04-01T00:00:00.000Z&to=2026-04-30T00:00:00.000Z',
+      )
       .set('Cookie', [`at=${appToken}`])
       .expect(200)
     const deletedResponse = await api
-      .get('/api/order-pool/v2/?deleted=true&pages[]=1')
+      .get(
+        '/api/order-pool/v2/?deleted=true&from=2026-04-01T00:00:00.000Z&to=2026-04-30T00:00:00.000Z',
+      )
       .set('Cookie', [`at=${appToken}`])
       .expect(200)
 
     expect(activeResponse.body.orders.map((item) => item.name)).toContain('Active listing order')
     expect(activeResponse.body.orders.map((item) => item.name)).not.toContain('Deleted listing order')
     expect(deletedResponse.body.orders.map((item) => item.name)).toContain('Deleted listing order')
+    expect(activeResponse.body).not.toHaveProperty('limitPerPage')
 
     await api
-      .get('/api/order-pool/v2/?pages[]=0')
+      .get(
+        '/api/order-pool/v2/?from=2026-04-01T00:00:00.000Z&to=2026-04-30T00:00:00.000Z&pages[]=1',
+      )
       .set('Cookie', [`at=${appToken}`])
       .expect(400)
   })

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button, Dialog, DialogContent, DialogTitle, IconButton } from '@material-ui/core'
 import useMediaQuery from '@material-ui/core/useMediaQuery'
 import CloseIcon from '@material-ui/icons/Close'
@@ -13,6 +13,7 @@ import OrderSettings from '../OrderEditor/OrderSettings'
 import ValidationDisplay from '../OrderEditor/ValidationDisplay'
 import {
   createAppOrder,
+  hydrateCanonicalOrder,
   updateOrderField,
 } from '../../shared/orderModel'
 import { readOrderDraft, useOrderDraft } from '../../hooks/useOrderDraft'
@@ -49,28 +50,64 @@ function clearPendingOrderId() {
 export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   const queryClient = useQueryClient()
   const isMobile = useMediaQuery('(max-width:600px)')
+  const [pendingOrderId] = useState(readPendingOrderId)
   const [order, setOrder] = useState(
     () => {
       const draft = readOrderDraft(NEW_ORDER_DRAFT_STORAGE_KEY) || createAppOrder()
-      const pendingId = readPendingOrderId()
-      return pendingId ? { ...draft, id: pendingId } : draft
+      return pendingOrderId ? { ...draft, id: pendingOrderId } : draft
     },
   )
   const [addStatus, setAddStatus] = useState(null)
+  const [pendingRecoveryStatus, setPendingRecoveryStatus] = useState(
+    pendingOrderId ? 'Working' : null,
+  )
   const { saveDraft, clearDraft } = useOrderDraft(NEW_ORDER_DRAFT_STORAGE_KEY, {
     value: order,
     enabled: !order?.id,
   })
 
+  useEffect(() => {
+    if (!pendingOrderId) return undefined
+
+    let active = true
+    ordersAPI
+      .getById(pendingOrderId)
+      .then((response) => {
+        if (!active) return
+        const recoveredOrder = hydrateCanonicalOrder(response?.order || response)
+        setOrder(recoveredOrder)
+        setPendingRecoveryStatus(null)
+      })
+      .catch((err) => {
+        if (!active || err.message === 'logout') return
+        setPendingRecoveryStatus('Error')
+        enqueueSnackbar(
+          err.response?.data?.error || 'Could not recover the pending order. Please try again.',
+          { variant: 'error' },
+        )
+      })
+
+    return () => {
+      active = false
+    }
+  }, [pendingOrderId])
+
   function reset() {
-    clearDraft()
+    clearDraft({ suppressNextWrite: true })
     clearPendingOrderId()
     setAddStatus(null)
+    setPendingRecoveryStatus(null)
     setOrder(createAppOrder())
   }
 
   function handleOrderChange(key, value) {
+    if (order?.id) return
     setOrder((previous) => updateOrderField(previous, key, value))
+  }
+
+  function handleOrderReplace(nextOrder) {
+    if (order?.id) return
+    setOrder(nextOrder)
   }
 
   function handleOrderPersisted(id) {
@@ -86,7 +123,11 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   }
 
   async function handleAddOrder() {
-    if (addStatus === 'Working' || order?.deletedAt) return
+    if (
+      addStatus === 'Working' ||
+      pendingRecoveryStatus === 'Working' ||
+      order?.deletedAt
+    ) return
 
     try {
       setAddStatus('Working')
@@ -143,7 +184,11 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
       <DialogContent className="calendar-new-order-dialog-content">
         <div className="calendar-new-order-dialog-content-wrap">
           <div className="flex-container calendar-new-order-flex-container">
-            <OrderEditor order={order} handleChange={handleOrderChange} onOrderChange={setOrder} />
+            <OrderEditor
+              order={order}
+              handleChange={handleOrderChange}
+              onOrderChange={handleOrderReplace}
+            />
 
             <OrderSettings handleChange={handleOrderChange} order={order} />
             <ValidationDisplay order={order} />
@@ -154,9 +199,16 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
                   variant="contained"
                   size="small"
                   onClick={handleAddOrder}
-                  disabled={addStatus === 'Working' || Boolean(order?.deletedAt)}
+                  disabled={
+                    addStatus === 'Working' ||
+                    pendingRecoveryStatus === 'Working' ||
+                    Boolean(order?.deletedAt)
+                  }
                 >
-                  {addStatus || 'Add order'} <NoteAddIcon />
+                  {pendingRecoveryStatus === 'Working'
+                    ? 'Recovering order'
+                    : addStatus || (order?.id ? 'Retry confirmation' : 'Add order')}{' '}
+                  <NoteAddIcon />
                 </Button>
               </div>
             </div>
