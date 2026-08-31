@@ -4,7 +4,7 @@ import { enqueueSnackbar } from 'notistack'
 import EmailIcon from '@material-ui/icons/Email'
 import CustomButton from './CustomButton'
 import sendConfirmationEmail, { sendCancellationEmail } from '../../../services/emailAPI'
-import { isCanceled } from '../../../shared/orderState.helpers'
+import { isCanceled, isDeleted } from '../../../shared/orderState.helpers'
 import { toCommunicationOrder } from '../../../shared/orderSerialization'
 
 const EMAIL = 'email'
@@ -19,6 +19,10 @@ export default function ConfirmationEmailSenderButton({
   className,
 }) {
   const handleEmailSending = useCallback(() => {
+    if (isDeleted(order)) {
+      enqueueSnackbar('Deleted orders cannot send messages.', { variant: 'warning' })
+      return Promise.resolve()
+    }
     if (email && transformedOrderText) {
       changeStatus(EMAIL, 'Working', true)
       const canceled = isCanceled(order)

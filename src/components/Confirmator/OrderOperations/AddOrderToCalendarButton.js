@@ -3,6 +3,7 @@ import React, { useCallback } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import EventIcon from '@material-ui/icons/Event'
 import addOrderToCalendar from '../../../services/orderCalendarWorkflow'
+import { isDeleted } from '../../../shared/orderState.helpers'
 
 import CustomButton from './CustomButton'
 
@@ -20,6 +21,9 @@ export default function AddOrderToCalendarButton({
 }) {
   const handleAddingToCalendar = useCallback(async () => {
     try {
+      if (isDeleted(order)) {
+        throw new Error('Deleted orders cannot be synchronized to calendar.')
+      }
       changeStatus(CALENDAR, 'Working', true)
       const response = await addOrderToCalendar({ order, orderId, onOrderPersisted, onOrderUpdated })
       changeStatus(CALENDAR, 'Done', true)

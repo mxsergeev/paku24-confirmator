@@ -44,6 +44,10 @@ export default function useOrderDialogActions({
   )
 
   const handleSendEmail = useCallback(async () => {
+    if (isDeleted(order)) {
+      enqueueSnackbar('Deleted orders cannot send messages.', { variant: 'warning' })
+      return
+    }
     if (!order?.email) {
       enqueueSnackbar('Add client email before sending.', { variant: 'warning' })
       return
@@ -68,6 +72,10 @@ export default function useOrderDialogActions({
   }, [order])
 
   const handleSendSMS = useCallback(async () => {
+    if (isDeleted(order)) {
+      enqueueSnackbar('Deleted orders cannot send messages.', { variant: 'warning' })
+      return
+    }
     if (!order?.phone) {
       enqueueSnackbar('Add client phone number before sending.', { variant: 'warning' })
       return
@@ -254,6 +262,10 @@ export default function useOrderDialogActions({
 
   const handleCancelConfirmDirect = useCallback(async () => {
     if (!orderId) return
+    if (isDeleted(order)) {
+      enqueueSnackbar('Deleted orders cannot be canceled.', { variant: 'warning' })
+      return
+    }
 
     try {
       setCanceling(true)
@@ -271,10 +283,14 @@ export default function useOrderDialogActions({
     } finally {
       setCanceling(false)
     }
-  }, [cancelAndUpdate, orderId])
+  }, [cancelAndUpdate, order, orderId])
 
   const handleCancelAndNotify = useCallback(async () => {
     if (!orderId) return
+    if (isDeleted(order)) {
+      enqueueSnackbar('Deleted orders cannot be canceled or notified.', { variant: 'warning' })
+      return
+    }
 
     try {
       setCanceling(true)
@@ -315,7 +331,7 @@ export default function useOrderDialogActions({
     } finally {
       setCanceling(false)
     }
-  }, [cancelAndUpdate, orderId])
+  }, [cancelAndUpdate, order, orderId])
 
   return {
     cancelConfirmOpen,

@@ -84,6 +84,45 @@ describe('calendar reconciliation', () => {
     expect(result.calendarEventIds).toEqual(order.calendarEventIds)
   })
 
+  it('rejects deleted orders before touching Google Calendar', async () => {
+    const deletedOrder = {
+      _id: 'order-deleted',
+      deletedAt: new Date('2026-01-01T00:00:00.000Z'),
+      calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
+    }
+
+    await expect(syncOrderToCalendar(deletedOrder)).rejects.toMatchObject({
+      name: 'ValidationError',
+      message: 'Deleted orders cannot be synchronized to calendar.',
+    })
+    expect(mocks.addEventToCalendar).not.toHaveBeenCalled()
+    expect(mocks.updateEventInCalendar).not.toHaveBeenCalled()
+  })
+
+  it('rejects a stale active caller after reloading a deleted order', async () => {
+    const deletedOrder = {
+      _id: '66c000000000000000000001',
+      deletedAt: new Date('2026-01-01T00:00:00.000Z'),
+      calendarEventIds: { main: 'main-existing', boxDelivery: null, boxReturn: null },
+    }
+    mocks.findById.mockResolvedValue(deletedOrder)
+
+    await expect(
+      syncOrderToCalendar({
+        _id: deletedOrder._id,
+        calendarEventIds: { main: 'main-existing', boxDelivery: null, boxReturn: null },
+      }),
+    ).rejects.toMatchObject({
+      name: 'ValidationError',
+      message: 'Deleted orders cannot be synchronized to calendar.',
+    })
+    expect(mocks.makeGoogleEventObjects).not.toHaveBeenCalled()
+    expect(mocks.addEventToCalendar).not.toHaveBeenCalled()
+    expect(mocks.updateEventInCalendar).not.toHaveBeenCalled()
+    expect(mocks.deleteEventFromCalendar).not.toHaveBeenCalled()
+    expect(mocks.updateOne).not.toHaveBeenCalled()
+  })
+
   it('deletes stale box events and persists the remaining IDs', async () => {
     mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
 
@@ -436,6 +475,32 @@ describe('calendar reconciliation', () => {
 
     expect(mocks.deleteEventFromCalendar).toHaveBeenCalledTimes(3)
     expect(mocks.updateOne).not.toHaveBeenCalled()
+  })
+
+  it('reloads current event IDs before an unlocked deletion operation', async () => {
+    const currentOrder = {
+      _id: '66c000000000000000000002',
+      calendarEventIds: {
+        main: 'main-current',
+        boxDelivery: null,
+        boxReturn: null,
+      },
+    }
+    mocks.findById.mockResolvedValue(currentOrder)
+
+    await deleteOrderEvent(
+      {
+        _id: currentOrder._id,
+        calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
+      },
+      { lock: false, clearStoredIds: true },
+    )
+
+    expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('main-current')
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { _id: currentOrder._id },
+      { $set: { calendarEventIds: { main: null, boxDelivery: null, boxReturn: null } } },
+    )
   })
 
   it('clears each deleted role and lets a retry finish after a partial failure', async () => {

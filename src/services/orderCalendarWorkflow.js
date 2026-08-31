@@ -1,6 +1,7 @@
 import calendarAPI from './calendarAPI'
 import orderPoolAPI from './orderPoolAPI'
 import { toCreateOrderPayload } from '../shared/orderSerialization'
+import { isDeleted } from '../shared/orderState.helpers'
 
 /**
  * Persist an order when needed, reconcile its calendar events, and finish the
@@ -14,6 +15,10 @@ export default async function addOrderToCalendar({
   onOrderPersisted,
   onOrderUpdated,
 } = {}) {
+  if (isDeleted(order)) {
+    throw new Error('Deleted orders cannot be synchronized to calendar.')
+  }
+
   let persistedOrderId = orderId || order?.id
   if (!persistedOrderId) {
     const { id } = await orderPoolAPI.add({

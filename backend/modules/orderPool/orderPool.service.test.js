@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   deleteOne: vi.fn(),
   deleteOrderEvent: vi.fn(),
   syncOrderToCalendar: vi.fn(),
+  withOrderCalendarLock: vi.fn((_order, operation) => operation()),
   applyOrderPatch: vi.fn(),
   hydrateCanonicalOrder: vi.fn((order) => order),
   revertToInitial: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('../../models/order.js', () => ({
 vi.mock('../calendar/calendar.sync.js', () => ({
   deleteOrderEvent: mocks.deleteOrderEvent,
   syncOrderToCalendar: mocks.syncOrderToCalendar,
+  withOrderCalendarLock: mocks.withOrderCalendarLock,
 }))
 
 vi.mock('../../../src/shared/orderModel.js', () => ({
@@ -92,7 +94,7 @@ describe('permanent order deletion', () => {
 
     await expect(deleteOrderPermanently('66c000000000000000000001')).resolves.toBe(order)
 
-    expect(mocks.deleteOrderEvent).toHaveBeenCalledWith(order)
+    expect(mocks.deleteOrderEvent).toHaveBeenCalledWith(order, { lock: false, clearStoredIds: true })
     expect(mocks.deleteOne).toHaveBeenCalledWith({ _id: '66c000000000000000000001' })
     expect(mocks.deleteOrderEvent.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.deleteOne.mock.invocationCallOrder[0],
@@ -181,10 +183,24 @@ describe('explicit calendar side effects', () => {
     expect(order.confirmed).toBe(false)
   })
 
+  it('rechecks deletion under the confirmation lock', async () => {
+    const initialOrder = makeOrder()
+    const deletedOrder = { ...makeOrder(), deletedAt: new Date('2026-01-01T00:00:00.000Z') }
+    mocks.findById.mockResolvedValueOnce(initialOrder).mockResolvedValueOnce(deletedOrder)
+
+    await expect(confirmOrder('66c000000000000000000001', 'user-id')).rejects.toMatchObject({
+      name: 'ValidationError',
+      message: 'Deleted orders cannot be confirmed',
+    })
+    expect(mocks.syncOrderToCalendar).not.toHaveBeenCalled()
+    expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
+  })
+
   it('persists cancellation even when calendar sync fails', async () => {
     const order = makeOrder()
     order.confirmed = true
     const failure = new Error('calendar unavailable')
+    mocks.findById.mockResolvedValue(order)
     mocks.findByIdAndUpdate.mockResolvedValue(order)
     mocks.syncOrderToCalendar.mockRejectedValue(failure)
 
@@ -192,6 +208,19 @@ describe('explicit calendar side effects', () => {
 
     expect(result).toMatchObject({ order, warning: { code: 'CALENDAR_SYNC_FAILED' } })
     expect(mocks.findByIdAndUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects cancellation of a deleted order before changing Mongo', async () => {
+    const order = makeOrder()
+    order.deletedAt = new Date('2026-01-01T00:00:00.000Z')
+    mocks.findById.mockResolvedValue(order)
+
+    await expect(cancelOrder('66c000000000000000000001')).rejects.toMatchObject({
+      name: 'ValidationError',
+      message: 'Deleted orders cannot be canceled',
+    })
+    expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
+    expect(mocks.syncOrderToCalendar).not.toHaveBeenCalled()
   })
 
   it('persists the new color when calendar sync fails', async () => {

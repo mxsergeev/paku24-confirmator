@@ -122,4 +122,20 @@ describe('addOrderToCalendar', () => {
     expect(mocks.syncOrder).toHaveBeenCalledWith('confirmed-order-id')
     expect(mocks.confirm).not.toHaveBeenCalled()
   })
+
+  it('rejects deleted orders before persistence or calendar calls', async () => {
+    const order = {
+      ...makeCanonicalAppOrder(),
+      id: 'deleted-order-id',
+      deletedAt: '2026-01-01T00:00:00.000Z',
+    }
+
+    await expect(addOrderToCalendar({ order })).rejects.toThrow(
+      'Deleted orders cannot be synchronized to calendar.',
+    )
+
+    expect(mocks.add).not.toHaveBeenCalled()
+    expect(mocks.syncOrder).not.toHaveBeenCalled()
+    expect(mocks.confirm).not.toHaveBeenCalled()
+  })
 })

@@ -9,7 +9,11 @@ import {
   revertToInitial,
 } from '../../../src/shared/orderModel.js'
 import { isOrderValidationError } from '../../../src/shared/orderPrimitives.js'
-import { deleteOrderEvent, syncOrderToCalendar } from '../calendar/calendar.sync.js'
+import {
+  deleteOrderEvent,
+  syncOrderToCalendar,
+  withOrderCalendarLock,
+} from '../calendar/calendar.sync.js'
 
 const CALENDAR_SYNC_WARNING = {
   code: 'CALENDAR_SYNC_FAILED',
@@ -134,62 +138,76 @@ async function confirmOrder(id, userId) {
 
   const order = await getOrderById(id)
 
-  if (order.deletedAt) {
-    throw validationError('Deleted orders cannot be confirmed')
-  }
+  return withOrderCalendarLock(order, async () => {
+    // Reload while holding the same lock used by deletion. This prevents a
+    // confirmation that started first from marking a row confirmed after a
+    // concurrent deletion has removed its calendar ownership.
+    const currentOrder = await getOrderById(id)
 
-  // Confirmation has an external precondition. Reconcile the persisted order
-  // first, so a calendar failure cannot leave Mongo marked as confirmed.
-  if (!order.confirmed) {
-    try {
-      await syncOrderToCalendar(order)
-    } catch (err) {
-      logger.error('Order calendar synchronization failed before confirmation', err)
-      throw calendarUnavailableError(CALENDAR_CONFIRMATION_WARNING.message)
+    if (currentOrder.deletedAt) {
+      throw validationError('Deleted orders cannot be confirmed')
     }
-  } else {
-    // A retry of an already-confirmed request is safe and can repair missing
-    // calendar links without creating duplicate events.
+
+    // Confirmation has an external precondition. Reconcile the persisted order
+    // first, so a calendar failure cannot leave Mongo marked as confirmed.
     try {
-      await syncOrderToCalendar(order)
+      await syncOrderToCalendar(currentOrder, { lock: false })
     } catch (err) {
-      logger.error('Order calendar synchronization failed while confirming', err)
-      throw calendarUnavailableError(CALENDAR_SYNC_WARNING.message)
+      logger.error(
+        currentOrder.confirmed
+          ? 'Order calendar synchronization failed while confirming'
+          : 'Order calendar synchronization failed before confirmation',
+        err,
+      )
+      throw calendarUnavailableError(
+        currentOrder.confirmed
+          ? CALENDAR_SYNC_WARNING.message
+          : CALENDAR_CONFIRMATION_WARNING.message,
+      )
     }
-  }
 
-  if (order.confirmed) return order
+    if (currentOrder.confirmed) return currentOrder
 
-  const confirmed = await Order.findByIdAndUpdate(
-    { _id: id },
-    {
-      confirmed: true,
-      confirmedBy: userId,
-      confirmedAt: new Date().toISOString(),
-    },
-    { new: true },
-  )
+    const confirmed = await Order.findByIdAndUpdate(
+      { _id: id },
+      {
+        confirmed: true,
+        confirmedBy: userId,
+        confirmedAt: new Date().toISOString(),
+      },
+      { new: true },
+    )
 
-  if (!confirmed) {
-    throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-  }
+    if (!confirmed) {
+      throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
+    }
 
-  return confirmed
+    return confirmed
+  })
 }
 
 async function cancelOrder(id) {
   if (!id) return null
 
-  const order = await Order.findByIdAndUpdate(
-    { _id: id },
-    {
-      canceledAt: new Date().toISOString(),
-      eventColor: '8',
-    },
-    { new: true },
-  )
+  const order = await getOrderById(id)
 
-  return order ? syncAfterMutation(order) : null
+  const canceled = await withOrderCalendarLock(order, async () => {
+    const currentOrder = await getOrderById(id)
+    if (currentOrder.deletedAt) {
+      throw validationError('Deleted orders cannot be canceled')
+    }
+
+    return Order.findByIdAndUpdate(
+      { _id: id },
+      {
+        canceledAt: new Date().toISOString(),
+        eventColor: '8',
+      },
+      { new: true },
+    )
+  })
+
+  return canceled ? syncAfterMutation(canceled) : null
 }
 
 async function updateOrderColor(id, eventColor) {
@@ -208,18 +226,20 @@ async function deleteOrder(id) {
   // Calendar events are owned by the order. Delete every owned role before
   // marking the row deleted; a failed provider call leaves the row active so
   // the operation can be retried with the IDs that remain linked.
-  try {
-    await deleteOrderEvent(order)
-  } catch (err) {
-    logger.error('Order calendar deletion failed before soft delete', err)
-    throw calendarUnavailableError(CALENDAR_DELETE_WARNING.message)
-  }
+  return withOrderCalendarLock(order, async () => {
+    try {
+      await deleteOrderEvent(order, { lock: false })
+    } catch (err) {
+      logger.error('Order calendar deletion failed before soft delete', err)
+      throw calendarUnavailableError(CALENDAR_DELETE_WARNING.message)
+    }
 
-  return Order.findByIdAndUpdate(
-    { _id: id },
-    { deletedAt: new Date().toISOString() },
-    { new: true },
-  )
+    return Order.findByIdAndUpdate(
+      { _id: id },
+      { deletedAt: new Date().toISOString() },
+      { new: true },
+    )
+  })
 }
 
 async function retrieveOrder(id) {
@@ -264,11 +284,13 @@ async function deleteOrderPermanently(id) {
   }
 
   // Remove external calendar state before deleting the row so a Google
-  // failure leaves the order and its IDs available for a retry. deleteOne is
-  // used after this preflight to avoid running the post findOneAndDelete hook
-  // a second time for the same events.
-  await deleteOrderEvent(order)
-  const result = await Order.deleteOne({ _id: id })
+  // failure leaves the order and its IDs available for a retry. Hold the
+  // per-order lock across both operations so a concurrent sync cannot create
+  // events after cleanup but before the row disappears.
+  const result = await withOrderCalendarLock(order, async () => {
+    await deleteOrderEvent(order, { lock: false, clearStoredIds: true })
+    return Order.deleteOne({ _id: id })
+  })
   const deleted = result?.deletedCount ?? result?.n
   if (deleted === 0) {
     throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')

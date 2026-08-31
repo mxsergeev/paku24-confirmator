@@ -6,6 +6,7 @@ import {
   deleteEventFromCalendar,
 } from './calendar.googleAPI.js'
 import * as logger from '../../utils/logger.js'
+import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import {
   CALENDAR_EVENT_ROLES,
   makeCalendarEventIds,
@@ -48,7 +49,7 @@ function orderLockKey(order) {
 
 // Calendar operations for the same persisted order must not overlap. This is
 // intentionally local to this service: the app runs as one process and a
-// small promise queue is enough to serialize retries and model-hook calls.
+// small promise queue is enough to serialize retries and service operations.
 const orderLocks = new Map()
 
 function withOrderCalendarLock(order, operation) {
@@ -57,7 +58,8 @@ function withOrderCalendarLock(order, operation) {
 
   const previous = orderLocks.get(key)
   const predecessor = previous || Promise.resolve()
-  const current = predecessor.then(operation, operation)
+  const run = () => operation(order)
+  const current = predecessor.then(run, run)
   orderLocks.set(key, current)
 
   // Do not leave rejected promises in the queue, and only remove this call's
@@ -189,6 +191,9 @@ function throwDeletionFailures(failures, context) {
  */
 async function reconcileOrderToCalendar(order) {
   if (!order) return null
+  if (order.deletedAt) {
+    throw newErrorWithCustomName('ValidationError', 'Deleted orders cannot be synchronized to calendar.')
+  }
 
   const desired = desiredEvents(order)
   const previousIds = storedCalendarEventIds(order)
@@ -277,13 +282,25 @@ async function reconcileOrderToCalendar(order) {
   }
 }
 
-async function syncOrderToCalendar(order) {
+async function syncOrderToCalendar(order, options = {}) {
   if (!order) return null
+  if (order.deletedAt) {
+    throw newErrorWithCustomName('ValidationError', 'Deleted orders cannot be synchronized to calendar.')
+  }
 
-  return withOrderCalendarLock(order, async () => {
+  const operation = async () => {
     let latestOrder = null
     try {
       latestOrder = await loadLatestPersistedOrder(order)
+      if (!latestOrder) {
+        throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
+      }
+      if (latestOrder?.deletedAt) {
+        throw newErrorWithCustomName(
+          'ValidationError',
+          'Deleted orders cannot be synchronized to calendar.',
+        )
+      }
       const result = await reconcileOrderToCalendar(latestOrder)
       if (latestOrder && latestOrder !== order && result?.calendarEventIds) {
         order.calendarEventIds = { ...result.calendarEventIds }
@@ -295,7 +312,9 @@ async function syncOrderToCalendar(order) {
       }
       throw error
     }
-  })
+  }
+
+  return options.lock === false ? operation() : withOrderCalendarLock(order, operation)
 }
 
 async function removeOrderEvents(order, { clearStoredIds = true } = {}) {
@@ -342,9 +361,9 @@ async function removeOrderEvents(order, { clearStoredIds = true } = {}) {
 async function deleteOrderEvent(order, options = {}) {
   if (!order) return null
 
-  return withOrderCalendarLock(order, async () => {
-    // A post findOneAndDelete hook intentionally receives a document that is
-    // no longer in Mongo, so it must use that document rather than reloading.
+  const operation = async () => {
+    // A caller can opt out of reloading when it already owns the latest
+    // persisted event IDs (for example, permanent deletion after its preflight).
     const latestOrder = options.clearStoredIds === false
       ? order
       : await loadLatestPersistedOrder(order)
@@ -353,11 +372,14 @@ async function deleteOrderEvent(order, options = {}) {
       order.calendarEventIds = { ...latestOrder.calendarEventIds }
     }
     return result
-  })
+  }
+
+  return options.lock === false ? operation() : withOrderCalendarLock(order, operation)
 }
 
 export {
   CALENDAR_EVENT_ROLES,
+  withOrderCalendarLock,
   syncOrderToCalendar,
   deleteOrderEvent,
 }

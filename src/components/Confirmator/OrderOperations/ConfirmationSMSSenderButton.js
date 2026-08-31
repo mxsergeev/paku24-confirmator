@@ -3,7 +3,7 @@ import { enqueueSnackbar } from 'notistack'
 import TextsmsIcon from '@material-ui/icons/Textsms'
 import sendSMS, { sendCancellationSMS } from '../../../services/smsAPI'
 import CustomButton from './CustomButton'
-import { isCanceled } from '../../../shared/orderState.helpers'
+import { isCanceled, isDeleted } from '../../../shared/orderState.helpers'
 import { toCommunicationOrder } from '../../../shared/orderSerialization'
 
 const SMS = 'sms'
@@ -17,6 +17,10 @@ export default function ConfirmationSMSSenderButton({
 }) {
   const handleSendingSMS = useCallback(async () => {
     try {
+      if (isDeleted(order)) {
+        enqueueSnackbar('Deleted orders cannot send messages.', { variant: 'warning' })
+        return
+      }
       if (order.phone) {
         changeStatus(SMS, 'Working', true)
         const canceled = isCanceled(order)

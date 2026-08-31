@@ -8,6 +8,7 @@ import ConfirmationEmailSenderButton from './ConfirmationEmailSenderButton'
 import ConfirmationSMSSenderButton from './ConfirmationSMSSenderButton'
 import AddOrderToCalendarButton from './AddOrderToCalendarButton'
 import addOrderToCalendar from '../../../services/orderCalendarWorkflow'
+import { isDeleted } from '../../../shared/orderState.helpers'
 import './OrderOperations.css'
 
 export default function MainOperationsPanel({
@@ -43,7 +44,7 @@ export default function MainOperationsPanel({
 
   const handleNewOrderWithCalendar = useCallback(async () => {
     if (addingOrderRef.current) return
-    if (!transformedOrder.text) {
+    if (!transformedOrder.text || isDeleted(order)) {
       enqueueSnackbar('Order is empty or not transformed', { variant: 'error' })
       return
     }
@@ -82,7 +83,7 @@ export default function MainOperationsPanel({
   ])
 
   function emailBlock() {
-    const isDisabled = statuses.email.disable || !(order.email && transformedOrder.text)
+    const isDisabled = statuses.email.disable || isDeleted(order) || !(order.email && transformedOrder.text)
     return (
       <div className="block">
         <MessageBeforeButton
@@ -103,7 +104,7 @@ export default function MainOperationsPanel({
   }
 
   function smsBlock() {
-    const isDisabled = statuses.sms.disable || !(order.phone && transformedOrder.text)
+    const isDisabled = statuses.sms.disable || isDeleted(order) || !(order.phone && transformedOrder.text)
     return (
       <div className="block">
         <MessageBeforeButton
@@ -122,13 +123,13 @@ export default function MainOperationsPanel({
   }
 
   function threeButtonsBlock() {
-    const isDisabled = statuses.calendar.disable || !transformedOrder.text
+    const isDisabled = statuses.calendar.disable || !transformedOrder.text || isDeleted(order)
     return (
       <div className="block">
         <NewOrderButton
           className="share-space"
           text={hideOrderPool ? 'Add order' : 'New order'}
-          disabled={hideOrderPool && (statuses.calendar.disable || !transformedOrder.text)}
+          disabled={hideOrderPool && isDisabled}
           handleClick={
             hideOrderPool
               ? handleNewOrderWithCalendar

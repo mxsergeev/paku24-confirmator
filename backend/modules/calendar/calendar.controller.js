@@ -23,6 +23,12 @@ calendarRouter.post('/', async (req, res, next) => {
     // view and must not replace stored role IDs or booking data.
     const order = await OrderModel.findById(orderId)
     if (!order) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
+    if (order.deletedAt) {
+      throw newErrorWithCustomName(
+        'ValidationError',
+        'Deleted orders cannot be synchronized to calendar.',
+      )
+    }
 
     const result = await syncOrderToCalendar(order)
     const eventCount = Object.keys(result?.events || {}).length

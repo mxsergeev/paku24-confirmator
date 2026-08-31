@@ -63,6 +63,17 @@ describe('Calendar', () => {
       .expect(404)
   })
 
+  test('rejects a deleted persisted order without creating calendar events', async () => {
+    persistedOrder.deletedAt = new Date()
+    await persistedOrder.save()
+
+    await api
+      .post('/api/calendar/')
+      .set('Cookie', [`at=${at}`])
+      .send({ orderId: persistedOrder.id, entry: exampleEvent.entry })
+      .expect(400)
+  })
+
   test('status code 403 if access token not supplied', async () => {
     await api
       .post('/api/calendar/')
