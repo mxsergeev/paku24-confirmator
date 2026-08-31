@@ -19,9 +19,8 @@ function makeQueryArray(queryName, items) {
 
 /**
  * @param {Array} [pages] - Default: [ 1 ]
- * @param {Object} options - Default: { deleted: false, forceUpdate: false }
+ * @param {Object} options - Default: { deleted: false }
  * @param {Boolean} [options.deleted]
- * @param {Boolean} [options.forceUpdate]
  */
 async function get(pages = [1], options = { deleted: false }) {
   const { deleted } = options

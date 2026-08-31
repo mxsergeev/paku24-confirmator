@@ -9,13 +9,46 @@ import RestoreIcon from '@material-ui/icons/Restore'
 import orderPoolAPI from '../../../services/orderPoolAPI'
 import LoadingUntillDone from '../../LoadingUntillDone'
 import OrdersList from './OrdersList'
+import { formatAddress } from '../../../shared/render/text'
 import './OrderPool.css'
 
 const INBOX = 'inbox'
 const TRASHCAN = 'trashcan'
 
-function filterConfirmed(values, condition) {
-  return condition ? values.filter((value) => !value?.confirmedAt) : values
+function addressSearchText(addresses) {
+  return addresses.filter(Boolean).map((address) => formatAddress(address))
+}
+
+function matchesSearch(order, searchText) {
+  const search = String(searchText ?? '').trim().toLowerCase()
+  if (!search) return true
+
+  const searchableValues = [
+    order?.name,
+    order?.email,
+    order?.phone,
+    order?.comment,
+    order?.service?.name,
+    order?.serviceName,
+    order?.paymentType?.name,
+    order?.paymentTypeName,
+    ...addressSearchText([
+      order?.address,
+      ...(Array.isArray(order?.extraAddresses) ? order.extraAddresses : []),
+      order?.destination,
+    ]),
+  ]
+
+  return searchableValues.some((value) =>
+    String(value ?? '').toLowerCase().includes(search)
+  )
+}
+
+function filterOrders(values, { searchText, showOnlyNotConfirmed }) {
+  const searchedOrders = values.filter((order) => matchesSearch(order, searchText))
+  return showOnlyNotConfirmed
+    ? searchedOrders.filter((order) => !order?.confirmed)
+    : searchedOrders
 }
 
 export default function OrderPool({ handleExport }) {
@@ -23,142 +56,94 @@ export default function OrderPool({ handleExport }) {
   const [isLoading, setIsloading] = useState(true)
 
   const [currentTab, setCurrentTab] = useState(INBOX)
-  const [searchOptions, setSearchOptions] = useState({
+  const [filtersByTab, setFiltersByTab] = useState({
     inbox: {
-      pages: [1],
       searchText: '',
       showOnlyNotConfirmed: false,
     },
     trashcan: {
-      pages: [1],
       searchText: '',
       showOnlyNotConfirmed: false,
     },
   })
-  const [searchResults, setSearchResults] = useState(orders)
-  const [forceUpdate, setForceUpdate] = useState({ hasToUpdate: false, trigger: 0 })
-  const [pages, setPages] = useState({ inbox: [1], trashcan: [1] })
+  const [pagesByTab, setPagesByTab] = useState({ inbox: [1], trashcan: [1] })
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const numberOfOrders = orders.length
   const numberOfUnconfirmedOrders = orders.filter((order) => !order.confirmed).length
+  const currentFilters = filtersByTab[currentTab]
+  const visibleOrders = filterOrders(orders, currentFilters)
 
   useEffect(() => {
+    let isCurrentRequest = true
+
     async function fetchData() {
       setIsloading(true)
-      let ordersFromPool
       try {
-        ordersFromPool =
+        const ordersFromPool =
           currentTab === INBOX
-            ? await orderPoolAPI.get(pages[currentTab], {
-                forceUpdate: forceUpdate.hasToUpdate,
-              })
-            : await orderPoolAPI.get(pages[currentTab], {
-                deleted: true,
-                forceUpdate: forceUpdate.hasToUpdate,
-              })
+            ? await orderPoolAPI.get(pagesByTab[currentTab])
+            : await orderPoolAPI.get(pagesByTab[currentTab], { deleted: true })
 
+        if (!isCurrentRequest) return
         setOrders(ordersFromPool)
-
-        const filteredOrders = filterConfirmed(
-          ordersFromPool,
-          searchOptions[currentTab].showOnlyNotConfirmed,
-        )
-        setSearchResults(filteredOrders)
         setIsloading(false)
       } catch (err) {
+        if (!isCurrentRequest) return
         enqueueSnackbar(err?.response?.data?.error || err.message, { variant: 'error' })
         setIsloading(false)
       }
     }
     fetchData()
-  }, [currentTab, forceUpdate.trigger, forceUpdate.hasToUpdate, pages, searchOptions])
+    return () => {
+      isCurrentRequest = false
+    }
+  }, [currentTab, pagesByTab, refreshTrigger])
 
-  const handleLoadingMoreOrders = useCallback(async () => {
-    const newPage = [pages[currentTab].length + 1]
-    setPages({
-      ...pages,
-      [currentTab]: [...pages[currentTab], ...newPage],
-    })
-    const moreOrdersFromPool =
-      currentTab === INBOX
-        ? await orderPoolAPI.get(newPage)
-        : await orderPoolAPI.get(newPage, { deleted: true })
+  const handleLoadingMoreOrders = useCallback(() => {
+    setPagesByTab((prevPages) => ({
+      ...prevPages,
+      [currentTab]: [...prevPages[currentTab], prevPages[currentTab].length + 1],
+    }))
+  }, [currentTab])
 
-    const concatenatedOrders = orders.concat(moreOrdersFromPool)
+  const handleSearchChange = useCallback((e) => {
+    const searchText = e.target.value
+    setFiltersByTab((prevFilters) => ({
+      ...prevFilters,
+      [currentTab]: { ...prevFilters[currentTab], searchText },
+    }))
+  }, [currentTab])
 
-    setOrders(concatenatedOrders)
-
-    const filteredOrders = filterConfirmed(
-      concatenatedOrders,
-      searchOptions[currentTab].showOnlyNotConfirmed,
-    )
-    setSearchResults(filteredOrders)
-  }, [pages, currentTab, orders, searchOptions])
-
-  const handleSearchChange = useCallback(
-    (e) => {
-      const prevOptsForCurTab = searchOptions[currentTab]
-      setSearchOptions({
-        ...searchOptions,
-        [currentTab]: { ...prevOptsForCurTab, searchText: e.target.value },
-      })
-
-      const filteredOrders = filterConfirmed(orders, prevOptsForCurTab.showOnlyNotConfirmed)
-
-      setSearchResults(filteredOrders)
-    },
-    [currentTab, orders, searchOptions]
-  )
-
-  const handleOnlyNotConfirmedSearch = useCallback(
-    (bool) => {
-      const prevOptsForCurTab = searchOptions[currentTab]
-      setSearchOptions({
-        ...searchOptions,
-        [currentTab]: { ...prevOptsForCurTab, showOnlyNotConfirmed: bool },
-      })
-
-      const filteredOrders = filterConfirmed(orders, bool)
-
-      setSearchResults(filteredOrders)
-    },
-    [currentTab, orders, searchOptions]
-  )
+  const handleOnlyNotConfirmedSearch = useCallback((bool) => {
+    setFiltersByTab((prevFilters) => ({
+      ...prevFilters,
+      [currentTab]: { ...prevFilters[currentTab], showOnlyNotConfirmed: bool },
+    }))
+  }, [currentTab])
 
   const handleTabBarChange = useCallback((e) => {
     setCurrentTab(e.target.dataset.tabname)
   }, [])
 
   const handleRefresh = useCallback(() => {
-    setForceUpdate((prev) => ({
-      ...prev,
-      trigger: prev.trigger + 1,
-      hasToUpdate: true,
-    }))
-    setTimeout(() =>
-      setForceUpdate((prev) => ({
-        ...prev,
-        hasToUpdate: false,
-      }))
-    )
+    setRefreshTrigger((prevTrigger) => prevTrigger + 1)
   }, [])
 
   const handleOrderDeletion = useCallback(
     async (id) => {
       await orderPoolAPI.remove(id)
-      setOrders(orders.filter((order) => order.id !== id))
-      setSearchResults(searchResults.filter((order) => order.id !== id))
+      setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id))
     },
-    [orders, searchResults]
+    []
   )
 
   const handleRetrieval = useCallback(
     async (id) => {
       await orderPoolAPI.retrieve(id)
-      setOrders(orders.filter((order) => order.id !== id))
-      setSearchResults(searchResults.filter((order) => order.id !== id))
+      setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id))
     },
-    [orders, searchResults]
+    []
   )
 
   const inboxClassName = () =>
@@ -192,14 +177,14 @@ export default function OrderPool({ handleExport }) {
       </div>
       <div className="filters-tab">
         <span className="filters-tab-orders-count">
-          {searchResults.length}/{orders.length}
+          {visibleOrders.length}/{orders.length}
         </span>
         <TextField
           className="flex-item"
           type="text"
           name="searchText"
           placeholder="Search"
-          value={searchOptions[currentTab].searchText}
+          value={currentFilters.searchText}
           onChange={handleSearchChange}
         />
         {numberOfUnconfirmedOrders > 0 && (
@@ -207,27 +192,27 @@ export default function OrderPool({ handleExport }) {
             className="p-0 filters-tab-orders-status-icon"
             size="small"
             onClick={() =>
-              handleOnlyNotConfirmedSearch(!searchOptions[currentTab].showOnlyNotConfirmed)
+              handleOnlyNotConfirmedSearch(!currentFilters.showOnlyNotConfirmed)
             }
           >
             <span style={{ fontSize: '1rem' }}>
-              {searchOptions[currentTab].showOnlyNotConfirmed
+              {currentFilters.showOnlyNotConfirmed
                 ? numberOfOrders
                 : numberOfUnconfirmedOrders}
             </span>
             <span
               className={`order-status-icon order-status-notification ${
-                searchOptions[currentTab].showOnlyNotConfirmed && 'order-status-icon-selected'
+                currentFilters.showOnlyNotConfirmed && 'order-status-icon-selected'
               }`}
             >
-              {searchOptions[currentTab].showOnlyNotConfirmed ? '✔&❕' : '❕'}
+              {currentFilters.showOnlyNotConfirmed ? '✔&❕' : '❕'}
             </span>
           </Button>
         )}
       </div>
       <LoadingUntillDone loading={isLoading}>
         <OrdersList
-          orders={searchResults}
+          orders={visibleOrders}
           handleExport={handleExport}
           labelForDeletion={currentTab === TRASHCAN ? <RestoreIcon /> : <DeleteIcon />}
           handleDeletion={currentTab === TRASHCAN ? handleRetrieval : handleOrderDeletion}

@@ -10,5 +10,5 @@ export function isDeleted(order) {
 
 export function isConfirmed(order) {
   if (!order) return false
-  return Boolean(order.confirmedAt)
+  return Boolean(order.confirmed)
 }
