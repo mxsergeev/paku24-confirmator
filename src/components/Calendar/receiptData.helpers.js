@@ -1,5 +1,9 @@
 import { buildStableInvoiceNumber as buildSharedStableInvoiceNumber } from '../../shared/invoiceNumber.js'
-import { formatHelsinkiInstant, isIsoInstant } from '../../shared/date-fns-tz.js'
+import {
+  formatHelsinkiCalendarDate,
+  formatHelsinkiInstant,
+  isIsoInstant,
+} from '../../shared/date-fns-tz.js'
 
 export function buildStableInvoiceNumber(order, existingInvoiceNumber = '') {
   return buildSharedStableInvoiceNumber(order, existingInvoiceNumber, { invalidDate: 'today' })
@@ -16,7 +20,7 @@ function formatAddressForReceipt(address) {
 export function buildReceiptDraftFromOrder(order = {}) {
   const safeOrder = order || {}
   const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-  const dueDate = defaultDueDate.toISOString().slice(0, 10)
+  const dueDate = formatHelsinkiCalendarDate(defaultDueDate, 'due date')
   const totalAmount =
     typeof safeOrder.price === 'number' || typeof safeOrder.price === 'string'
       ? String(safeOrder.price)
