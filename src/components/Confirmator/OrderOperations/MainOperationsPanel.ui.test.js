@@ -23,11 +23,9 @@ vi.mock('../NewOrderButton', () => ({
     </button>
   ),
 }))
-vi.mock('../OrderPool/OrderPoolOpenerButton', () => ({ default: () => null }))
 vi.mock('./MessageBeforeButton', () => ({ default: () => null }))
 vi.mock('./ConfirmationEmailSenderButton', () => ({ default: () => null }))
 vi.mock('./ConfirmationSMSSenderButton', () => ({ default: () => null }))
-vi.mock('./AddOrderToCalendarButton', () => ({ default: () => null }))
 
 import MainOperationsPanel from './MainOperationsPanel'
 
@@ -62,7 +60,6 @@ describe('MainOperationsPanel calendar warnings', () => {
         orderId="order-1"
         transformedOrder={{ text: 'order text' }}
         handleResetClick={handleResetClick}
-        hideOrderPool
       />,
     )
 

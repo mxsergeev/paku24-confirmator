@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { Route, Switch, Redirect, useHistory } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import { enqueueSnackbar } from 'notistack'
-import Hub from './components/Hub'
-import Confirmator from './components/Confirmator/Confirmator'
 import Statistics from './components/Statistics/Statistics'
 import Header from './components/Header'
 import Login from './components/Login'
@@ -99,25 +97,11 @@ function App() {
             {user === null ? <Login updateUser={setUser} /> : <Redirect to="/" />}
           </Route>
 
-          <ProtectedRoute
-            dependsOn={user}
-            exact
-            path={[
-              '/confirmator/order-pool',
-              '/confirmator/:id([0-9a-fA-F]{24})',
-              '/confirmator',
-            ]}
-          >
-            <Confirmator />
-          </ProtectedRoute>
           <ProtectedRoute dependsOn={user} path="/statistics">
             <Statistics />
           </ProtectedRoute>
-          <ProtectedRoute dependsOn={user} path="/calendar">
+          <ProtectedRoute dependsOn={user} exact path={['/', '/calendar']}>
             <Calendar />
-          </ProtectedRoute>
-          <ProtectedRoute dependsOn={user} exact path="/">
-            <Hub />
           </ProtectedRoute>
         </Switch>
         <ProtectedRoute dependsOn={user} path="/">

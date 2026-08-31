@@ -127,7 +127,6 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
               orderId={order?.id || null}
               transformedOrder={transformedOrder}
               handleResetClick={handleComplete}
-              hideOrderPool={true}
               onOrderPersisted={handleOrderPersisted}
             />
           </div>

@@ -1,12 +1,9 @@
 import React, { useCallback, useRef, useState } from 'react'
-import { Button } from '@material-ui/core'
 import { enqueueSnackbar } from 'notistack'
 import NewOrderButton from '../NewOrderButton'
-import OrderPoolOpenerButton from '../OrderPool/OrderPoolOpenerButton'
 import MessageBeforeButton from './MessageBeforeButton'
 import ConfirmationEmailSenderButton from './ConfirmationEmailSenderButton'
 import ConfirmationSMSSenderButton from './ConfirmationSMSSenderButton'
-import AddOrderToCalendarButton from './AddOrderToCalendarButton'
 import addOrderToCalendar from '../../../services/orderCalendarWorkflow'
 import { isDeleted } from '../../../shared/orderState.helpers'
 import './OrderOperations.css'
@@ -16,8 +13,6 @@ export default function MainOperationsPanel({
   orderId,
   transformedOrder,
   handleResetClick,
-  orderPoolUrl,
-  hideOrderPool,
   onOrderPersisted,
   onOrderUpdated,
 }) {
@@ -130,39 +125,16 @@ export default function MainOperationsPanel({
     )
   }
 
-  function threeButtonsBlock() {
+  function calendarBlock() {
     const isDisabled = statuses.calendar.disable || !transformedOrder.text || isDeleted(order)
     return (
       <div className="block">
         <NewOrderButton
           className="share-space"
-          text={hideOrderPool ? 'Add order' : 'New order'}
-          disabled={hideOrderPool && isDisabled}
-          handleClick={
-            hideOrderPool
-              ? handleNewOrderWithCalendar
-              : () => {
-                  setStatuses(defaultStatuses)
-                  handleResetClick()
-                }
-          }
+          text="Add order"
+          disabled={isDisabled}
+          handleClick={handleNewOrderWithCalendar}
         />
-        {!hideOrderPool && (
-          <OrderPoolOpenerButton className="share-space" orderPoolUrl={orderPoolUrl} />
-        )}
-        {!hideOrderPool && (
-          <AddOrderToCalendarButton
-            className="width-25"
-            statusText={statuses.calendar.status}
-            isDisabled={isDisabled}
-            order={order}
-            orderId={orderId}
-            transformedOrderText={transformedOrder.text}
-            changeStatus={changeStatus}
-            onOrderPersisted={onOrderPersisted}
-            onOrderUpdated={onOrderUpdated}
-          />
-        )}
       </div>
     )
   }
@@ -171,7 +143,7 @@ export default function MainOperationsPanel({
     <div className="order-operations">
       {emailBlock()}
       {smsBlock()}
-      {threeButtonsBlock()}
+      {calendarBlock()}
     </div>
   )
 }

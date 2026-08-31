@@ -65,7 +65,7 @@ export default function Login({ updateUser }) {
       setNotification('Done')
 
       // Not counting '/' as referrer
-      history.push(referrer?.length > 1 ? referrer : '/confirmator')
+      history.push(referrer?.length > 1 ? referrer : '/calendar')
       updateUser(user)
     } catch (err) {
       setInputError(true)
