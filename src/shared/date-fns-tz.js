@@ -116,3 +116,27 @@ export function parseInstant(value, fieldName = 'date') {
 export const fromZonedTime = (date, tz = TIMEZONE) => zonedTimeToUtc(date, tz)
 export const toZonedTime = (date, tz = TIMEZONE) => utcToZonedTime(date, tz)
 export const formatInTimeZone = (date, formatStr, tz = TIMEZONE) => _formatInTimeZone(date, tz, formatStr)
+
+/**
+ * Format an absolute instant for customers and staff in the business timezone.
+ * Unlike Date#toString or Date#toLocaleString, this is independent of the host timezone.
+ */
+export function formatHelsinkiInstant(value, formatStr, fieldName = 'date') {
+  return formatInTimeZone(parseInstant(value, fieldName), formatStr, HELSINKI_TIMEZONE)
+}
+
+/**
+ * Return a YYYY-MM-DD calendar value in the business timezone.
+ * Date-only values stay date-only and are never converted through midnight.
+ */
+export function formatHelsinkiCalendarDate(value, fieldName = 'date') {
+  if (isDateOnly(value)) {
+    return parseCalendarDate(value, fieldName)
+  }
+
+  return formatHelsinkiInstant(value, 'yyyy-MM-dd', fieldName)
+}
+
+export function isSameHelsinkiCalendarDate(left, right) {
+  return formatHelsinkiCalendarDate(left) === formatHelsinkiCalendarDate(right)
+}

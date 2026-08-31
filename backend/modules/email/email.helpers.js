@@ -1,5 +1,9 @@
 import termsData from './email.data.terms.json' with { type: 'json' }
-import dayjs from '../../../src/shared/dayjs.js'
+import {
+  formatHelsinkiInstant,
+  isDateOnly,
+  parseCalendarDate,
+} from '../../../src/shared/date-fns-tz.js'
 import { SOURCE_EMAIL, COMPANY_PHONE } from '../../utils/config.js'
 
 const styles = {
@@ -122,11 +126,24 @@ function hasValue(value) {
   return Boolean(value)
 }
 
-function formatDate(date, lang) {
-  if (!date) return ''
-  const d = dayjs(date)
-  if (!d.isValid()) return ''
-  return lang === 'en' ? d.format('YYYY-MM-DD HH:mm') : d.format('DD.MM.YYYY HH:mm')
+function formatDate(value, lang, fieldName = 'date') {
+  if (!value) return ''
+
+  if (isDateOnly(value)) {
+    parseCalendarDate(value, fieldName)
+    const [year, month, day] = value.split('-')
+    return lang === 'en' ? `${year}-${month}-${day}` : `${day}.${month}.${year}`
+  }
+
+  try {
+    return formatHelsinkiInstant(
+      value,
+      lang === 'en' ? 'yyyy-MM-dd HH:mm' : 'dd.MM.yyyy HH:mm',
+      fieldName,
+    )
+  } catch {
+    return ''
+  }
 }
 
 function renderAddressHtml(address, t) {
@@ -178,12 +195,12 @@ function renderBoxesHtml(boxes, boxesPrice, t, locale) {
 
   const deliveryDate = boxes?.deliveryDate
   if (deliveryDate) {
-    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.deliveryDate)}: ${escapeHtml(formatDate(deliveryDate, locale))}</td></tr>`
+    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.deliveryDate)}: ${escapeHtml(formatDate(deliveryDate, locale, 'box delivery date'))}</td></tr>`
   }
 
   const returnDate = boxes?.returnDate
   if (returnDate) {
-    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.returnDate)}: ${escapeHtml(formatDate(returnDate, locale))}</td></tr>`
+    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.returnDate)}: ${escapeHtml(formatDate(returnDate, locale, 'box return date'))}</td></tr>`
   }
 
   html += '</table>'
@@ -237,7 +254,7 @@ function buildConfirmationEmail({ order = {}, terms = '', lang = 'fi' } = {}) {
   const paymentFeeText = paymentFee > 0 ? `${paymentFee}€` : ''
   const totalPriceText = hasValue(order?.price) ? `${Number(order.price)}€` : ''
   const durationText = hasValue(order?.duration) ? `${order.duration}${t.hourShort}` : ''
-  const dateText = formatDate(order?.date, locale)
+  const dateText = formatDate(order?.date, locale, 'order date')
   const dateTextWithTolerance = dateText ? `${dateText} (±15min)` : ''
 
   const startAddressHtml = renderAddressHtml(order?.address, t)
@@ -321,4 +338,4 @@ function buildConfirmationEmail({ order = {}, terms = '', lang = 'fi' } = {}) {
   }
 }
 
-export { makeTerms, resolveEmailLanguage, buildConfirmationEmail }
+export { makeTerms, resolveEmailLanguage, buildConfirmationEmail, formatDate }

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, CircularProgress } from '@material-ui/core'
 import { enqueueSnackbar } from 'notistack'
-import dayjs from 'dayjs'
 import orderPoolAPI from '../../services/orderPoolAPI'
 import { sendReceiptEmail } from '../../services/emailAPI'
 import feesConfig from '../../data/fees.json'
@@ -15,6 +14,7 @@ import {
 } from './receiptData.helpers'
 import { jsPDF } from 'jspdf'
 import './Calendar.css'
+import { formatHelsinkiInstant } from '../../shared/date-fns-tz.js'
 
 const ALV_FACTOR = 1.255
 const STAIRS_FEE_BASE_NAME = 'stairsFee'
@@ -127,9 +127,16 @@ export function resolveFeeDisplayName(order, fee) {
 
 function mergeReceiptData(order, draft = null) {
   const base = buildReceiptDraftFromOrder(order)
-  const defaultServiceDate = dayjs(order?.date).format('DD.MM.YYYY')
-  const defaultInvoiceDate = dayjs().format('DD.MM.YYYY')
-  const defaultDueDate = dayjs().add(14, 'day').format('DD.MM.YYYY')
+  const defaultServiceDate = order?.date
+    ? formatHelsinkiInstant(order.date, 'dd.MM.yyyy', 'order date')
+    : ''
+  const now = new Date()
+  const defaultInvoiceDate = formatHelsinkiInstant(now, 'dd.MM.yyyy', 'invoice date')
+  const defaultDueDate = formatHelsinkiInstant(
+    new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+    'dd.MM.yyyy',
+    'due date',
+  )
 
   const draftData = draft || {}
 

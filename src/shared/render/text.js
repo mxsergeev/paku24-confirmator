@@ -6,6 +6,7 @@ import {
   parseCalendarDate,
   parseInstant,
 } from '../date-fns-tz.js'
+import { resolveServiceHourlyRate } from '../orderPricing.js'
 
 function formatAddress(address) {
   let result = ''
@@ -54,10 +55,6 @@ function formatBoxDate(value, fieldName) {
 
   const date = parseInstant(value, fieldName)
   return formatInTimeZone(date, 'dd-MM-yyyy HH:mm', HELSINKI_TIMEZONE)
-}
-
-function servicePrice(order) {
-  return order.servicePrice ?? Number(order.service?.pricePerHour) * Number(order.duration)
 }
 
 function serviceName(order) {
@@ -113,7 +110,7 @@ function formatOrder(order, options = {}, { showBoxesHeading = true } = {}) {
   }
   if (sections.has('duration')) {
     transformed += 'ARVIOITU KESTO\n'
-    transformed += `${order.duration}h (${servicePrice(order)}€/h, ${serviceName(order)})\n`
+    transformed += `${order.duration}h (${resolveServiceHourlyRate(order)}€/h, ${serviceName(order)})\n`
   }
   if (sections.has('paymentType')) {
     transformed += 'MAKSUTAPA\n'

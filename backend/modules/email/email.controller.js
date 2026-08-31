@@ -3,8 +3,7 @@ import express from 'express'
 const emailRouter = express.Router()
 
 import sendMail, { sendMailWithAttachment } from './email.awsAPI.js'
-import { buildConfirmationEmail, makeTerms } from './email.helpers.js'
-import dayjs from '../../../src/shared/dayjs.js'
+import { buildConfirmationEmail, formatDate, makeTerms } from './email.helpers.js'
 import * as authMW from '../authentication/auth.middleware.js'
 
 emailRouter.use(authMW.authenticateAccessToken)
@@ -70,7 +69,7 @@ emailRouter.post('/send-cancellation', (req, res, next) => {
 
   const subject = 'VARAUKSEN PERUUTUS'
   const serviceName = order?.service?.name || ''
-  const dateStr = order?.date ? dayjs(order.date).format('DD.MM.YYYY HH:mm') : ''
+  const dateStr = order?.date ? formatDate(order.date, 'fi', 'order date') : ''
   const details = serviceName || dateStr ? `Varaus: ${serviceName} ${dateStr}`.trim() : ''
 
   const body = `Arvoisa ${clientName},\n\nVarausksesi on peruutettu.\n${

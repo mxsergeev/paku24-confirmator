@@ -11,6 +11,7 @@ import calendarColors from '../../shared/colors'
 import {
   HELSINKI_TIMEZONE,
   formatInTimeZone,
+  formatHelsinkiCalendarDate,
   isDateOnly,
   parseCalendarDate,
   parseInstant,
@@ -316,8 +317,12 @@ export default function Calendar() {
       return { total: 0, canceled: 0, services: [] }
     }
 
-    const targetYear = currentCalendarDate.getFullYear()
-    const targetMonth = currentCalendarDate.getMonth()
+    let targetMonth
+    try {
+      targetMonth = formatHelsinkiCalendarDate(currentCalendarDate, 'calendar view date').slice(0, 7)
+    } catch {
+      return { total: 0, canceled: 0, services: [] }
+    }
     const serviceCounter = {}
     let total = 0
     let canceled = 0
@@ -327,11 +332,14 @@ export default function Calendar() {
 
       if (isDeleted(order)) return
 
-      const orderDate = new Date(order.date)
-      if (Number.isNaN(orderDate.getTime())) return
+      let orderMonth
+      try {
+        orderMonth = formatHelsinkiCalendarDate(order.date, 'order date').slice(0, 7)
+      } catch {
+        return
+      }
 
-      const matchesCurrentMonth =
-        orderDate.getFullYear() === targetYear && orderDate.getMonth() === targetMonth
+      const matchesCurrentMonth = orderMonth === targetMonth
 
       if (!matchesCurrentMonth) return
 
@@ -528,6 +536,7 @@ export default function Calendar() {
     >
       <FullCalendar
         ref={calendarRef}
+        timeZone={HELSINKI_TIMEZONE}
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, multiMonthPlugin, interactionPlugin]}
         initialView={calendarView}
         views={views}

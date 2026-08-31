@@ -1,9 +1,12 @@
 /* eslint-disable react/no-array-index-key */
 import React, { useEffect, useState } from 'react'
 import Button from '@material-ui/core/Button'
-import dayjs from '../../../shared/dayjs'
 import { BOOKING_FIELDS } from '../../../shared/orderModel'
 import { formatAddress, formatBoxDate } from '../../../shared/render/text'
+import {
+  formatHelsinkiInstant,
+  isSameHelsinkiCalendarDate,
+} from '../../../shared/date-fns-tz'
 
 const HIDDEN_BOOKING_FIELDS = ['distance', 'hsy', 'XL', 'eventColor']
 const DISPLAY_FIELDS = [
@@ -13,6 +16,14 @@ const DISPLAY_FIELDS = [
   'price',
   'canceledAt',
 ]
+
+function isNewOrder(order) {
+  try {
+    return isSameHelsinkiCalendarDate(order?.date, new Date())
+  } catch {
+    return false
+  }
+}
 
 export default function OrdersList({
   orders,
@@ -29,7 +40,7 @@ export default function OrdersList({
         order: {
           ...order,
         },
-        isNew: new Date(order.date).toDateString() === new Date(Date.now()).toDateString(),
+        isNew: isNewOrder(order),
         className: order.confirmed
           ? 'basic-order-style confirmed-order-style'
           : 'basic-order-style',
@@ -63,7 +74,21 @@ export default function OrdersList({
 
       switch (key) {
         case 'date': {
-          value = dayjs(value).format('DD-MM-YYYY HH:mm')
+          try {
+            value = formatHelsinkiInstant(value, 'dd-MM-yyyy HH:mm', 'order date')
+          } catch {
+            value = ''
+          }
+          break
+        }
+        case 'canceledAt': {
+          if (value) {
+            try {
+              value = formatHelsinkiInstant(value, 'dd-MM-yyyy HH:mm', 'canceled at')
+            } catch {
+              value = ''
+            }
+          }
           break
         }
         case 'duration': {

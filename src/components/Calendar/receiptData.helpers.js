@@ -1,5 +1,5 @@
-import dayjs from 'dayjs'
 import { buildStableInvoiceNumber as buildSharedStableInvoiceNumber } from '../../shared/invoiceNumber.js'
+import { formatHelsinkiInstant, isIsoInstant } from '../../shared/date-fns-tz.js'
 
 export function buildStableInvoiceNumber(order, existingInvoiceNumber = '') {
   return buildSharedStableInvoiceNumber(order, existingInvoiceNumber, { invalidDate: 'today' })
@@ -62,8 +62,13 @@ export function formatDateForReceipt(value, fallback) {
     return `${day}.${month}.${year}`
   }
 
-  const parsed = dayjs(source)
-  if (parsed.isValid()) return parsed.format('DD.MM.YYYY')
+  if (isIsoInstant(source)) {
+    try {
+      return formatHelsinkiInstant(source, 'dd.MM.yyyy', 'receipt date')
+    } catch {
+      return fallback
+    }
+  }
 
   return fallback
 }

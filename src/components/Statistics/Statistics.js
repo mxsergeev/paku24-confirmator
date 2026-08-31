@@ -13,6 +13,7 @@ import IconButton from '@material-ui/core/IconButton'
 import './Statistics.css'
 import orderPoolApi from '../../services/orderPoolAPI'
 import dayjs from '../../shared/dayjs'
+import { formatHelsinkiInstant } from '../../shared/date-fns-tz'
 
 /**
  * @param {Object} period
@@ -134,7 +135,12 @@ export default function Statistics() {
     const ordByDays = {}
 
     ordersOfSelectedWeek.forEach((order) => {
-      const day = new Date(order.confirmedAt).toLocaleDateString('en-US', { weekday: 'long' })
+      let day = 'Unknown day'
+      try {
+        day = formatHelsinkiInstant(order.confirmedAt, 'EEEE', 'confirmed at')
+      } catch {
+        // Keep malformed lifecycle data visible without crashing the statistics popover.
+      }
       if (ordByDays[day] == null) {
         ordByDays[day] = []
       }

@@ -1,4 +1,4 @@
-import dayjs from './dayjs.js'
+import { formatHelsinkiInstant } from './date-fns-tz.js'
 
 function hashToFourDigits(value) {
   const source = String(value || '')
@@ -33,15 +33,19 @@ export function buildStableInvoiceNumber(
   const normalizedExisting = String(existingInvoiceNumber || '').trim()
   if (normalizedExisting) return normalizedExisting
 
-  // dayjs(undefined) resolves to the current date, but a missing order date
-  // must remain invalid for the backend's strict generation path.
-  const orderDate =
-    order?.date === undefined || order?.date === null ? dayjs('') : dayjs(order.date)
-  const datePart = orderDate.isValid()
-    ? orderDate.format('YYYYMMDD')
-    : invalidDate === 'today'
-      ? dayjs().format('YYYYMMDD')
-      : null
+  // A missing order date must remain invalid for the backend's strict
+  // generation path instead of silently becoming today.
+  let datePart = null
+  if (order?.date !== undefined && order?.date !== null) {
+    try {
+      datePart = formatHelsinkiInstant(order.date, 'yyyyMMdd', 'order date')
+    } catch {
+      datePart = null
+    }
+  }
+  if (!datePart && invalidDate === 'today') {
+    datePart = formatHelsinkiInstant(new Date(), 'yyyyMMdd', 'today')
+  }
 
   if (!datePart) {
     throw new Error(

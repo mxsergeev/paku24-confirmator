@@ -1,7 +1,7 @@
 import axios from 'axios'
 import termsData from '../email/email.data.terms.json' with { type: 'json' }
 import { formatOrder } from '../../../src/shared/render/text.js'
-import dayjs from '../../../src/shared/dayjs.js'
+import { formatHelsinkiInstant } from '../../../src/shared/date-fns-tz.js'
 import { SEMYSMS_DEVICE_ID, SEMYSMS_API_TOKEN } from '../../utils/config.js'
 
 const MAX_PARTS_PER_SEND = 3
@@ -147,7 +147,14 @@ function constructCancellationMessage(order) {
   const clientName = order?.name || 'Arvoisa asiakas'
 
   const serviceName = order?.service?.name || ''
-  const dateStr = order?.date ? dayjs(order.date).format('DD.MM.YYYY HH:mm') : ''
+  let dateStr = ''
+  if (order?.date) {
+    try {
+      dateStr = formatHelsinkiInstant(order.date, 'dd.MM.yyyy HH:mm', 'order date')
+    } catch {
+      dateStr = ''
+    }
+  }
 
   // Keep SMS short: truncate service name if too long
   const maxServiceLen = 30

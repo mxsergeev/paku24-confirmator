@@ -55,13 +55,17 @@ function sumFees(feeList) {
   return feeList.reduce((total, fee) => total + fee.amount, 0)
 }
 
-function servicePrice(order) {
+function resolveServiceHourlyRate(order) {
   const embeddedService = order?.service
   const catalogService = findServiceById(embeddedService?.id)
-  const hourlyRate = toFiniteNumberOrNull(catalogService?.pricePerHour ?? embeddedService?.pricePerHour)
+  return toFiniteNumberOrNull(catalogService?.pricePerHour ?? embeddedService?.pricePerHour) ?? 0
+}
+
+function calculateServiceSubtotal(order) {
+  const hourlyRate = resolveServiceHourlyRate(order)
   const duration = toFiniteNumberOrNull(order?.duration)
 
-  if (hourlyRate === null || duration === null) return 0
+  if (duration === null) return 0
   return hourlyRate * duration
 }
 
@@ -84,7 +88,7 @@ function calculateAutomaticPricing(order) {
   const automaticBoxesPrice = calculateAutomaticBoxesPrice(order)
 
   return {
-    price: servicePrice(order) + automaticBoxesPrice + sumFees(automaticFees),
+    price: calculateServiceSubtotal(order) + automaticBoxesPrice + sumFees(automaticFees),
     fees: automaticFees,
     boxesPrice: automaticBoxesPrice,
   }
@@ -164,7 +168,7 @@ function resolveActivePrice(order, fees, boxesPrice) {
   if (source === 'auto') {
     const activeFees = fees ?? resolveActiveFees(order)
     const activeBoxesPrice = boxesPrice ?? resolveActiveBoxesPrice(order)
-    return servicePrice(order) + activeBoxesPrice + sumFees(activeFees)
+    return calculateServiceSubtotal(order) + activeBoxesPrice + sumFees(activeFees)
   }
 
   throw new OrderValidationError(`Invalid pricing source for price: ${String(source)}`)
@@ -212,7 +216,8 @@ function orderTime(order) {
 }
 
 export {
-  servicePrice,
+  resolveServiceHourlyRate,
+  calculateServiceSubtotal,
   calculateAutomaticBoxesPrice,
   calculateBoxPeriod,
   calculateAutomaticPricing,

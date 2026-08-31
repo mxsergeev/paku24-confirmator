@@ -1,4 +1,4 @@
-import { buildConfirmationEmail, makeTerms } from '../modules/email/email.helpers.js'
+import { buildConfirmationEmail, formatDate, makeTerms } from '../modules/email/email.helpers.js'
 import termsData from '../modules/email/email.data.terms.json' with { type: 'json' }
 import { makeCustomerCommunicationPayload } from '../../src/shared/testFixtures/orderFixtures.js'
 import { exampleOptions } from './test_helper.js'
@@ -39,5 +39,41 @@ describe('buildConfirmationEmail', () => {
     const { body } = buildConfirmationEmail({ order })
 
     expect(body).toContain('Hinta: 0 €')
+  })
+
+  test('renders order and box instants in Helsinki time', () => {
+    const order = makeCustomerCommunicationPayload()
+    order.date = '2026-01-15T07:00:00.000Z'
+    order.boxes.deliveryDate = '2026-01-16T07:00:00.000Z'
+    order.boxes.returnDate = '2026-01-17T07:00:00.000Z'
+
+    const { body } = buildConfirmationEmail({ order })
+
+    expect(body).toContain('15.01.2026 09:00 (±15min)')
+    expect(body).toContain('16.01.2026 09:00')
+    expect(body).toContain('17.01.2026 09:00')
+  })
+
+  test('keeps date-only box values date-only in confirmation email', () => {
+    const order = makeCustomerCommunicationPayload()
+    order.boxes.deliveryDate = '2026-03-12'
+    order.boxes.returnDate = '2026-03-20'
+
+    const { body } = buildConfirmationEmail({ order })
+
+    expect(body).toContain('12.03.2026')
+    expect(body).toContain('20.03.2026')
+    expect(body).not.toContain('12.03.2026 00:00')
+    expect(body).not.toContain('20.03.2026 00:00')
+  })
+})
+
+describe('email date rendering', () => {
+  test('formats cancellation instants in Helsinki time', () => {
+    expect(formatDate('2026-01-15T07:00:00.000Z', 'fi', 'order date')).toBe('15.01.2026 09:00')
+  })
+
+  test('does not add midnight to date-only values', () => {
+    expect(formatDate('2026-03-12', 'fi', 'box delivery date')).toBe('12.03.2026')
   })
 })

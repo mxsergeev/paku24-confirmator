@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   HELSINKI_TIMEZONE,
   calendarDateToUtc,
+  formatHelsinkiCalendarDate,
+  formatHelsinkiInstant,
   isDateOnly,
   isIsoInstant,
+  isSameHelsinkiCalendarDate,
   isValidDateOnly,
   parseCalendarDate,
   parseInstant,
@@ -81,5 +84,30 @@ describe('parseInstant', () => {
     expect(() => parseInstant(new Date('invalid'), 'booking date')).toThrow(
       'Invalid booking date',
     )
+  })
+})
+
+describe('Helsinki display helpers', () => {
+  it('formats absolute instants in Helsinki regardless of host timezone', () => {
+    expect(formatHelsinkiInstant('2026-01-15T07:00:00.000Z', 'dd.MM.yyyy HH:mm')).toBe(
+      '15.01.2026 09:00',
+    )
+    expect(formatHelsinkiInstant('2026-06-15T06:00:00.000Z', 'dd.MM.yyyy HH:mm')).toBe(
+      '15.06.2026 09:00',
+    )
+  })
+
+  it('keeps date-only values as calendar dates without adding midnight', () => {
+    expect(formatHelsinkiCalendarDate('2026-03-12', 'box date')).toBe('2026-03-12')
+    expect(isSameHelsinkiCalendarDate('2026-03-12', '2026-03-12')).toBe(true)
+  })
+
+  it('compares instants by their Helsinki calendar date', () => {
+    expect(
+      isSameHelsinkiCalendarDate('2026-01-14T22:30:00.000Z', '2026-01-15T00:00:00.000Z'),
+    ).toBe(true)
+    expect(
+      formatHelsinkiCalendarDate('2026-01-15T22:30:00.000Z', 'order date'),
+    ).toBe('2026-01-16')
   })
 })

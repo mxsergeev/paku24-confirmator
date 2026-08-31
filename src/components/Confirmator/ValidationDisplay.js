@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import validator from 'validator'
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline'
-import dayjs from '../../shared/dayjs'
-import { parseInstant } from '../../shared/date-fns-tz'
+import { formatHelsinkiCalendarDate, parseInstant } from '../../shared/date-fns-tz'
 import { orderTime } from '../../shared/orderPricing'
 
 function ValidationMessages({ validationArray }) {
@@ -46,7 +45,7 @@ export default function ValidationDisplay({ order, shouldValidate }) {
           name: 'Date and time',
           isError: !date || validator.isBefore(date.toISOString(), new Date().toISOString()),
           message: `might have some problems. Check to be sure: ${
-            date ? `${dayjs(date).format('YYYY-MM-DD')} ${time}` : '---'
+            date ? `${formatHelsinkiCalendarDate(date, 'order date')} ${time}` : '---'
           }`,
         },
         {

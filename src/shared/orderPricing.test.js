@@ -12,7 +12,8 @@ import {
   resolveActiveFees,
   resolveActivePrice,
   resolveActivePricing,
-  servicePrice,
+  calculateServiceSubtotal,
+  resolveServiceHourlyRate,
 } from './orderPricing.js'
 
 const makeOrder = (overrides = {}) => ({
@@ -47,7 +48,8 @@ describe('automatic pricing', () => {
       boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount: 10 },
     })
 
-    expect(servicePrice(order)).toBe(100)
+    expect(resolveServiceHourlyRate(order)).toBe(50)
+    expect(calculateServiceSubtotal(order)).toBe(100)
     expect(calculateAutomaticBoxesPrice(order)).toBe(52)
     expect(calculateAutomaticPricing(order)).toEqual({ price: 152, fees: [], boxesPrice: 52 })
   })
@@ -95,10 +97,11 @@ describe('automatic pricing', () => {
   )
 
   it('uses embedded service price only for an unknown service and neutralizes invalid values', () => {
-    expect(servicePrice(makeOrder({ service: { id: 'unknown', pricePerHour: 33 } }))).toBe(66)
-    expect(servicePrice(makeOrder({ service: { id: 'unknown', pricePerHour: 'nope' } }))).toBe(0)
-    expect(servicePrice(makeOrder({ service: { id: 'unknown', pricePerHour: ' ' } }))).toBe(0)
-    expect(servicePrice(makeOrder({ service: { id: 'unknown', pricePerHour: Infinity } }))).toBe(0)
+    expect(resolveServiceHourlyRate(makeOrder({ service: { id: 'unknown', pricePerHour: 33 } }))).toBe(33)
+    expect(calculateServiceSubtotal(makeOrder({ service: { id: 'unknown', pricePerHour: 33 } }))).toBe(66)
+    expect(resolveServiceHourlyRate(makeOrder({ service: { id: 'unknown', pricePerHour: 'nope' } }))).toBe(0)
+    expect(resolveServiceHourlyRate(makeOrder({ service: { id: 'unknown', pricePerHour: ' ' } }))).toBe(0)
+    expect(resolveServiceHourlyRate(makeOrder({ service: { id: 'unknown', pricePerHour: Infinity } }))).toBe(0)
   })
 
   it('calculates automatic fees without reading box dates', () => {

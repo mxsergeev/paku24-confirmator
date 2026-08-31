@@ -73,7 +73,7 @@ describe('formatOrder', () => {
         'ALKAMISAIKA',
         'Klo 09:00 (+/-15min)',
         'ARVIOITU KESTO',
-        '2h (100€/h, Pakettiauto ja kuljettaja)',
+        '2h (50€/h, Pakettiauto ja kuljettaja)',
         'MAKSUTAPA',
         'Käteinen',
         'MUUTTOLAATIKOT',

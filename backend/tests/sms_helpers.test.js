@@ -1,4 +1,9 @@
-import { chunkMessageForSending, constructMessage, sendSmsInChunks } from '../modules/sms/sms.helpers.js'
+import {
+  chunkMessageForSending,
+  constructCancellationMessage,
+  constructMessage,
+  sendSmsInChunks,
+} from '../modules/sms/sms.helpers.js'
 import { smsOrderPayload } from './test_helper.js'
 
 describe('SMS chunking helpers', () => {
@@ -56,9 +61,19 @@ describe('SMS order rendering', () => {
       price: 308,
     })
 
-    expect(message).toContain('2h (200€/h, Active service)')
+    expect(message).toContain('2h (50€/h, Active service)')
     expect(message).toContain('YÖ/AAMULISÄ\n20€')
     expect(message).toContain('Hinta: 88€')
     expect(message).toContain('ARVIOITU HINTA\n308€')
+  })
+
+  test('uses Helsinki time in cancellation messages', () => {
+    const message = constructCancellationMessage({
+      name: 'Test Customer',
+      date: '2026-01-15T07:00:00.000Z',
+      service: { name: 'Service' },
+    })
+
+    expect(message).toContain('Service 15.01.2026 09:00')
   })
 })

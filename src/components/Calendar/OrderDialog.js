@@ -14,7 +14,6 @@ import TextsmsIcon from '@material-ui/icons/Textsms'
 import EditIcon from '@material-ui/icons/Edit'
 import DeleteIcon from '@material-ui/icons/Delete'
 import CheckIcon from '@material-ui/icons/Check'
-import dayjs from 'dayjs'
 import './Calendar.css'
 import { getOrderIcons, parseBoxEventId, getBoxEventTitle } from './helpers'
 import Editor from '../Confirmator/Editor'
@@ -29,10 +28,25 @@ import { hexToRgba } from '../../shared/color.helpers'
 import useOrderDialogActions from './useOrderDialogActions'
 import useOrderDialogEventColor from './useOrderDialogEventColor'
 import useOrderDialogReceipt from './useOrderDialogReceipt'
+import {
+  formatHelsinkiInstant,
+  isDateOnly,
+  parseCalendarDate,
+} from '../../shared/date-fns-tz'
 
 const DOCUMENT_TYPES = {
   RECEIPT: 'receipt',
   INVOICE: 'invoice',
+}
+
+function formatDialogEventTime(value, fieldName) {
+  if (!value) return ''
+  if (isDateOnly(value)) {
+    parseCalendarDate(value, fieldName)
+    return ''
+  }
+
+  return formatHelsinkiInstant(value, 'HH:mm', fieldName)
 }
 
 export default function OrderDialog({
@@ -110,19 +124,17 @@ export default function OrderDialog({
       ? getBoxEventTitle(
           order,
           'boxDelivery',
-          order.boxes?.deliveryDate ? dayjs(order.boxes.deliveryDate).format('HH:mm') : '',
+          formatDialogEventTime(order.boxes?.deliveryDate, 'box delivery date'),
           iconsData
         )
       : eventType === 'boxReturn'
       ? getBoxEventTitle(
           order,
           'boxReturn',
-          order.boxes?.returnDate ? dayjs(order.boxes.returnDate).format('HH:mm') : '',
+          formatDialogEventTime(order.boxes?.returnDate, 'box return date'),
           iconsData
         )
-      : `${getOrderIcons(order, iconsData)} ${
-          order.date ? dayjs(order.date).format('HH:mm') : ''
-        }(${order.duration}h) ${order.name}`
+      : `${getOrderIcons(order, iconsData)} ${formatDialogEventTime(order.date, 'order date')}(${order.duration}h) ${order.name}`
     : 'Order not found in this calendar view'
 
   const isConfirmedOrder = isConfirmed(order)
