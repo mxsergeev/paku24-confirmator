@@ -109,19 +109,60 @@ async function persistCalendarEventIds(order, ids) {
 
   const result = await OrderModel.updateOne(
     { _id: order._id },
-    { $set: { calendarEventIds: ids } },
+    { $set: { calendarEventIds: { ...ids } } },
   )
   assertPersistenceSucceeded(result, order._id)
   return result
 }
 
-async function rollbackCreatedEvents(createdIds) {
-  for (const createdId of [...createdIds].reverse()) {
+async function persistCalendarEventId(order, role, eventId) {
+  if (!order?._id) return null
+
+  const result = await OrderModel.updateOne(
+    { _id: order._id },
+    { $set: { [`calendarEventIds.${role}`]: eventId } },
+  )
+  assertPersistenceSucceeded(result, order._id)
+  return result
+}
+
+async function rollbackCreatedEvents(createdEvents, order) {
+  const failures = []
+
+  for (const { role, eventId } of [...createdEvents].reverse()) {
     try {
-      await deleteEventFromCalendar(createdId)
-    } catch (rollbackError) {
-      logger.error(`Failed to roll back newly-created calendar event ${createdId}`, rollbackError)
+      await deleteEventFromCalendar(eventId)
+    } catch (error) {
+      let trackingError = null
+      try {
+        // If cleanup fails, keep ownership of the live event so a later retry
+        // can delete it instead of leaking an untracked Google event.
+        await persistCalendarEventId(order, role, eventId)
+        if (order) {
+          order.calendarEventIds = {
+            ...storedCalendarEventIds(order),
+            [role]: eventId,
+          }
+        }
+      } catch (persistError) {
+        trackingError = persistError
+      }
+
+      failures.push({ role, eventId, error, trackingError })
+      logger.error(`Failed to roll back newly-created calendar event ${eventId}`, error)
+      if (trackingError) {
+        logger.error(`Failed to preserve ownership of calendar event ${eventId}`, trackingError)
+      }
     }
+  }
+
+  if (failures.length > 0) {
+    const aggregate = new AggregateError(
+      failures.flatMap(({ error, trackingError }) => [error, trackingError].filter(Boolean)),
+      `${failures.length} newly-created calendar events could not be rolled back`,
+    )
+    aggregate.failures = failures
+    throw aggregate
   }
 }
 
@@ -153,7 +194,7 @@ async function reconcileOrderToCalendar(order) {
   const previousIds = storedCalendarEventIds(order)
   const nextIds = { ...previousIds }
   const responses = {}
-  const createdIds = []
+  const createdEvents = []
 
   try {
     // Clear stale roles before creating missing roles. Successful clears are
@@ -190,8 +231,19 @@ async function reconcileOrderToCalendar(order) {
       if (!desired[role]) continue
 
       if (previousIds[role]) {
-        responses[role] = await updateEventInCalendar(previousIds[role], desired[role])
-        continue
+        try {
+          responses[role] = await updateEventInCalendar(previousIds[role], desired[role])
+          continue
+        } catch (error) {
+          if (!isCalendarEventNotFound(error)) throw error
+
+          // Google no longer knows this stored event. Clear the stale owner
+          // before creating a replacement so a failed replacement cannot
+          // leave Mongo pointing at a known-missing event.
+          nextIds[role] = null
+          await persistCalendarEventId(order, role, null)
+          order.calendarEventIds = { ...nextIds }
+        }
       }
 
       const response = await addEventToCalendar(desired[role])
@@ -200,7 +252,7 @@ async function reconcileOrderToCalendar(order) {
 
       responses[role] = response
       nextIds[role] = id
-      createdIds.push(id)
+      createdEvents.push({ role, eventId: id })
     }
 
     await persistCalendarEventIds(order, nextIds)
@@ -212,8 +264,15 @@ async function reconcileOrderToCalendar(order) {
       calendarEventIds: nextIds,
     }
   } catch (err) {
-    await rollbackCreatedEvents(createdIds)
+    let rollbackError = null
+    try {
+      await rollbackCreatedEvents(createdEvents, order)
+    } catch (cleanupError) {
+      rollbackError = cleanupError
+      logger.error('Calendar event rollback failed', cleanupError)
+    }
     logger.error('syncOrderToCalendar failed', err)
+    if (rollbackError) err.rollbackError = rollbackError
     throw err
   }
 }
@@ -222,12 +281,20 @@ async function syncOrderToCalendar(order) {
   if (!order) return null
 
   return withOrderCalendarLock(order, async () => {
-    const latestOrder = await loadLatestPersistedOrder(order)
-    const result = await reconcileOrderToCalendar(latestOrder)
-    if (latestOrder && latestOrder !== order && result?.calendarEventIds) {
-      order.calendarEventIds = { ...result.calendarEventIds }
+    let latestOrder = null
+    try {
+      latestOrder = await loadLatestPersistedOrder(order)
+      const result = await reconcileOrderToCalendar(latestOrder)
+      if (latestOrder && latestOrder !== order && result?.calendarEventIds) {
+        order.calendarEventIds = { ...result.calendarEventIds }
+      }
+      return result
+    } catch (error) {
+      if (latestOrder && latestOrder !== order && latestOrder.calendarEventIds) {
+        order.calendarEventIds = { ...latestOrder.calendarEventIds }
+      }
+      throw error
     }
-    return result
   })
 }
 

@@ -5,11 +5,12 @@ const mocks = vi.hoisted(() => ({
   addEventToCalendar: vi.fn(),
   updateEventInCalendar: vi.fn(),
   deleteEventFromCalendar: vi.fn(),
+  findById: vi.fn(),
   updateOne: vi.fn(),
 }))
 
 vi.mock('../models/order.js', () => ({
-  default: { updateOne: mocks.updateOne },
+  default: { findById: mocks.findById, updateOne: mocks.updateOne },
 }))
 
 vi.mock('../modules/calendar/calendar.helpers.js', () => ({
@@ -177,6 +178,189 @@ describe('calendar reconciliation', () => {
         },
       },
     )
+  })
+
+  it('clears a missing main event ID and creates one replacement', async () => {
+    mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
+    mocks.updateEventInCalendar.mockRejectedValueOnce({ response: { status: 404 } })
+
+    const order = {
+      _id: 'order-main-recreate',
+      calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
+    }
+
+    await expect(syncOrderToCalendar(order)).resolves.toMatchObject({
+      calendarEventIds: { main: 'move-created', boxDelivery: null, boxReturn: null },
+    })
+
+    expect(mocks.updateOne).toHaveBeenNthCalledWith(
+      1,
+      { _id: 'order-main-recreate' },
+      { $set: { 'calendarEventIds.main': null } },
+    )
+    expect(mocks.addEventToCalendar).toHaveBeenCalledTimes(1)
+    expect(order.calendarEventIds.main).toBe('move-created')
+  })
+
+  it('recreates only a missing box delivery event', async () => {
+    mocks.makeGoogleEventObjects.mockReturnValue([
+      { role: 'main', summary: 'move' },
+      { role: 'boxDelivery', summary: 'delivery' },
+    ])
+    mocks.updateEventInCalendar
+      .mockResolvedValueOnce({ data: { id: 'main-existing' } })
+      .mockRejectedValueOnce({ response: { status: 404 } })
+
+    const order = {
+      _id: 'order-delivery-recreate',
+      calendarEventIds: { main: 'main-existing', boxDelivery: 'delivery-missing', boxReturn: null },
+    }
+
+    await syncOrderToCalendar(order)
+
+    expect(mocks.addEventToCalendar).toHaveBeenCalledTimes(1)
+    expect(mocks.addEventToCalendar).toHaveBeenCalledWith({ summary: 'delivery' })
+    expect(order.calendarEventIds).toEqual({
+      main: 'main-existing',
+      boxDelivery: 'delivery-created',
+      boxReturn: null,
+    })
+  })
+
+  it('does not create a replacement when clearing a stale ID fails', async () => {
+    mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
+    mocks.updateEventInCalendar.mockRejectedValueOnce({ response: { status: 404 } })
+    const failure = new Error('cannot clear stale ID')
+    mocks.updateOne.mockRejectedValueOnce(failure)
+
+    const order = {
+      _id: 'order-clear-failure',
+      calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
+    }
+
+    await expect(syncOrderToCalendar(order)).rejects.toBe(failure)
+    expect(mocks.addEventToCalendar).not.toHaveBeenCalled()
+    expect(order.calendarEventIds.main).toBe('main-missing')
+  })
+
+  it('rolls back a replacement when its new ID cannot be persisted', async () => {
+    mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
+    mocks.updateEventInCalendar.mockRejectedValueOnce({ response: { status: 404 } })
+    const failure = new Error('cannot persist replacement ID')
+    mocks.updateOne.mockResolvedValueOnce({ matchedCount: 1 }).mockRejectedValueOnce(failure)
+
+    const order = {
+      _id: 'order-replacement-link-failure',
+      calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
+    }
+
+    await expect(syncOrderToCalendar(order)).rejects.toBe(failure)
+    expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('move-created')
+    expect(order.calendarEventIds.main).toBeNull()
+  })
+
+  it('can retry safely after replacement creation fails', async () => {
+    mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
+    const failure = new Error('replacement create failed')
+    mocks.updateEventInCalendar.mockRejectedValueOnce({ response: { status: 404 } })
+    mocks.addEventToCalendar.mockRejectedValueOnce(failure).mockResolvedValueOnce({
+      data: { id: 'replacement-main' },
+    })
+
+    const order = {
+      _id: 'order-replacement-retry',
+      calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
+    }
+
+    await expect(syncOrderToCalendar(order)).rejects.toBe(failure)
+    expect(order.calendarEventIds.main).toBeNull()
+
+    await expect(syncOrderToCalendar(order)).resolves.toMatchObject({
+      calendarEventIds: { main: 'replacement-main', boxDelivery: null, boxReturn: null },
+    })
+    expect(mocks.addEventToCalendar).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not persist a newly-created role while clearing another stale role', async () => {
+    mocks.makeGoogleEventObjects.mockReturnValue([
+      { role: 'main', summary: 'move' },
+      { role: 'boxDelivery', summary: 'delivery' },
+    ])
+    mocks.updateEventInCalendar
+      .mockRejectedValueOnce({ response: { status: 404 } })
+      .mockRejectedValueOnce({ response: { status: 404 } })
+    const deliveryFailure = new Error('delivery replacement failed')
+    mocks.addEventToCalendar
+      .mockResolvedValueOnce({ data: { id: 'main-replacement' } })
+      .mockRejectedValueOnce(deliveryFailure)
+
+    const order = {
+      _id: 'order-two-stale-roles',
+      calendarEventIds: { main: 'main-missing', boxDelivery: 'delivery-missing', boxReturn: null },
+    }
+
+    await expect(syncOrderToCalendar(order)).rejects.toBe(deliveryFailure)
+
+    expect(mocks.updateOne).toHaveBeenNthCalledWith(
+      1,
+      { _id: 'order-two-stale-roles' },
+      { $set: { 'calendarEventIds.main': null } },
+    )
+    expect(mocks.updateOne).toHaveBeenNthCalledWith(
+      2,
+      { _id: 'order-two-stale-roles' },
+      { $set: { 'calendarEventIds.boxDelivery': null } },
+    )
+    expect(mocks.updateOne).toHaveBeenCalledTimes(2)
+    expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('main-replacement')
+  })
+
+  it('retains ownership and exposes rollback failure when a created event cannot be deleted', async () => {
+    mocks.makeGoogleEventObjects.mockReturnValue([
+      { role: 'main', summary: 'move' },
+      { role: 'boxDelivery', summary: 'delivery' },
+    ])
+    const deliveryFailure = new Error('delivery create failed')
+    const rollbackFailure = new Error('rollback delete failed')
+    mocks.addEventToCalendar
+      .mockResolvedValueOnce({ data: { id: 'main-live' } })
+      .mockRejectedValueOnce(deliveryFailure)
+    mocks.deleteEventFromCalendar.mockRejectedValueOnce(rollbackFailure)
+
+    const order = {
+      _id: 'order-rollback-failure',
+      calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
+    }
+
+    await expect(syncOrderToCalendar(order)).rejects.toMatchObject({
+      message: 'delivery create failed',
+      rollbackError: expect.objectContaining({ message: expect.stringContaining('could not be rolled back') }),
+    })
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { _id: 'order-rollback-failure' },
+      { $set: { 'calendarEventIds.main': 'main-live' } },
+    )
+    expect(order.calendarEventIds.main).toBe('main-live')
+  })
+
+  it('copies persisted stale-ID recovery back to a caller after a reload-backed failure', async () => {
+    const persistedOrder = {
+      _id: '66c000000000000000000001',
+      calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
+    }
+    mocks.findById.mockResolvedValue(persistedOrder)
+    mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
+    mocks.updateEventInCalendar.mockRejectedValueOnce({ response: { status: 404 } })
+    const replacementFailure = new Error('replacement unavailable')
+    mocks.addEventToCalendar.mockRejectedValueOnce(replacementFailure)
+
+    const callerOrder = {
+      _id: persistedOrder._id,
+      calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
+    }
+
+    await expect(syncOrderToCalendar(callerOrder)).rejects.toBe(replacementFailure)
+    expect(callerOrder.calendarEventIds.main).toBeNull()
   })
 
   it('rolls back events already created when a later create fails', async () => {
