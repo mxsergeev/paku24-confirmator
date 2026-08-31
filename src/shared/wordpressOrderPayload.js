@@ -3,6 +3,7 @@ import {
   cloneValue,
   hasOwn,
   isPlainObject,
+  OrderValidationError,
   PRICING_COMPONENTS,
   requireFiniteNumber,
 } from './orderPrimitives.js'
@@ -23,17 +24,18 @@ const BOOKING_FIELDS = [
 ]
 
 const BOX_PRICE_FIELDS = ['pricePerBox', 'deliveryPrice', 'returnPrice']
+const BOX_BOOLEAN_FIELDS = ['selfPickup', 'selfReturn']
 
 function normalizeAddress(value, field) {
-  if (!isPlainObject(value)) throw new Error(`Invalid ${field}: expected a structured address`)
+  if (!isPlainObject(value)) throw new OrderValidationError(`Invalid ${field}: expected a structured address`)
 
   for (const key of ['street', 'index', 'city']) {
     if (typeof value[key] !== 'string' || value[key].trim() === '') {
-      throw new Error(`Invalid ${field}.${key}`)
+      throw new OrderValidationError(`Invalid ${field}.${key}`)
     }
   }
   if (value.elevator !== undefined && typeof value.elevator !== 'boolean') {
-    throw new Error(`Invalid ${field}.elevator`)
+    throw new OrderValidationError(`Invalid ${field}.elevator`)
   }
 
   return {
@@ -49,14 +51,14 @@ function normalizeAddress(value, field) {
 }
 
 function normalizeEmbedded(value, field, rateField) {
-  if (!isPlainObject(value)) throw new Error(`Invalid ${field}: expected an object`)
+  if (!isPlainObject(value)) throw new OrderValidationError(`Invalid ${field}: expected an object`)
   if (!hasOwn(value, 'id') || value.id === null || value.id === '') {
-    throw new Error(`Invalid ${field}.id`)
+    throw new OrderValidationError(`Invalid ${field}.id`)
   }
   if (!hasOwn(value, 'name') || typeof value.name !== 'string' || value.name.trim() === '') {
-    throw new Error(`Invalid ${field}.name`)
+    throw new OrderValidationError(`Invalid ${field}.name`)
   }
-  if (!hasOwn(value, rateField)) throw new Error(`Invalid ${field}.${rateField}`)
+  if (!hasOwn(value, rateField)) throw new OrderValidationError(`Invalid ${field}.${rateField}`)
 
   return {
     ...cloneValue(value),
@@ -65,13 +67,13 @@ function normalizeEmbedded(value, field, rateField) {
 }
 
 function normalizeFees(value) {
-  if (!Array.isArray(value)) throw new Error('Invalid fees: expected an array')
+  if (!Array.isArray(value)) throw new OrderValidationError('Invalid fees: expected an array')
   return value.map((fee, index) => {
-    if (!isPlainObject(fee)) throw new Error(`Invalid fees.${index}: expected an object`)
+    if (!isPlainObject(fee)) throw new OrderValidationError(`Invalid fees.${index}: expected an object`)
     if (typeof fee.name !== 'string' || fee.name.trim() === '') {
-      throw new Error(`Invalid fees.${index}.name`)
+      throw new OrderValidationError(`Invalid fees.${index}.name`)
     }
-    if (!hasOwn(fee, 'amount')) throw new Error(`Invalid fees.${index}.amount`)
+    if (!hasOwn(fee, 'amount')) throw new OrderValidationError(`Invalid fees.${index}.amount`)
     return { ...cloneValue(fee), amount: requireFiniteNumber(fee.amount, `fees.${index}.amount`) }
   })
 }
@@ -85,7 +87,7 @@ function normalizeBoxDate(value, field) {
 }
 
 function normalizeBoxes(value, orderDate) {
-  if (!isPlainObject(value)) throw new Error('Invalid boxes: expected an object')
+  if (!isPlainObject(value)) throw new OrderValidationError('Invalid boxes: expected an object')
   if (Object.keys(value).length === 0) {
     return {
       amount: 0,
@@ -95,7 +97,7 @@ function normalizeBoxes(value, orderDate) {
   }
 
   for (const key of ['amount', 'deliveryDate', 'returnDate']) {
-    if (!hasOwn(value, key)) throw new Error(`Invalid boxes.${key}: required for populated boxes`)
+    if (!hasOwn(value, key)) throw new OrderValidationError(`Invalid boxes.${key}: required for populated boxes`)
   }
 
   const boxes = {
@@ -103,19 +105,25 @@ function normalizeBoxes(value, orderDate) {
     deliveryDate: normalizeBoxDate(value.deliveryDate, 'boxes.deliveryDate'),
     returnDate: normalizeBoxDate(value.returnDate, 'boxes.returnDate'),
   }
-  if (boxes.amount < 0) throw new Error('Invalid boxes.amount: must be non-negative')
+  if (boxes.amount < 0) throw new OrderValidationError('Invalid boxes.amount: must be non-negative')
 
   BOX_PRICE_FIELDS.forEach((field) => {
     if (hasOwn(value, field)) boxes[field] = requireFiniteNumber(value[field], `boxes.${field}`)
+  })
+  BOX_BOOLEAN_FIELDS.forEach((field) => {
+    if (hasOwn(value, field)) {
+      if (typeof value[field] !== 'boolean') throw new OrderValidationError(`Invalid boxes.${field}`)
+      boxes[field] = value[field]
+    }
   })
   return boxes
 }
 
 export function normalizeWordPressOrderPayload(input) {
-  if (!isPlainObject(input)) throw new Error('WordPress order payload must be a plain object')
+  if (!isPlainObject(input)) throw new OrderValidationError('WordPress order payload must be a plain object')
 
   for (const field of ['date', 'duration', 'service', 'paymentType', 'address', 'extraAddresses', 'destination', 'boxes']) {
-    if (!hasOwn(input, field)) throw new Error(`Invalid ${field}: required`)
+    if (!hasOwn(input, field)) throw new OrderValidationError(`Invalid ${field}: required`)
   }
 
   const result = {}
@@ -128,7 +136,7 @@ export function normalizeWordPressOrderPayload(input) {
     else if (field === 'paymentType') result.paymentType = normalizeEmbedded(input.paymentType, 'paymentType', 'fee')
     else if (field === 'address' || field === 'destination') result[field] = normalizeAddress(input[field], field)
     else if (field === 'extraAddresses') {
-      if (!Array.isArray(input.extraAddresses)) throw new Error('Invalid extraAddresses: expected an array')
+      if (!Array.isArray(input.extraAddresses)) throw new OrderValidationError('Invalid extraAddresses: expected an array')
       result.extraAddresses = input.extraAddresses.map((address, index) => normalizeAddress(address, `extraAddresses.${index}`))
     } else if (field === 'boxes') result.boxes = normalizeBoxes(input.boxes, result.date)
     else result[field] = cloneValue(input[field])

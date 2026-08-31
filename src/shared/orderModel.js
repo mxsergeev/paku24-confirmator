@@ -83,6 +83,18 @@ const LIFECYCLE_FIELDS = [
 ]
 
 const CALENDAR_EVENT_ROLES = ['main', 'boxDelivery', 'boxReturn']
+const BOX_FIELDS = [
+  'deliveryDate',
+  'returnDate',
+  'amount',
+  'pricePerBox',
+  'deliveryPrice',
+  'returnPrice',
+  'selfPickup',
+  'selfReturn',
+]
+const BOX_NUMBER_FIELDS = ['amount', 'pricePerBox', 'deliveryPrice', 'returnPrice']
+const BOX_BOOLEAN_FIELDS = ['selfPickup', 'selfReturn']
 
 function isPresent(value) {
   return value !== null && value !== undefined
@@ -196,56 +208,49 @@ function normalizeBoxDate(value, fieldName) {
   return parseInstant(value, fieldName)
 }
 
-function normalizeCurrentBoxes(value, fallback) {
-  if (value === null) throw new OrderValidationError('Invalid boxes')
+function normalizeBoxesShape(value, fieldName, fallback = null) {
+  if (!isPlainObject(value)) throw new OrderValidationError(`Invalid ${fieldName}`)
 
-  const input = value === undefined ? {} : value
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new OrderValidationError('Invalid boxes')
+  const defaults = isPlainObject(fallback) ? fallback : {}
+  const boxes = {}
+  BOX_FIELDS.forEach((field) => {
+    if (hasOwn(value, field)) boxes[field] = cloneValue(value[field])
+    else if (hasOwn(defaults, field)) boxes[field] = cloneValue(defaults[field])
+  })
+
+  for (const field of BOX_NUMBER_FIELDS) {
+    if (!hasOwn(boxes, field)) continue
+    const number = toFiniteNumberOrNull(boxes[field])
+    if (number === null || (field === 'amount' && number < 0)) {
+      throw new OrderValidationError(`Invalid ${fieldName}.${field}`)
+    }
+    boxes[field] = number
   }
 
-  const boxes = {
-    ...cloneValue(fallback),
-    ...cloneValue(input),
+  for (const field of BOX_BOOLEAN_FIELDS) {
+    if (hasOwn(boxes, field) && typeof boxes[field] !== 'boolean') {
+      throw new OrderValidationError(`Invalid ${fieldName}.${field}`)
+    }
   }
 
-  const amount = toFiniteNumberOrNull(boxes.amount)
-  if (amount === null || amount < 0) throw new OrderValidationError('Invalid boxes.amount')
-  boxes.amount = amount
-
-  if (hasOwn(input, 'deliveryDate')) {
-    boxes.deliveryDate = normalizeBoxDate(input.deliveryDate, 'boxes.deliveryDate')
-  }
-
-  if (hasOwn(input, 'returnDate')) {
-    boxes.returnDate = normalizeBoxDate(input.returnDate, 'boxes.returnDate')
+  for (const field of ['deliveryDate', 'returnDate']) {
+    if (hasOwn(boxes, field)) {
+      boxes[field] = normalizeBoxDate(boxes[field], `${fieldName}.${field}`)
+    }
   }
 
   return boxes
 }
 
-function normalizeSnapshotBoxes(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new OrderValidationError('Invalid initialSnapshot.boxes')
-  }
+function normalizeCurrentBoxes(value, fallback) {
+  if (value === null) throw new OrderValidationError('Invalid boxes')
 
-  for (const field of ['deliveryDate', 'returnDate', 'amount']) {
-    if (!hasOwn(value, field) || value[field] === null || value[field] === undefined) {
-      throw new OrderValidationError(`Invalid initialSnapshot.boxes: ${field} is required`)
-    }
+  const input = value === undefined ? {} : value
+  const boxes = normalizeBoxesShape(input, 'boxes', fallback)
+  if (!hasOwn(boxes, 'amount') || !hasOwn(boxes, 'deliveryDate') || !hasOwn(boxes, 'returnDate')) {
+    throw new OrderValidationError('Invalid boxes')
   }
-
-  const amount = toFiniteNumberOrNull(value.amount)
-  if (amount === null || amount < 0) {
-    throw new OrderValidationError('Invalid initialSnapshot.boxes: amount must be finite and non-negative')
-  }
-
-  return {
-    ...cloneValue(value),
-    deliveryDate: normalizeBoxDate(value.deliveryDate, 'initialSnapshot.boxes.deliveryDate'),
-    returnDate: normalizeBoxDate(value.returnDate, 'initialSnapshot.boxes.returnDate'),
-    amount,
-  }
+  return boxes
 }
 
 function normalizePricingValue(component, value, fieldName) {
@@ -256,39 +261,6 @@ function normalizePricingValue(component, value, fieldName) {
   const number = toFiniteNumberOrNull(value)
   if (number === null) throw new OrderValidationError(`Invalid ${fieldName}`)
   return number
-}
-
-function normalizeSnapshot(value, { requireBooking = false } = {}) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new OrderValidationError('Invalid initialSnapshot')
-  }
-
-  const snapshot = {}
-
-  SNAPSHOT_FIELDS.forEach((field) => {
-    if (!hasOwn(value, field)) {
-      if (requireBooking && !PRICING_COMPONENTS.includes(field)) {
-        throw new OrderValidationError(`Invalid initialSnapshot: ${field} is required`)
-      }
-      return
-    }
-
-    if (requireBooking && !PRICING_COMPONENTS.includes(field) && value[field] === undefined) {
-      throw new OrderValidationError(`Invalid initialSnapshot.${field}`)
-    }
-
-    if (field === 'date') {
-      snapshot.date = parseInstant(value.date, 'initialSnapshot.date')
-    } else if (field === 'boxes') {
-      snapshot.boxes = normalizeSnapshotBoxes(value.boxes)
-    } else if (field === 'fees' || field === 'price' || field === 'boxesPrice') {
-      snapshot[field] = normalizePricingValue(field, value[field], `initialSnapshot.${field}`)
-    } else {
-      snapshot[field] = cloneValue(value[field])
-    }
-  })
-
-  return snapshot
 }
 
 function normalizePricing(value, initialSnapshot, { requireComplete = false } = {}) {
@@ -352,7 +324,6 @@ function normalizePricing(value, initialSnapshot, { requireComplete = false } = 
       if (!isPresent(valueFromSnapshot)) {
         throw new OrderValidationError(`Cannot use initial ${component}: the snapshot value is missing`)
       }
-      normalizePricingValue(component, valueFromSnapshot, `initialSnapshot.${component}`)
     }
 
     if (source === 'manual' && pricing.manual[component] === null) {
@@ -433,15 +404,7 @@ function normalizeCanonicalBoxes(value, field = 'boxes') {
     }
   }
 
-  const amount = toFiniteNumberOrNull(value.amount)
-  if (amount === null || amount < 0) throw new OrderValidationError(`Invalid ${field}.amount`)
-
-  return {
-    ...cloneValue(value),
-    deliveryDate: normalizeBoxDate(value.deliveryDate, `${field}.deliveryDate`),
-    returnDate: normalizeBoxDate(value.returnDate, `${field}.returnDate`),
-    amount,
-  }
+  return normalizeBoxesShape(value, field)
 }
 
 function normalizeCanonicalBooking(input, fieldPrefix = '') {
@@ -486,16 +449,22 @@ function normalizeCanonicalBooking(input, fieldPrefix = '') {
 }
 
 function normalizeCanonicalSnapshot(value) {
-  const snapshot = normalizeSnapshot(value, { requireBooking: true })
+  if (!isPlainObject(value)) throw new OrderValidationError('Invalid initialSnapshot')
 
   // Snapshot booking fields use the exact same canonical shape as the current
   // order. Pricing fields remain optional because WordPress may not provide
   // every imported component.
-  const booking = normalizeCanonicalBooking(snapshot, 'initialSnapshot')
+  const booking = normalizeCanonicalBooking(value, 'initialSnapshot')
   return {
     ...booking,
     ...PRICING_COMPONENTS.reduce((result, component) => {
-      if (hasOwn(snapshot, component)) result[component] = snapshot[component]
+      if (hasOwn(value, component)) {
+        result[component] = normalizePricingValue(
+          component,
+          value[component],
+          `initialSnapshot.${component}`,
+        )
+      }
       return result
     }, {}),
   }
@@ -646,8 +615,8 @@ function createWordPressOrder(input = {}) {
   rejectClientSnapshot(input)
 
   const imported = importedPricingValues(input)
-  const normalized = materializeActivePricing(constructBookingOrder(input, 'wordpress'))
-  const snapshot = snapshotFromOrder(normalized, imported)
+  const booking = constructBookingOrder(input, 'wordpress')
+  const snapshot = snapshotFromOrder(booking, imported)
   const source = {
     price: hasOwn(imported, 'price') ? 'initial' : 'auto',
     fees: hasOwn(imported, 'fees') ? 'initial' : 'auto',
@@ -655,7 +624,7 @@ function createWordPressOrder(input = {}) {
   }
 
   return materializeActivePricing({
-    ...normalized,
+    ...booking,
     origin: 'wordpress',
     initialSnapshot: snapshot,
     pricing: {

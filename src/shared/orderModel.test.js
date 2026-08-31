@@ -74,6 +74,28 @@ describe('default and boundary order state', () => {
     expect(() => createAppOrder({ date: 'not-a-date' })).toThrow(/invalid date/i)
   })
 
+  it('keeps supported box fields and strips unrelated metadata during construction', () => {
+    const normalized = createAppOrder({
+      boxes: {
+        amount: 2,
+        deliveryDate: '2026-03-12',
+        returnDate: '2026-03-20',
+        pricePerBox: 2,
+        selfReturn: false,
+        metadata: { source: 'caller' },
+      },
+    })
+
+    expect(normalized.boxes).toMatchObject({
+      amount: 2,
+      deliveryDate: '2026-03-12',
+      returnDate: '2026-03-20',
+      pricePerBox: 2,
+      selfReturn: false,
+    })
+    expect(normalized.boxes).not.toHaveProperty('metadata')
+  })
+
   it('rejects incomplete persisted snapshot boxes instead of filling fresh defaults', () => {
     const order = createWordPressOrder(makeWordPressPayload())
     const malformed = {

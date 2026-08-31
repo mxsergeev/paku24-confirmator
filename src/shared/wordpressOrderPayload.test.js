@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { makeWordPressPayload } from './testFixtures/orderFixtures.js'
 import { createWordPressOrder } from './orderModel.js'
+import { OrderValidationError } from './orderPrimitives.js'
 import { normalizeWordPressOrderPayload } from './wordpressOrderPayload.js'
 
 function wordpressPayload(overrides = {}) {
@@ -74,6 +75,32 @@ describe('normalizeWordPressOrderPayload', () => {
     expect(boxes).toEqual({ amount: 0, deliveryDate: '2026-01-16', returnDate: '2026-01-24' })
   })
 
+  it('keeps supported box fields while dropping unrelated metadata', () => {
+    const order = normalizeWordPressOrderPayload(wordpressPayload({
+      boxes: {
+        amount: '10',
+        deliveryDate: '2026-01-16',
+        returnDate: '2026-01-24',
+        pricePerBox: '2',
+        deliveryPrice: '10',
+        returnPrice: '10',
+        selfPickup: true,
+        metadata: { source: 'wordpress' },
+      },
+    }))
+
+    expect(order.boxes).toEqual({
+      amount: 10,
+      deliveryDate: '2026-01-16',
+      returnDate: '2026-01-24',
+      pricePerBox: 2,
+      deliveryPrice: 10,
+      returnPrice: 10,
+      selfPickup: true,
+    })
+    expect(order.boxes).not.toHaveProperty('metadata')
+  })
+
   it('preserves zero and empty imported prices while omitting missing components', () => {
     const withZeroes = normalizeWordPressOrderPayload(wordpressPayload({ price: '0', boxesPrice: '0', fees: [] }))
     expect(withZeroes).toMatchObject({ price: 0, boxesPrice: 0, fees: [] })
@@ -107,5 +134,11 @@ describe('normalizeWordPressOrderPayload', () => {
     [wordpressPayload({ price: 'nope' }), /price/i],
   ])('rejects invalid input with its field name', (payload, error) => {
     expect(() => normalizeWordPressOrderPayload(payload)).toThrow(error)
+  })
+
+  it('reports malformed WordPress input as an order validation error', () => {
+    expect(() => normalizeWordPressOrderPayload(wordpressPayload({ duration: 'nope' }))).toThrow(
+      OrderValidationError,
+    )
   })
 })

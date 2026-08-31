@@ -28,7 +28,11 @@ import {
   createAppOrder,
   createWordPressOrder,
 } from '../../../src/shared/orderModel.js'
-import { hasOwn, isPlainObject } from '../../../src/shared/orderPrimitives.js'
+import {
+  hasOwn,
+  isOrderValidationError,
+  isPlainObject,
+} from '../../../src/shared/orderPrimitives.js'
 import { normalizeWordPressOrderPayload } from '../../../src/shared/wordpressOrderPayload.js'
 
 const ORDER_POOL_PAGE_SIZE = 20
@@ -84,7 +88,8 @@ function buildOrderForCreate(req) {
     return createAppOrder(pickBookingFields(orderData))
   } catch (err) {
     if (err.name === 'ValidationError') throw err
-    throw validationError(err.message)
+    if (isOrderValidationError(err)) throw validationError(err.message)
+    throw err
   }
 }
 
