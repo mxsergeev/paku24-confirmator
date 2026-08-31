@@ -2,8 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
+  findByIdAndUpdate: vi.fn(),
+  findOneAndUpdate: vi.fn(),
   deleteOne: vi.fn(),
   deleteOrderEvent: vi.fn(),
+  syncOrderToCalendar: vi.fn(),
   applyOrderPatch: vi.fn(),
   hydrateCanonicalOrder: vi.fn((order) => order),
   revertToInitial: vi.fn(),
@@ -12,12 +15,15 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../models/order.js', () => ({
   default: {
     findById: mocks.findById,
+    findByIdAndUpdate: mocks.findByIdAndUpdate,
+    findOneAndUpdate: mocks.findOneAndUpdate,
     deleteOne: mocks.deleteOne,
   },
 }))
 
 vi.mock('../calendar/calendar.sync.js', () => ({
   deleteOrderEvent: mocks.deleteOrderEvent,
+  syncOrderToCalendar: mocks.syncOrderToCalendar,
 }))
 
 vi.mock('../../../src/shared/orderModel.js', () => ({
@@ -27,10 +33,21 @@ vi.mock('../../../src/shared/orderModel.js', () => ({
   revertToInitial: mocks.revertToInitial,
 }))
 
-const { deleteOrderPermanently, revertOrder, updateOrder } = await import('./orderPool.service.js')
+const {
+  deleteOrderPermanently,
+  revertOrder,
+  updateOrder,
+  confirmOrder,
+  cancelOrder,
+  updateOrderColor,
+  deleteOrder,
+} = await import('./orderPool.service.js')
 
 function makeOrder() {
   return {
+    confirmed: false,
+    deletedAt: null,
+    calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
     toObject: () => ({ name: 'Existing order' }),
     save: vi.fn(),
   }
@@ -127,5 +144,96 @@ describe('permanent order deletion', () => {
     await expect(deleteOrderPermanently('66c000000000000000000001')).resolves.toBe(order)
     expect(mocks.deleteOrderEvent).toHaveBeenCalledTimes(2)
     expect(mocks.deleteOne).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('explicit calendar side effects', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.syncOrderToCalendar.mockResolvedValue({ calendarEventIds: {} })
+    mocks.deleteOrderEvent.mockResolvedValue(true)
+  })
+
+  it('keeps a persisted edit successful and returns a warning when calendar sync fails', async () => {
+    const order = makeOrder()
+    order.confirmed = true
+    const failure = new Error('calendar unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.applyOrderPatch.mockReturnValue({ name: 'Updated', pricing: {}, price: 1, fees: [], boxesPrice: 0 })
+    mocks.syncOrderToCalendar.mockRejectedValue(failure)
+
+    const result = await updateOrder('66c000000000000000000001', { name: 'Updated' })
+
+    expect(order.save).toHaveBeenCalledTimes(1)
+    expect(result).toMatchObject({ order, warning: { code: 'CALENDAR_SYNC_FAILED' } })
+  })
+
+  it('does not mark an order confirmed when calendar precondition fails', async () => {
+    const order = makeOrder()
+    const failure = new Error('calendar unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockRejectedValue(failure)
+
+    await expect(confirmOrder('66c000000000000000000001', 'user-id')).rejects.toMatchObject({
+      name: 'CalendarUnavailableError',
+    })
+    expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
+    expect(order.confirmed).toBe(false)
+  })
+
+  it('persists cancellation even when calendar sync fails', async () => {
+    const order = makeOrder()
+    order.confirmed = true
+    const failure = new Error('calendar unavailable')
+    mocks.findByIdAndUpdate.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockRejectedValue(failure)
+
+    const result = await cancelOrder('66c000000000000000000001')
+
+    expect(result).toMatchObject({ order, warning: { code: 'CALENDAR_SYNC_FAILED' } })
+    expect(mocks.findByIdAndUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('persists the new color when calendar sync fails', async () => {
+    const order = makeOrder()
+    order.confirmed = true
+    const failure = new Error('calendar unavailable')
+    mocks.findOneAndUpdate.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockRejectedValue(failure)
+
+    const result = await updateOrderColor('66c000000000000000000001', '8')
+
+    expect(result).toMatchObject({ order, warning: { code: 'CALENDAR_SYNC_FAILED' } })
+    expect(mocks.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: '66c000000000000000000001' },
+      { $set: { eventColor: '8' } },
+      { new: true },
+    )
+  })
+
+  it('does not soft-delete an order when calendar cleanup fails', async () => {
+    const order = makeOrder()
+    order.calendarEventIds.main = 'main-event'
+    const failure = new Error('calendar unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.deleteOrderEvent.mockRejectedValue(failure)
+
+    await expect(deleteOrder('66c000000000000000000001')).rejects.toMatchObject({
+      name: 'CalendarUnavailableError',
+    })
+    expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
+  })
+
+  it('deletes calendar events before marking an order deleted', async () => {
+    const order = makeOrder()
+    order.calendarEventIds.main = 'main-event'
+    mocks.findById.mockResolvedValue(order)
+    mocks.findByIdAndUpdate.mockResolvedValue({ ...order, deletedAt: new Date() })
+
+    await deleteOrder('66c000000000000000000001')
+
+    expect(mocks.deleteOrderEvent.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.findByIdAndUpdate.mock.invocationCallOrder[0],
+    )
   })
 })

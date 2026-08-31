@@ -65,6 +65,9 @@ export default function useOrderDialogEventColor({
         setOrder(resolvedOrder)
         updateCalendarOrdersCache(queryClient, orderId, resolvedOrder?.eventColor ?? null)
         enqueueSnackbar(response?.message || 'Event color updated.', { variant: 'success' })
+        if (response?.warning?.message) {
+          enqueueSnackbar(response.warning.message, { variant: 'warning' })
+        }
         queryClient.invalidateQueries({ queryKey: CALENDAR_ORDERS_QUERY_KEY })
       } catch (err) {
         setOrder(previousOrder)

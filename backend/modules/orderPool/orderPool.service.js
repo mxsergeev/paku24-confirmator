@@ -1,6 +1,7 @@
 import Order from '../../models/order.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import { DEFAULT_EVENT_COLOR_ID } from '../../utils/colors.js'
+import * as logger from '../../utils/logger.js'
 import {
   BOOKING_FIELDS,
   applyOrderPatch,
@@ -8,7 +9,49 @@ import {
   revertToInitial,
 } from '../../../src/shared/orderModel.js'
 import { isOrderValidationError } from '../../../src/shared/orderPrimitives.js'
-import { deleteOrderEvent } from '../calendar/calendar.sync.js'
+import { deleteOrderEvent, syncOrderToCalendar } from '../calendar/calendar.sync.js'
+
+const CALENDAR_SYNC_WARNING = {
+  code: 'CALENDAR_SYNC_FAILED',
+  message: 'Order was saved, but its calendar events could not be synchronized.',
+}
+
+const CALENDAR_CONFIRMATION_WARNING = {
+  code: 'CALENDAR_CONFIRMATION_FAILED',
+  message: 'Order remains unconfirmed because its calendar events could not be synchronized.',
+}
+
+const CALENDAR_DELETE_WARNING = {
+  code: 'CALENDAR_DELETE_FAILED',
+  message: 'Order was not deleted because its calendar events could not be removed.',
+}
+
+function calendarUnavailableError(message) {
+  return newErrorWithCustomName('CalendarUnavailableError', message)
+}
+
+function resultWithWarning(order, warning) {
+  return warning ? { order, warning: { ...warning } } : order
+}
+
+function isConfirmedAndActive(order) {
+  return Boolean(order?.confirmed && !order?.deletedAt)
+}
+
+async function syncAfterMutation(order, warning = CALENDAR_SYNC_WARNING) {
+  if (!isConfirmedAndActive(order)) return order
+
+  try {
+    await syncOrderToCalendar(order)
+    return order
+  } catch (err) {
+    // Calendar reconciliation is deliberately best effort for ordinary order
+    // mutations. Keep the API warning stable and log the provider detail only
+    // on the server.
+    logger.error('Order calendar synchronization failed after persisted mutation', err)
+    return resultWithWarning(order, warning)
+  }
+}
 
 function validationError(message) {
   return newErrorWithCustomName('ValidationError', message)
@@ -59,7 +102,7 @@ async function updateOrder(id, updateData) {
 
   await order.save()
 
-  return order
+  return syncAfterMutation(order)
 }
 
 async function revertOrder(id) {
@@ -83,13 +126,41 @@ async function revertOrder(id) {
   assignCanonicalState(order, reverted)
   await order.save()
 
-  return order
+  return syncAfterMutation(order)
 }
 
 async function confirmOrder(id, userId) {
   if (!id) return null
 
-  return Order.findByIdAndUpdate(
+  const order = await getOrderById(id)
+
+  if (order.deletedAt) {
+    throw validationError('Deleted orders cannot be confirmed')
+  }
+
+  // Confirmation has an external precondition. Reconcile the persisted order
+  // first, so a calendar failure cannot leave Mongo marked as confirmed.
+  if (!order.confirmed) {
+    try {
+      await syncOrderToCalendar(order)
+    } catch (err) {
+      logger.error('Order calendar synchronization failed before confirmation', err)
+      throw calendarUnavailableError(CALENDAR_CONFIRMATION_WARNING.message)
+    }
+  } else {
+    // A retry of an already-confirmed request is safe and can repair missing
+    // calendar links without creating duplicate events.
+    try {
+      await syncOrderToCalendar(order)
+    } catch (err) {
+      logger.error('Order calendar synchronization failed while confirming', err)
+      throw calendarUnavailableError(CALENDAR_SYNC_WARNING.message)
+    }
+  }
+
+  if (order.confirmed) return order
+
+  const confirmed = await Order.findByIdAndUpdate(
     { _id: id },
     {
       confirmed: true,
@@ -98,12 +169,18 @@ async function confirmOrder(id, userId) {
     },
     { new: true },
   )
+
+  if (!confirmed) {
+    throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
+  }
+
+  return confirmed
 }
 
 async function cancelOrder(id) {
   if (!id) return null
 
-  return Order.findByIdAndUpdate(
+  const order = await Order.findByIdAndUpdate(
     { _id: id },
     {
       canceledAt: new Date().toISOString(),
@@ -111,16 +188,32 @@ async function cancelOrder(id) {
     },
     { new: true },
   )
+
+  return order ? syncAfterMutation(order) : null
 }
 
 async function updateOrderColor(id, eventColor) {
   if (!id) return null
 
-  return Order.findOneAndUpdate({ _id: id }, { $set: { eventColor } }, { new: true })
+  const order = await Order.findOneAndUpdate({ _id: id }, { $set: { eventColor } }, { new: true })
+
+  return order ? syncAfterMutation(order) : null
 }
 
 async function deleteOrder(id) {
   if (!id) return null
+
+  const order = await getOrderById(id)
+
+  // Calendar events are owned by the order. Delete every owned role before
+  // marking the row deleted; a failed provider call leaves the row active so
+  // the operation can be retried with the IDs that remain linked.
+  try {
+    await deleteOrderEvent(order)
+  } catch (err) {
+    logger.error('Order calendar deletion failed before soft delete', err)
+    throw calendarUnavailableError(CALENDAR_DELETE_WARNING.message)
+  }
 
   return Order.findByIdAndUpdate(
     { _id: id },
@@ -132,17 +225,21 @@ async function deleteOrder(id) {
 async function retrieveOrder(id) {
   if (!id) return null
 
-  return Order.findByIdAndUpdate({ _id: id }, { $unset: { deletedAt: 1 } }, { new: true })
+  const order = await Order.findByIdAndUpdate({ _id: id }, { $unset: { deletedAt: 1 } }, { new: true })
+
+  return order ? syncAfterMutation(order) : null
 }
 
 async function restoreOrder(id) {
   if (!id) return null
 
-  return Order.findByIdAndUpdate(
+  const order = await Order.findByIdAndUpdate(
     { _id: id },
     { $unset: { deletedAt: 1, canceledAt: 1 }, $set: { eventColor: DEFAULT_EVENT_COLOR_ID } },
     { new: true },
   )
+
+  return order ? syncAfterMutation(order) : null
 }
 
 export {

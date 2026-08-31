@@ -131,6 +131,9 @@ export default function useOrderDialogActions({
       const response = await orderPoolAPI.update(orderId, toUpdateOrderPayload(editableOrder))
       setOrder(hydrateCanonicalOrder(response.order || response))
       enqueueSnackbar(response.message || 'Order changes saved.')
+      if (response.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+      }
       setEditOpen(false)
       setEditableOrder(null)
       invalidateCalendarOrders()
@@ -157,6 +160,9 @@ export default function useOrderDialogActions({
       onOrderUpdate?.(updatedOrder)
       invalidateCalendarOrders()
       enqueueSnackbar(response.message || 'Order reverted.')
+      if (response.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+      }
     } catch (err) {
       if (err.message === 'logout') return
       enqueueSnackbar(err.response?.data?.error || 'Could not revert order. Please try again.', {
@@ -212,6 +218,9 @@ export default function useOrderDialogActions({
       const updatedOrder = hydrateCanonicalOrder(response.order || response)
       setOrder(updatedOrder)
       enqueueSnackbar(response.message || 'Order restored')
+      if (response.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+      }
       invalidateCalendarOrders()
       onOrderUpdate?.(updatedOrder)
     } catch (err) {
@@ -250,6 +259,9 @@ export default function useOrderDialogActions({
       setCanceling(true)
       const { response } = await cancelAndUpdate(orderId)
       enqueueSnackbar(response.message || 'Order canceled successfully.')
+      if (response.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+      }
       setCancelConfirmOpen(false)
     } catch (err) {
       if (err.message === 'logout') return
@@ -289,6 +301,9 @@ export default function useOrderDialogActions({
         if (fulfilled) message += `${fulfilled} sent`
         if (rejected) message += (fulfilled ? ', ' : '') + `${rejected} failed`
         enqueueSnackbar(message)
+      }
+      if (response.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
       }
 
       setCancelConfirmOpen(false)

@@ -51,6 +51,20 @@ function validationError(message) {
   return newErrorWithCustomName('ValidationError', message)
 }
 
+function orderResult(result) {
+  if (result && result.warning && Object.prototype.hasOwnProperty.call(result, 'order')) {
+    return { order: result.order, warning: result.warning }
+  }
+
+  return { order: result }
+}
+
+function sendOrderResult(res, result, message) {
+  const payload = orderResult(result)
+  if (message) payload.message = message
+  return res.status(200).send(payload)
+}
+
 function pickBookingFields(orderData) {
   const bookingFields = {}
 
@@ -129,9 +143,9 @@ orderPoolRouter.put('/v2/:id', authMW.authenticateAccessToken, async (req, res, 
   try {
     const { id } = req.params
 
-    const order = await updateOrder(id, req.body?.updateData)
+    const result = await updateOrder(id, req.body?.updateData)
 
-    return res.status(200).send({ order, message: 'Order updated' })
+    return sendOrderResult(res, result, 'Order updated')
   } catch (err) {
     return next(err)
   }
@@ -141,9 +155,9 @@ orderPoolRouter.post('/v2/:id/revert', authMW.authenticateAccessToken, async (re
   try {
     const { id } = req.params
 
-    const order = await revertOrder(id)
+    const result = await revertOrder(id)
 
-    return res.status(200).send({ order, message: 'Order reverted' })
+    return sendOrderResult(res, result, 'Order reverted')
   } catch (err) {
     return next(err)
   }
@@ -156,9 +170,9 @@ orderPoolRouter.patch('/v2/:id/color', async (req, res, next) => {
   const { id } = req.params
   const { eventColor } = req.body
   try {
-    const order = await updateOrderColor(id, eventColor)
-    if (!order) return res.status(404).send({ error: 'Order not found' })
-    return res.status(200).send({ order })
+    const result = await updateOrderColor(id, eventColor)
+    if (!result) return res.status(404).send({ error: 'Order not found' })
+    return sendOrderResult(res, result, 'Event color updated')
   } catch (err) {
     return next(err)
   }
@@ -264,13 +278,13 @@ orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
 orderPoolRouter.put('/v2/retrieve/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    const order = await retrieveOrder(id)
+    const result = await retrieveOrder(id)
 
-    if (!order) {
+    if (!result) {
       return res.status(404).send({ error: 'Order not found' })
     }
 
-    return res.status(200).send({ message: 'Order retrieved', order })
+    return sendOrderResult(res, result, 'Order retrieved')
   } catch (err) {
     return next(err)
   }
@@ -279,9 +293,9 @@ orderPoolRouter.put('/v2/retrieve/:id', async (req, res, next) => {
 orderPoolRouter.put('/v2/confirm/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    const order = await confirmOrder(id, req.user.id)
-    if (!order) return res.status(404).send({ error: 'Order not found' })
-    return res.status(200).send({ message: 'Order confirmed', order })
+    const result = await confirmOrder(id, req.user.id)
+    if (!result) return res.status(404).send({ error: 'Order not found' })
+    return sendOrderResult(res, result, 'Order confirmed')
   } catch (err) {
     return next(err)
   }
@@ -290,9 +304,9 @@ orderPoolRouter.put('/v2/confirm/:id', async (req, res, next) => {
 orderPoolRouter.put('/v2/cancel/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    const order = await cancelOrder(id)
-    if (!order) return res.status(404).send({ error: 'Order not found' })
-    return res.status(200).send({ order, message: 'Order canceled' })
+    const result = await cancelOrder(id)
+    if (!result) return res.status(404).send({ error: 'Order not found' })
+    return sendOrderResult(res, result, 'Order canceled')
   } catch (err) {
     return next(err)
   }
@@ -324,13 +338,13 @@ orderPoolRouter.post('/v2/restore/:id', async (req, res, next) => {
       return res.status(403).send({ error: 'Forbidden' })
     }
 
-    const order = await restoreOrder(id)
+    const result = await restoreOrder(id)
 
-    if (!order) {
+    if (!result) {
       return res.status(404).send({ error: 'Order not found' })
     }
 
-    return res.status(200).send({ message: 'Order restored', order })
+    return sendOrderResult(res, result, 'Order restored')
   } catch (err) {
     return next(err)
   }

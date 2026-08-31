@@ -1,6 +1,4 @@
 import mongoose from 'mongoose'
-import * as logger from '../utils/logger.js'
-import { syncOrderToCalendar, deleteOrderEvent } from '../modules/calendar/calendar.sync.js'
 import { isDateOnly, parseCalendarDate, parseInstant } from '../../src/shared/date-fns-tz.js'
 import { ORDER_ORIGINS, PRICING_SOURCES } from '../../src/shared/orderPrimitives.js'
 
@@ -251,54 +249,6 @@ order.set('toJSON', {
     delete returnedObject._id
     delete returnedObject.__v
   },
-})
-
-function hasCalendarEventIds(order) {
-  return Object.values(order?.calendarEventIds || {}).some(Boolean)
-}
-
-// Synchronize with Google Calendar for confirmed orders. Awaiting the hook is
-// intentional: a calendar failure must reject the originating write instead
-// of allowing the API to report success after a partial side effect.
-order.post('save', async function (doc) {
-  if (!doc || !doc.confirmed || doc.deletedAt) return
-
-  try {
-    await syncOrderToCalendar(doc)
-  } catch (err) {
-    logger.error('syncOrderToCalendar error', err)
-    throw err
-  }
-})
-
-order.post('findOneAndUpdate', async function (doc) {
-  if (!doc) return
-
-  try {
-    if (doc.deletedAt && hasCalendarEventIds(doc)) {
-      await deleteOrderEvent(doc)
-      return
-    }
-
-    if (doc.confirmed && !doc.deletedAt) await syncOrderToCalendar(doc)
-  } catch (err) {
-    logger.error('post findOneAndUpdate hook error', err)
-    throw err
-  }
-})
-
-order.post('findOneAndDelete', async function (doc) {
-  if (!doc || !hasCalendarEventIds(doc)) return
-
-  try {
-    // The row has already been removed by findOneAndDelete. External events
-    // still need deleting, but clearing IDs in Mongo would always match zero
-    // rows and turn a successful permanent delete into a 500 response.
-    await deleteOrderEvent(doc, { clearStoredIds: false })
-  } catch (err) {
-    logger.error('post findOneAndDelete hook error', err)
-    throw err
-  }
 })
 
 const Order = mongoose.model('Order', order)
