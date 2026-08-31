@@ -154,6 +154,10 @@ export default function Confirmator() {
     setTransformedOrder((prev) => ({ ...prev, text: transO }))
   }, [])
 
+  const handleOrderPersisted = useCallback((id) => {
+    setOrder((previous) => (previous ? { ...previous, id } : previous))
+  }, [])
+
   const handleOrderTransformFromEditor = useCallback(
     () => setTransformedOrder({ id: order?.id || null, text: formatOrder(order) }),
     [order]
@@ -218,6 +222,7 @@ export default function Confirmator() {
         transformedOrder={transformedOrder}
         handleResetClick={reset}
         orderPoolUrl="/confirmator/order-pool"
+        onOrderPersisted={handleOrderPersisted}
       />
       <OrderPoolDialog path="/confirmator/order-pool" handleExport={handleOrderPoolExport} />
     </div>

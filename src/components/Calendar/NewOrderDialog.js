@@ -55,6 +55,10 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
     setTransformedOrder((prev) => ({ ...prev, text: transO }))
   }, [])
 
+  const handleOrderPersisted = useCallback((id) => {
+    setOrder((previous) => (previous ? { ...previous, id } : previous))
+  }, [])
+
   const handleOrderTransformFromEditor = useCallback(
     () => setTransformedOrder({ id: null, text: formatOrder(order) }),
     [order]
@@ -121,6 +125,7 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
               transformedOrder={transformedOrder}
               handleResetClick={handleComplete}
               hideOrderPool={true}
+              onOrderPersisted={handleOrderPersisted}
             />
           </div>
         </div>

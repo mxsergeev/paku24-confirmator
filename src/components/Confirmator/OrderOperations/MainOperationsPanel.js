@@ -17,6 +17,7 @@ export default function MainOperationsPanel({
   handleResetClick,
   orderPoolUrl,
   hideOrderPool,
+  onOrderPersisted,
 }) {
   const defaultStatuses = {
     email: {
@@ -46,7 +47,7 @@ export default function MainOperationsPanel({
 
     try {
       changeStatus('calendar', 'Working', true)
-      const response = await addOrderToCalendar({ order, orderId })
+      const response = await addOrderToCalendar({ order, orderId, onOrderPersisted })
       changeStatus('calendar', 'Done', true)
       enqueueSnackbar(`${response?.message}\n${response?.createdEvent}`)
 
@@ -58,7 +59,15 @@ export default function MainOperationsPanel({
       changeStatus('calendar', 'Error', false)
       enqueueSnackbar(err.response?.data.error || err?.toString(), { variant: 'error' })
     }
-  }, [order, orderId, transformedOrder.text, changeStatus, handleResetClick, defaultStatuses])
+  }, [
+    order,
+    orderId,
+    transformedOrder.text,
+    changeStatus,
+    handleResetClick,
+    defaultStatuses,
+    onOrderPersisted,
+  ])
 
   function emailBlock() {
     const isDisabled = statuses.email.disable || !(order.email && transformedOrder.text)
@@ -128,6 +137,7 @@ export default function MainOperationsPanel({
             orderId={orderId}
             transformedOrderText={transformedOrder.text}
             changeStatus={changeStatus}
+            onOrderPersisted={onOrderPersisted}
           />
         )}
       </div>

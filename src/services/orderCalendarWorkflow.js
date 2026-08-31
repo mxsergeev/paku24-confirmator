@@ -1,25 +1,25 @@
-import addEventToCalendar from './calendarAPI'
+import calendarAPI from './calendarAPI'
 import orderPoolAPI from './orderPoolAPI'
-import { toCommunicationOrder, toCreateOrderPayload } from '../shared/orderSerialization'
+import { toCreateOrderPayload } from '../shared/orderSerialization'
 
 /**
- * Add an order's events to the calendar and finish the pool lifecycle.
+ * Persist an order when needed, reconcile its calendar events, and finish the
+ * pool lifecycle. The calendar endpoint owns event rendering and always loads
+ * the canonical persisted order by ID.
  * UI callers own status, loading, and notification state around this operation.
  */
-export default async function addOrderToCalendar({ order, orderId }) {
-  const response = await addEventToCalendar({
-    order: toCommunicationOrder(order),
-    orderId,
-  })
-
-  let persistedOrderId = orderId
+export default async function addOrderToCalendar({ order, orderId, onOrderPersisted } = {}) {
+  let persistedOrderId = orderId || order?.id
   if (!persistedOrderId) {
     const { id } = await orderPoolAPI.add({
       order: toCreateOrderPayload(order),
     })
     persistedOrderId = id
+    if (!persistedOrderId) throw new Error('Order was added but no ID was returned')
+    onOrderPersisted?.(persistedOrderId)
   }
 
-  await orderPoolAPI.confirm(persistedOrderId)
+  const response = await calendarAPI.syncOrder(persistedOrderId)
+  if (!order?.confirmed) await orderPoolAPI.confirm(persistedOrderId)
   return response
 }
