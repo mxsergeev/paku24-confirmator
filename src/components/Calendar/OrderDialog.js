@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -15,7 +15,6 @@ import EditIcon from '@material-ui/icons/Edit'
 import DeleteIcon from '@material-ui/icons/Delete'
 import CheckIcon from '@material-ui/icons/Check'
 import { enqueueSnackbar } from 'notistack'
-import { useQueryClient } from '@tanstack/react-query'
 import './Calendar.css'
 import { getOrderIcons, parseBoxEventId, getBoxEventTitle } from './helpers'
 import OrderEditor from '../OrderEditor/OrderEditor'
@@ -27,7 +26,8 @@ import colors from '../../shared/colors'
 import ordersAPI from '../../services/ordersAPI'
 import sendConfirmationEmail, { sendCancellationEmail } from '../../services/emailAPI'
 import sendSMS, { sendCancellationSMS } from '../../services/smsAPI'
-import { hydrateCanonicalOrder, updateOrderField } from '../../shared/orderModel'
+import { cloneValue } from '../../shared/orderPrimitives'
+import { updateOrderField } from '../../shared/orderModel'
 import { toCommunicationOrder, toUpdateOrderPayload } from '../../shared/orderSerialization'
 import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 import { hexToRgba } from '../../shared/color.helpers'
@@ -59,15 +59,10 @@ export default function OrderDialog({
   order: incomingOrder = null,
   onOrderUpdate,
 }) {
-  const [order, setOrder] = useState(null)
+  const order = incomingOrder
 
   const { orderId, eventType } = parseBoxEventId(eventId)
   const isDesktop = useMediaQuery('(min-width:601px)')
-  const queryClient = useQueryClient()
-
-  useEffect(() => {
-    setOrder(incomingOrder ? hydrateCanonicalOrder(incomingOrder) : null)
-  }, [incomingOrder])
 
   const [sendingEmail, setSendingEmail] = useState(false)
   const [sendingSMS, setSendingSMS] = useState(false)
@@ -142,9 +137,8 @@ export default function OrderDialog({
 
     try {
       const response = await ordersAPI.confirm(order.id)
-      const updatedOrder = hydrateCanonicalOrder(response.order || response)
-      setOrder(updatedOrder)
-      onOrderUpdate?.(updatedOrder)
+      await onOrderUpdate?.()
+      if (response.message) enqueueSnackbar(response.message)
     } catch (err) {
       enqueueSnackbar('Failed to confirm order. Please try again.', { variant: 'error' })
     } finally {
@@ -155,7 +149,7 @@ export default function OrderDialog({
   const handleEdit = () => {
     if (!order) return
 
-    setEditableOrder(hydrateCanonicalOrder(order))
+    setEditableOrder(cloneValue(order))
     setEditOpen(true)
   }
 
@@ -173,14 +167,13 @@ export default function OrderDialog({
     try {
       setSavingEdit(true)
       const response = await ordersAPI.update(orderId, toUpdateOrderPayload(editableOrder))
-      setOrder(hydrateCanonicalOrder(response.order || response))
       enqueueSnackbar(response.message || 'Order changes saved.')
       if (response.warning?.message) {
         enqueueSnackbar(response.warning.message, { variant: 'warning' })
       }
       setEditOpen(false)
       setEditableOrder(null)
-      queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+      await onOrderUpdate?.()
     } catch (err) {
       if (err.message === 'logout') return
       enqueueSnackbar(err.response?.data?.error || 'Could not save changes. Please try again.', {
@@ -217,7 +210,7 @@ export default function OrderDialog({
 
       setDeleteConfirmOpen(false)
       setDeleteMode('soft')
-      queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+      await onOrderUpdate?.()
       onClose()
     } catch (err) {
       if (err.message === 'logout') return
@@ -233,14 +226,11 @@ export default function OrderDialog({
     if (!orderId) return
     try {
       const response = await ordersAPI.restore(orderId)
-      const updatedOrder = hydrateCanonicalOrder(response.order || response)
-      setOrder(updatedOrder)
       enqueueSnackbar(response.message || 'Order restored')
       if (response.warning?.message) {
         enqueueSnackbar(response.warning.message, { variant: 'warning' })
       }
-      queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
-      onOrderUpdate?.(updatedOrder)
+      await onOrderUpdate?.()
     } catch (err) {
       if (err.message === 'logout') return
       enqueueSnackbar(err.response?.data?.error || 'Could not restore order. Please try again.', {
@@ -260,10 +250,8 @@ export default function OrderDialog({
   const cancelAndUpdate = async (id) => {
     if (!id) throw new Error('missing order id')
     const response = await ordersAPI.cancel(id)
-    const updatedOrder = hydrateCanonicalOrder(response.order || response)
-    setOrder(updatedOrder)
-    queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
-    onOrderUpdate?.(updatedOrder)
+    const updatedOrder = response.order || response
+    await onOrderUpdate?.()
     return { response, updatedOrder }
   }
 
