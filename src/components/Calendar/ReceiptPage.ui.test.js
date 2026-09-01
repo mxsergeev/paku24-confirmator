@@ -59,10 +59,15 @@ describe('ReceiptPage document actions', () => {
     mocks.output.mockReturnValue('data:application/pdf;base64,ZmFrZQ==')
     mocks.save.mockReset()
     mocks.enqueueSnackbar.mockReset()
+    window.localStorage.clear()
   })
 
   it('sends an invoice with invoice-specific metadata', async () => {
-    render(<ReceiptPage orderId="order-1" documentType="invoice" />)
+    window.localStorage.setItem(
+      'receipt-draft:order-1',
+      JSON.stringify({ documentType: 'invoice' }),
+    )
+    render(<ReceiptPage orderId="order-1" />)
 
     await screen.findByText('LASKU')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
@@ -79,7 +84,11 @@ describe('ReceiptPage document actions', () => {
   })
 
   it('sends and downloads a receipt with receipt-specific names', async () => {
-    render(<ReceiptPage orderId="order-1" documentType="receipt" />)
+    window.localStorage.setItem(
+      'receipt-draft:order-1',
+      JSON.stringify({ documentType: 'receipt' }),
+    )
+    render(<ReceiptPage orderId="order-1" />)
 
     await screen.findByText('KUITTI')
     fireEvent.click(screen.getByRole('button', { name: 'Download' }))
@@ -96,5 +105,6 @@ describe('ReceiptPage document actions', () => {
         body: 'Please find your receipt attached.',
       }),
     )
+    expect(window.localStorage.getItem('receipt-draft:order-1')).toBeNull()
   })
 })

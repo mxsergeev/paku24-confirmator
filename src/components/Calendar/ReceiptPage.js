@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button, CircularProgress } from '@material-ui/core'
 import { enqueueSnackbar } from 'notistack'
 import ordersAPI from '../../services/ordersAPI'
@@ -92,22 +92,160 @@ function buildPdfFromPage(page) {
   })
 }
 
-export default function ReceiptPage({ orderId, initialDraft = null, documentType = null }) {
+function readStoredReceiptDraft(orderId) {
+  if (typeof window === 'undefined' || !orderId) return null
+
+  const storageKey = `receipt-draft:${orderId}`
+  try {
+    const rawDraft = window.localStorage.getItem(storageKey)
+    return rawDraft ? normalizeReceiptDraft(JSON.parse(rawDraft)) : null
+  } catch {
+    return null
+  } finally {
+    try {
+      window.localStorage.removeItem(storageKey)
+    } catch {
+      // Best effort cleanup when browser storage is unavailable.
+    }
+  }
+}
+
+function buildReceipt(order, draft) {
+  const mergedReceipt = mergeReceiptData(order, draft)
+  const fallbackType = order?.paymentType?.id === '3' ? 'invoice' : 'receipt'
+  const resolvedDocumentType = normalizeDocumentType(
+    mergedReceipt?.documentType || fallbackType,
+  )
+  const unitBruttoPrice = num(order?.service?.pricePerHour ?? mergedReceipt.unitPrice)
+  const unitAlvPrice = roundMoney(unitBruttoPrice - unitBruttoPrice / ALV_FACTOR)
+
+  return {
+    ...mergedReceipt,
+    documentType: resolvedDocumentType,
+    isInvoice: resolvedDocumentType === 'invoice',
+    paymentTypeId: order?.paymentType?.id,
+    alvRate: formatMoney(unitAlvPrice),
+    serviceName: mergedReceipt.serviceName || order?.service?.name || '',
+    serviceHours: mergedReceipt.serviceHours || order?.duration || '-',
+    unitPrice: formatMoney(unitBruttoPrice),
+  }
+}
+
+function buildReceiptRows(order, receipt) {
+  const rows = []
+  const pricing = getOrderPricing(order)
+
+  const serviceHours = num(receipt.serviceHours)
+  const serviceUnitBruttoPrice = num(order?.service?.pricePerHour ?? receipt.unitPrice)
+  const serviceUnitNettoPrice = roundMoney(serviceUnitBruttoPrice / ALV_FACTOR)
+  const serviceBrutto = roundMoney(serviceHours * serviceUnitBruttoPrice)
+  const serviceNetto = roundMoney(serviceUnitNettoPrice * serviceHours)
+  const serviceAlv = roundMoney(serviceBrutto - serviceNetto)
+
+  if (serviceBrutto > 0) {
+    rows.push({
+      key: 'service',
+      name: receipt.serviceName || order?.service?.name || 'Palvelu',
+      hours: receipt.serviceHours,
+      unitPrice: serviceUnitNettoPrice,
+      netto: serviceNetto,
+      alv: serviceAlv,
+      brutto: serviceBrutto,
+    })
+  }
+
+  const boxesAmount = num(order?.boxes?.amount)
+  const boxesFromFields =
+    boxesAmount * num(order?.boxes?.pricePerBox) +
+    num(order?.boxes?.deliveryPrice) +
+    num(order?.boxes?.returnPrice)
+  const boxesBrutto = roundMoney(pricing.boxesPrice ?? boxesFromFields)
+
+  if (boxesBrutto > 0) {
+    const boxesUnitBruttoPrice = boxesAmount > 0 ? roundMoney(boxesBrutto / boxesAmount) : 0
+    const boxesUnitNettoPrice =
+      boxesAmount > 0 ? roundMoney(boxesUnitBruttoPrice / ALV_FACTOR) : ''
+    const boxesNetto =
+      boxesAmount > 0
+        ? roundMoney(num(boxesUnitNettoPrice) * boxesAmount)
+        : toAlvParts(boxesBrutto).netto
+    const boxesAlv = roundMoney(boxesBrutto - boxesNetto)
+
+    rows.push({
+      key: 'boxes',
+      name: 'Laatikot',
+      hours: boxesAmount > 0 ? boxesAmount : '',
+      unitPrice: boxesUnitNettoPrice,
+      netto: boxesNetto,
+      alv: boxesAlv,
+      brutto: boxesBrutto,
+    })
+  }
+
+  pricing.fees.forEach((fee, index) => {
+    const feeBrutto = roundMoney(fee?.amount)
+    if (feeBrutto <= 0) return
+
+    const { netto, alv, brutto } = toAlvParts(feeBrutto)
+    const feeName = String(fee?.name || '')
+    const baseFeeName = getFeeBaseName(feeName)
+    const isStairsFee = baseFeeName === STAIRS_FEE_BASE_NAME
+
+    let feeHours = ''
+    let feeUnitPrice = ''
+
+    if (isStairsFee) {
+      const floorsCount = getStairsPaidFloorCount(order, feeName, feeBrutto)
+      if (floorsCount > 0) {
+        const unitBrutto =
+          Number.isFinite(STAIRS_UNIT_BRUTTO) && STAIRS_UNIT_BRUTTO > 0
+            ? STAIRS_UNIT_BRUTTO
+            : roundMoney(feeBrutto / floorsCount)
+        feeHours = floorsCount
+        feeUnitPrice = roundMoney(unitBrutto / ALV_FACTOR)
+      }
+    }
+
+    rows.push({
+      key: `fee-${index}`,
+      name: resolveFeeDisplayName(order, fee),
+      hours: feeHours,
+      unitPrice: feeUnitPrice,
+      netto,
+      alv,
+      brutto,
+    })
+  })
+
+  return rows
+}
+
+function buildReceiptTotals(receipt, receiptRows) {
+  const netto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.netto), 0))
+  const alv = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.alv), 0))
+  const calculatedBrutto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.brutto), 0))
+  const totalAmount = receipt?.totalAmount
+  const brutto = roundMoney(
+    totalAmount === null || totalAmount === undefined || String(totalAmount).trim() === ''
+      ? calculatedBrutto
+      : totalAmount,
+  )
+
+  return { netto, alv, brutto }
+}
+
+export default function ReceiptPage({ orderId }) {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [order, setOrder] = useState(null)
-  const [lastServiceExtraPadding, setLastServiceExtraPadding] = useState(0)
-
-  const receiptInfoRef = React.useRef(null)
-  const bankWrapperRef = React.useRef(null)
-  const bankTableRef = React.useRef(null)
+  const [storedDraft] = useState(() => readStoredReceiptDraft(orderId))
 
   useEffect(() => {
     async function loadOrder() {
       try {
         setLoading(true)
         const response = await ordersAPI.getById(orderId)
-        const loadedOrder = response?.order || null
+        const loadedOrder = response?.order || response || null
         setOrder(loadedOrder)
       } catch (err) {
         if (err.message === 'logout') return
@@ -120,185 +258,11 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
     loadOrder()
   }, [orderId])
 
-  const safeInitialDraft = useMemo(() => normalizeReceiptDraft(initialDraft), [initialDraft])
-  const safeDocumentType = documentType == null ? null : normalizeDocumentType(documentType)
-
-  const receipt = useMemo(() => {
-    if (!order) return null
-
-    const mergedReceipt = mergeReceiptData(order, safeInitialDraft)
-    const fallbackType = order?.paymentType?.id === '3' ? 'invoice' : 'receipt'
-    const resolvedDocumentType = normalizeDocumentType(
-      safeDocumentType || mergedReceipt?.documentType || fallbackType
-    )
-    const isInvoice = resolvedDocumentType === 'invoice'
-
-    const unitBruttoPrice = num(order?.service?.pricePerHour ?? mergedReceipt.unitPrice)
-    const unitAlvPrice = roundMoney(unitBruttoPrice - unitBruttoPrice / ALV_FACTOR)
-
-    return {
-      ...mergedReceipt,
-      documentType: resolvedDocumentType,
-      isInvoice,
-      paymentTypeId: order?.paymentType?.id,
-      alvRate: formatMoney(unitAlvPrice),
-      serviceName: mergedReceipt.serviceName || order?.service?.name || '',
-      serviceHours: mergedReceipt.serviceHours || order?.duration || '-',
-      unitPrice: formatMoney(unitBruttoPrice),
-    }
-  }, [order, safeDocumentType, safeInitialDraft])
+  const receipt = order ? buildReceipt(order, storedDraft) : null
 
   const isInvoice = receipt?.isInvoice || false
-
-  const receiptRows = useMemo(() => {
-    if (!receipt || !order) return []
-
-    const rows = []
-    const pricing = getOrderPricing(order)
-
-    const serviceHours = num(receipt.serviceHours)
-    const serviceUnitBruttoPrice = num(order?.service?.pricePerHour ?? receipt.unitPrice)
-    const serviceUnitNettoPrice = roundMoney(serviceUnitBruttoPrice / ALV_FACTOR)
-    const serviceBrutto = roundMoney(serviceHours * serviceUnitBruttoPrice)
-    const serviceNetto = roundMoney(serviceUnitNettoPrice * serviceHours)
-    const serviceAlv = roundMoney(serviceBrutto - serviceNetto)
-
-    if (serviceBrutto > 0) {
-      rows.push({
-        key: 'service',
-        name: receipt.serviceName || order?.service?.name || 'Palvelu',
-        hours: receipt.serviceHours,
-        unitPrice: serviceUnitNettoPrice,
-        netto: serviceNetto,
-        alv: serviceAlv,
-        brutto: serviceBrutto,
-      })
-    }
-
-    const boxesAmount = num(order?.boxes?.amount)
-    const boxesFromFields =
-      boxesAmount * num(order?.boxes?.pricePerBox) +
-      num(order?.boxes?.deliveryPrice) +
-      num(order?.boxes?.returnPrice)
-    const boxesBrutto = roundMoney(pricing.boxesPrice ?? boxesFromFields)
-
-    if (boxesBrutto > 0) {
-      const boxesUnitBruttoPrice = boxesAmount > 0 ? roundMoney(boxesBrutto / boxesAmount) : 0
-      const boxesUnitNettoPrice =
-        boxesAmount > 0 ? roundMoney(boxesUnitBruttoPrice / ALV_FACTOR) : ''
-      const boxesNetto =
-        boxesAmount > 0
-          ? roundMoney(num(boxesUnitNettoPrice) * boxesAmount)
-          : toAlvParts(boxesBrutto).netto
-      const boxesAlv = roundMoney(boxesBrutto - boxesNetto)
-
-      rows.push({
-        key: 'boxes',
-        name: 'Laatikot',
-        hours: boxesAmount > 0 ? boxesAmount : '',
-        unitPrice: boxesUnitNettoPrice,
-        netto: boxesNetto,
-        alv: boxesAlv,
-        brutto: boxesBrutto,
-      })
-    }
-
-    pricing.fees.forEach((fee, index) => {
-      const feeBrutto = roundMoney(fee?.amount)
-      if (feeBrutto <= 0) return
-
-      const { netto, alv, brutto } = toAlvParts(feeBrutto)
-      const feeName = String(fee?.name || '')
-      const baseFeeName = getFeeBaseName(feeName)
-      const isStairsFee = baseFeeName === STAIRS_FEE_BASE_NAME
-
-      let feeHours = ''
-      let feeUnitPrice = ''
-
-      if (isStairsFee) {
-        const floorsCount = getStairsPaidFloorCount(order, feeName, feeBrutto)
-        if (floorsCount > 0) {
-          const unitBrutto =
-            Number.isFinite(STAIRS_UNIT_BRUTTO) && STAIRS_UNIT_BRUTTO > 0
-              ? STAIRS_UNIT_BRUTTO
-              : roundMoney(feeBrutto / floorsCount)
-          feeHours = floorsCount
-          feeUnitPrice = roundMoney(unitBrutto / ALV_FACTOR)
-        }
-      }
-
-      rows.push({
-        key: `fee-${index}`,
-        name: resolveFeeDisplayName(order, fee),
-        hours: feeHours,
-        unitPrice: feeUnitPrice,
-        netto,
-        alv,
-        brutto,
-      })
-    })
-
-    return rows
-  }, [order, receipt])
-
-  const totals = useMemo(() => {
-    const netto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.netto), 0))
-    const alv = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.alv), 0))
-    const calculatedBrutto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.brutto), 0))
-
-    const totalAmount = receipt?.totalAmount
-    const brutto = roundMoney(
-      totalAmount === null || totalAmount === undefined || String(totalAmount).trim() === ''
-        ? calculatedBrutto
-        : totalAmount,
-    )
-
-    return {
-      netto,
-      alv,
-      brutto,
-    }
-  }, [receipt?.totalAmount, receiptRows])
-
-  const recalcLastServicePadding = useCallback(() => {
-    const receiptInfoEl = receiptInfoRef.current
-    const bankWrapperEl = bankWrapperRef.current
-    const bankTableEl = bankTableRef.current
-
-    if (!receiptInfoEl || !bankWrapperEl || !bankTableEl || receiptRows.length === 0) {
-      setLastServiceExtraPadding(0)
-      return
-    }
-
-    const wrapperRect = bankWrapperEl.getBoundingClientRect()
-    const bankRect = bankTableEl.getBoundingClientRect()
-    const deltaBetweenWrapperAndBankTable = Math.round(wrapperRect.height - bankRect.height)
-
-    // Keep bank wrapper tightly fitted and push all extra space into the last service row.
-    const tableRect = receiptInfoEl.getBoundingClientRect()
-    const tableStyles = window.getComputedStyle(receiptInfoEl)
-    const targetHeight =
-      Number.parseFloat(tableStyles.getPropertyValue('--receipt-info-target-height')) || 740
-
-    const missingToTarget = Math.round(targetHeight - tableRect.height + lastServiceExtraPadding)
-    const nextPadding = Math.max(0, deltaBetweenWrapperAndBankTable + missingToTarget)
-
-    setLastServiceExtraPadding((prev) => (prev === nextPadding ? prev : nextPadding))
-  }, [lastServiceExtraPadding, receiptRows.length])
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      recalcLastServicePadding()
-    })
-
-    const handleResize = () => recalcLastServicePadding()
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      cancelAnimationFrame(frame)
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [recalcLastServicePadding, lastServiceExtraPadding])
+  const receiptRows = order && receipt ? buildReceiptRows(order, receipt) : []
+  const totals = buildReceiptTotals(receipt, receiptRows)
 
   const handleSend = async () => {
     if (!receipt?.customerEmail) {
@@ -426,7 +390,7 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
           </div>
         </header>
 
-        <table className="receipt-info" ref={receiptInfoRef}>
+        <table className="receipt-info">
           <thead>
             <tr className="receipt-info-header-string">
               <th className="service-name">Tuotenimi</th>
@@ -444,11 +408,6 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
                 className={`receipt-info-service ${
                   index === 0 ? 'receipt-info-service--first' : ''
                 } ${index === receiptRows.length - 1 ? 'receipt-info-service--last' : ''}`}
-                style={
-                  index === receiptRows.length - 1
-                    ? { '--receipt-last-service-extra-padding': `${lastServiceExtraPadding}px` }
-                    : undefined
-                }
                 key={row.key}
               >
                 <td className="service-name">{row.name}</td>
@@ -489,8 +448,8 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
             </tr>
 
             <tr className="receipt-bank-row">
-              <td colSpan="6" className="receipt-bank-wrapper" ref={bankWrapperRef}>
-                <table className="receipt-bank-table" ref={bankTableRef}>
+              <td colSpan="6" className="receipt-bank-wrapper">
+                <table className="receipt-bank-table">
                   <colgroup>
                     <col className="receipt-bank-col-1" />
                     <col className="receipt-bank-col-2" />
