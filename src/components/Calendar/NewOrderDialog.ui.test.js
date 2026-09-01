@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
     getById: vi.fn(),
   },
   enqueueSnackbar: vi.fn(),
-  queryClient: { invalidateQueries: vi.fn() },
 }))
 
 vi.mock('@material-ui/core', () => ({
@@ -30,10 +29,6 @@ vi.mock('@material-ui/core/useMediaQuery', () => ({
 
 vi.mock('@material-ui/icons/Close', () => ({ default: () => null }))
 vi.mock('@material-ui/icons/NoteAdd', () => ({ default: () => null }))
-
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => mocks.queryClient,
-}))
 
 vi.mock('notistack', () => ({
   enqueueSnackbar: mocks.enqueueSnackbar,
@@ -78,7 +73,6 @@ describe('NewOrderDialog persistence workflow', () => {
     mocks.ordersAPI.confirm.mockReset()
     mocks.ordersAPI.getById.mockReset()
     mocks.enqueueSnackbar.mockReset()
-    mocks.queryClient.invalidateQueries.mockReset()
   })
 
   it('fetches a pending order after reload and retries confirmation without adding another order', async () => {
@@ -151,7 +145,7 @@ describe('NewOrderDialog persistence workflow', () => {
     expect(payload).not.toHaveProperty('boxesPrice')
     expect(payload).not.toHaveProperty('originalOrder')
 
-    fireEvent.click(screen.getByRole('button', { name: /^error/i }))
+    fireEvent.click(screen.getByRole('button', { name: /retry confirmation/i }))
     await waitFor(() => expect(mocks.ordersAPI.confirm).toHaveBeenCalledTimes(2))
     expect(mocks.ordersAPI.confirm).toHaveBeenNthCalledWith(1, PENDING_ORDER_ID)
     expect(mocks.ordersAPI.confirm).toHaveBeenNthCalledWith(2, PENDING_ORDER_ID)

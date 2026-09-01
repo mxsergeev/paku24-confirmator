@@ -1,9 +1,8 @@
-import { BOOKING_FIELDS, hydrateCanonicalOrder } from './orderModel.js'
+import { BOOKING_FIELDS } from './orderModel.js'
 import { getOrderPricing, normalizeFeeList } from './orderPricing.js'
 import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
 import { cloneValue, hasOwn, isPlainObject, PRICING_COMPONENTS, toFiniteNumberOrNull } from './orderPrimitives.js'
 
-const DRAFT_VERSION = 2
 const ADDRESS_FIELDS = ['street', 'index', 'city', 'floor', 'elevator']
 
 function serializeAddress(value) {
@@ -83,44 +82,6 @@ function serializePricingOverrides(value, fieldName = 'pricingOverrides') {
   )
 }
 
-function serializeDraftOrder(order) {
-  if (!isPlainObject(order)) throw new Error('Invalid draft order')
-
-  return {
-    ...serializeBookingFields(order),
-    pricingOverrides: serializePricingOverrides(order.pricingOverrides),
-    originalOrder: order.originalOrder === null || order.originalOrder === undefined
-      ? null
-      : cloneValue(order.originalOrder),
-  }
-}
-
-function serializeDraft(order) {
-  return {
-    version: DRAFT_VERSION,
-    order: serializeDraftOrder(order),
-  }
-}
-
-function deserializeDraft(payload) {
-  if (!isPlainObject(payload)) throw new Error('Invalid draft payload')
-  if (payload.version !== DRAFT_VERSION) {
-    throw new Error(`Unsupported draft version: ${String(payload.version)}`)
-  }
-  if (!isPlainObject(payload.order)) throw new Error('Invalid draft payload: order is required')
-
-  const order = payload.order
-  const draftOrder = {
-    ...Object.fromEntries(
-      BOOKING_FIELDS.filter((field) => hasOwn(order, field)).map((field) => [field, cloneValue(order[field])]),
-    ),
-    pricingOverrides: cloneValue(order.pricingOverrides),
-    originalOrder: cloneValue(order.originalOrder),
-  }
-
-  return hydrateCanonicalOrder(draftOrder)
-}
-
 function toCreateOrderPayload(order) {
   if (!isPlainObject(order)) throw new Error('Order must be an object')
 
@@ -157,8 +118,6 @@ function toCommunicationOrder(order) {
 }
 
 export {
-  serializeDraft,
-  deserializeDraft,
   toCreateOrderPayload,
   toUpdateOrderPayload,
   toCommunicationOrder,

@@ -700,11 +700,13 @@ export default function Calendar() {
           onOrderUpdate={refetch}
         />
       )}
-      <NewOrderDialog
-        open={newOrderOpen}
-        onClose={handleNewOrderClose}
-        onOrderCreated={handleNewOrderCreated}
-      />
+      {newOrderOpen && (
+        <NewOrderDialog
+          open
+          onClose={handleNewOrderClose}
+          onOrderCreated={handleNewOrderCreated}
+        />
+      )}
     </div>
   )
 }
