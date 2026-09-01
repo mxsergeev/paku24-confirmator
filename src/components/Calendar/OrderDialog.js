@@ -18,10 +18,11 @@ import { enqueueSnackbar } from 'notistack'
 import { useHistory } from 'react-router-dom'
 import './Calendar.css'
 import { getOrderIcons, parseBoxEventId, getBoxEventTitle } from './helpers'
-import OrderEditor from '../OrderEditor/OrderEditor'
-import OrderSettings from '../OrderEditor/OrderSettings'
 import OrderDialogDetails from './OrderDialogDetails'
 import ReceiptEditDialog from './ReceiptEditDialog'
+import EditOrderDialog from './EditOrderDialog'
+import DeleteOrderDialog from './DeleteOrderDialog'
+import CancelOrderDialog from './CancelOrderDialog'
 import iconsData from '../../data/icons.json'
 import colors from '../../shared/colors'
 import ordersAPI from '../../services/ordersAPI'
@@ -656,172 +657,30 @@ export default function OrderDialog({
         order={order}
         initialDraft={receiptDraft}
       />
-      <Dialog
+      <EditOrderDialog
         open={editOpen}
         onClose={handleEditClose}
-        scroll="body"
-        fullWidth={false}
-        maxWidth={false}
-        className="calendar-order-dialog"
-        PaperProps={
-          isDesktop
-            ? { className: 'calendar-order-dialog-paper calendar-new-order-dialog-paper' }
-            : {
-                style: {
-                  width: '100vw',
-                  maxWidth: '100vw',
-                  margin: 0,
-                  borderRadius: 16,
-                  minHeight: 'auto',
-                },
-              }
-        }
-      >
-        <DialogTitle className="calendar-order-dialog-title-wrap">
-          <h3 className="calendar-dialog-title">Edit order</h3>
-          <IconButton
-            aria-label="close"
-            onClick={handleEditClose}
-            className="calendar-order-dialog-close"
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent className="calendar-new-order-dialog-content">
-          <div className="calendar-new-order-dialog-content-wrap">
-            <div className="calendar-new-order-flex-container">
-              <OrderEditor
-                order={editableOrder}
-                handleChange={handleEditChange}
-                onOrderChange={setEditableOrder}
-              />
-              {editableOrder && (
-                <OrderSettings order={editableOrder} handleChange={handleEditChange} />
-              )}
-            </div>
-          </div>
-        </DialogContent>
-        <DialogActions className="calendar-dialog-actions">
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSaveChanges}
-            className="calendar-dialog-button"
-            disabled={!editableOrder || savingEdit}
-          >
-            Save changes
-          </Button>
-          <Button
-            variant="outlined"
-            color="default"
-            onClick={handleEditClose}
-            className="calendar-dialog-button"
-            disabled={savingEdit}
-          >
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog
+        isDesktop={isDesktop}
+        order={editableOrder}
+        onChange={handleEditChange}
+        onOrderChange={setEditableOrder}
+        onSave={handleSaveChanges}
+        saving={savingEdit}
+      />
+      <DeleteOrderDialog
         open={deleteConfirmOpen}
         onClose={handleDeleteConfirmClose}
-        className="calendar-order-dialog"
-        PaperProps={{
-          className: 'calendar-order-dialog-paper calendar-order-dialog-paper--narrow',
-        }}
-      >
-        <DialogTitle className="calendar-order-dialog-title-wrap">
-          <h3 className="calendar-dialog-title">
-            {deleteMode === 'permanent' ? 'Delete permanently?' : 'Delete this order?'}
-          </h3>
-        </DialogTitle>
-        <DialogContent>
-          {deleteMode === 'permanent' ? (
-            <>
-              <p>This will permanently remove the order from the database.</p>
-              <p className="calendar-dialog-muted-text">This action cannot be undone.</p>
-            </>
-          ) : (
-            <>
-              <p>This will remove the order from active planning.</p>
-              <p className="calendar-dialog-muted-text">
-                You can still restore it later from deleted orders.
-              </p>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions className="calendar-dialog-actions calendar-dialog-actions--compact">
-          <Button
-            onClick={handleDeleteConfirmClose}
-            color="default"
-            disabled={deleting}
-            className="calendar-dialog-button"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color="secondary"
-            variant="contained"
-            disabled={deleting}
-            className="calendar-dialog-button calendar-dialog-button--danger-fill"
-          >
-            {deleting
-              ? 'Deleting...'
-              : deleteMode === 'permanent'
-              ? 'Delete permanently'
-              : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog
+        deleteMode={deleteMode}
+        onConfirm={handleDeleteConfirm}
+        deleting={deleting}
+      />
+      <CancelOrderDialog
         open={cancelConfirmOpen}
         onClose={handleCancelConfirmClose}
-        className="calendar-order-dialog"
-        PaperProps={{
-          className: 'calendar-order-dialog-paper calendar-order-dialog-paper--narrow',
-        }}
-      >
-        <DialogTitle className="calendar-order-dialog-title-wrap">
-          <h3 className="calendar-dialog-title">Cancel this order?</h3>
-        </DialogTitle>
-        <DialogContent>
-          <p>Are you sure you want to cancel this order?</p>
-          <p className="calendar-dialog-muted-text">
-            Notifications will be sent automatically to available channels (email and/or SMS).
-          </p>
-        </DialogContent>
-        <DialogActions className="calendar-dialog-actions calendar-dialog-actions--compact">
-          <>
-            <Button
-              onClick={handleCancelConfirmClose}
-              color="default"
-              disabled={canceling}
-              className="calendar-dialog-button"
-            >
-              Keep order
-            </Button>
-            <Button
-              onClick={handleCancelConfirmDirect}
-              color="secondary"
-              variant="contained"
-              disabled={canceling}
-              className="calendar-dialog-button calendar-dialog-button--danger-fill"
-            >
-              {canceling ? 'Canceling...' : 'Cancel only'}
-            </Button>
-            <Button
-              onClick={handleCancelAndNotify}
-              color="secondary"
-              variant="contained"
-              disabled={canceling}
-              className="calendar-dialog-button calendar-dialog-button--danger-fill"
-            >
-              {canceling ? 'Canceling...' : 'Cancel & notify'}
-            </Button>
-          </>
-        </DialogActions>
-      </Dialog>
+        onCancelOnly={handleCancelConfirmDirect}
+        onCancelAndNotify={handleCancelAndNotify}
+        canceling={canceling}
+      />
     </>
   )
 }
