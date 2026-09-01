@@ -54,6 +54,8 @@ const BOX_FIELDS = [
 ]
 const BOX_NUMBER_FIELDS = ['amount', 'pricePerBox', 'deliveryPrice', 'returnPrice']
 const NULLABLE_BOOKING_FIELDS = new Set(['eventColor', 'name', 'email', 'phone', 'comment'])
+const STRING_BOOKING_FIELDS = new Set(['distance', 'name', 'email', 'phone', 'comment', 'eventColor'])
+const BOOLEAN_BOOKING_FIELDS = new Set(['hsy', 'XL'])
 
 function makeCalendarEventIds() {
   return Object.fromEntries(CALENDAR_EVENT_ROLES.map((role) => [role, null]))
@@ -290,6 +292,27 @@ function normalizeEmbeddedWithFallback(value, field, requiredNumberField, fallba
   return normalized
 }
 
+function normalizeSimpleBookingField(field, value) {
+  if (STRING_BOOKING_FIELDS.has(field)) {
+    if (value !== null && typeof value !== 'string') {
+      throw new OrderValidationError(`Invalid ${field}`)
+    }
+    return value
+  }
+
+  if (BOOLEAN_BOOKING_FIELDS.has(field) && typeof value !== 'boolean') {
+    throw new OrderValidationError(`Invalid ${field}`)
+  }
+
+  return value
+}
+
+function normalizeDuration(value, field = 'duration') {
+  const duration = toFiniteNumberOrNull(value)
+  if (duration === null) throw new OrderValidationError(`Invalid ${field}`)
+  return duration
+}
+
 function normalizeCanonicalBoxes(value, field = 'boxes') {
   requireObject(value, field)
   for (const key of ['deliveryDate', 'returnDate', 'amount']) {
@@ -317,19 +340,13 @@ function normalizeCanonicalBooking(input, fieldPrefix = '') {
         normalizeCanonicalAddress(address, `${fieldName}.${index}`),
       )
     } else if (field === 'duration') {
-      const duration = toFiniteNumberOrNull(value)
-      if (duration === null) throw new OrderValidationError(`Invalid ${fieldName}`)
-      result[field] = duration
+      result[field] = normalizeDuration(value, fieldName)
     } else if (field === 'service') {
       result[field] = normalizeEmbeddedWithFallback(value, fieldName, 'pricePerHour')
     } else if (field === 'paymentType') {
       result[field] = normalizeEmbeddedWithFallback(value, fieldName, null)
-    } else if (['distance', 'name', 'email', 'phone', 'comment', 'eventColor'].includes(field)) {
-      if (value !== null && typeof value !== 'string') throw new OrderValidationError(`Invalid ${fieldName}`)
-      result[field] = value
-    } else if (field === 'hsy' || field === 'XL') {
-      if (typeof value !== 'boolean') throw new OrderValidationError(`Invalid ${fieldName}`)
-      result[field] = value
+    } else if (STRING_BOOKING_FIELDS.has(field) || BOOLEAN_BOOKING_FIELDS.has(field)) {
+      result[field] = normalizeSimpleBookingField(field, value)
     }
   })
 
@@ -412,6 +429,8 @@ function applyOrderPatch(currentOrder, patch) {
     let nextValue = value
     if (field === 'date' && value !== null && value !== undefined) {
       nextValue = parseInstant(value, 'date')
+    } else if (field === 'duration') {
+      nextValue = normalizeDuration(value)
     } else if (field === 'boxes') {
       nextValue = normalizePatchBoxes(value, updated.boxes)
     } else if (field === 'address' || field === 'destination') {
@@ -425,6 +444,8 @@ function applyOrderPatch(currentOrder, patch) {
       nextValue = value.map((address, index) =>
         normalizeAddressWithFallback(address, `extraAddresses.${index}`, updated.extraAddresses?.[index]),
       )
+    } else if (STRING_BOOKING_FIELDS.has(field) || BOOLEAN_BOOKING_FIELDS.has(field)) {
+      nextValue = normalizeSimpleBookingField(field, value)
     }
 
     updated = { ...updated, [field]: cloneValue(nextValue) }
@@ -441,7 +462,7 @@ function createDefaultAppOrder() {
   return makeDefaultState()
 }
 
-function constructBookingOrder(input) {
+function constructBookingOrder(input, { validateSimpleFields = true } = {}) {
   const defaults = makeDefaultState()
   const result = {
     ...defaults,
@@ -462,6 +483,7 @@ function constructBookingOrder(input) {
     }
 
     if (field === 'date') result.date = parseInstant(input.date, 'date')
+    else if (field === 'duration') result.duration = normalizeDuration(input.duration)
     else if (field === 'boxes') result.boxes = normalizeCurrentBoxes(input.boxes, defaults.boxes)
     else if (field === 'extraAddresses') {
       if (!Array.isArray(input.extraAddresses)) throw new OrderValidationError('Invalid extraAddresses')
@@ -474,6 +496,11 @@ function constructBookingOrder(input) {
       result[field] = normalizeEmbeddedWithFallback(input[field], field, 'pricePerHour')
     } else if (field === 'paymentType') {
       result[field] = normalizeEmbeddedWithFallback(input[field], field, null)
+    } else if (
+      validateSimpleFields &&
+      (STRING_BOOKING_FIELDS.has(field) || BOOLEAN_BOOKING_FIELDS.has(field))
+    ) {
+      result[field] = normalizeSimpleBookingField(field, input[field])
     } else {
       result[field] = cloneValue(input[field])
     }
@@ -494,7 +521,7 @@ function createWordPressOrder(input = {}, originalOrder = input) {
   if (!isPlainObject(input)) throw new OrderValidationError('Order must be an object')
   if (!isPlainObject(originalOrder)) throw new OrderValidationError('Original WordPress order must be an object')
 
-  const booking = constructBookingOrder(input)
+  const booking = constructBookingOrder(input, { validateSimpleFields: false })
   return {
     ...booking,
     originalOrder: cloneValue(originalOrder),

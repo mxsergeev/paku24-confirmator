@@ -106,6 +106,28 @@ describe('Order pool v2/add', () => {
     expect(effective.fees).toEqual(expect.any(Array))
   })
 
+  test('key preserves WordPress scalar casting semantics', async () => {
+    const source = makeWordPressPayloadMissingPricing({
+      name: 12345,
+      email: 67890,
+      phone: 401112233,
+      comment: 42,
+    })
+    names.push(String(source.name))
+
+    const res = await api
+      .post('/api/order-pool/v2/add')
+      .send({ key, order: source })
+      .expect(200)
+
+    const saved = await Order.findById(res.body.id).lean()
+    expect(saved.originalOrder).toEqual(source)
+    expect(saved.name).toBe(String(source.name))
+    expect(saved.email).toBe(String(source.email))
+    expect(saved.phone).toBe(String(source.phone))
+    expect(saved.comment).toBe(String(source.comment))
+  })
+
   test('authenticated app creation persists manual pricing overrides', async () => {
     const source = makeOrder({
       name: 'App Manual Pricing Order',
@@ -195,6 +217,29 @@ describe('Order pool v2/add', () => {
       .post('/api/order-pool/v2/add')
       .set('Cookie', [`at=${appToken}`])
       .send({ order: makeOrder({ pricingOverrides }) })
+      .expect(400)
+  })
+
+  test.each([
+    ['duration', { duration: 'garbage' }],
+    ['hsy', { hsy: 'false' }],
+    ['XL', { XL: 1 }],
+    ['eventColor', { eventColor: { invalid: true } }],
+    ['name', { name: { invalid: true } }],
+    ['email', { email: { invalid: true } }],
+    ['phone', { phone: { invalid: true } }],
+    ['comment', { comment: { invalid: true } }],
+    [
+      'service.pricePerHour',
+      { service: { id: 'external-service', name: 'Service', pricePerHour: 'garbage' } },
+    ],
+    ['address.floor', { address: { ...makeMinimalAddress('Start street 1'), floor: { invalid: true } } }],
+    ['address.elevator', { address: { ...makeMinimalAddress('Start street 1'), elevator: 'false' } }],
+  ])('rejects malformed booking value: %s', async (_description, bookingFields) => {
+    await api
+      .post('/api/order-pool/v2/add')
+      .set('Cookie', [`at=${appToken}`])
+      .send({ order: makeOrder(bookingFields) })
       .expect(400)
   })
 
@@ -337,6 +382,26 @@ describe('Order pool v2/:id updates', () => {
     ['unknown field', { updateData: { origin: 'app' } }],
     ['derived price', { updateData: { price: 99 } }],
     ['malformed override', { updateData: { pricingOverrides: { price: 'bad' } } }],
+    ['malformed duration', { updateData: { duration: 'garbage' } }],
+    ['malformed hsy', { updateData: { hsy: 'false' } }],
+    ['malformed XL', { updateData: { XL: 1 } }],
+    ['malformed eventColor', { updateData: { eventColor: { invalid: true } } }],
+    ['malformed name', { updateData: { name: { invalid: true } } }],
+    ['malformed email', { updateData: { email: { invalid: true } } }],
+    ['malformed phone', { updateData: { phone: { invalid: true } } }],
+    ['malformed comment', { updateData: { comment: { invalid: true } } }],
+    [
+      'malformed service.pricePerHour',
+      { updateData: { service: { id: 'external-service', name: 'Service', pricePerHour: 'garbage' } } },
+    ],
+    [
+      'malformed address.floor',
+      { updateData: { address: { ...makeMinimalAddress('Start street 1'), floor: { invalid: true } } } },
+    ],
+    [
+      'malformed address.elevator',
+      { updateData: { address: { ...makeMinimalAddress('Start street 1'), elevator: 'false' } } },
+    ],
   ])('rejects %s', async (_description, body) => {
     const order = await createPersistedOrder()
     orderIds.push(order.id)
@@ -345,6 +410,17 @@ describe('Order pool v2/:id updates', () => {
       .put(`/api/order-pool/v2/${order.id}`)
       .set('Cookie', [`at=${appToken}`])
       .send(body)
+      .expect(400)
+  })
+
+  test('rejects malformed colors on the dedicated color endpoint', async () => {
+    const order = await createPersistedOrder()
+    orderIds.push(order.id)
+
+    await api
+      .patch(`/api/order-pool/v2/${order.id}/color`)
+      .set('Cookie', [`at=${appToken}`])
+      .send({ eventColor: { invalid: true } })
       .expect(400)
   })
 

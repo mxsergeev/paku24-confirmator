@@ -65,6 +65,14 @@ function validationError(message) {
   return newErrorWithCustomName('ValidationError', message)
 }
 
+function validateEventColor(eventColor) {
+  if (typeof eventColor !== 'string' || eventColor.trim() === '') {
+    throw validationError('Invalid eventColor')
+  }
+
+  return eventColor
+}
+
 function canonicalOrderObject(order) {
   const { _id, ...persisted } = order.toObject()
   const id = _id === null || _id === undefined ? persisted.id : _id.toString()
@@ -188,12 +196,13 @@ async function cancelOrder(id) {
 async function updateOrderColor(id, eventColor) {
   if (!id) return null
 
+  const normalizedEventColor = validateEventColor(eventColor)
   const order = await getOrderById(id)
   return withOrderCalendarLock(order, async () => {
     await getOrderById(id)
     const updatedOrder = await Order.findOneAndUpdate(
       { _id: id },
-      { $set: { eventColor } },
+      { $set: { eventColor: normalizedEventColor } },
       { new: true },
     )
     return updatedOrder
