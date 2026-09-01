@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  applyOrderPatch,
   createAppOrder,
-  createDefaultAppOrder,
   createWordPressOrder,
-  hydrateCanonicalOrder,
+  normalizeOrderPatch,
 } from './orderModel.js'
 import { getOrderPricing, setPricingOverride } from './orderPricing.js'
 import {
@@ -12,11 +10,12 @@ import {
   makeCanonicalAppOrder,
   makeWordPressPayload,
 } from './testFixtures/orderFixtures.js'
+import { normalizeWordPressOrderPayload } from './wordpressOrderPayload.js'
 
-describe('canonical order model', () => {
+describe('order model boundaries', () => {
   it('creates independent app defaults without derived pricing fields', () => {
-    const first = createDefaultAppOrder()
-    const second = createDefaultAppOrder()
+    const first = createAppOrder()
+    const second = createAppOrder()
     first.address.street = 'Changed'
     first.pricingOverrides.price = 0
 
@@ -52,7 +51,7 @@ describe('canonical order model', () => {
 
   it('keeps the exact WordPress payload as immutable reference data', () => {
     const input = makeWordPressPayload({ metadata: { source: 'wordpress' } })
-    const order = createWordPressOrder(input)
+    const order = createWordPressOrder(normalizeWordPressOrderPayload(input), input)
 
     expect(order.originalOrder).toEqual(input)
     expect(order.originalOrder).not.toBe(input)
@@ -63,9 +62,9 @@ describe('canonical order model', () => {
     expect(getOrderPricing(order).price).not.toBe(input.price)
   })
 
-  it('hydrates persisted dates and defaults missing override state', () => {
+  it('creates orders with normalized dates and defaults missing override state', () => {
     const source = makeCanonicalAppOrder()
-    const hydrated = hydrateCanonicalOrder({
+    const order = createAppOrder({
       ...source,
       date: source.date.toISOString(),
       boxes: {
@@ -76,19 +75,22 @@ describe('canonical order model', () => {
       pricingOverrides: undefined,
     })
 
-    expect(hydrated.date).toEqual(source.date)
-    expect(hydrated.boxes.deliveryDate).toBe('2026-03-15')
-    expect(hydrated.boxes.returnDate).toEqual(new Date('2026-03-20T07:00:00.000Z'))
-    expect(hydrated.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
+    expect(order.date).toEqual(source.date)
+    expect(order.boxes.deliveryDate).toBe('2026-03-15')
+    expect(order.boxes.returnDate).toEqual(new Date('2026-03-20T07:00:00.000Z'))
+    expect(order.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
   })
 
   it('preserves manual overrides across ordinary booking edits', () => {
     const manual = setPricingOverride(makeCanonicalAppOrder(), 'price', 220)
-    const updated = applyOrderPatch(manual, {
+    const updated = {
+      ...manual,
+      ...normalizeOrderPatch({
       duration: 4,
       service: { id: '2', name: 'Changed service', pricePerHour: 70 },
       address: { street: 'New street', index: '00100', city: 'Helsinki', floor: 2, elevator: false },
-    })
+      }),
+    }
 
     expect(updated.duration).toBe(4)
     expect(updated.service.id).toBe('2')
@@ -97,29 +99,29 @@ describe('canonical order model', () => {
   })
 
   it('supports explicit zero and empty fee overrides', () => {
-    const order = applyOrderPatch(makeCanonicalAppOrder(), {
+    const order = {
+      ...makeCanonicalAppOrder(),
+      ...normalizeOrderPatch({
       pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },
-    })
+      }),
+    }
 
     expect(order.pricingOverrides).toEqual({ price: 0, fees: [], boxesPrice: 0 })
     expect(getOrderPricing(order)).toEqual({ price: 0, fees: [], boxesPrice: 0 })
   })
 
   it('rejects unknown or malformed editable fields', () => {
-    const order = makeCanonicalAppOrder()
-
-    expect(() => applyOrderPatch(order, { origin: 'app' })).toThrow(/not editable/i)
-    expect(() => applyOrderPatch(order, { pricingOverrides: { price: 'bad' } })).toThrow(/price/i)
-    expect(() => applyOrderPatch(order, { pricingOverrides: { fees: [{ amount: 'bad' }] } })).toThrow(
+    expect(() => normalizeOrderPatch({ origin: 'app' })).toThrow(/not editable/i)
+    expect(() => normalizeOrderPatch({ pricingOverrides: { price: 'bad' } })).toThrow(/price/i)
+    expect(() => normalizeOrderPatch({ pricingOverrides: { fees: [{ amount: 'bad' }] } })).toThrow(
       /fees/i,
     )
+    expect(() => normalizeOrderPatch({ confirmed: true })).toThrow(/not editable/i)
   })
 
   it('rejects incomplete or invalid canonical booking values', () => {
-    const order = makeCanonicalAppOrder()
-
-    expect(() => hydrateCanonicalOrder({ ...order, date: undefined })).toThrow(/date/i)
+    expect(() => createAppOrder({ ...makeAppBooking(), date: undefined })).not.toThrow()
     expect(() => createAppOrder({ ...makeAppBooking(), boxes: null })).toThrow(/boxes/i)
-    expect(() => applyOrderPatch(order, { date: '2026-01-15T09:00:00' })).toThrow(/absolute instant/i)
+    expect(() => normalizeOrderPatch({ date: '2026-01-15T09:00:00' })).toThrow(/absolute instant/i)
   })
 })

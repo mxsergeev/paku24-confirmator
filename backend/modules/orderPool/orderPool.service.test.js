@@ -7,8 +7,7 @@ const mocks = vi.hoisted(() => ({
   deleteOrderEvent: vi.fn(),
   syncOrderToCalendar: vi.fn(),
   withOrderCalendarLock: vi.fn((_order, operation) => operation()),
-  applyOrderPatch: vi.fn(),
-  hydrateCanonicalOrder: vi.fn((order) => order),
+  normalizeOrderPatch: vi.fn(),
 }))
 
 vi.mock('../../models/order.js', () => ({
@@ -26,9 +25,7 @@ vi.mock('../calendar/calendar.sync.js', () => ({
 }))
 
 vi.mock('../../../src/shared/orderModel.js', () => ({
-  BOOKING_FIELDS: ['name'],
-  applyOrderPatch: mocks.applyOrderPatch,
-  hydrateCanonicalOrder: mocks.hydrateCanonicalOrder,
+  normalizeOrderPatch: mocks.normalizeOrderPatch,
 }))
 
 const {
@@ -54,7 +51,7 @@ describe('order pool service error handling', () => {
     const order = makeOrder()
     const failure = new TypeError('programmer failure')
     mocks.findById.mockResolvedValue(order)
-    mocks.applyOrderPatch.mockImplementation(() => {
+    mocks.normalizeOrderPatch.mockImplementation(() => {
       throw failure
     })
 
@@ -144,7 +141,7 @@ describe('explicit calendar side effects', () => {
     order.confirmed = true
     const failure = new Error('calendar unavailable')
     mocks.findById.mockResolvedValue(order)
-    mocks.applyOrderPatch.mockReturnValue({ name: 'Updated', pricing: {}, price: 1, fees: [], boxesPrice: 0 })
+    mocks.normalizeOrderPatch.mockReturnValue({ name: 'Updated' })
     mocks.syncOrderToCalendar.mockRejectedValue(failure)
 
     const result = await updateOrder('66c000000000000000000001', { name: 'Updated' })

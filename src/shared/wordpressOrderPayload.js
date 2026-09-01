@@ -85,6 +85,13 @@ function normalizeBoxDate(value, field) {
   return parseInstant(value, field)
 }
 
+function normalizeWordPressString(value, field) {
+  if (value === null || value === undefined) return value
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  throw new OrderValidationError(`Invalid ${field}`)
+}
+
 function normalizeBoxes(value, orderDate) {
   if (!isPlainObject(value)) throw new OrderValidationError('Invalid boxes: expected an object')
   if (Object.keys(value).length === 0) {
@@ -132,7 +139,9 @@ export function normalizeWordPressOrderPayload(input) {
       if (!Array.isArray(input.extraAddresses)) throw new OrderValidationError('Invalid extraAddresses: expected an array')
       result.extraAddresses = input.extraAddresses.map((address, index) => normalizeAddress(address, `extraAddresses.${index}`))
     } else if (field === 'boxes') result.boxes = normalizeBoxes(input.boxes, result.date)
-    else result[field] = cloneValue(input[field])
+    else if (['name', 'email', 'phone', 'comment'].includes(field)) {
+      result[field] = normalizeWordPressString(input[field], field)
+    } else result[field] = cloneValue(input[field])
   })
 
   PRICING_COMPONENTS.forEach((field) => {

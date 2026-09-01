@@ -2,11 +2,7 @@ import Order from '../../models/order.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import { DEFAULT_EVENT_COLOR_ID } from '../../utils/colors.js'
 import * as logger from '../../utils/logger.js'
-import {
-  BOOKING_FIELDS,
-  applyOrderPatch,
-  hydrateCanonicalOrder,
-} from '../../../src/shared/orderModel.js'
+import { normalizeOrderPatch } from '../../../src/shared/orderModel.js'
 import { isOrderValidationError } from '../../../src/shared/orderPrimitives.js'
 import {
   deleteOrderEvent,
@@ -65,23 +61,6 @@ function validationError(message) {
   return newErrorWithCustomName('ValidationError', message)
 }
 
-function canonicalOrderObject(order) {
-  const { _id, ...persisted } = order.toObject()
-  const id = _id === null || _id === undefined ? persisted.id : _id.toString()
-  return hydrateCanonicalOrder({
-    ...persisted,
-    ...(id === undefined ? {} : { id }),
-  })
-}
-
-function assignCanonicalState(order, canonical) {
-  BOOKING_FIELDS.forEach((field) => {
-    order[field] = canonical[field]
-  })
-
-  order.pricingOverrides = canonical.pricingOverrides
-}
-
 async function getOrderById(id) {
   const order = await Order.findById(id)
 
@@ -96,18 +75,17 @@ async function updateOrder(id, updateData) {
   const order = await getOrderById(id)
 
   return withOrderCalendarLock(order, async () => {
-    const currentOrder = await getOrderById(id)
-    let updated
+    let patch
     try {
-      updated = applyOrderPatch(canonicalOrderObject(currentOrder), updateData)
+      patch = normalizeOrderPatch(updateData)
     } catch (err) {
       if (!isOrderValidationError(err)) throw err
       throw validationError(err.message)
     }
 
-    assignCanonicalState(currentOrder, updated)
-    await currentOrder.save()
-    return syncAfterMutation(currentOrder)
+    Object.assign(order, patch)
+    await order.save()
+    return syncAfterMutation(order)
   })
 }
 

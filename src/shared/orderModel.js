@@ -32,18 +32,6 @@ const BOOKING_FIELDS = [
   'comment',
 ]
 
-const LIFECYCLE_FIELDS = [
-  'id',
-  'confirmed',
-  'confirmedBy',
-  'confirmedAt',
-  'receivedAt',
-  'canceledAt',
-  'deletedAt',
-  'invoiceNumber',
-  'calendarEventIds',
-]
-
 const CALENDAR_EVENT_ROLES = ['main', 'boxDelivery', 'boxReturn']
 const BOX_FIELDS = [
   'deliveryDate',
@@ -60,21 +48,6 @@ const BOOLEAN_BOOKING_FIELDS = new Set(['hsy', 'XL'])
 
 function makeCalendarEventIds() {
   return Object.fromEntries(CALENDAR_EVENT_ROLES.map((role) => [role, null]))
-}
-
-function normalizeCalendarEventIds(value) {
-  if (value === null || value === undefined) return makeCalendarEventIds()
-  if (!isPlainObject(value)) throw new OrderValidationError('Invalid calendarEventIds')
-
-  return Object.fromEntries(
-    CALENDAR_EVENT_ROLES.map((role) => {
-      const eventId = value[role]
-      if (eventId !== null && eventId !== undefined && typeof eventId !== 'string') {
-        throw new OrderValidationError(`Invalid calendarEventIds.${role}`)
-      }
-      return [role, eventId || null]
-    }),
-  )
 }
 
 function makeAddress() {
@@ -154,42 +127,6 @@ function normalizeBoxDate(value, fieldName) {
   return parseInstant(value, fieldName)
 }
 
-function normalizeBoxesShape(value, fieldName, fallback = null) {
-  if (!isPlainObject(value)) throw new OrderValidationError(`Invalid ${fieldName}`)
-
-  const defaults = isPlainObject(fallback) ? fallback : {}
-  const boxes = {}
-  BOX_FIELDS.forEach((field) => {
-    if (hasOwn(value, field)) boxes[field] = cloneValue(value[field])
-    else if (hasOwn(defaults, field)) boxes[field] = cloneValue(defaults[field])
-  })
-
-  for (const field of BOX_NUMBER_FIELDS) {
-    if (!hasOwn(boxes, field)) continue
-    const number = toFiniteNumberOrNull(boxes[field])
-    if (number === null || (field === 'amount' && number < 0)) {
-      throw new OrderValidationError(`Invalid ${fieldName}.${field}`)
-    }
-    boxes[field] = number
-  }
-
-  for (const field of ['deliveryDate', 'returnDate']) {
-    if (hasOwn(boxes, field)) boxes[field] = normalizeBoxDate(boxes[field], `${fieldName}.${field}`)
-  }
-
-  return boxes
-}
-
-function normalizeCurrentBoxes(value, fallback) {
-  if (value === null) throw new OrderValidationError('Invalid boxes')
-
-  const boxes = normalizeBoxesShape(value === undefined ? {} : value, 'boxes', fallback)
-  if (!hasOwn(boxes, 'amount') || !hasOwn(boxes, 'deliveryDate') || !hasOwn(boxes, 'returnDate')) {
-    throw new OrderValidationError('Invalid boxes')
-  }
-  return boxes
-}
-
 function normalizePricingValue(component, value, fieldName) {
   if (component === 'fees') return normalizeFeeList(value, `Invalid ${fieldName}`).map(cloneValue)
 
@@ -214,33 +151,12 @@ function normalizePricingOverrides(value) {
   )
 }
 
-function defaultLifecycleState() {
-  return {
-    id: null,
-    confirmed: false,
-    confirmedBy: null,
-    confirmedAt: null,
-    receivedAt: null,
-    canceledAt: null,
-    deletedAt: null,
-    invoiceNumber: null,
-    calendarEventIds: makeCalendarEventIds(),
-  }
-}
-
-function requireField(input, field, { allowNull = false } = {}) {
-  if (!hasOwn(input, field) || input[field] === undefined || (!allowNull && input[field] === null)) {
-    throw new OrderValidationError(`Invalid order: ${field} is required`)
-  }
-  return input[field]
-}
-
 function requireObject(value, field) {
   if (!isPlainObject(value)) throw new OrderValidationError(`Invalid ${field}`)
   return value
 }
 
-function normalizeCanonicalAddress(value, field) {
+function normalizeAddress(value, field = 'address') {
   requireObject(value, field)
   for (const key of ['street', 'index', 'city', 'floor', 'elevator']) {
     if (!hasOwn(value, key) || value[key] === undefined || value[key] === null) {
@@ -264,25 +180,20 @@ function normalizeCanonicalAddress(value, field) {
   }
 }
 
-function normalizeAddressWithFallback(value, field, fallback = makeAddress()) {
-  return normalizeCanonicalAddress({ ...fallback, ...requireObject(value, field) }, field)
-}
-
-function normalizeEmbeddedWithFallback(value, field, requiredNumberField, fallback = null) {
+function normalizeEmbedded(value, field, requiredNumberField) {
   const input = requireObject(value, field)
-  const embedded = fallback ? { ...fallback, ...input } : input
 
-  if (!hasOwn(embedded, 'id') || embedded.id === null || embedded.id === undefined || embedded.id === '') {
+  if (!hasOwn(input, 'id') || input.id === null || input.id === undefined || input.id === '') {
     throw new OrderValidationError(`Invalid ${field}.id: required`)
   }
-  if (typeof embedded.name !== 'string' || embedded.name.trim() === '') {
+  if (typeof input.name !== 'string' || input.name.trim() === '') {
     throw new OrderValidationError(`Invalid ${field}.name: required`)
   }
-  if (requiredNumberField && !hasOwn(embedded, requiredNumberField)) {
+  if (requiredNumberField && !hasOwn(input, requiredNumberField)) {
     throw new OrderValidationError(`Invalid ${field}.${requiredNumberField}: required`)
   }
 
-  const normalized = cloneValue(embedded)
+  const normalized = cloneValue(input)
   for (const key of [requiredNumberField, 'fee']) {
     if (!key || !hasOwn(normalized, key)) continue
     const number = toFiniteNumberOrNull(normalized[key])
@@ -293,7 +204,15 @@ function normalizeEmbeddedWithFallback(value, field, requiredNumberField, fallba
   return normalized
 }
 
-function normalizeSimpleBookingField(field, value) {
+function normalizeService(value, field = 'service') {
+  return normalizeEmbedded(value, field, 'pricePerHour')
+}
+
+function normalizePaymentType(value, field = 'paymentType') {
+  return normalizeEmbedded(value, field, null)
+}
+
+function normalizeSimpleField(field, value) {
   if (field === 'eventColor') {
     if (value === null) return null
     if (typeof value !== 'string' || !Object.prototype.hasOwnProperty.call(colors, value)) {
@@ -322,80 +241,32 @@ function normalizeDuration(value, field = 'duration') {
   return duration
 }
 
-function normalizeCanonicalBoxes(value, field = 'boxes') {
+function normalizeBoxes(value, field = 'boxes') {
   requireObject(value, field)
   for (const key of ['deliveryDate', 'returnDate', 'amount']) {
     if (!hasOwn(value, key) || value[key] === undefined || value[key] === null) {
       throw new OrderValidationError(`Invalid ${field}.${key}: required`)
     }
   }
-  return normalizeBoxesShape(value, field)
-}
+  const boxes = {}
+  for (const boxField of BOX_FIELDS) {
+    if (hasOwn(value, boxField)) boxes[boxField] = cloneValue(value[boxField])
+  }
 
-function normalizeCanonicalBooking(input, fieldPrefix = '') {
-  const result = {}
-
-  BOOKING_FIELDS.forEach((field) => {
-    const value = requireField(input, field, { allowNull: NULLABLE_BOOKING_FIELDS.has(field) })
-    const fieldName = fieldPrefix ? `${fieldPrefix}.${field}` : field
-
-    if (field === 'date') result[field] = parseInstant(value, fieldName)
-    else if (field === 'boxes') result[field] = normalizeCanonicalBoxes(value, fieldName)
-    else if (field === 'address' || field === 'destination') {
-      result[field] = normalizeCanonicalAddress(value, fieldName)
-    } else if (field === 'extraAddresses') {
-      if (!Array.isArray(value)) throw new OrderValidationError(`Invalid ${fieldName}`)
-      result[field] = value.map((address, index) =>
-        normalizeCanonicalAddress(address, `${fieldName}.${index}`),
-      )
-    } else if (field === 'duration') {
-      result[field] = normalizeDuration(value, fieldName)
-    } else if (field === 'service') {
-      result[field] = normalizeEmbeddedWithFallback(value, fieldName, 'pricePerHour')
-    } else if (field === 'paymentType') {
-      result[field] = normalizeEmbeddedWithFallback(value, fieldName, null)
-    } else if (STRING_BOOKING_FIELDS.has(field) || BOOLEAN_BOOKING_FIELDS.has(field)) {
-      result[field] = normalizeSimpleBookingField(field, value)
+  for (const boxField of BOX_NUMBER_FIELDS) {
+    if (!hasOwn(boxes, boxField)) continue
+    const number = toFiniteNumberOrNull(boxes[boxField])
+    if (number === null || (boxField === 'amount' && number < 0)) {
+      throw new OrderValidationError(`Invalid ${field}.${boxField}`)
     }
-  })
+    boxes[boxField] = number
+  }
 
-  return result
-}
+  for (const dateField of ['deliveryDate', 'returnDate']) {
+    boxes[dateField] = normalizeBoxDate(boxes[dateField], `${field}.${dateField}`)
+  }
 
-function normalizeCanonicalLifecycle(input, result) {
-  const lifecycle = defaultLifecycleState()
-
-  LIFECYCLE_FIELDS.forEach((field) => {
-    if (!hasOwn(input, field) || input[field] === undefined) return
-
-    if (field === 'confirmed') {
-      if (typeof input[field] !== 'boolean') throw new OrderValidationError(`Invalid ${field}`)
-      lifecycle[field] = input[field]
-    } else if (field === 'calendarEventIds') {
-      lifecycle[field] = normalizeCalendarEventIds(input[field])
-    } else if (field.endsWith('At') || field === 'receivedAt') {
-      lifecycle[field] = input[field] === null ? null : parseInstant(input[field], field)
-    } else {
-      lifecycle[field] = cloneValue(input[field])
-    }
-  })
-
-  return { ...result, ...lifecycle }
-}
-
-function normalizeOriginalOrder(value) {
-  if (value === null || value === undefined) return null
-  if (!isPlainObject(value)) throw new OrderValidationError('Invalid originalOrder')
-  return cloneValue(value)
-}
-
-function hydrateCanonicalOrder(input) {
-  if (!isPlainObject(input)) throw new OrderValidationError('Order must be a plain object')
-
-  const result = normalizeCanonicalBooking(input)
-  result.pricingOverrides = normalizePricingOverrides(input.pricingOverrides)
-  result.originalOrder = normalizeOriginalOrder(input.originalOrder)
-  return normalizeCanonicalLifecycle(input, result)
+  return boxes
 }
 
 function assertOrderPatch(patch) {
@@ -408,23 +279,12 @@ function assertOrderPatch(patch) {
   }
 }
 
-function normalizePatchBoxes(value, currentBoxes) {
-  if (value === null || value === undefined) return value
-  return normalizeCurrentBoxes(value, currentBoxes)
-}
-
-function applyOrderPatch(currentOrder, patch) {
-  if (!currentOrder || typeof currentOrder !== 'object' || Array.isArray(currentOrder)) {
-    throw new OrderValidationError('Order must be an object')
-  }
+function normalizeOrderPatch(patch) {
   assertOrderPatch(patch)
 
-  let updated = currentOrder
+  const normalized = {}
   if (hasOwn(patch, 'pricingOverrides')) {
-    updated = {
-      ...updated,
-      pricingOverrides: normalizePricingOverrides(patch.pricingOverrides),
-    }
+    normalized.pricingOverrides = normalizePricingOverrides(patch.pricingOverrides)
   }
 
   for (const field of BOOKING_FIELDS) {
@@ -436,42 +296,43 @@ function applyOrderPatch(currentOrder, patch) {
     }
 
     let nextValue = value
-    if (field === 'date' && value !== null && value !== undefined) {
+    if (field === 'date') {
       nextValue = parseInstant(value, 'date')
     } else if (field === 'duration') {
       nextValue = normalizeDuration(value)
     } else if (field === 'boxes') {
-      nextValue = normalizePatchBoxes(value, updated.boxes)
+      nextValue = normalizeBoxes(value)
     } else if (field === 'address' || field === 'destination') {
-      nextValue = normalizeAddressWithFallback(value, field, updated[field])
+      nextValue = normalizeAddress(value, field)
     } else if (field === 'service') {
-      nextValue = normalizeEmbeddedWithFallback(value, field, 'pricePerHour', updated[field])
+      nextValue = normalizeService(value, field)
     } else if (field === 'paymentType') {
-      nextValue = normalizeEmbeddedWithFallback(value, field, null, updated[field])
+      nextValue = normalizePaymentType(value, field)
     } else if (field === 'extraAddresses') {
       if (!Array.isArray(value)) throw new OrderValidationError('Invalid extraAddresses')
       nextValue = value.map((address, index) =>
-        normalizeAddressWithFallback(address, `extraAddresses.${index}`, updated.extraAddresses?.[index]),
+        normalizeAddress(address, `extraAddresses.${index}`),
       )
     } else if (STRING_BOOKING_FIELDS.has(field) || BOOLEAN_BOOKING_FIELDS.has(field)) {
-      nextValue = normalizeSimpleBookingField(field, value)
+      nextValue = normalizeSimpleField(field, value)
     }
 
-    updated = { ...updated, [field]: cloneValue(nextValue) }
+    normalized[field] = cloneValue(nextValue)
   }
 
-  return updated
+  return normalized
 }
 
 function updateOrderField(order, key, value) {
-  return applyOrderPatch(order, { [key]: value })
+  if (!order || typeof order !== 'object' || Array.isArray(order)) {
+    throw new OrderValidationError('Order must be an object')
+  }
+  return { ...order, ...normalizeOrderPatch({ [key]: value }) }
 }
 
-function createDefaultAppOrder() {
-  return makeDefaultState()
-}
+function createAppOrder(input = {}) {
+  if (!isPlainObject(input)) throw new OrderValidationError('Order must be an object')
 
-function constructBookingOrder(input, { validateSimpleFields = true } = {}) {
   const defaults = makeDefaultState()
   const result = {
     ...defaults,
@@ -493,44 +354,37 @@ function constructBookingOrder(input, { validateSimpleFields = true } = {}) {
 
     if (field === 'date') result.date = parseInstant(input.date, 'date')
     else if (field === 'duration') result.duration = normalizeDuration(input.duration)
-    else if (field === 'boxes') result.boxes = normalizeCurrentBoxes(input.boxes, defaults.boxes)
+    else if (field === 'boxes') {
+      result.boxes = normalizeBoxes({ ...defaults.boxes, ...requireObject(input.boxes, 'boxes') })
+    }
     else if (field === 'extraAddresses') {
       if (!Array.isArray(input.extraAddresses)) throw new OrderValidationError('Invalid extraAddresses')
       result.extraAddresses = input.extraAddresses.map((address, index) =>
-        normalizeAddressWithFallback(address, `extraAddresses.${index}`),
+        normalizeAddress(address, `extraAddresses.${index}`),
       )
     } else if (field === 'address' || field === 'destination') {
-      result[field] = normalizeAddressWithFallback(input[field], field, result[field])
+      result[field] = normalizeAddress(
+        { ...result[field], ...requireObject(input[field], field) },
+        field,
+      )
     } else if (field === 'service') {
-      result[field] = normalizeEmbeddedWithFallback(input[field], field, 'pricePerHour')
+      result[field] = normalizeService(input[field])
     } else if (field === 'paymentType') {
-      result[field] = normalizeEmbeddedWithFallback(input[field], field, null)
-    } else if (
-      validateSimpleFields &&
-      (STRING_BOOKING_FIELDS.has(field) || BOOLEAN_BOOKING_FIELDS.has(field))
-    ) {
-      result[field] = normalizeSimpleBookingField(field, input[field])
+      result[field] = normalizePaymentType(input[field])
     } else {
-      result[field] = cloneValue(input[field])
+      result[field] = normalizeSimpleField(field, input[field])
     }
   })
 
+  result.pricingOverrides = normalizePricingOverrides(input.pricingOverrides)
   return result
-}
-
-function createAppOrder(input = {}) {
-  if (!isPlainObject(input)) throw new OrderValidationError('Order must be an object')
-
-  const order = constructBookingOrder(input)
-  order.pricingOverrides = normalizePricingOverrides(input.pricingOverrides)
-  return order
 }
 
 function createWordPressOrder(input = {}, originalOrder = input) {
   if (!isPlainObject(input)) throw new OrderValidationError('Order must be an object')
   if (!isPlainObject(originalOrder)) throw new OrderValidationError('Original WordPress order must be an object')
 
-  const booking = constructBookingOrder(input, { validateSimpleFields: false })
+  const booking = createAppOrder(input)
   return {
     ...booking,
     originalOrder: cloneValue(originalOrder),
@@ -541,10 +395,15 @@ export {
   BOOKING_FIELDS,
   CALENDAR_EVENT_ROLES,
   makeCalendarEventIds,
-  createDefaultAppOrder,
-  hydrateCanonicalOrder,
+  normalizeAddress,
+  normalizeBoxes,
+  normalizeService,
+  normalizePaymentType,
+  normalizePricingOverrides,
+  normalizeDuration,
+  normalizeSimpleField,
+  normalizeOrderPatch,
   createAppOrder,
   createWordPressOrder,
-  applyOrderPatch,
   updateOrderField,
 }

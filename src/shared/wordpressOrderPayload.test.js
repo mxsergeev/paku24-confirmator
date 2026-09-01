@@ -68,7 +68,7 @@ describe('normalizeWordPressOrderPayload', () => {
       deliveryDate: new Date('2026-01-15T07:00:00.000Z'),
       returnDate: new Date('2026-01-15T07:00:00.000Z'),
     })
-    expect(() => createWordPressOrder(emptyBoxesOrder)).not.toThrow()
+    expect(() => createWordPressOrder(emptyBoxesOrder, wordpressPayload({ boxes: {} }))).not.toThrow()
     const boxes = normalizeWordPressOrderPayload(wordpressPayload({ boxes: {
       amount: '0', deliveryDate: '2026-01-16', returnDate: '2026-01-24',
     } })).boxes

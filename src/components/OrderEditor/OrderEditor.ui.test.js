@@ -7,6 +7,7 @@ import '@testing-library/jest-dom'
 import OrderEditor from './OrderEditor'
 import { createWordPressOrder, updateOrderField } from '../../shared/orderModel'
 import { toUpdateOrderPayload } from '../../shared/orderSerialization'
+import { normalizeWordPressOrderPayload } from '../../shared/wordpressOrderPayload'
 import {
   makeWordPressPayload,
 } from '../../shared/testFixtures/orderFixtures'
@@ -65,7 +66,11 @@ function makeOrderWithTwoExtraAddresses() {
       elevator: true,
     },
   ]
-  return createWordPressOrder(input)
+  return createWordPressOrder(normalizeWordPressOrderPayload(input), input)
+}
+
+function makeWordPressOrder(input) {
+  return createWordPressOrder(normalizeWordPressOrderPayload(input), input)
 }
 
 function OrderEditorHarness({ initialOrder, onOrderChange }) {
@@ -116,7 +121,7 @@ describe('OrderEditor extra address identity', () => {
     view.rerender(
       <OrderEditorHarness
         key="reopened"
-        initialOrder={createWordPressOrder({
+        initialOrder={makeWordPressOrder({
           ...makeWordPressPayload(),
           extraAddresses: updatePayload.extraAddresses,
         })}

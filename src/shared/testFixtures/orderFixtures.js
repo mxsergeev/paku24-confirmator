@@ -3,6 +3,7 @@ import fees from '../../data/fees.json' with { type: 'json' }
 import paymentTypes from '../../data/paymentTypes.json' with { type: 'json' }
 import services from '../../data/services.json' with { type: 'json' }
 import { createAppOrder, createWordPressOrder } from '../orderModel.js'
+import { normalizeWordPressOrderPayload } from '../wordpressOrderPayload.js'
 
 const START_ADDRESS = {
   street: 'Mannerheimintie 10',
@@ -129,7 +130,8 @@ export function makeAppBooking(overrides = {}) {
 }
 
 export function makeCanonicalWordPressOrder(overrides = {}) {
-  return createWordPressOrder(makeWordPressPayload(overrides))
+  const source = makeWordPressPayload(overrides)
+  return createWordPressOrder(normalizeWordPressOrderPayload(source), source)
 }
 
 export function makeCanonicalAppOrder(overrides = {}) {
