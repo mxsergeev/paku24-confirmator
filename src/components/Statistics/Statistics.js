@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import TextField from '@material-ui/core/TextField'
 import Popper from '@material-ui/core/Popper'
 import Table from '@material-ui/core/Table'
@@ -123,9 +123,9 @@ export default function Statistics() {
     fetchStats()
   }, [period])
 
-  const handlePeriodChange = useCallback((e) => {
+  const handlePeriodChange = (e) => {
     setPeriod((prev) => ({ ...prev, [e.target.name]: dayjs(e.target.value) }))
-  }, [])
+  }
 
   function showOrdersByDay(e) {
     setAnchorEl(e.currentTarget)

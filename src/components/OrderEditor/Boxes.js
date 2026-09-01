@@ -3,7 +3,7 @@ import { Checkbox, FormControlLabel, NativeSelect } from '@material-ui/core/'
 import AllInboxIcon from '@material-ui/icons/AllInbox'
 import { DatePicker, DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import locale_en from 'dayjs/locale/en'
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import boxesSettings from '../../data/boxes.json'
 import CollapseWrapper from '../CollapseWrapper'
 import dayjs from '../../shared/dayjs'
@@ -15,16 +15,11 @@ for (let i = boxesSettings.minAmount; i <= boxesSettings.maxAmount; i += boxesSe
 }
 
 export default function Boxes({ order = {}, handleChange, style }) {
-  const [includeTime_start, setIncludeTime_start] = useState(true)
-  const [includeTime_end, setIncludeTime_end] = useState(true)
+  const includeTimeStart = !isDateOnly(order.boxes.deliveryDate)
+  const includeTimeEnd = !isDateOnly(order.boxes.returnDate)
 
-  const StartPicker = includeTime_start ? DateTimePicker : DatePicker
-  const EndPicker = includeTime_end ? DateTimePicker : DatePicker
-
-  useEffect(() => {
-    setIncludeTime_start(!isDateOnly(order.boxes.deliveryDate))
-    setIncludeTime_end(!isDateOnly(order.boxes.returnDate))
-  }, [order.boxes.deliveryDate, order.boxes.returnDate])
+  const StartPicker = includeTimeStart ? DateTimePicker : DatePicker
+  const EndPicker = includeTimeEnd ? DateTimePicker : DatePicker
 
   const handleDateChange = (name, date, includeTime) =>
     handleChange('boxes', {
@@ -67,10 +62,10 @@ export default function Boxes({ order = {}, handleChange, style }) {
               <MuiPickersUtilsProvider utils={DayjsUtils} locale={locale_en}>
                 <StartPicker
                   ampm={false}
-                  format={includeTime_start ? 'DD.MM.YYYY HH:mm' : 'DD.MM.YYYY'}
+                  format={includeTimeStart ? 'DD.MM.YYYY HH:mm' : 'DD.MM.YYYY'}
                   minutesStep={5}
                   value={order.boxes.deliveryDate}
-                  onChange={(v) => handleDateChange('deliveryDate', v, includeTime_start)}
+                  onChange={(v) => handleDateChange('deliveryDate', v, includeTimeStart)}
                   DialogProps={{ disableScrollLock: true }}
                 />
               </MuiPickersUtilsProvider>
@@ -79,11 +74,9 @@ export default function Boxes({ order = {}, handleChange, style }) {
                 style={{ display: 'block', marginLeft: 0 }}
                 control={
                   <Checkbox
-                    checked={includeTime_start}
+                    checked={includeTimeStart}
                     onChange={() => {
-                      const v = !includeTime_start
-                      setIncludeTime_start(v)
-                      handleDateChange('deliveryDate', order.boxes.deliveryDate, v)
+                      handleDateChange('deliveryDate', order.boxes.deliveryDate, !includeTimeStart)
                     }}
                     color="primary"
                   />
@@ -97,10 +90,10 @@ export default function Boxes({ order = {}, handleChange, style }) {
               <MuiPickersUtilsProvider utils={DayjsUtils} locale={locale_en}>
                 <EndPicker
                   ampm={false}
-                  format={includeTime_end ? 'DD.MM.YYYY HH:mm' : 'DD.MM.YYYY'}
+                  format={includeTimeEnd ? 'DD.MM.YYYY HH:mm' : 'DD.MM.YYYY'}
                   minutesStep={5}
                   value={order.boxes.returnDate}
-                  onChange={(v) => handleDateChange('returnDate', v, includeTime_end)}
+                  onChange={(v) => handleDateChange('returnDate', v, includeTimeEnd)}
                   DialogProps={{ disableScrollLock: true }}
                 />
               </MuiPickersUtilsProvider>
@@ -109,11 +102,9 @@ export default function Boxes({ order = {}, handleChange, style }) {
                 style={{ display: 'block', marginLeft: 0 }}
                 control={
                   <Checkbox
-                    checked={includeTime_end}
+                    checked={includeTimeEnd}
                     onChange={() => {
-                      const v = !includeTime_end
-                      setIncludeTime_end(v)
-                      handleDateChange('returnDate', order.boxes.returnDate, v)
+                      handleDateChange('returnDate', order.boxes.returnDate, !includeTimeEnd)
                     }}
                     color="primary"
                   />

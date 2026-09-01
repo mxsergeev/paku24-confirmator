@@ -102,29 +102,26 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
   const bankWrapperRef = React.useRef(null)
   const bankTableRef = React.useRef(null)
 
-  const loadOrder = useCallback(async () => {
-    try {
-      setLoading(true)
-      const response = await ordersAPI.getById(orderId)
-      const loadedOrder = response?.order || null
-      setOrder(loadedOrder)
-    } catch (err) {
-      if (err.message === 'logout') return
-      enqueueSnackbar('Failed to load order for receipt page.', { variant: 'error' })
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    async function loadOrder() {
+      try {
+        setLoading(true)
+        const response = await ordersAPI.getById(orderId)
+        const loadedOrder = response?.order || null
+        setOrder(loadedOrder)
+      } catch (err) {
+        if (err.message === 'logout') return
+        enqueueSnackbar('Failed to load order for receipt page.', { variant: 'error' })
+      } finally {
+        setLoading(false)
+      }
     }
+
+    loadOrder()
   }, [orderId])
 
-  useEffect(() => {
-    loadOrder()
-  }, [loadOrder])
-
   const safeInitialDraft = useMemo(() => normalizeReceiptDraft(initialDraft), [initialDraft])
-  const safeDocumentType = useMemo(
-    () => (documentType == null ? null : normalizeDocumentType(documentType)),
-    [documentType]
-  )
+  const safeDocumentType = documentType == null ? null : normalizeDocumentType(documentType)
 
   const receipt = useMemo(() => {
     if (!order) return null
@@ -303,7 +300,7 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
     }
   }, [recalcLastServicePadding, lastServiceExtraPadding])
 
-  const handleSend = useCallback(async () => {
+  const handleSend = async () => {
     if (!receipt?.customerEmail) {
       enqueueSnackbar('Email is missing in receipt data.', { variant: 'warning' })
       return
@@ -347,16 +344,16 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
     } finally {
       setSending(false)
     }
-  }, [receipt])
+  }
 
-  const handleDownloadFromCart = useCallback(() => {
+  const handleDownloadFromCart = () => {
     const page = document.querySelector('#cart-receipt')
     if (!page || !receipt) return
 
     const name = `${receipt.isInvoice ? 'Invoice' : 'Receipt'} ${receipt.invoiceNumber}.pdf`
 
     buildPdfFromPage(page).then((doc) => doc.save(name))
-  }, [receipt])
+  }
 
   if (loading) {
     return (
