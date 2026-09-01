@@ -8,7 +8,7 @@ import {
   toUpdateOrderPayload,
 } from './orderSerialization.js'
 
-describe('API and communication payloads', () => {
+describe('API payloads', () => {
   it('creates an app payload with automatic pricing overrides', () => {
     const payload = toCreateOrderPayload(makeCanonicalAppOrder())
 

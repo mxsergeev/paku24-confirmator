@@ -27,7 +27,7 @@ const CREDENTIALS_PATH = path.join(process.cwd(), `credentials/${credsFileName}`
 const TOKEN_PATH = path.join(process.cwd(), `credentials/${tokenFileName}`)
 
 /**
- * Serializes token to a file compatible with GoogleAUth.fromJSON.
+ * Serializes token to a file compatible with GoogleAuth.fromJSON.
  *
  * @param {OAuth2Client} client
  * @return {Promise<void>}

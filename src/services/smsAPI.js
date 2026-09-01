@@ -3,8 +3,7 @@ import interceptor from './interceptor'
 const baseUrl = '/api/sms'
 /**
  * @param {Object} params
- * @param {string} params.phone
- * @param {string} params.msg
+ * @param {string} params.orderId Persisted order ID.
  */
 
 export default async function sendSMS(params) {
