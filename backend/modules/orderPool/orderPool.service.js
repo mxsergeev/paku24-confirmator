@@ -72,9 +72,8 @@ async function getOrderById(id) {
 }
 
 async function updateOrder(id, updateData) {
-  const order = await getOrderById(id)
-
-  return withOrderCalendarLock(order, async () => {
+  return withOrderCalendarLock(id, async () => {
+    const order = await getOrderById(id)
     let patch
     try {
       patch = normalizeOrderPatch(updateData)
@@ -92,26 +91,21 @@ async function updateOrder(id, updateData) {
 async function confirmOrder(id, userId) {
   if (!id) return null
 
-  const order = await getOrderById(id)
+  return withOrderCalendarLock(id, async () => {
+    const order = await getOrderById(id)
 
-  return withOrderCalendarLock(order, async () => {
-    // Reload while holding the same lock used by deletion. This prevents a
-    // confirmation that started first from marking a row confirmed after a
-    // concurrent deletion has removed its calendar ownership.
-    const currentOrder = await getOrderById(id)
-
-    if (currentOrder.deletedAt) {
+    if (order.deletedAt) {
       throw validationError('Deleted orders cannot be confirmed')
     }
 
     // Confirmation is idempotent. A repeated request must not depend on a
     // transient calendar provider response once the lifecycle flag is true.
-    if (currentOrder.confirmed) return resultWithWarning(currentOrder)
+    if (order.confirmed) return resultWithWarning(order)
 
     // Confirmation has an external precondition. Reconcile the persisted order
     // first, so a calendar failure cannot leave Mongo marked as confirmed.
     try {
-      await syncOrderToCalendar(currentOrder, { lock: false })
+      await syncOrderToCalendar(order, { lock: false })
     } catch (err) {
       logger.error('Order calendar synchronization failed before confirmation', err)
       throw calendarUnavailableError(
@@ -140,11 +134,9 @@ async function confirmOrder(id, userId) {
 async function cancelOrder(id) {
   if (!id) return null
 
-  const order = await getOrderById(id)
-
-  return withOrderCalendarLock(order, async () => {
-    const currentOrder = await getOrderById(id)
-    if (currentOrder.deletedAt) {
+  return withOrderCalendarLock(id, async () => {
+    const order = await getOrderById(id)
+    if (order.deletedAt) {
       throw validationError('Deleted orders cannot be canceled')
     }
 
@@ -164,12 +156,11 @@ async function cancelOrder(id) {
 async function deleteOrder(id) {
   if (!id) return null
 
-  const order = await getOrderById(id)
-
   // Calendar events are owned by the order. Delete every owned role before
   // marking the row deleted; a failed provider call leaves the row active so
   // the operation can be retried with the IDs that remain linked.
-  return withOrderCalendarLock(order, async () => {
+  return withOrderCalendarLock(id, async () => {
+    const order = await getOrderById(id)
     try {
       await deleteOrderEvent(order, { lock: false })
     } catch (err) {
@@ -190,8 +181,7 @@ async function deleteOrder(id) {
 async function restoreOrder(id) {
   if (!id) return null
 
-  const order = await getOrderById(id)
-  return withOrderCalendarLock(order, async () => {
+  return withOrderCalendarLock(id, async () => {
     await getOrderById(id)
     const restoredOrder = await Order.findByIdAndUpdate(
       { _id: id },
@@ -216,26 +206,21 @@ export {
 async function deleteOrderPermanently(id) {
   if (!id) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
 
-  const order = await Order.findById(id)
-
-  if (!order) {
-    throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-  }
-
   // Remove external calendar state before deleting the row so a Google
   // failure leaves the order and its IDs available for a retry. Hold the
   // per-order lock across both operations so a concurrent sync cannot create
   // events after cleanup but before the row disappears.
-  const result = await withOrderCalendarLock(order, async () => {
-    await deleteOrderEvent(order, { lock: false, clearStoredIds: true })
-    return Order.deleteOne({ _id: id })
+  const result = await withOrderCalendarLock(id, async () => {
+    const order = await getOrderById(id)
+    await deleteOrderEvent(order, { lock: false })
+    return { order, result: await Order.deleteOne({ _id: id }) }
   })
-  const deleted = result?.deletedCount ?? result?.n
+  const deleted = result?.result?.deletedCount ?? result?.result?.n
   if (deleted === 0) {
     throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
   }
 
-  return order
+  return result.order
 }
 
 export { deleteOrderPermanently }

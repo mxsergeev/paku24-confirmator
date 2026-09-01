@@ -5,12 +5,11 @@ const mocks = vi.hoisted(() => ({
   addEventToCalendar: vi.fn(),
   updateEventInCalendar: vi.fn(),
   deleteEventFromCalendar: vi.fn(),
-  findById: vi.fn(),
   updateOne: vi.fn(),
 }))
 
 vi.mock('../models/order.js', () => ({
-  default: { findById: mocks.findById, updateOne: mocks.updateOne },
+  default: { updateOne: mocks.updateOne },
 }))
 
 vi.mock('../modules/calendar/calendar.helpers.js', () => ({
@@ -30,6 +29,7 @@ const eventsWithBoxes = [
   { role: 'boxDelivery', summary: 'delivery' },
   { role: 'boxReturn', summary: 'return' },
 ]
+const ORDER_ID = '66c000000000000000000001'
 
 describe('calendar reconciliation', () => {
   beforeEach(() => {
@@ -47,7 +47,7 @@ describe('calendar reconciliation', () => {
 
   it('updates all role-specific IDs without creating duplicate events', async () => {
     const order = {
-      _id: 'order-1',
+      _id: ORDER_ID,
       calendarEventIds: {
         main: 'main-existing',
         boxDelivery: 'delivery-existing',
@@ -70,7 +70,7 @@ describe('calendar reconciliation', () => {
     expect(mocks.addEventToCalendar).not.toHaveBeenCalled()
     expect(mocks.deleteEventFromCalendar).not.toHaveBeenCalled()
     expect(mocks.updateOne).toHaveBeenCalledWith(
-      { _id: 'order-1' },
+      { _id: ORDER_ID },
       {
         $set: {
           calendarEventIds: {
@@ -86,7 +86,7 @@ describe('calendar reconciliation', () => {
 
   it('rejects deleted orders before touching Google Calendar', async () => {
     const deletedOrder = {
-      _id: 'order-deleted',
+      _id: ORDER_ID,
       deletedAt: new Date('2026-01-01T00:00:00.000Z'),
       calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
     }
@@ -99,35 +99,11 @@ describe('calendar reconciliation', () => {
     expect(mocks.updateEventInCalendar).not.toHaveBeenCalled()
   })
 
-  it('rejects a stale active caller after reloading a deleted order', async () => {
-    const deletedOrder = {
-      _id: '66c000000000000000000001',
-      deletedAt: new Date('2026-01-01T00:00:00.000Z'),
-      calendarEventIds: { main: 'main-existing', boxDelivery: null, boxReturn: null },
-    }
-    mocks.findById.mockResolvedValue(deletedOrder)
-
-    await expect(
-      syncOrderToCalendar({
-        _id: deletedOrder._id,
-        calendarEventIds: { main: 'main-existing', boxDelivery: null, boxReturn: null },
-      }),
-    ).rejects.toMatchObject({
-      name: 'ValidationError',
-      message: 'Deleted orders cannot be synchronized to calendar.',
-    })
-    expect(mocks.makeGoogleEventObjects).not.toHaveBeenCalled()
-    expect(mocks.addEventToCalendar).not.toHaveBeenCalled()
-    expect(mocks.updateEventInCalendar).not.toHaveBeenCalled()
-    expect(mocks.deleteEventFromCalendar).not.toHaveBeenCalled()
-    expect(mocks.updateOne).not.toHaveBeenCalled()
-  })
-
   it('deletes stale box events and persists the remaining IDs', async () => {
     mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
 
     await syncOrderToCalendar({
-      _id: 'order-2',
+      _id: ORDER_ID,
       calendarEventIds: {
         main: 'main-existing',
         boxDelivery: 'delivery-stale',
@@ -141,7 +117,7 @@ describe('calendar reconciliation', () => {
     expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('delivery-stale')
     expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('return-stale')
     expect(mocks.updateOne).toHaveBeenCalledWith(
-      { _id: 'order-2' },
+      { _id: ORDER_ID },
       { $set: { calendarEventIds: { main: 'main-existing', boxDelivery: null, boxReturn: null } } },
     )
   })
@@ -154,7 +130,7 @@ describe('calendar reconciliation', () => {
       .mockRejectedValueOnce(failure)
 
     const order = {
-      _id: 'order-partial-delete',
+      _id: ORDER_ID,
       calendarEventIds: {
         main: 'main-existing',
         boxDelivery: 'delivery-stale',
@@ -165,7 +141,7 @@ describe('calendar reconciliation', () => {
     await expect(syncOrderToCalendar(order)).rejects.toBe(failure)
 
     expect(mocks.updateOne).toHaveBeenCalledWith(
-      { _id: 'order-partial-delete' },
+      { _id: ORDER_ID },
       {
         $set: {
           calendarEventIds: {
@@ -190,7 +166,7 @@ describe('calendar reconciliation', () => {
     mocks.deleteEventFromCalendar.mockRejectedValueOnce({ response: { status: 404 } })
 
     const order = {
-      _id: 'order-not-found-delete',
+      _id: ORDER_ID,
       calendarEventIds: {
         main: 'main-existing',
         boxDelivery: 'delivery-missing',
@@ -206,7 +182,7 @@ describe('calendar reconciliation', () => {
       },
     })
     expect(mocks.updateOne).toHaveBeenCalledWith(
-      { _id: 'order-not-found-delete' },
+      { _id: ORDER_ID },
       {
         $set: {
           calendarEventIds: {
@@ -224,7 +200,7 @@ describe('calendar reconciliation', () => {
     mocks.updateEventInCalendar.mockRejectedValueOnce({ response: { status: 404 } })
 
     const order = {
-      _id: 'order-main-recreate',
+      _id: ORDER_ID,
       calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
     }
 
@@ -234,7 +210,7 @@ describe('calendar reconciliation', () => {
 
     expect(mocks.updateOne).toHaveBeenNthCalledWith(
       1,
-      { _id: 'order-main-recreate' },
+      { _id: ORDER_ID },
       { $set: { 'calendarEventIds.main': null } },
     )
     expect(mocks.addEventToCalendar).toHaveBeenCalledTimes(1)
@@ -251,7 +227,7 @@ describe('calendar reconciliation', () => {
       .mockRejectedValueOnce({ response: { status: 404 } })
 
     const order = {
-      _id: 'order-delivery-recreate',
+      _id: ORDER_ID,
       calendarEventIds: { main: 'main-existing', boxDelivery: 'delivery-missing', boxReturn: null },
     }
 
@@ -273,7 +249,7 @@ describe('calendar reconciliation', () => {
     mocks.updateOne.mockRejectedValueOnce(failure)
 
     const order = {
-      _id: 'order-clear-failure',
+      _id: ORDER_ID,
       calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
     }
 
@@ -289,7 +265,7 @@ describe('calendar reconciliation', () => {
     mocks.updateOne.mockResolvedValueOnce({ matchedCount: 1 }).mockRejectedValueOnce(failure)
 
     const order = {
-      _id: 'order-replacement-link-failure',
+      _id: ORDER_ID,
       calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
     }
 
@@ -307,7 +283,7 @@ describe('calendar reconciliation', () => {
     })
 
     const order = {
-      _id: 'order-replacement-retry',
+      _id: ORDER_ID,
       calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
     }
 
@@ -334,7 +310,7 @@ describe('calendar reconciliation', () => {
       .mockRejectedValueOnce(deliveryFailure)
 
     const order = {
-      _id: 'order-two-stale-roles',
+      _id: ORDER_ID,
       calendarEventIds: { main: 'main-missing', boxDelivery: 'delivery-missing', boxReturn: null },
     }
 
@@ -342,12 +318,12 @@ describe('calendar reconciliation', () => {
 
     expect(mocks.updateOne).toHaveBeenNthCalledWith(
       1,
-      { _id: 'order-two-stale-roles' },
+      { _id: ORDER_ID },
       { $set: { 'calendarEventIds.main': null } },
     )
     expect(mocks.updateOne).toHaveBeenNthCalledWith(
       2,
-      { _id: 'order-two-stale-roles' },
+      { _id: ORDER_ID },
       { $set: { 'calendarEventIds.boxDelivery': null } },
     )
     expect(mocks.updateOne).toHaveBeenCalledTimes(2)
@@ -367,7 +343,7 @@ describe('calendar reconciliation', () => {
     mocks.deleteEventFromCalendar.mockRejectedValueOnce(rollbackFailure)
 
     const order = {
-      _id: 'order-rollback-failure',
+      _id: ORDER_ID,
       calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
     }
 
@@ -376,30 +352,10 @@ describe('calendar reconciliation', () => {
       rollbackError: expect.objectContaining({ message: expect.stringContaining('could not be rolled back') }),
     })
     expect(mocks.updateOne).toHaveBeenCalledWith(
-      { _id: 'order-rollback-failure' },
+      { _id: ORDER_ID },
       { $set: { 'calendarEventIds.main': 'main-live' } },
     )
     expect(order.calendarEventIds.main).toBe('main-live')
-  })
-
-  it('copies persisted stale-ID recovery back to a caller after a reload-backed failure', async () => {
-    const persistedOrder = {
-      _id: '66c000000000000000000001',
-      calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
-    }
-    mocks.findById.mockResolvedValue(persistedOrder)
-    mocks.makeGoogleEventObjects.mockReturnValue([{ role: 'main', summary: 'move' }])
-    mocks.updateEventInCalendar.mockRejectedValueOnce({ response: { status: 404 } })
-    const replacementFailure = new Error('replacement unavailable')
-    mocks.addEventToCalendar.mockRejectedValueOnce(replacementFailure)
-
-    const callerOrder = {
-      _id: persistedOrder._id,
-      calendarEventIds: { main: 'main-missing', boxDelivery: null, boxReturn: null },
-    }
-
-    await expect(syncOrderToCalendar(callerOrder)).rejects.toBe(replacementFailure)
-    expect(callerOrder.calendarEventIds.main).toBeNull()
   })
 
   it('rolls back events already created when a later create fails', async () => {
@@ -409,7 +365,7 @@ describe('calendar reconciliation', () => {
       .mockRejectedValueOnce(failure)
 
     await expect(
-      syncOrderToCalendar({ _id: 'order-3', calendarEventIds: {} }),
+      syncOrderToCalendar({ _id: ORDER_ID, calendarEventIds: {} }),
     ).rejects.toBe(failure)
 
     expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('main-created')
@@ -421,7 +377,7 @@ describe('calendar reconciliation', () => {
     mocks.addEventToCalendar.mockRejectedValue(failure)
 
     await expect(
-      syncOrderToCalendar({ _id: 'order-main-failure', calendarEventIds: {} }),
+      syncOrderToCalendar({ _id: ORDER_ID, calendarEventIds: {} }),
     ).rejects.toBe(failure)
 
     expect(mocks.addEventToCalendar).toHaveBeenCalledTimes(1)
@@ -434,7 +390,7 @@ describe('calendar reconciliation', () => {
     mocks.addEventToCalendar.mockResolvedValue({ data: {} })
 
     await expect(
-      syncOrderToCalendar({ _id: 'order-missing-id', calendarEventIds: {} }),
+      syncOrderToCalendar({ _id: ORDER_ID, calendarEventIds: {} }),
     ).rejects.toThrow('no event ID for role main')
 
     expect(mocks.updateOne).not.toHaveBeenCalled()
@@ -445,7 +401,7 @@ describe('calendar reconciliation', () => {
     mocks.updateOne.mockRejectedValue(failure)
 
     await expect(
-      syncOrderToCalendar({ _id: 'order-4', calendarEventIds: {} }),
+      syncOrderToCalendar({ _id: ORDER_ID, calendarEventIds: {} }),
     ).rejects.toBe(failure)
 
     expect(mocks.deleteEventFromCalendar.mock.calls.map(([id]) => id)).toEqual([
@@ -455,58 +411,10 @@ describe('calendar reconciliation', () => {
     ])
   })
 
-  it('attempts every event deletion and skips DB writes for a removed order', async () => {
-    const firstFailure = new Error('main delete failed')
-    mocks.deleteEventFromCalendar
-      .mockRejectedValueOnce(firstFailure)
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce(undefined)
-
-    await expect(
-      deleteOrderEvent({
-        _id: 'already-deleted',
-        calendarEventIds: {
-          main: 'main-existing',
-          boxDelivery: 'delivery-existing',
-          boxReturn: 'return-existing',
-        },
-      }, { clearStoredIds: false }),
-    ).rejects.toBe(firstFailure)
-
-    expect(mocks.deleteEventFromCalendar).toHaveBeenCalledTimes(3)
-    expect(mocks.updateOne).not.toHaveBeenCalled()
-  })
-
-  it('reloads current event IDs before an unlocked deletion operation', async () => {
-    const currentOrder = {
-      _id: '66c000000000000000000002',
-      calendarEventIds: {
-        main: 'main-current',
-        boxDelivery: null,
-        boxReturn: null,
-      },
-    }
-    mocks.findById.mockResolvedValue(currentOrder)
-
-    await deleteOrderEvent(
-      {
-        _id: currentOrder._id,
-        calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
-      },
-      { lock: false, clearStoredIds: true },
-    )
-
-    expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('main-current')
-    expect(mocks.updateOne).toHaveBeenCalledWith(
-      { _id: currentOrder._id },
-      { $set: { calendarEventIds: { main: null, boxDelivery: null, boxReturn: null } } },
-    )
-  })
-
   it('clears each deleted role and lets a retry finish after a partial failure', async () => {
     const failure = new Error('main delete failed')
     const order = {
-      _id: 'order-retry-delete',
+      _id: ORDER_ID,
       calendarEventIds: {
         main: 'main-existing',
         boxDelivery: 'delivery-existing',
@@ -531,7 +439,7 @@ describe('calendar reconciliation', () => {
   })
 
   it('does not create duplicate role triplets when sync calls overlap', async () => {
-    const order = { _id: 'order-concurrent', calendarEventIds: {} }
+    const order = { _id: ORDER_ID, calendarEventIds: {} }
     let releaseFirstCreate
     let firstCreateStarted
     const firstCreateGate = new Promise((resolve) => {

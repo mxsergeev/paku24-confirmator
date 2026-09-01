@@ -74,7 +74,7 @@ describe('permanent order deletion', () => {
 
     await expect(deleteOrderPermanently('66c000000000000000000001')).resolves.toBe(order)
 
-    expect(mocks.deleteOrderEvent).toHaveBeenCalledWith(order, { lock: false, clearStoredIds: true })
+    expect(mocks.deleteOrderEvent).toHaveBeenCalledWith(order, { lock: false })
     expect(mocks.deleteOne).toHaveBeenCalledWith({ _id: '66c000000000000000000001' })
     expect(mocks.deleteOrderEvent.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.deleteOne.mock.invocationCallOrder[0],
@@ -180,15 +180,19 @@ describe('explicit calendar side effects', () => {
     expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
   })
 
-  it('rechecks deletion under the confirmation lock', async () => {
-    const initialOrder = makeOrder()
+  it('loads the order while holding the confirmation lock', async () => {
     const deletedOrder = { ...makeOrder(), deletedAt: new Date('2026-01-01T00:00:00.000Z') }
-    mocks.findById.mockResolvedValueOnce(initialOrder).mockResolvedValueOnce(deletedOrder)
+    mocks.findById.mockResolvedValue(deletedOrder)
 
     await expect(confirmOrder('66c000000000000000000001', 'user-id')).rejects.toMatchObject({
       name: 'ValidationError',
       message: 'Deleted orders cannot be confirmed',
     })
+    expect(mocks.withOrderCalendarLock).toHaveBeenCalledWith(
+      '66c000000000000000000001',
+      expect.any(Function),
+    )
+    expect(mocks.findById).toHaveBeenCalledTimes(1)
     expect(mocks.syncOrderToCalendar).not.toHaveBeenCalled()
     expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
   })

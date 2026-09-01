@@ -41,24 +41,19 @@ function eventId(response) {
   return response?.data?.id || response?.id || null
 }
 
-function orderLockKey(order) {
-  const id = order?._id ?? order?.id
-  if (id === null || id === undefined || id === '') return null
-  return typeof id.toString === 'function' ? id.toString() : String(id)
-}
-
 // Calendar operations for the same persisted order must not overlap. This is
 // intentionally local to this service: the app runs as one process and a
 // small promise queue is enough to serialize retries and service operations.
 const orderLocks = new Map()
 
-function withOrderCalendarLock(order, operation) {
-  const key = orderLockKey(order)
-  if (!key) return operation(order)
+function withOrderCalendarLock(id, operation) {
+  if (id === null || id === undefined || id === '') return operation()
+
+  const key = typeof id.toString === 'function' ? id.toString() : String(id)
 
   const previous = orderLocks.get(key)
   const predecessor = previous || Promise.resolve()
-  const run = () => operation(order)
+  const run = () => operation()
   const current = predecessor.then(run, run)
   orderLocks.set(key, current)
 
@@ -74,16 +69,6 @@ function withOrderCalendarLock(order, operation) {
   )
 
   return current
-}
-
-function canReloadPersistedOrder(order) {
-  const key = orderLockKey(order)
-  return typeof OrderModel.findById === 'function' && /^[a-f\d]{24}$/i.test(key || '')
-}
-
-async function loadLatestPersistedOrder(order) {
-  if (!canReloadPersistedOrder(order)) return order
-  return OrderModel.findById(order._id ?? order.id)
 }
 
 function isCalendarEventNotFound(error) {
@@ -282,42 +267,18 @@ async function reconcileOrderToCalendar(order) {
   }
 }
 
-async function syncOrderToCalendar(order, options = {}) {
+async function syncOrderToCalendar(order, { lock = true } = {}) {
   if (!order) return null
   if (order.deletedAt) {
     throw newErrorWithCustomName('ValidationError', 'Deleted orders cannot be synchronized to calendar.')
   }
 
-  const operation = async () => {
-    let latestOrder = null
-    try {
-      latestOrder = await loadLatestPersistedOrder(order)
-      if (!latestOrder) {
-        throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-      }
-      if (latestOrder?.deletedAt) {
-        throw newErrorWithCustomName(
-          'ValidationError',
-          'Deleted orders cannot be synchronized to calendar.',
-        )
-      }
-      const result = await reconcileOrderToCalendar(latestOrder)
-      if (latestOrder && latestOrder !== order && result?.calendarEventIds) {
-        order.calendarEventIds = { ...result.calendarEventIds }
-      }
-      return result
-    } catch (error) {
-      if (latestOrder && latestOrder !== order && latestOrder.calendarEventIds) {
-        order.calendarEventIds = { ...latestOrder.calendarEventIds }
-      }
-      throw error
-    }
-  }
-
-  return options.lock === false ? operation() : withOrderCalendarLock(order, operation)
+  const operation = () => reconcileOrderToCalendar(order)
+  const id = order._id ?? order.id
+  return lock ? withOrderCalendarLock(id, operation) : operation()
 }
 
-async function removeOrderEvents(order, { clearStoredIds = true } = {}) {
+async function removeOrderEvents(order) {
   if (!order) return null
 
   const ids = storedCalendarEventIds(order)
@@ -340,16 +301,12 @@ async function removeOrderEvents(order, { clearStoredIds = true } = {}) {
       }
     }
 
-    if (clearStoredIds) {
-      try {
-        await persistCalendarEventIds(order, nextIds)
-        order.calendarEventIds = { ...nextIds }
-      } catch (error) {
-        deletionFailures.push({ role, eventId: ids[role], error })
-        logger.error(`Failed to clear calendar event ID ${ids[role]}`, error)
-      }
-    } else {
+    try {
+      await persistCalendarEventIds(order, nextIds)
       order.calendarEventIds = { ...nextIds }
+    } catch (error) {
+      deletionFailures.push({ role, eventId: ids[role], error })
+      logger.error(`Failed to clear calendar event ID ${ids[role]}`, error)
     }
   }
 
@@ -358,23 +315,12 @@ async function removeOrderEvents(order, { clearStoredIds = true } = {}) {
   return true
 }
 
-async function deleteOrderEvent(order, options = {}) {
+async function deleteOrderEvent(order, { lock = true } = {}) {
   if (!order) return null
 
-  const operation = async () => {
-    // A caller can opt out of reloading when it already owns the latest
-    // persisted event IDs (for example, permanent deletion after its preflight).
-    const latestOrder = options.clearStoredIds === false
-      ? order
-      : await loadLatestPersistedOrder(order)
-    const result = await removeOrderEvents(latestOrder, options)
-    if (latestOrder && latestOrder !== order) {
-      order.calendarEventIds = { ...latestOrder.calendarEventIds }
-    }
-    return result
-  }
-
-  return options.lock === false ? operation() : withOrderCalendarLock(order, operation)
+  const operation = () => removeOrderEvents(order)
+  const id = order._id ?? order.id
+  return lock ? withOrderCalendarLock(id, operation) : operation()
 }
 
 export {
