@@ -4,7 +4,6 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeReceiptDraftStorageKey } from './receiptData.helpers'
 
 const mocks = vi.hoisted(() => ({
   calendarProps: null,
@@ -152,27 +151,12 @@ describe('Calendar controls', () => {
     })
   })
 
-  it('passes a stored receipt draft and document type to the receipt page', () => {
+  it('routes directly to the receipt page by order ID', () => {
     const orderId = '66c000000000000000000001'
-    const draftKey = 'receipt-test-key'
-    const receiptDraft = {
-      customerName: 'Edited Customer',
-      customerEmail: 'edited@example.com',
-      customerAddress: 'Edited street 1',
-      totalAmount: '220',
-    }
-    window.localStorage.setItem(
-      makeReceiptDraftStorageKey(draftKey),
-      JSON.stringify({
-        receiptDraft,
-        documentType: 'invoice',
-        expiresAt: Date.now() + 60_000,
-      }),
-    )
     mocks.location = {
       pathname: '/calendar/receipt/order-1',
-      state: { documentType: 'invoice' },
-      search: `?receiptDraftKey=${draftKey}`,
+      state: null,
+      search: '',
       hash: '',
     }
     mocks.routeMatches['/calendar/receipt/:orderId'] = { params: { orderId } }
@@ -180,34 +164,7 @@ describe('Calendar controls', () => {
     render(<Calendar />)
 
     expect(screen.getByTestId('receipt-page')).toBeInTheDocument()
-    expect(mocks.receiptProps).toMatchObject({
-      orderId,
-      initialDraft: { ...receiptDraft, documentType: 'invoice' },
-      documentType: 'invoice',
-    })
-    expect(mocks.history.replace).toHaveBeenCalledWith({
-      pathname: '/calendar/receipt/order-1',
-      search: '',
-      hash: '',
-      state: {
-        documentType: 'invoice',
-        receiptDraft: { ...receiptDraft, documentType: 'invoice' },
-      },
-    })
-    expect(window.localStorage.getItem(makeReceiptDraftStorageKey(draftKey))).toBeNull()
-  })
-
-  it('warns when the receipt draft checkpoint cannot be restored', () => {
-    mocks.location = { state: null, search: '?receiptDraftKey=missing-draft' }
-    mocks.routeMatches['/calendar/receipt/:orderId'] = {
-      params: { orderId: '66c000000000000000000001' },
-    }
-
-    render(<Calendar />)
-
-    expect(mocks.enqueueSnackbar).toHaveBeenCalledWith(
-      'Receipt details could not be restored. The edited draft may have expired.',
-      { variant: 'warning' },
-    )
+    expect(mocks.receiptProps).toEqual({ orderId })
+    expect(mocks.history.replace).not.toHaveBeenCalled()
   })
 })

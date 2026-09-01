@@ -15,6 +15,7 @@ import EditIcon from '@material-ui/icons/Edit'
 import DeleteIcon from '@material-ui/icons/Delete'
 import CheckIcon from '@material-ui/icons/Check'
 import { enqueueSnackbar } from 'notistack'
+import { useHistory } from 'react-router-dom'
 import './Calendar.css'
 import { getOrderIcons, parseBoxEventId, getBoxEventTitle } from './helpers'
 import OrderEditor from '../OrderEditor/OrderEditor'
@@ -31,7 +32,11 @@ import { updateOrderField } from '../../shared/orderModel'
 import { toCommunicationOrder, toUpdateOrderPayload } from '../../shared/orderSerialization'
 import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 import { hexToRgba } from '../../shared/color.helpers'
-import useOrderDialogReceipt from './useOrderDialogReceipt'
+import {
+  buildReceiptDraftFromOrder,
+  normalizeDocumentType,
+  normalizeReceiptDraft,
+} from './receiptData.helpers'
 import {
   formatHelsinkiInstant,
   isDateOnly,
@@ -63,6 +68,7 @@ export default function OrderDialog({
 
   const { orderId, eventType } = parseBoxEventId(eventId)
   const isDesktop = useMediaQuery('(min-width:601px)')
+  const history = useHistory()
 
   const [sendingEmail, setSendingEmail] = useState(false)
   const [sendingSMS, setSendingSMS] = useState(false)
@@ -75,6 +81,9 @@ export default function OrderDialog({
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const [canceling, setCanceling] = useState(false)
+  const [receiptOpen, setReceiptOpen] = useState(false)
+  const [receiptDraft, setReceiptDraft] = useState(null)
+  const [receiptDocumentType, setReceiptDocumentType] = useState(DOCUMENT_TYPES.RECEIPT)
 
   const handleSendEmail = async () => {
     if (isDeleted(order)) {
@@ -347,16 +356,81 @@ export default function OrderDialog({
     }
   }
 
-  const receipt = useOrderDialogReceipt({ order, orderId })
+  const handleReceiptOpen = (documentType) => {
+    if (!order) return
 
-  const {
-    handleReceiptClose,
-    handleReceiptOpen,
-    handleReceiptPageOpen,
-    receiptDocumentType,
-    receiptDraft,
-    receiptOpen,
-  } = receipt
+    const nextDocumentType = normalizeDocumentType(documentType)
+    setReceiptDocumentType(nextDocumentType)
+    setReceiptDraft({
+      ...buildReceiptDraftFromOrder(order),
+      documentType: nextDocumentType,
+    })
+    setReceiptOpen(true)
+  }
+
+  const handleReceiptClose = () => {
+    setReceiptOpen(false)
+  }
+
+  const handleReceiptPageOpen = (draft) => {
+    if (!orderId) {
+      enqueueSnackbar('Order ID is missing.', { variant: 'warning' })
+      return
+    }
+
+    const nextDocumentType = normalizeDocumentType(receiptDocumentType)
+    const safeDraft = normalizeReceiptDraft(draft, nextDocumentType)
+
+    if (!safeDraft) {
+      enqueueSnackbar('Receipt details are invalid. Review required fields.', {
+        variant: 'warning',
+      })
+      return
+    }
+
+    if (!safeDraft.customerEmail) {
+      enqueueSnackbar('Add client email to create a receipt.', { variant: 'warning' })
+      return
+    }
+
+    setReceiptDraft(safeDraft)
+    const storageKey = `receipt-draft:${orderId}`
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({ ...safeDraft, documentType: nextDocumentType }),
+      )
+    } catch {
+      enqueueSnackbar('Could not save receipt details for the new tab. Please try again.', {
+        variant: 'error',
+      })
+      return
+    }
+
+    let newWindow = null
+    try {
+      const receiptUrl = history.createHref({
+        pathname: `/calendar/receipt/${encodeURIComponent(orderId)}`,
+      })
+      newWindow = window.open(receiptUrl, '_blank')
+    } catch {
+      // Treat browser popup errors like a blocked popup below.
+    }
+
+    if (newWindow) {
+      setReceiptOpen(false)
+      return
+    }
+
+    try {
+      window.localStorage.removeItem(storageKey)
+    } catch {
+      // Best effort cleanup when opening the receipt page is blocked.
+    }
+    enqueueSnackbar('Failed to open new tab. Please check your browser settings.', {
+      variant: 'error',
+    })
+  }
 
   const title = order
     ? eventType === 'boxDelivery'

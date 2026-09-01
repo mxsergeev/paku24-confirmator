@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
       state: {
         referrer: {
           pathname: '/calendar/receipt/order-1',
-          search: '?receiptDraftKey=draft-1',
+          search: '',
           hash: '',
         },
       },
@@ -58,7 +58,7 @@ describe('Login redirect', () => {
     mocks.loginWithCredentials.mockResolvedValue({ user: { id: 'user-1' } })
   })
 
-  it('preserves receipt query state after manual login', async () => {
+  it('returns to the receipt route after manual login', async () => {
     render(<Login updateUser={vi.fn()} />)
 
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'user' } })
@@ -67,7 +67,7 @@ describe('Login redirect', () => {
 
     await waitFor(() => expect(mocks.history.push).toHaveBeenCalledWith({
       pathname: '/calendar/receipt/order-1',
-      search: '?receiptDraftKey=draft-1',
+      search: '',
       hash: '',
     }))
   })

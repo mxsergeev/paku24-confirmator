@@ -37,7 +37,6 @@ vi.mock('./components/Calendar/Calendar', () => ({
     return (
       <div data-testid="calendar-location">
         {location.pathname}{location.search}{location.hash}
-        {location.state?.documentType || ''}
       </div>
     )
   },
@@ -73,16 +72,16 @@ describe('App calendar routes', () => {
     mocks.loginWithCredentials.mockResolvedValue({ user: { id: 'user-1' } })
   })
 
-  it('mounts Calendar for receipt routes and preserves the draft query through auth', async () => {
+  it('mounts Calendar for receipt routes', async () => {
     render(
-      <MemoryRouter initialEntries={['/calendar/receipt/order-1?receiptDraftKey=draft-1']}>
+      <MemoryRouter initialEntries={['/calendar/receipt/order-1']}>
         <App />
       </MemoryRouter>,
     )
 
     await waitFor(() => {
       expect(screen.getByTestId('calendar-location')).toHaveTextContent(
-        '/calendar/receipt/order-1?receiptDraftKey=draft-1',
+        '/calendar/receipt/order-1',
       )
     })
   })
@@ -106,9 +105,8 @@ describe('App calendar routes', () => {
       <MemoryRouter
         initialEntries={[{
           pathname: '/calendar/receipt/order-1',
-          search: '?receiptDraftKey=draft-1',
+          search: '',
           hash: '#invoice',
-          state: { documentType: 'invoice' },
         }]}
       >
         <App />
@@ -125,7 +123,7 @@ describe('App calendar routes', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('calendar-location')).toHaveTextContent(
-        '/calendar/receipt/order-1?receiptDraftKey=draft-1#invoiceinvoice',
+        '/calendar/receipt/order-1#invoice',
       )
     })
   })

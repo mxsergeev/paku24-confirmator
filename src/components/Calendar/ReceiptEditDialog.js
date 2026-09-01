@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -21,6 +21,17 @@ import {
   resolveDocumentType,
 } from './receiptData.helpers'
 
+function makeBaseDraft(order, initialDraft, fallbackDocumentType) {
+  const draft =
+    normalizeReceiptDraft(initialDraft, fallbackDocumentType) || buildReceiptDraftFromOrder(order)
+
+  return {
+    ...draft,
+    documentType: resolveDocumentType(draft?.documentType, fallbackDocumentType),
+    dueDate: toDateInputValue(draft?.dueDate),
+  }
+}
+
 export default function ReceiptEditDialog({
   open,
   onClose,
@@ -29,25 +40,14 @@ export default function ReceiptEditDialog({
   initialDraft = null,
 }) {
   const fallbackDocumentType = order?.paymentType?.id === '3' ? 'invoice' : 'receipt'
-
-  const baseDraft = useMemo(() => {
-    const draft =
-      normalizeReceiptDraft(initialDraft, fallbackDocumentType) || buildReceiptDraftFromOrder(order)
-
-    return {
-      ...draft,
-      documentType: resolveDocumentType(draft?.documentType, fallbackDocumentType),
-      dueDate: toDateInputValue(draft?.dueDate),
-    }
-  }, [fallbackDocumentType, initialDraft, order])
-  const [draft, setDraft] = useState(baseDraft)
-  const [totalInput, setTotalInput] = useState(baseDraft.totalAmount ?? '')
+  const [draft, setDraft] = useState(() =>
+    makeBaseDraft(order, initialDraft, fallbackDocumentType),
+  )
   const isDesktop = useMediaQuery('(min-width:601px)')
 
   useEffect(() => {
-    setDraft(baseDraft)
-    setTotalInput(baseDraft.totalAmount ?? '')
-  }, [baseDraft])
+    setDraft(makeBaseDraft(order, initialDraft, fallbackDocumentType))
+  }, [fallbackDocumentType, initialDraft, order])
 
   const handleChange = (key) => (event) => {
     const value = event.target.value
@@ -55,12 +55,12 @@ export default function ReceiptEditDialog({
   }
 
   const handleAmountChange = (event) => {
-    setTotalInput(sanitizeDecimalString(event.target.value))
+    const value = sanitizeDecimalString(event.target.value)
+    setDraft((prev) => ({ ...prev, totalAmount: value }))
   }
 
   const handleAmountBlur = () => {
-    const { formatted } = parseAndFormatDecimalString(totalInput)
-    setTotalInput(formatted)
+    const { formatted } = parseAndFormatDecimalString(draft.totalAmount)
     setDraft((prev) => ({ ...prev, totalAmount: formatted }))
   }
 
@@ -68,7 +68,6 @@ export default function ReceiptEditDialog({
     onOpenReceiptPage({
       ...draft,
       documentType: resolveDocumentType(draft?.documentType, fallbackDocumentType),
-      totalAmount: totalInput,
     })
   }
 
@@ -130,7 +129,7 @@ export default function ReceiptEditDialog({
           fullWidth
           variant="outlined"
           margin="dense"
-          value={totalInput}
+          value={draft.totalAmount ?? ''}
           onChange={handleAmountChange}
           onBlur={handleAmountBlur}
           placeholder="0.00"
