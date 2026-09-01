@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { getAvailableFees } from '../../shared/fees'
 import {
   calculateAutomaticPricing,
@@ -24,23 +24,27 @@ function isNumber(value) {
 function NumericPricingRow({ order, component, automaticValue, effectiveValue, onChange }) {
   const { key, label, inputLabel } = component
   const manualValue = order.pricingOverrides?.[key]
-  const [draft, setDraft] = useState(null)
-  const input = draft?.order === order
-    ? draft.value
-    : manualValue === null || manualValue === undefined
+  const input = manualValue === null || manualValue === undefined
     ? ''
     : String(manualValue)
 
   function useManual() {
     if (isNumber(input)) {
       onChange(setPricingOverride(order, key, Number(input)))
-      setDraft(null)
     }
   }
 
   function useAutomatic() {
-    setDraft(null)
     onChange(clearPricingOverride(order, key))
+  }
+
+  function handleChange(event) {
+    const value = event.target.value
+    if (value.trim() === '') {
+      onChange(clearPricingOverride(order, key))
+    } else if (isNumber(value)) {
+      onChange(setPricingOverride(order, key, Number(value)))
+    }
   }
 
   return (
@@ -53,7 +57,7 @@ function NumericPricingRow({ order, component, automaticValue, effectiveValue, o
           aria-label={inputLabel}
           type="number"
           value={input}
-          onChange={(event) => setDraft({ order, value: event.target.value })}
+          onChange={handleChange}
           step="any"
         />
       </label>
@@ -74,8 +78,7 @@ function NumericPricingRow({ order, component, automaticValue, effectiveValue, o
 
 function FeesPricingRow({ order, automaticValue, effectiveValue, onChange }) {
   const manualValue = order.pricingOverrides?.fees
-  const [draft, setDraft] = useState(null)
-  const manualFees = draft?.order === order ? draft.value : Array.isArray(manualValue) ? manualValue : []
+  const manualFees = Array.isArray(manualValue) ? manualValue : automaticValue
   const configuredFees = getAvailableFees(order)
   const configuredNames = new Set(configuredFees.map((fee) => fee.name))
   const existingManualFees = Array.isArray(manualValue)
@@ -84,12 +87,10 @@ function FeesPricingRow({ order, automaticValue, effectiveValue, onChange }) {
   const availableFees = configuredFees.concat(existingManualFees)
 
   function useAutomatic() {
-    setDraft(null)
     onChange(clearPricingOverride(order, 'fees'))
   }
 
   function useManual() {
-    setDraft(null)
     onChange(setPricingOverride(order, 'fees', manualFees))
   }
 
@@ -109,7 +110,7 @@ function FeesPricingRow({ order, automaticValue, effectiveValue, onChange }) {
                   const nextFees = selected
                     ? manualFees.filter((item) => item.name !== fee.name)
                     : manualFees.concat(fee)
-                  setDraft({ order, value: nextFees })
+                  onChange(setPricingOverride(order, 'fees', nextFees))
                 }}
                 aria-label={`Manual ${fee.label || fee.name} fee`}
               />

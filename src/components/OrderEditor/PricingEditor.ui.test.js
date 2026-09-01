@@ -37,7 +37,6 @@ describe('PricingEditor', () => {
     const priceRow = screen.getByRole('region', { name: 'Price' })
 
     fireEvent.change(screen.getByLabelText('Manual price override'), { target: { value: '0' } })
-    fireEvent.click(within(priceRow).getByRole('button', { name: 'Use manual override' }))
     const manualOrder = updatedOrder(onChange)
     expect(manualOrder.pricingOverrides.price).toBe(0)
 
@@ -71,8 +70,8 @@ describe('PricingEditor', () => {
     const fee = within(feesRow).getAllByRole('checkbox')[0]
 
     fireEvent.click(fee)
-    fireEvent.click(within(feesRow).getByRole('button', { name: 'Use manual override' }))
-    expect(updatedOrder(onChange).pricingOverrides.fees).toHaveLength(1)
+    const manualOrder = updatedOrder(onChange)
+    expect(manualOrder.pricingOverrides.fees).toHaveLength(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'View original WordPress order' }))
     expect(screen.getByRole('dialog', { name: 'Original WordPress order' })).toBeInTheDocument()
