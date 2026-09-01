@@ -183,27 +183,6 @@ async function cancelOrder(id) {
   })
 }
 
-async function updateOrderColor(id, eventColor) {
-  if (!id) return null
-
-  if (typeof eventColor !== 'string' || eventColor.trim() === '') {
-    throw validationError('Invalid eventColor')
-  }
-
-  const order = await getOrderById(id)
-  return withOrderCalendarLock(order, async () => {
-    await getOrderById(id)
-    const updatedOrder = await Order.findOneAndUpdate(
-      { _id: id },
-      { $set: { eventColor } },
-      { new: true },
-    )
-    return updatedOrder
-      ? syncAfterMutation(updatedOrder)
-      : null
-  })
-}
-
 async function deleteOrder(id) {
   if (!id) return null
 
@@ -252,7 +231,6 @@ export {
   updateOrder,
   confirmOrder,
   cancelOrder,
-  updateOrderColor,
   deleteOrder,
   restoreOrder,
 }

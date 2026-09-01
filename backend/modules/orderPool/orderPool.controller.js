@@ -16,7 +16,6 @@ import {
   deleteOrderPermanently,
   confirmOrder,
   cancelOrder,
-  updateOrderColor,
   deleteOrder,
   restoreOrder,
 } from './orderPool.service.js'
@@ -135,19 +134,6 @@ orderPoolRouter.put('/v2/:id', authMW.authenticateAccessToken, async (req, res, 
 })
 
 orderPoolRouter.use(authMW.authenticateAccessToken)
-
-// Update event color (from ColorSelector) - debounced PATCH from frontend
-orderPoolRouter.patch('/v2/:id/color', async (req, res, next) => {
-  const { id } = req.params
-  const { eventColor } = req.body
-  try {
-    const result = await updateOrderColor(id, eventColor)
-    if (!result) return res.status(404).send({ error: 'Order not found' })
-    return sendOrderResult(res, result, 'Event color updated')
-  } catch (err) {
-    return next(err)
-  }
-})
 
 function makeDeletedFilter(deleted) {
   if (deleted === 'true') return { deletedAt: { $exists: true, $ne: null } }

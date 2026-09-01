@@ -1,6 +1,7 @@
 import distances from '../data/distances.json' with { type: 'json' }
 import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
 import services from '../data/services.json' with { type: 'json' }
+import colors from '../data/colors.json' with { type: 'json' }
 import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
 import { normalizeFeeList } from './orderPricing.js'
 import {
@@ -293,6 +294,14 @@ function normalizeEmbeddedWithFallback(value, field, requiredNumberField, fallba
 }
 
 function normalizeSimpleBookingField(field, value) {
+  if (field === 'eventColor') {
+    if (value === null) return null
+    if (typeof value !== 'string' || !Object.prototype.hasOwnProperty.call(colors, value)) {
+      throw new OrderValidationError(`Invalid ${field}`)
+    }
+    return value
+  }
+
   if (STRING_BOOKING_FIELDS.has(field)) {
     if (value !== null && typeof value !== 'string') {
       throw new OrderValidationError(`Invalid ${field}`)

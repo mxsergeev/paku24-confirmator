@@ -57,13 +57,6 @@ async function update(id, updateData) {
   return response.data
 }
 
-async function updateColor(id, eventColor) {
-  const response = await interceptor.axiosInstance.patch(`${ordersUrl}/${id}/color`, {
-    eventColor,
-  })
-  return response.data
-}
-
 async function restore(id) {
   const response = await interceptor.axiosInstance.post(`${ordersUrl}/restore/${id}`)
   return response.data
@@ -79,7 +72,6 @@ const ordersAPI = {
   getConfirmedOrders,
   add,
   update,
-  updateColor,
   restore,
 }
 

@@ -31,7 +31,6 @@ import { hydrateCanonicalOrder, updateOrderField } from '../../shared/orderModel
 import { toCommunicationOrder, toUpdateOrderPayload } from '../../shared/orderSerialization'
 import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 import { hexToRgba } from '../../shared/color.helpers'
-import useOrderDialogEventColor from './useOrderDialogEventColor'
 import useOrderDialogReceipt from './useOrderDialogReceipt'
 import {
   formatHelsinkiInstant,
@@ -341,11 +340,25 @@ export default function OrderDialog({
     }
   }
 
-  const { onEventColorChange } = useOrderDialogEventColor({
-    order,
-    orderId,
-    setOrder,
-  })
+  async function handleEventColorChange(eventColor) {
+    if (!orderId) return
+
+    try {
+      const response = await ordersAPI.update(orderId, { eventColor })
+      await onOrderUpdate?.()
+      enqueueSnackbar(response.message || 'Event color updated.')
+      if (response.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+      }
+    } catch (err) {
+      if (err.message === 'logout') return
+      enqueueSnackbar(
+        err.response?.data?.error || 'Could not change event color.',
+        { variant: 'error' },
+      )
+    }
+  }
+
   const receipt = useOrderDialogReceipt({ order, orderId })
 
   const {

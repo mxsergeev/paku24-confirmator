@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
   findByIdAndUpdate: vi.fn(),
-  findOneAndUpdate: vi.fn(),
   deleteOne: vi.fn(),
   deleteOrderEvent: vi.fn(),
   syncOrderToCalendar: vi.fn(),
@@ -16,7 +15,6 @@ vi.mock('../../models/order.js', () => ({
   default: {
     findById: mocks.findById,
     findByIdAndUpdate: mocks.findByIdAndUpdate,
-    findOneAndUpdate: mocks.findOneAndUpdate,
     deleteOne: mocks.deleteOne,
   },
 }))
@@ -38,7 +36,6 @@ const {
   updateOrder,
   confirmOrder,
   cancelOrder,
-  updateOrderColor,
   deleteOrder,
 } = await import('./orderPool.service.js')
 
@@ -224,24 +221,6 @@ describe('explicit calendar side effects', () => {
     })
     expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
     expect(mocks.syncOrderToCalendar).not.toHaveBeenCalled()
-  })
-
-  it('persists the new color when calendar sync fails', async () => {
-    const order = makeOrder()
-    order.confirmed = true
-    const failure = new Error('calendar unavailable')
-    mocks.findById.mockResolvedValue(order)
-    mocks.findOneAndUpdate.mockResolvedValue(order)
-    mocks.syncOrderToCalendar.mockRejectedValue(failure)
-
-    const result = await updateOrderColor('66c000000000000000000001', '8')
-
-    expect(result).toMatchObject({ order, warning: { code: 'CALENDAR_SYNC_FAILED' } })
-    expect(mocks.findOneAndUpdate).toHaveBeenCalledWith(
-      { _id: '66c000000000000000000001' },
-      { $set: { eventColor: '8' } },
-      { new: true },
-    )
   })
 
   it('does not soft-delete an order when calendar cleanup fails', async () => {

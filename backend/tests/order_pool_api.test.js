@@ -338,6 +338,19 @@ describe('Order pool v2/:id updates', () => {
     expect(res.body.order.invoiceNumber).toBe('invoice-1')
   })
 
+  test('updates event color through the ordinary order endpoint', async () => {
+    const order = await createPersistedOrder()
+    orderIds.push(order.id)
+
+    const res = await api
+      .put(`/api/order-pool/v2/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .send({ updateData: { eventColor: '11' } })
+      .expect(200)
+
+    expect(res.body.order.eventColor).toBe('11')
+  })
+
   test('stores manual overrides, including zero and empty fees', async () => {
     const order = await createPersistedOrder()
     orderIds.push(order.id)
@@ -386,6 +399,7 @@ describe('Order pool v2/:id updates', () => {
     ['malformed hsy', { updateData: { hsy: 'false' } }],
     ['malformed XL', { updateData: { XL: 1 } }],
     ['malformed eventColor', { updateData: { eventColor: { invalid: true } } }],
+    ['unknown eventColor', { updateData: { eventColor: 'not-configured' } }],
     ['malformed name', { updateData: { name: { invalid: true } } }],
     ['malformed email', { updateData: { email: { invalid: true } } }],
     ['malformed phone', { updateData: { phone: { invalid: true } } }],
@@ -410,17 +424,6 @@ describe('Order pool v2/:id updates', () => {
       .put(`/api/order-pool/v2/${order.id}`)
       .set('Cookie', [`at=${appToken}`])
       .send(body)
-      .expect(400)
-  })
-
-  test('rejects malformed colors on the dedicated color endpoint', async () => {
-    const order = await createPersistedOrder()
-    orderIds.push(order.id)
-
-    await api
-      .patch(`/api/order-pool/v2/${order.id}/color`)
-      .set('Cookie', [`at=${appToken}`])
-      .send({ eventColor: { invalid: true } })
       .expect(400)
   })
 
