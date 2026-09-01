@@ -149,8 +149,6 @@ async function confirmOrder(id, userId) {
       )
     }
 
-    if (currentOrder.confirmed) return resultWithWarning(currentOrder)
-
     const confirmed = await Order.findByIdAndUpdate(
       { _id: id },
       {
