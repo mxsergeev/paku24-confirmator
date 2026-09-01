@@ -87,7 +87,7 @@ function OrderEditorHarness({ initialOrder, onOrderChange }) {
   return <OrderEditor order={order} handleChange={handleChange} />
 }
 
-describe('OrderEditor extra address identity', () => {
+describe('OrderEditor extra addresses', () => {
   it('edits only the second row, removes only the first, and serializes the surviving row', () => {
     const initialOrder = makeOrderWithTwoExtraAddresses()
     const onOrderChange = vi.fn()

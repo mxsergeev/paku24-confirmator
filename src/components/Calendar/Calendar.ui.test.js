@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   routeMatches: {},
   enqueueSnackbar: vi.fn(),
   useCalendarOrders: vi.fn(),
-  queryClient: { invalidateQueries: vi.fn() },
   history: { goBack: vi.fn(), push: vi.fn(), replace: vi.fn() },
 }))
 
@@ -29,10 +28,6 @@ vi.mock('../../hooks/useCalendarOrders', () => ({
     mocks.calendarQuery = props
     return mocks.useCalendarOrders(props)
   },
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => mocks.queryClient,
 }))
 
 vi.mock('react-router-dom', () => ({

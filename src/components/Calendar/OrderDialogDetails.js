@@ -22,11 +22,7 @@ export default function OrderDialogDetails({
   const hasExtraAddresses =
     order?.extraAddresses && Array.isArray(order.extraAddresses) && order.extraAddresses.length > 0
   const hasClientEmail = Boolean(order?.email)
-  const selectedEventColorId = (() => {
-    const colorId = order?.eventColor ?? ''
-    const normalized = colorId == null ? '' : String(colorId)
-    return colors[normalized] ? normalized : ''
-  })()
+  const selectedEventColorId = order?.eventColor || ''
 
   const boxRows =
     order?.boxes && isBoxEvent && hasBoxes
@@ -58,13 +54,7 @@ export default function OrderDialogDetails({
           label: 'Additional addresses',
           value: order.extraAddresses.map((addr, index) => (
             <div
-              key={
-                addr?.id !== null && addr?.id !== undefined && addr.id !== ''
-                  ? `extra-address-id-${addr.id}`
-                  : `extra-address-${addr?.street || ''}-${addr?.index || ''}-${
-                      addr?.city || ''
-                    }-${addr?.floor ?? ''}-${index}`
-              }
+              key={index}
               className="order-dialog-details__extra-address"
             >{`${addr.street} (${addr.floor} floor), ${addr.index} ${addr.city}`}</div>
           )),

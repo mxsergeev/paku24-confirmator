@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import useMediaQuery from '@material-ui/core/useMediaQuery'
 import { useHistory, useLocation, useRouteMatch } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import OrderDialog from './OrderDialog'
 import NewOrderDialog from './NewOrderDialog'
 import ReceiptPage from './ReceiptPage'
@@ -81,8 +81,7 @@ export default function Calendar() {
   const match = useRouteMatch()
   const orderRouteMatch = useRouteMatch(`${match.path}/order/:orderId`)
   const receiptRouteMatch = useRouteMatch(`${match.path}/receipt/:orderId`)
-  const queryClient = useQueryClient()
-  const isMobile = window.innerWidth <= 600
+  const isMobile = useMediaQuery('(max-width:600px)')
   const mobileCalendarProps = isMobile
     ? {
         slotMinTime: '00:00:00',
@@ -120,24 +119,6 @@ export default function Calendar() {
   }
 
   useEffect(() => {
-    const api = calendarRef.current?.getApi?.()
-    if (!api) return
-
-    const view = api.view
-    if (!view) return
-
-    setDateRange({
-      from: view.activeStart.toISOString(),
-      to: view.activeEnd.toISOString(),
-    })
-
-    const visibleDate = api.getDate?.()
-    if (visibleDate instanceof Date && !Number.isNaN(visibleDate.getTime())) {
-      setCurrentCalendarDate(visibleDate)
-    }
-  }, [])
-
-  useEffect(() => {
     if (typeof window === 'undefined') return
 
     try {
@@ -154,9 +135,6 @@ export default function Calendar() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!calendarWrapRef.current) return
-
-    const isMobileView = window.innerWidth <= 600
-    if (!isMobileView) return
 
     const el = calendarWrapRef.current
     const api = calendarRef.current?.getApi?.()
@@ -198,7 +176,7 @@ export default function Calendar() {
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchend', onTouchEnd)
     }
-  }, [])
+  }, [isMobile])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -224,11 +202,10 @@ export default function Calendar() {
   const errorMessage =
     error?.response?.data?.error || error?.message || 'We could not load orders for this period.'
   const selectedOrderId = orderRouteMatch?.params?.orderId || null
-  const selectedOrder = useMemo(() => {
-    if (!selectedOrderId || !orders.length) return null
-    const { orderId: realOrderId } = parseBoxEventId(selectedOrderId)
-    return orders.find((order) => String(order.id) === String(realOrderId)) || null
-  }, [selectedOrderId, orders])
+  const { orderId: realOrderId } = parseBoxEventId(selectedOrderId || '')
+  const selectedOrder = selectedOrderId
+    ? orders.find((order) => String(order.id) === String(realOrderId)) || null
+    : null
 
   const currentMonthSummary = useMemo(() => {
     if (!(currentCalendarDate instanceof Date) || Number.isNaN(currentCalendarDate.getTime())) {
@@ -422,7 +399,7 @@ export default function Calendar() {
 
   function handleNewOrderCreated() {
     setNewOrderOpen(false)
-    queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+    refetch()
   }
 
   if (receiptRouteMatch?.params?.orderId) {
@@ -485,17 +462,17 @@ export default function Calendar() {
             setCalendarView(dateInfo.view.type)
           }
 
-          const api = calendarRef.current?.getApi?.()
-          if (api?.view) {
+          if (dateInfo?.start && dateInfo?.end) {
             setDateRange({
-              from: api.view.activeStart.toISOString(),
-              to: api.view.activeEnd.toISOString(),
+              from: dateInfo.start.toISOString(),
+              to: dateInfo.end.toISOString(),
             })
+          }
 
-            const visibleDate = api.getDate?.()
-            if (visibleDate instanceof Date && !Number.isNaN(visibleDate.getTime())) {
-              setCurrentCalendarDate(visibleDate)
-            }
+          const visibleDate =
+            calendarRef.current?.getApi?.().getDate?.() || dateInfo?.view?.currentStart
+          if (visibleDate instanceof Date && !Number.isNaN(visibleDate.getTime())) {
+            setCurrentCalendarDate(visibleDate)
           }
         }}
         buttonHints={{

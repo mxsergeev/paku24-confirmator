@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React from 'react'
 import { Button } from '@material-ui/core'
 import TextField from '@material-ui/core/TextField'
 import NativeSelect from '@material-ui/core/NativeSelect'
@@ -14,59 +14,21 @@ import Address from './Address'
 import PricingEditor from './PricingEditor'
 
 export default function OrderEditor({ order, handleChange, onOrderChange }) {
-  const nextExtraAddressId = useRef(0)
-  const [extraAddressIds, setExtraAddressIds] = useState(() =>
-    (order?.extraAddresses || []).map(() => {
-      const id = `extra-address-row-${nextExtraAddressId.current}`
-      nextExtraAddressId.current += 1
-      return id
-    }),
-  )
+  function handleExtraAddressChange(index, address) {
+    const nextAddresses = (order.extraAddresses || []).map((item, itemIndex) =>
+      itemIndex === index ? address : item,
+    )
+    handleChange?.('extraAddresses', nextAddresses)
+  }
 
-  const createExtraAddressId = useCallback(() => {
-    const id = `extra-address-row-${nextExtraAddressId.current}`
-    nextExtraAddressId.current += 1
-    return id
-  }, [])
+  function handleExtraAddressRemove(index) {
+    const nextAddresses = (order.extraAddresses || []).filter(
+      (_, itemIndex) => itemIndex !== index,
+    )
+    handleChange?.('extraAddresses', nextAddresses)
+  }
 
-  // Orders can be loaded or replaced by a parent while this editor remains
-  // mounted. Keep an editor-only key for every row without decorating the
-  // canonical address values passed through order state.
-  useEffect(() => {
-    const addressCount = order?.extraAddresses?.length || 0
-    setExtraAddressIds((previous) => {
-      if (previous.length === addressCount) return previous
-      if (previous.length > addressCount) return previous.slice(0, addressCount)
-      return [
-        ...previous,
-        ...Array.from({ length: addressCount - previous.length }, createExtraAddressId),
-      ]
-    })
-  }, [createExtraAddressId, order?.extraAddresses?.length])
-
-  const handleExtraAddressChange = useCallback(
-    (index, address) => {
-      const nextAddresses = (order.extraAddresses || []).map((item, itemIndex) =>
-        itemIndex === index ? address : item,
-      )
-      handleChange?.('extraAddresses', nextAddresses)
-    },
-    [handleChange, order?.extraAddresses],
-  )
-
-  const handleExtraAddressRemove = useCallback(
-    (index) => {
-      const nextAddresses = (order.extraAddresses || []).filter(
-        (_, itemIndex) => itemIndex !== index,
-      )
-      setExtraAddressIds((previous) => previous.filter((_, itemIndex) => itemIndex !== index))
-      handleChange?.('extraAddresses', nextAddresses)
-    },
-    [handleChange, order?.extraAddresses],
-  )
-
-  const handleExtraAddressAdd = useCallback(() => {
-    setExtraAddressIds((previous) => [...previous, createExtraAddressId()])
+  function handleExtraAddressAdd() {
     handleChange?.('extraAddresses', [
       ...(order.extraAddresses || []),
       {
@@ -77,7 +39,7 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
         elevator: false,
       },
     ])
-  }, [createExtraAddressId, handleChange, order?.extraAddresses])
+  }
 
   const margin = {
     marginTop: 5,
@@ -185,7 +147,7 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
       />
       {order?.extraAddresses.map((a, index) => (
         <Address
-          key={extraAddressIds[index] || `extra-address-row-pending-${index}`}
+          key={index}
           value={a}
           showRemove
           onChange={(address) => handleExtraAddressChange(index, address)}
