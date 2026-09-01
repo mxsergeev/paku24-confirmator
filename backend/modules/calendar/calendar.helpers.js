@@ -95,18 +95,6 @@ async function getCalendar() {
   return calendar
 }
 
-/**
- * Decides which color the event will be depending on car and service name
- * @param {object} order
- * @param {boolean} order.altColorPalette
- * @param {object} order
- * @param {string} order.serviceName
- */
-
-function makeColor(order) {
-  return order.eventColor
-}
-
 function nextCalendarDate(value, fieldName) {
   const date = calendarDateToUtc(value, fieldName)
   date.setUTCDate(date.getUTCDate() + 1)
@@ -132,8 +120,6 @@ function makeGoogleEventObjects(order) {
   let minutes = (Number(order.duration) % 1) * 60
   if (!minutes) minutes = 0
 
-  const color = makeColor(order)
-
   const entries = makeCalendarEntries(order)
 
   const events = [
@@ -141,7 +127,7 @@ function makeGoogleEventObjects(order) {
       role: 'main',
       summary: entries.move.title,
       description: entries.move.description,
-      colorId: color,
+      colorId: order.eventColor,
       location: [formatCalendarLocation(order.address)]
         .concat((order.extraAddresses || []).map((ea) => formatCalendarLocation(ea)))
         .concat([formatCalendarLocation(order.destination)])

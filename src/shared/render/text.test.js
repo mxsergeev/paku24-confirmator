@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import paymentTypes from '../../data/paymentTypes.json' with { type: 'json' }
 import services from '../../data/services.json' with { type: 'json' }
-import { formatAddress, formatAddressLocation, formatOrder } from './text.js'
+import {
+  formatAddress,
+  formatAddressLocation,
+  formatBoxDeliveryCalendarDescription,
+  formatBoxReturnCalendarDescription,
+  formatMoveCalendarDescription,
+  formatOrderForSms,
+} from './text.js'
 
 const makeOrder = (overrides = {}) => ({
   date: '2026-03-10T07:00:00.000Z',
@@ -67,9 +74,9 @@ describe('address rendering', () => {
   })
 })
 
-describe('formatOrder', () => {
+describe('formatOrderForSms', () => {
   it('preserves the exact full text layout', () => {
-    expect(formatOrder(makeOrder())).toBe(
+    expect(formatOrderForSms(makeOrder())).toBe(
       [
         'VARAUKSEN TIEDOT',
         '2026-03-10',
@@ -105,35 +112,23 @@ describe('formatOrder', () => {
     )
   })
 
-  it('supports explicit include-only and exclude modes', () => {
+  it('uses fixed calendar descriptions for move and box events', () => {
     const order = makeOrder()
-    const includeOnly = formatOrder(order, { address: 1, name: 1, boxes: 1 })
-    const includePrice = formatOrder(order, { address: 1, name: 1, price: 1 })
-    const excluded = formatOrder(order, { fees: 0, time: 0 })
-    const excludedPrice = formatOrder(order, { price: 0 })
+    const move = formatMoveCalendarDescription(order)
+    const delivery = formatBoxDeliveryCalendarDescription(order)
+    const returned = formatBoxReturnCalendarDescription(order)
 
-    expect(includeOnly).toContain('LÄHTÖPAIKKA')
-    expect(includeOnly).not.toContain('ARVIOITU HINTA')
-    expect(includeOnly).not.toContain('ALKAMISAIKA')
-    expect(includePrice).toContain('ARVIOITU HINTA')
-    expect(excluded).toContain('VARAUKSEN TIEDOT')
-    expect(excluded).not.toContain('ALKAMISAIKA')
-    expect(excludedPrice).not.toContain('ARVIOITU HINTA')
-  })
-
-  it('can omit a selected section heading without removing its content', () => {
-    const output = formatOrder(
-      makeOrder(),
-      { boxes: 1, price: 1 },
-      { showBoxesHeading: false },
-    )
-
-    expect(output).toContain('12-03-2026 09:00 - 20-03-2026 09:00')
-    expect(output).not.toContain('MUUTTOLAATIKOT')
+    expect(move).toContain('Määrä: 10 kpl')
+    expect(move).toContain('LÄHTÖPAIKKA')
+    expect(move).not.toContain('VARAUKSEN TIEDOT')
+    expect(delivery).toContain('LÄHTÖPAIKKA')
+    expect(delivery).not.toContain('MÄÄRÄNPÄÄ')
+    expect(returned).toContain('MÄÄRÄNPÄÄ')
+    expect(returned).not.toContain('LÄHTÖPAIKKA')
   })
 
   it('accepts Date values for the order and box datetimes', () => {
-    const output = formatOrder(
+    const output = formatOrderForSms(
       makeOrder({
         date: new Date('2026-03-10T07:00:00.000Z'),
         boxes: {
@@ -149,7 +144,7 @@ describe('formatOrder', () => {
   })
 
   it('keeps date-only box values free of a time component', () => {
-    const output = formatOrder(
+    const output = formatOrderForSms(
       makeOrder({
         boxes: {
           deliveryDate: '2026-03-12',
@@ -163,7 +158,7 @@ describe('formatOrder', () => {
   })
 
   it('uses Helsinki time for absolute instants regardless of the host timezone', () => {
-    const output = formatOrder(
+    const output = formatOrderForSms(
       makeOrder({
         date: '2026-03-10T07:00:00Z',
         boxes: {
@@ -179,9 +174,9 @@ describe('formatOrder', () => {
   })
 
   it('rejects invalid provided datetime values with a clear error', () => {
-    expect(() => formatOrder(makeOrder({ date: {} }))).toThrow('Invalid order date')
+    expect(() => formatOrderForSms(makeOrder({ date: {} }))).toThrow('Invalid order date')
     expect(() =>
-      formatOrder(
+      formatOrderForSms(
         makeOrder({
           boxes: {
             deliveryDate: {},
@@ -194,13 +189,13 @@ describe('formatOrder', () => {
   })
 
   it('omits the boxes section when boxes are missing', () => {
-    const output = formatOrder(makeOrder({ boxes: undefined }))
+    const output = formatOrderForSms(makeOrder({ boxes: undefined }))
 
     expect(output).not.toContain('MUUTTOLAATIKOT')
   })
 
   it('omits a short destination while still rendering fees and price', () => {
-    const output = formatOrder(
+    const output = formatOrderForSms(
       makeOrder({
         destination: { street: 'Katu', index: '', city: 'Helsinki', floor: 0, elevator: false },
         pricingOverrides: { price: 320, fees: [{ name: 'nightFee', amount: 20 }], boxesPrice: 200 },

@@ -6,7 +6,11 @@ import {
   parseCalendarDate,
   parseInstant,
 } from '../date-fns-tz.js'
-import { formatOrder } from './text.js'
+import {
+  formatMoveCalendarDescription,
+  formatBoxDeliveryCalendarDescription,
+  formatBoxReturnCalendarDescription,
+} from './text.js'
 import { getOrderPricing } from '../orderPricing.js'
 
 function makeIcons(order) {
@@ -56,47 +60,15 @@ function makeCalendarEntries(order) {
   return {
     move: {
       title: `${moveTitle} ${order.name}`,
-      description: `${moveTitle}${formatOrder(
-        order,
-        {
-          title: 0,
-          date: 0,
-          time: 0,
-          duration: 0,
-          paymentType: 0,
-        },
-        { showBoxesHeading: false },
-      )}`,
+      description: `${moveTitle}${formatMoveCalendarDescription(order)}`,
     },
     deliveryDate: {
       title: `${boxesDeliveryTitle}${order.name}`,
-      description: `${boxesDeliveryTitle}${formatOrder(
-        order,
-        {
-          address: 1,
-          name: 1,
-          email: 1,
-          phone: 1,
-          boxes: 1,
-          price: 1,
-        },
-        { showBoxesHeading: false },
-      )}`,
+      description: `${boxesDeliveryTitle}${formatBoxDeliveryCalendarDescription(order)}`,
     },
     returnDate: {
       title: `${boxesPickupTitle}${order.name}`,
-      description: `${boxesPickupTitle}${formatOrder(
-        order,
-        {
-          destination: 1,
-          name: 1,
-          email: 1,
-          phone: 1,
-          boxes: 1,
-          price: 1,
-        },
-        { showBoxesHeading: false },
-      )}`,
+      description: `${boxesPickupTitle}${formatBoxReturnCalendarDescription(order)}`,
     },
   }
 }

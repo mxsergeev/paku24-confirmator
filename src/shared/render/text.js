@@ -13,18 +13,18 @@ function formatAddress(address) {
   if (!address) return result
   result += address.street || ''
   if (address.index || address.city) {
-    result += `, ${address.index || ''} ${address.city || ''}`.trim()
+    result += (', ' + (address.index || '') + ' ' + (address.city || '')).trim()
   }
 
   const floorInfo = []
   if (typeof address.floor !== 'undefined' && address.floor !== null && address.floor !== '') {
-    floorInfo.push(`${address.floor} krs.`)
+    floorInfo.push(address.floor + ' krs.')
   }
   if (address.elevator) {
     floorInfo.push('hissi')
   }
   if (floorInfo.length > 0) {
-    result += `\n${floorInfo.join(', ')}`
+    result += '\n' + floorInfo.join(', ')
   }
   result += '\n'
   return result
@@ -35,7 +35,7 @@ function formatAddressLocation(address) {
   let result = ''
   result += address.street || ''
   if (address.index || address.city) {
-    result += `, ${address.index || ''} ${address.city || ''}`.trim()
+    result += (', ' + (address.index || '') + ' ' + (address.city || '')).trim()
   }
   result += '\n'
   return result
@@ -50,7 +50,7 @@ function formatBoxDate(value, fieldName) {
   if (isDateOnly(value)) {
     parseCalendarDate(value, fieldName)
     const [year, month, day] = value.split('-')
-    return `${day}-${month}-${year}`
+    return day + '-' + month + '-' + year
   }
 
   const date = parseInstant(value, fieldName)
@@ -61,144 +61,121 @@ function serviceName(order) {
   return order.serviceName ?? order.service?.name
 }
 
-const SECTION_NAMES = [
-  'title',
-  'date',
-  'time',
-  'duration',
-  'paymentType',
-  'fees',
-  'boxes',
-  'price',
-  'address',
-  'extraAddresses',
-  'destination',
-  'name',
-  'email',
-  'phone',
-  'comment',
-]
-
-function selectedSections(options) {
-  const included = Object.entries(options)
-    .filter(([, value]) => value === true || value === 1)
-    .map(([name]) => name)
-
-  if (included.length > 0) return new Set(included)
-
-  const selected = new Set(SECTION_NAMES)
-  Object.entries(options).forEach(([name, value]) => {
-    if (value === false || value === 0 || value === null) selected.delete(name)
-  })
-  return selected
+function formatFees(order, pricing) {
+  return pricing.fees
+    .map((fee) => resolveFeeDisplayName(order, fee).toUpperCase() + '\n' + fee.amount + '€\n')
+    .join('')
 }
 
-function formatOrder(order, options = {}, { showBoxesHeading = true } = {}) {
-  const sections = selectedSections(options)
+function formatBoxes(order, pricing, showHeading) {
+  if (!order.boxes || order.boxes.amount <= 0) return ''
+
+  const deliveryDate = formatBoxDate(order.boxes.deliveryDate, 'box delivery date')
+  const returnDate = formatBoxDate(order.boxes.returnDate, 'box return date')
+  const heading = showHeading ? 'MUUTTOLAATIKOT\n' : ''
+
+  return heading +
+    deliveryDate + ' - ' + returnDate + '\n' +
+    'Määrä: ' + order.boxes.amount + ' kpl\n' +
+    'Hinta: ' + pricing.boxesPrice + '€\n'
+}
+
+function formatContactDetails(order) {
+  return 'NIMI\n' + (order.name || '?') + '\n' +
+    'SÄHKÖPOSTI\n' + (order.email || '?') + '\n' +
+    'PUHELIN\n' + (order.phone || '?') + '\n'
+}
+
+function formatExtraAddresses(order) {
+  if (!order.extraAddresses || order.extraAddresses.length === 0) return ''
+  return 'LISÄPYSÄHDYKSET\n' + order.extraAddresses.map(formatAddress).join('')
+}
+
+function formatDestination(order) {
+  if (!order.destination || !order.destination.street || order.destination.street.length <= 5) return ''
+  return 'MÄÄRÄNPÄÄ\n' + formatAddress(order.destination)
+}
+
+function formatComment(order) {
+  const address = order.address || {}
+  const destination = order.destination || {}
+  let result = 'LISÄTIETOJA\n'
+
+  if (address.floor || address.elevator) {
+    result += 'Lähtö: ' + address.floor + ' krs.' +
+      (address.elevator ? ', hissi on.' : ', ei hissiä.') + '\n'
+  }
+  if (destination.floor || destination.elevator) {
+    result += 'Määränpää: ' + destination.floor + ' krs.' +
+      (destination.elevator ? ', hissi on.' : ', ei hissiä.') + '\n'
+  }
+
+  return result + order.comment + '\n'
+}
+
+function formatOrderForSms(order) {
   const pricing = getOrderPricing(order)
+  let result = 'VARAUKSEN TIEDOT\n'
 
-  let transformed = ''
+  result += formatOrderDate(order.date, 'yyyy-MM-dd', 'order date') + '\n'
+  result += 'ALKAMISAIKA\n'
+  result += 'Klo ' + formatOrderDate(order.date, 'HH:mm', 'order date') + ' (+/-15min)\n'
+  result += 'ARVIOITU KESTO\n'
+  result += order.duration + 'h (' + resolveServiceHourlyRate(order) + '€/h, ' + serviceName(order) + ')\n'
+  result += 'MAKSUTAPA\n' + order.paymentType.name + '\n'
+  result += formatFees(order, pricing)
+  result += formatBoxes(order, pricing, true)
+  result += 'ARVIOITU HINTA\n' + pricing.price + '€\n'
+  result += 'LÄHTÖPAIKKA\n' + formatAddress(order.address)
+  result += formatExtraAddresses(order)
+  result += formatDestination(order)
+  result += formatContactDetails(order)
+  result += formatComment(order)
 
-  if (sections.has('title')) {
-    transformed += 'VARAUKSEN TIEDOT\n'
-  }
-  if (sections.has('date')) {
-    transformed += `${formatOrderDate(order.date, 'yyyy-MM-dd', 'order date')}\n`
-  }
-  if (sections.has('time')) {
-    transformed += 'ALKAMISAIKA\n'
-    transformed += `Klo ${formatOrderDate(order.date, 'HH:mm', 'order date')} (+/-15min)\n`
-  }
-  if (sections.has('duration')) {
-    transformed += 'ARVIOITU KESTO\n'
-    transformed += `${order.duration}h (${resolveServiceHourlyRate(order)}€/h, ${serviceName(order)})\n`
-  }
-  if (sections.has('paymentType')) {
-    transformed += 'MAKSUTAPA\n'
-    transformed += `${order.paymentType.name}\n`
-  }
-  if (sections.has('fees')) {
-    pricing.fees.forEach((fee) => {
-      const label = resolveFeeDisplayName(order, fee)
-
-      transformed += `${label.toUpperCase()}\n`
-      transformed += `${fee.amount}€\n`
-    })
-  }
-  if (sections.has('boxes') && order.boxes && order.boxes.amount > 0) {
-    const boxDelDateStr = formatBoxDate(order.boxes.deliveryDate, 'box delivery date')
-    const boxPickDateStr = formatBoxDate(order.boxes.returnDate, 'box return date')
-
-    if (showBoxesHeading) {
-      transformed += 'MUUTTOLAATIKOT\n'
-    }
-    transformed += `${boxDelDateStr} - ${boxPickDateStr}\n`
-    transformed += `Määrä: ${order.boxes.amount} kpl\n`
-    transformed += `Hinta: ${pricing.boxesPrice}€\n`
-  }
-  if (sections.has('price')) {
-    transformed += 'ARVIOITU HINTA\n'
-    transformed += `${pricing.price}€\n`
-  }
-  if (sections.has('address')) {
-    transformed += 'LÄHTÖPAIKKA\n'
-    transformed += formatAddress(order.address)
-  }
-  if (
-    sections.has('extraAddresses') &&
-    order.extraAddresses &&
-    order.extraAddresses.length > 0
-  ) {
-    transformed += 'LISÄPYSÄHDYKSET\n'
-    order.extraAddresses.forEach((address) => {
-      transformed += formatAddress(address)
-    })
-  }
-  if (
-    sections.has('destination') &&
-    order.destination &&
-    order.destination.street &&
-    order.destination.street.length > 5
-  ) {
-    transformed += 'MÄÄRÄNPÄÄ\n'
-    transformed += formatAddress(order.destination)
-  }
-  if (sections.has('name')) {
-    transformed += 'NIMI\n'
-    transformed += `${order.name || '?'}\n`
-  }
-  if (sections.has('email')) {
-    transformed += 'SÄHKÖPOSTI\n'
-    transformed += `${order.email || '?'}\n`
-  }
-  if (sections.has('phone')) {
-    transformed += 'PUHELIN\n'
-    transformed += `${order.phone || '?'}\n`
-  }
-
-  if (sections.has('comment')) {
-    transformed += 'LISÄTIETOJA\n'
-    const address = order.address || {}
-    const destination = order.destination || {}
-
-    if (address.floor || address.elevator) {
-      transformed += `Lähtö: ${address.floor} krs.${
-        address.elevator ? ', hissi on.' : ', ei hissiä.'
-      }\n`
-    }
-
-    if (destination.floor || destination.elevator) {
-      transformed += `Määränpää: ${destination.floor} krs.${
-        destination.elevator ? ', hissi on.' : ', ei hissiä.'
-      }\n`
-    }
-
-    transformed += `${order.comment}\n`
-  }
-
-  return transformed
+  return result
 }
 
-const formatOrderForSms = formatOrder
+function formatMoveCalendarDescription(order) {
+  const pricing = getOrderPricing(order)
+  let result = formatFees(order, pricing)
 
-export { formatAddress, formatAddressLocation, formatBoxDate, formatOrder, formatOrderForSms }
+  result += formatBoxes(order, pricing, false)
+  result += 'ARVIOITU HINTA\n' + pricing.price + '€\n'
+  result += 'LÄHTÖPAIKKA\n' + formatAddress(order.address)
+  result += formatExtraAddresses(order)
+  result += formatDestination(order)
+  result += formatContactDetails(order)
+  result += formatComment(order)
+
+  return result
+}
+
+function formatBoxCalendarDescription(order, location) {
+  const pricing = getOrderPricing(order)
+  let result = formatBoxes(order, pricing, false)
+
+  result += 'ARVIOITU HINTA\n' + pricing.price + '€\n'
+  if (location === 'delivery') result += 'LÄHTÖPAIKKA\n' + formatAddress(order.address)
+  if (location === 'return') result += formatDestination(order)
+  result += formatContactDetails(order)
+
+  return result
+}
+
+function formatBoxDeliveryCalendarDescription(order) {
+  return formatBoxCalendarDescription(order, 'delivery')
+}
+
+function formatBoxReturnCalendarDescription(order) {
+  return formatBoxCalendarDescription(order, 'return')
+}
+
+export {
+  formatAddress,
+  formatAddressLocation,
+  formatBoxDate,
+  formatOrderForSms,
+  formatMoveCalendarDescription,
+  formatBoxDeliveryCalendarDescription,
+  formatBoxReturnCalendarDescription,
+}
