@@ -1,13 +1,17 @@
 import { useCallback, useState } from 'react'
 import { enqueueSnackbar } from 'notistack'
+import { useHistory } from 'react-router-dom'
 
 import {
+  RECEIPT_DRAFT_TTL_MS,
   buildReceiptDraftFromOrder,
+  makeReceiptDraftStorageKey,
   normalizeDocumentType,
   normalizeReceiptDraft,
 } from './receiptData.helpers'
 
 export default function useOrderDialogReceipt({ order, orderId }) {
+  const history = useHistory()
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [receiptDraft, setReceiptDraft] = useState(null)
   const [receiptDocumentType, setReceiptDocumentType] = useState('receipt')
@@ -54,23 +58,53 @@ export default function useOrderDialogReceipt({ order, orderId }) {
       }
 
       setReceiptDraft(safeDraft)
-      setReceiptOpen(false)
-      const receiptUrl = `/calendar/receipt/${orderId}`
       const receiptState = {
-        fromCalendar: true,
         documentType: nextDocumentType,
         receiptDraft: safeDraft,
       }
-      const newWindow = window.open(receiptUrl, '_blank')
-      if (newWindow) {
-        newWindow.state = receiptState
-      } else {
-        enqueueSnackbar('Failed to open new tab. Please check your browser settings.', {
+      const draftKey = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const storageKey = makeReceiptDraftStorageKey(draftKey)
+      try {
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            ...receiptState,
+            expiresAt: Date.now() + RECEIPT_DRAFT_TTL_MS,
+          }),
+        )
+      } catch {
+        enqueueSnackbar('Could not save receipt details for the new tab. Please try again.', {
           variant: 'error',
         })
+        return
       }
+
+      let newWindow = null
+      try {
+        const receiptUrl = history.createHref({
+          pathname: `/calendar/receipt/${encodeURIComponent(orderId)}`,
+          search: `?receiptDraftKey=${encodeURIComponent(draftKey)}`,
+        })
+        newWindow = window.open(receiptUrl, '_blank')
+      } catch {
+        // Treat browser popup errors like a blocked popup below.
+      }
+
+      if (newWindow) {
+        setReceiptOpen(false)
+        return
+      }
+
+      try {
+        window.localStorage.removeItem(storageKey)
+      } catch {
+        // Best effort cleanup when opening the receipt page is blocked.
+      }
+      enqueueSnackbar('Failed to open new tab. Please check your browser settings.', {
+        variant: 'error',
+      })
     },
-    [orderId, receiptDocumentType]
+    [history, orderId, receiptDocumentType]
   )
 
   return {

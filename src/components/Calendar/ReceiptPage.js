@@ -319,12 +319,13 @@ export default function ReceiptPage({ orderId, initialDraft = null, documentType
       setSending(true)
       const doc = await buildPdfFromPage(page)
       const pdfBase64 = doc.output('datauristring')
-      const fileName = `receipt-${receipt.invoiceNumber || 'document'}.pdf`
+      const fileName = `${receipt.isInvoice ? 'invoice' : 'receipt'}-${receipt.invoiceNumber || 'document'}.pdf`
 
       const response = await sendReceiptEmail({
         email: receipt.customerEmail,
         pdfBase64,
         fileName,
+        documentType: receipt.isInvoice ? 'invoice' : 'receipt',
         subject: `${receipt.isInvoice ? 'Invoice' : 'Receipt'} ${
           receipt.invoiceNumber || ''
         }`.trim(),

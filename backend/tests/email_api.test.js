@@ -67,4 +67,21 @@ describe('Email', () => {
       .expect(400)
       .expect('Content-Type', /application\/json/)
   })
+
+  test('sends invoice attachments with invoice-specific response text', async () => {
+    await api
+      .post('/api/email/send-receipt')
+      .set('Cookie', [`at=${at}`])
+      .send({
+        email: 'themaximsergeev@gmail.com',
+        documentType: 'invoice',
+        pdfBase64: 'data:application/pdf;base64,ZmFrZQ==',
+        fileName: 'invoice-2026-001.pdf',
+      })
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+      .expect(({ body }) => {
+        expect(body.message).toBe('Invoice sent to themaximsergeev@gmail.com.')
+      })
+  })
 })

@@ -26,7 +26,12 @@ function ProtectedRoute({ dependsOn, path, children, ...rest }) {
   const history = useHistory()
   let currentLocation
   if (dependsOn === null || dependsOn === 'Loading') {
-    currentLocation = history.location.pathname
+    currentLocation = {
+      pathname: history.location.pathname,
+      search: history.location.search,
+      hash: history.location.hash,
+      state: history.location.state,
+    }
   }
 
   const loading = dependsOn === 'Loading'
@@ -55,7 +60,12 @@ function App() {
     async function init() {
       let referrer
       if (user === null || user === 'Loading') {
-        referrer = history.location.pathname
+        referrer = {
+          pathname: history.location.pathname,
+          search: history.location.search,
+          hash: history.location.hash,
+          state: history.location.state,
+        }
       }
 
       // Initializing Axios interceptor with ability to logout user
@@ -73,7 +83,7 @@ function App() {
 
       try {
         const { user: userFromToken } = await loginService.loginWithAccessToken()
-        history.push(referrer)
+        if (referrer) history.push(referrer)
         return setUser(userFromToken)
       } catch (err) {
         return setUser(null)
@@ -100,13 +110,16 @@ function App() {
           <ProtectedRoute dependsOn={user} path="/statistics">
             <Statistics />
           </ProtectedRoute>
-          <ProtectedRoute dependsOn={user} exact path={['/', '/calendar']}>
+          <ProtectedRoute dependsOn={user} exact path="/">
+            <Redirect to="/calendar" />
+          </ProtectedRoute>
+          <ProtectedRoute dependsOn={user} path="/calendar">
             <Calendar />
           </ProtectedRoute>
         </Switch>
-        <ProtectedRoute dependsOn={user} path="/">
+        {user !== null && user !== 'Loading' && (
           <Footer user={user} logoutUser={() => setUser(null)} />
-        </ProtectedRoute>
+        )}
       </ErrorBoundary>
     </>
   )

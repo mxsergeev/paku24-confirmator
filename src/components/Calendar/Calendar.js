@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useHistory, useLocation, useRouteMatch } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { enqueueSnackbar } from 'notistack'
 import OrderDialog from './OrderDialog'
 import NewOrderDialog from './NewOrderDialog'
 import ReceiptPage from './ReceiptPage'
@@ -26,6 +27,11 @@ import iconsData from '../../data/icons.json'
 import { useCalendarOrders } from '../../hooks/useCalendarOrders'
 import './Calendar.css'
 import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
+import {
+  makeReceiptDraftStorageKey,
+  normalizeDocumentType,
+  normalizeReceiptDraft,
+} from './receiptData.helpers'
 
 const SHOW_DELETED_ORDERS_STORAGE_KEY = 'calendar-show-deleted-orders'
 const CALENDAR_VIEW_STORAGE_KEY = 'calendar-selected-view'
@@ -44,6 +50,84 @@ function calendarEventStart(value, fieldName) {
 function calendarEventTime(value, fieldName) {
   if (isDateOnly(value)) return ''
   return formatInTimeZone(parseInstant(value, fieldName), 'HH:mm', HELSINKI_TIMEZONE)
+}
+
+function readReceiptNavigationState(location) {
+  const stateReceiptDraft = normalizeReceiptDraft(location?.state?.receiptDraft)
+  const stateDocumentType = location?.state?.documentType
+    ? normalizeDocumentType(location.state.documentType)
+    : null
+
+  const draftKey = new URLSearchParams(location?.search || '').get('receiptDraftKey')
+  if (!draftKey) {
+    return {
+      receiptDraft: stateReceiptDraft,
+      documentType: stateDocumentType,
+      checkpointKey: null,
+      warning: null,
+    }
+  }
+
+  const checkpointKey = makeReceiptDraftStorageKey(draftKey)
+
+  try {
+    const raw = window.localStorage.getItem(checkpointKey)
+    const stored = raw ? JSON.parse(raw) : null
+    if (!stored || !Number.isFinite(stored.expiresAt) || stored.expiresAt <= Date.now()) {
+      try {
+        window.localStorage.removeItem(checkpointKey)
+      } catch {
+        // Best effort cleanup for an expired or malformed checkpoint.
+      }
+      return {
+        receiptDraft: stateReceiptDraft,
+        documentType: stateDocumentType,
+        checkpointKey: null,
+        warning: stateReceiptDraft
+          ? null
+          : 'Receipt details could not be restored. The edited draft may have expired.',
+      }
+    }
+
+    const checkpointDraft = normalizeReceiptDraft(stored.receiptDraft, stored.documentType)
+    if (!checkpointDraft) {
+      try {
+        window.localStorage.removeItem(checkpointKey)
+      } catch {
+        // Best effort cleanup for an invalid checkpoint.
+      }
+      return {
+        receiptDraft: stateReceiptDraft,
+        documentType: stateDocumentType,
+        checkpointKey: null,
+        warning: stateReceiptDraft
+          ? null
+          : 'Receipt details could not be restored. Please reopen the document.',
+      }
+    }
+
+    return {
+      receiptDraft: stateReceiptDraft || checkpointDraft,
+      documentType:
+        stateDocumentType || (stored.documentType ? normalizeDocumentType(stored.documentType) : null),
+      checkpointKey,
+      warning: null,
+    }
+  } catch {
+    try {
+      window.localStorage.removeItem(checkpointKey)
+    } catch {
+      // Best effort cleanup for an unreadable checkpoint.
+    }
+    return {
+      receiptDraft: stateReceiptDraft,
+      documentType: stateDocumentType,
+      checkpointKey: null,
+      warning: stateReceiptDraft
+        ? null
+        : 'Receipt details could not be restored. Please reopen the document.',
+    }
+  }
 }
 
 export default function Calendar() {
@@ -229,6 +313,49 @@ export default function Calendar() {
     const { orderId: realOrderId } = parseBoxEventId(selectedOrderId)
     return orders.find((order) => String(order.id) === String(realOrderId)) || null
   }, [selectedOrderId, orders])
+  const receiptNavigationState = useMemo(
+    () => readReceiptNavigationState(location),
+    [location?.search, location?.state],
+  )
+
+  useEffect(() => {
+    if (receiptNavigationState.warning) {
+      enqueueSnackbar(receiptNavigationState.warning, { variant: 'warning' })
+    }
+  }, [receiptNavigationState.warning])
+
+  useEffect(() => {
+    if (!receiptNavigationState.checkpointKey || !receiptNavigationState.receiptDraft) return
+
+    const searchParams = new URLSearchParams(location?.search || '')
+    searchParams.delete('receiptDraftKey')
+
+    history.replace({
+      pathname: location.pathname,
+      search: searchParams.toString() ? `?${searchParams.toString()}` : '',
+      hash: location.hash,
+      state: {
+        ...(location.state || {}),
+        receiptDraft: receiptNavigationState.receiptDraft,
+        documentType: receiptNavigationState.documentType,
+      },
+    })
+
+    try {
+      window.localStorage.removeItem(receiptNavigationState.checkpointKey)
+    } catch {
+      // The history state keeps the draft available when storage is restricted.
+    }
+  }, [
+    history,
+    location?.hash,
+    location?.pathname,
+    location?.search,
+    location?.state,
+    receiptNavigationState.checkpointKey,
+    receiptNavigationState.documentType,
+    receiptNavigationState.receiptDraft,
+  ])
 
   const currentMonthSummary = useMemo(() => {
     if (!(currentCalendarDate instanceof Date) || Number.isNaN(currentCalendarDate.getTime())) {
@@ -429,8 +556,8 @@ export default function Calendar() {
     return (
       <ReceiptPage
         orderId={receiptRouteMatch.params.orderId}
-        initialDraft={location.state?.receiptDraft || null}
-        documentType={location.state?.documentType || null}
+        initialDraft={receiptNavigationState.receiptDraft}
+        documentType={receiptNavigationState.documentType}
       />
     )
   }

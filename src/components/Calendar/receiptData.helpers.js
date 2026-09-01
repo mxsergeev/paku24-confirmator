@@ -6,6 +6,12 @@ import {
 } from '../../shared/date-fns-tz.js'
 import { getOrderPricing } from '../../shared/orderPricing.js'
 
+const RECEIPT_DRAFT_TTL_MS = 10 * 60 * 1000
+
+export function makeReceiptDraftStorageKey(key) {
+  return `paku24-receipt-draft:${key}`
+}
+
 export function buildStableInvoiceNumber(order, existingInvoiceNumber = '') {
   return buildSharedStableInvoiceNumber(order, existingInvoiceNumber, { invalidDate: 'today' })
 }
@@ -98,3 +104,5 @@ export function normalizeReceiptDraft(draft, fallbackDocumentType = 'receipt') {
     documentType: resolveDocumentType(draft.documentType, fallbackDocumentType),
   }
 }
+
+export { RECEIPT_DRAFT_TTL_MS }

@@ -64,9 +64,11 @@ export default function Login({ updateUser }) {
       })
       setNotification('Done')
 
-      // Not counting '/' as referrer
-      history.push(referrer?.length > 1 ? referrer : '/calendar')
+      const hasReferrer = typeof referrer === 'string'
+        ? referrer.length > 1
+        : referrer?.pathname && referrer.pathname !== '/'
       updateUser(user)
+      history.push(hasReferrer ? referrer : '/calendar')
     } catch (err) {
       setInputError(true)
       setIsButtonDisabled(true)

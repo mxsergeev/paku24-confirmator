@@ -39,21 +39,25 @@ emailRouter.post('/send-confirmation', (req, res, next) => {
 })
 
 emailRouter.post('/send-receipt', (req, res, next) => {
-  const { email, subject, body, pdfBase64, fileName } = req.body || {}
+  const { email, subject, body, pdfBase64, fileName, documentType } = req.body || {}
   const hasPdfBase64 = typeof pdfBase64 === 'string' && pdfBase64.trim().length > 0
 
   if (!email || !hasPdfBase64) {
     return res.status(400).send({ error: 'Email and pdfBase64 are required.' })
   }
 
+  const isInvoice = documentType === 'invoice'
+  const documentLabel = isInvoice ? 'Invoice' : 'Receipt'
+
   return sendMailWithAttachment({
     email,
-    subject: subject || 'Receipt',
-    body: body || 'Please find your receipt attached.',
+    subject: subject || documentLabel,
+    body: body || `Please find your ${documentLabel.toLowerCase()} attached.`,
     pdfBase64,
-    fileName: fileName || 'receipt.pdf',
+    fileName: fileName || `${documentLabel.toLowerCase()}.pdf`,
+    documentType: isInvoice ? 'invoice' : 'receipt',
   })
-    .then(() => res.status(200).send({ message: `Receipt sent to ${email}.` }))
+    .then(() => res.status(200).send({ message: `${documentLabel} sent to ${email}.` }))
     .catch((err) => next(err))
 })
 

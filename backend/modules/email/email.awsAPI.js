@@ -75,6 +75,7 @@ function normalizeBase64(input = '') {
  * @param {string} mail.body
  * @param {string} mail.pdfBase64
  * @param {string} [mail.fileName='receipt.pdf']
+ * @param {'receipt'|'invoice'} [mail.documentType='receipt']
  * @param {string} [mail.sourceEmail=SOURCE_EMAIL]
  */
 function sendMailWithAttachment({
@@ -83,10 +84,12 @@ function sendMailWithAttachment({
   body,
   pdfBase64,
   fileName = 'receipt.pdf',
+  documentType = 'receipt',
   sourceEmail = SOURCE_EMAIL,
 }) {
   const boundary = `NextPart_${Date.now()}`
   const normalizedPdfBase64 = splitBase64Lines(normalizeBase64(pdfBase64))
+  const attachmentDescription = documentType === 'invoice' ? 'Invoice PDF' : 'Receipt PDF'
 
   const rawMessage = [
     `From: ${sourceEmail}`,
@@ -103,7 +106,7 @@ function sendMailWithAttachment({
     '',
     `--${boundary}`,
     `Content-Type: application/pdf; name="${fileName}"`,
-    'Content-Description: Receipt PDF',
+    `Content-Description: ${attachmentDescription}`,
     `Content-Disposition: attachment; filename="${fileName}";`,
     'Content-Transfer-Encoding: base64',
     '',
