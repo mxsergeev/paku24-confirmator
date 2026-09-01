@@ -5,13 +5,25 @@ const smsRouter = express.Router()
 import * as logger from '../../utils/logger.js'
 import * as authMW from '../authentication/auth.middleware.js'
 import { constructMessage, constructCancellationMessage, sendSmsInChunks } from './sms.helpers.js'
+import { getOrderById } from '../orderPool/orderPool.service.js'
 
 smsRouter.use(authMW.authenticateAccessToken)
 
 smsRouter.post('/', async (req, res, next) => {
-  const { order } = req.body
-
   try {
+    const { orderId } = req.body || {}
+    if (typeof orderId !== 'string' || !orderId) {
+      return res.status(400).send({ error: 'Order ID is required.' })
+    }
+
+    const order = await getOrderById(orderId)
+    if (order.deletedAt) {
+      return res.status(400).send({ error: 'Deleted orders cannot send messages.' })
+    }
+    if (!order.phone) {
+      return res.status(400).send({ error: 'Phone number is required.' })
+    }
+
     const { chunkCount, totalSegments } = await sendSmsInChunks(
       order.phone,
       constructMessage(order)
@@ -29,9 +41,20 @@ smsRouter.post('/', async (req, res, next) => {
 })
 
 smsRouter.post('/cancellation', async (req, res, next) => {
-  const { order } = req.body
-
   try {
+    const { orderId } = req.body || {}
+    if (typeof orderId !== 'string' || !orderId) {
+      return res.status(400).send({ error: 'Order ID is required.' })
+    }
+
+    const order = await getOrderById(orderId)
+    if (order.deletedAt) {
+      return res.status(400).send({ error: 'Deleted orders cannot send messages.' })
+    }
+    if (!order.phone) {
+      return res.status(400).send({ error: 'Phone number is required.' })
+    }
+
     const { chunkCount, totalSegments } = await sendSmsInChunks(
       order.phone,
       constructCancellationMessage(order)

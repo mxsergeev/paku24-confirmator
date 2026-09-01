@@ -199,4 +199,6 @@ function formatOrder(order, options = {}, { showBoxesHeading = true } = {}) {
   return transformed
 }
 
-export { formatAddress, formatAddressLocation, formatBoxDate, formatOrder }
+const formatOrderForSms = formatOrder
+
+export { formatAddress, formatAddressLocation, formatBoxDate, formatOrder, formatOrderForSms }

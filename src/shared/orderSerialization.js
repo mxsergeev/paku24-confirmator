@@ -1,5 +1,5 @@
 import { BOOKING_FIELDS } from './orderModel.js'
-import { getOrderPricing, normalizeFeeList } from './orderPricing.js'
+import { normalizeFeeList } from './orderPricing.js'
 import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
 import { cloneValue, hasOwn, isPlainObject, PRICING_COMPONENTS, toFiniteNumberOrNull } from './orderPrimitives.js'
 
@@ -100,25 +100,7 @@ function toUpdateOrderPayload(order) {
   }
 }
 
-function toCommunicationOrder(order) {
-  if (!isPlainObject(order)) throw new Error('Order must be an object')
-
-  const pricing = getOrderPricing(order)
-  return {
-    ...serializeBookingFields(order),
-    pricingOverrides: {
-      price: pricing.price,
-      fees: cloneValue(pricing.fees),
-      boxesPrice: pricing.boxesPrice,
-    },
-    price: cloneValue(pricing.price),
-    fees: cloneValue(pricing.fees),
-    boxesPrice: cloneValue(pricing.boxesPrice),
-  }
-}
-
 export {
   toCreateOrderPayload,
   toUpdateOrderPayload,
-  toCommunicationOrder,
 }

@@ -8,11 +8,15 @@ const baseUrl = '/api/sms'
  */
 
 export default async function sendSMS(params) {
-  const response = await interceptor.axiosInstance.post(baseUrl, params)
+  const response = await interceptor.axiosInstance.post(baseUrl, {
+    orderId: params?.orderId,
+  })
   return response.data
 }
 
 export async function sendCancellationSMS(params) {
-  const response = await interceptor.axiosInstance.post(`${baseUrl}/cancellation`, params)
+  const response = await interceptor.axiosInstance.post(`${baseUrl}/cancellation`, {
+    orderId: params?.orderId,
+  })
   return response.data
 }

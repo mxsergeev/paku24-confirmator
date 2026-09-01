@@ -3,6 +3,14 @@ import termsData from '../modules/email/email.data.terms.json' with { type: 'jso
 import { makeCustomerCommunicationPayload } from '../../src/shared/testFixtures/orderFixtures.js'
 import { exampleOptions } from './test_helper.js'
 
+function makeConfirmationOrder(overrides = {}) {
+  return {
+    ...makeCustomerCommunicationPayload(),
+    pricingOverrides: { price: 167, fees: [], boxesPrice: 52 },
+    ...overrides,
+  }
+}
+
 describe('makeTerms', () => {
   test('terms created right', () => {
     const terms = makeTerms(exampleOptions)
@@ -26,15 +34,16 @@ describe('makeTerms', () => {
 
 describe('buildConfirmationEmail', () => {
   test('renders structured materialized total and boxes price', () => {
-    const { body } = buildConfirmationEmail({ order: makeCustomerCommunicationPayload() })
+    const { body } = buildConfirmationEmail({ order: makeConfirmationOrder() })
 
     expect(body).toContain('167€')
     expect(body).toContain('Hinta: 52 €')
   })
 
   test('renders a structured zero boxes price', () => {
-    const order = makeCustomerCommunicationPayload()
-    order.boxesPrice = 0
+    const order = makeConfirmationOrder({
+      pricingOverrides: { price: 167, fees: [], boxesPrice: 0 },
+    })
 
     const { body } = buildConfirmationEmail({ order })
 
@@ -42,7 +51,7 @@ describe('buildConfirmationEmail', () => {
   })
 
   test('renders order and box instants in Helsinki time', () => {
-    const order = makeCustomerCommunicationPayload()
+    const order = makeConfirmationOrder()
     order.date = '2026-01-15T07:00:00.000Z'
     order.boxes.deliveryDate = '2026-01-16T07:00:00.000Z'
     order.boxes.returnDate = '2026-01-17T07:00:00.000Z'
@@ -55,7 +64,7 @@ describe('buildConfirmationEmail', () => {
   })
 
   test('keeps date-only box values date-only in confirmation email', () => {
-    const order = makeCustomerCommunicationPayload()
+    const order = makeConfirmationOrder()
     order.boxes.deliveryDate = '2026-03-12'
     order.boxes.returnDate = '2026-03-20'
 

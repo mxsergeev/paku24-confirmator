@@ -4,7 +4,6 @@ import {
   makeCanonicalAppOrder,
 } from './testFixtures/orderFixtures.js'
 import {
-  toCommunicationOrder,
   toCreateOrderPayload,
   toUpdateOrderPayload,
 } from './orderSerialization.js'
@@ -89,15 +88,4 @@ describe('API and communication payloads', () => {
     expect(payload.extraAddresses[0]).not.toHaveProperty('_uiId')
   })
 
-  it('materializes effective pricing only for communication payloads', () => {
-    const payload = toCommunicationOrder({
-      ...makeCanonicalAppOrder(),
-      pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },
-    })
-
-    expect(payload).toMatchObject({ price: 0, fees: [], boxesPrice: 0 })
-    expect(payload.pricingOverrides).toEqual({ price: 0, fees: [], boxesPrice: 0 })
-    expect(payload).not.toHaveProperty('originalOrder')
-    expect(payload).not.toHaveProperty('confirmed')
-  })
 })

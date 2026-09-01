@@ -29,7 +29,7 @@ import sendConfirmationEmail, { sendCancellationEmail } from '../../services/ema
 import sendSMS, { sendCancellationSMS } from '../../services/smsAPI'
 import { cloneValue } from '../../shared/orderPrimitives'
 import { updateOrderField } from '../../shared/orderModel'
-import { toCommunicationOrder, toUpdateOrderPayload } from '../../shared/orderSerialization'
+import { toUpdateOrderPayload } from '../../shared/orderSerialization'
 import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 import { hexToRgba } from '../../shared/color.helpers'
 import {
@@ -97,10 +97,9 @@ export default function OrderDialog({
 
     try {
       setSendingEmail(true)
-      const communicationOrder = toCommunicationOrder(order)
       const response = isCanceled(order)
-        ? await sendCancellationEmail({ order: communicationOrder, email: order.email })
-        : await sendConfirmationEmail({ order: communicationOrder, email: order.email })
+        ? await sendCancellationEmail({ orderId })
+        : await sendConfirmationEmail({ orderId })
 
       enqueueSnackbar(response.message || 'Email sent to client.')
     } catch (err) {
@@ -125,10 +124,9 @@ export default function OrderDialog({
 
     try {
       setSendingSMS(true)
-      const communicationOrder = toCommunicationOrder(order)
       const response = isCanceled(order)
-        ? await sendCancellationSMS({ order: communicationOrder })
-        : await sendSMS({ order: communicationOrder })
+        ? await sendCancellationSMS({ orderId })
+        : await sendSMS({ orderId })
 
       enqueueSnackbar(response.message || 'SMS sent to client.')
     } catch (err) {
@@ -299,16 +297,13 @@ export default function OrderDialog({
     try {
       setCanceling(true)
       const { response, updatedOrder } = await cancelAndUpdate(orderId)
-      const communicationOrder = toCommunicationOrder(updatedOrder)
       const notificationRequests = []
 
       if (updatedOrder?.email) {
-        notificationRequests.push(
-          sendCancellationEmail({ order: communicationOrder, email: updatedOrder.email })
-        )
+        notificationRequests.push(sendCancellationEmail({ orderId }))
       }
       if (updatedOrder?.phone) {
-        notificationRequests.push(sendCancellationSMS({ order: communicationOrder }))
+        notificationRequests.push(sendCancellationSMS({ orderId }))
       }
 
       if (notificationRequests.length === 0) {

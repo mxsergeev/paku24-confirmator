@@ -5,6 +5,7 @@ import {
   parseCalendarDate,
 } from '../../../src/shared/date-fns-tz.js'
 import { SOURCE_EMAIL, COMPANY_PHONE } from '../../utils/config.js'
+import { getOrderPricing } from '../../../src/shared/orderPricing.js'
 
 const styles = {
   colors: {
@@ -245,6 +246,7 @@ function makeRow(label, value, { isHtml = false, extraStyle = '', hasBorder = tr
 function buildConfirmationEmail({ order = {}, terms = '', lang = 'fi' } = {}) {
   const locale = resolveEmailLanguage(lang)
   const t = confirmationCopy[locale]
+  const pricing = getOrderPricing(order)
 
   const firstName = (order?.name || '').split(' ')[0]
 
@@ -252,7 +254,7 @@ function buildConfirmationEmail({ order = {}, terms = '', lang = 'fi' } = {}) {
   const paymentName = order?.paymentType?.name || ''
   const paymentFee = Number(order?.paymentType?.fee || 0)
   const paymentFeeText = paymentFee > 0 ? `${paymentFee}€` : ''
-  const totalPriceText = hasValue(order?.price) ? `${Number(order.price)}€` : ''
+  const totalPriceText = hasValue(pricing.price) ? `${Number(pricing.price)}€` : ''
   const durationText = hasValue(order?.duration) ? `${order.duration}${t.hourShort}` : ''
   const dateText = formatDate(order?.date, locale, 'order date')
   const dateTextWithTolerance = dateText ? `${dateText} (±15min)` : ''
@@ -260,7 +262,7 @@ function buildConfirmationEmail({ order = {}, terms = '', lang = 'fi' } = {}) {
   const startAddressHtml = renderAddressHtml(order?.address, t)
   const destinationAddressHtml = renderAddressHtml(order?.destination, t)
   const extraStopsHtml = renderExtraStopsHtml(order?.extraAddresses, t)
-  const boxesHtml = renderBoxesHtml(order?.boxes, order?.boxesPrice, t, locale)
+  const boxesHtml = renderBoxesHtml(order?.boxes, pricing.boxesPrice, t, locale)
   const thanksHtml = renderThanksHtml(t)
   const termsHtml = renderTermsHtml(terms)
   const companyInfoHtml = renderCompanyInfoHtml()

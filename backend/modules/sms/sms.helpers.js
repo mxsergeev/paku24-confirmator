@@ -1,6 +1,6 @@
 import axios from 'axios'
 import termsData from '../email/email.data.terms.json' with { type: 'json' }
-import { formatOrder } from '../../../src/shared/render/text.js'
+import { formatOrderForSms } from '../../../src/shared/render/text.js'
 import { formatHelsinkiInstant } from '../../../src/shared/date-fns-tz.js'
 import { SEMYSMS_DEVICE_ID, SEMYSMS_API_TOKEN } from '../../utils/config.js'
 
@@ -132,7 +132,7 @@ function sendSMSWithGateway(phone, msg) {
 }
 
 function constructMessage(order) {
-  const orderData = formatOrder(order)
+  const orderData = formatOrderForSms(order)
 
   if (!orderData || orderData.length === 0) {
     throw new Error('Invalid order data for SMS')
