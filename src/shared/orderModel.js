@@ -484,7 +484,10 @@ function constructBookingOrder(input) {
 
 function createAppOrder(input = {}) {
   if (!isPlainObject(input)) throw new OrderValidationError('Order must be an object')
-  return constructBookingOrder(input)
+
+  const order = constructBookingOrder(input)
+  order.pricingOverrides = normalizePricingOverrides(input.pricingOverrides)
+  return order
 }
 
 function createWordPressOrder(input = {}, originalOrder = input) {

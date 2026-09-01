@@ -98,13 +98,47 @@ describe('draft serialization', () => {
 })
 
 describe('API and communication payloads', () => {
-  it('creates a booking-only payload for app persistence', () => {
+  it('creates an app payload with automatic pricing overrides', () => {
     const payload = toCreateOrderPayload(makeCanonicalAppOrder())
 
     expect(payload).toMatchObject({ date: '2026-06-15T06:00:00.000Z' })
+    expect(payload.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
     expect(payload).not.toHaveProperty('id')
     expect(payload).not.toHaveProperty('originalOrder')
-    expect(payload).not.toHaveProperty('pricingOverrides')
+    expect(payload).not.toHaveProperty('price')
+    expect(payload).not.toHaveProperty('fees')
+    expect(payload).not.toHaveProperty('boxesPrice')
+  })
+
+  it('creates an app payload with manual pricing overrides', () => {
+    const payload = toCreateOrderPayload({
+      ...makeCanonicalAppOrder(),
+      pricingOverrides: {
+        price: 220,
+        fees: [{ name: 'Manual fee', amount: 10 }],
+        boxesPrice: 40,
+      },
+    })
+
+    expect(payload.pricingOverrides).toEqual({
+      price: 220,
+      fees: [{ name: 'Manual fee', amount: 10 }],
+      boxesPrice: 40,
+    })
+    expect(payload).not.toHaveProperty('originalOrder')
+    expect(payload).not.toHaveProperty('price')
+    expect(payload).not.toHaveProperty('fees')
+    expect(payload).not.toHaveProperty('boxesPrice')
+  })
+
+  it('preserves explicit zero and no-fees overrides in an app payload', () => {
+    const payload = toCreateOrderPayload({
+      ...makeCanonicalAppOrder(),
+      pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },
+    })
+
+    expect(payload.pricingOverrides).toEqual({ price: 0, fees: [], boxesPrice: 0 })
+    expect(payload).not.toHaveProperty('originalOrder')
     expect(payload).not.toHaveProperty('price')
     expect(payload).not.toHaveProperty('fees')
     expect(payload).not.toHaveProperty('boxesPrice')

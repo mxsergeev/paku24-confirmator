@@ -106,14 +106,56 @@ describe('Order pool v2/add', () => {
     expect(effective.fees).toEqual(expect.any(Array))
   })
 
-  test('authenticated app creation ignores lifecycle, reference, and pricing fields', async () => {
+  test('authenticated app creation persists manual pricing overrides', async () => {
+    const source = makeOrder({
+      name: 'App Manual Pricing Order',
+      pricingOverrides: { price: 220, fees: [], boxesPrice: 40 },
+    })
+    names.push(source.name)
+
+    const res = await api
+      .post('/api/order-pool/v2/add')
+      .set('Cookie', [`at=${appToken}`])
+      .send({ order: source })
+      .expect(200)
+
+    const saved = await Order.findById(res.body.id).lean()
+    expect(saved.pricingOverrides).toEqual({ price: 220, fees: [], boxesPrice: 40 })
+    expect(getOrderPricing(saved)).toEqual({ price: 220, fees: [], boxesPrice: 40 })
+    expect(saved.originalOrder).toBeNull()
+  })
+
+  test('authenticated app creation preserves explicit zero and no-fees overrides', async () => {
+    const source = makeOrder({
+      name: 'App Zero Pricing Order',
+      pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },
+    })
+    names.push(source.name)
+
+    const res = await api
+      .post('/api/order-pool/v2/add')
+      .set('Cookie', [`at=${appToken}`])
+      .send({ order: source })
+      .expect(200)
+
+    const saved = await Order.findById(res.body.id).lean()
+    expect(saved.pricingOverrides).toEqual({ price: 0, fees: [], boxesPrice: 0 })
+    expect(getOrderPricing(saved)).toEqual({ price: 0, fees: [], boxesPrice: 0 })
+  })
+
+  test('authenticated app creation ignores lifecycle, reference, and derived pricing fields', async () => {
     const source = makeOrder({
       name: 'App Order',
       confirmed: true,
+      confirmedBy: '66c000000000000000000002',
+      confirmedAt: '1999-01-01T00:00:00.000Z',
       receivedAt: '1999-01-01T00:00:00.000Z',
+      canceledAt: '1999-01-02T00:00:00.000Z',
+      deletedAt: '1999-01-03T00:00:00.000Z',
       invoiceNumber: 'attacker-invoice',
+      calendarEventIds: { main: 'attacker-event-id' },
       originalOrder: { injected: true },
-      pricingOverrides: { price: 999999, fees: [], boxesPrice: 999999 },
+      pricingOverrides: { price: 220, fees: [], boxesPrice: 40 },
       price: 999999,
       fees: [{ name: 'Injected fee', amount: 999999 }],
       boxesPrice: 999999,
@@ -128,11 +170,32 @@ describe('Order pool v2/add', () => {
 
     const saved = await Order.findById(res.body.id).lean()
     expect(saved.originalOrder).toBeNull()
-    expect(saved.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
+    expect(saved.pricingOverrides).toEqual({ price: 220, fees: [], boxesPrice: 40 })
+    expect(getOrderPricing(saved)).toEqual({ price: 220, fees: [], boxesPrice: 40 })
     expect(saved.confirmed).toBe(false)
+    expect(saved.confirmedBy).not.toBe('66c000000000000000000002')
+    expect(saved.confirmedAt).not.toEqual(new Date('1999-01-01T00:00:00.000Z'))
+    expect(saved.invoiceNumber).not.toBe('attacker-invoice')
+    expect(saved.receivedAt).not.toEqual(new Date('1999-01-01T00:00:00.000Z'))
+    expect(saved.canceledAt).not.toEqual(new Date('1999-01-02T00:00:00.000Z'))
+    expect(saved.deletedAt).not.toEqual(new Date('1999-01-03T00:00:00.000Z'))
+    expect(saved.calendarEventIds.main).not.toBe('attacker-event-id')
     expect(saved).not.toHaveProperty('price')
     expect(saved).not.toHaveProperty('fees')
     expect(saved).not.toHaveProperty('boxesPrice')
+  })
+
+  test.each([
+    ['price', { price: 'bad' }],
+    ['fees', { fees: {} }],
+    ['fee amount', { fees: [{ name: 'Bad fee', amount: 'bad' }] }],
+    ['boxesPrice', { boxesPrice: 'bad' }],
+  ])('rejects malformed pricing override: %s', async (_description, pricingOverrides) => {
+    await api
+      .post('/api/order-pool/v2/add')
+      .set('Cookie', [`at=${appToken}`])
+      .send({ order: makeOrder({ pricingOverrides }) })
+      .expect(400)
   })
 
   test('rejects unauthenticated, non-object, and invalid WordPress requests', async () => {

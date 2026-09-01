@@ -37,6 +37,19 @@ describe('canonical order model', () => {
     expect(order).not.toHaveProperty('origin')
   })
 
+  it('creates app orders with validated manual pricing overrides', () => {
+    const order = createAppOrder({
+      ...makeAppBooking(),
+      pricingOverrides: { price: 220, fees: [], boxesPrice: 40 },
+    })
+
+    expect(order.pricingOverrides).toEqual({ price: 220, fees: [], boxesPrice: 40 })
+    expect(getOrderPricing(order)).toEqual({ price: 220, fees: [], boxesPrice: 40 })
+    expect(() => createAppOrder({ ...makeAppBooking(), pricingOverrides: { price: 'bad' } })).toThrow(
+      /price/i,
+    )
+  })
+
   it('keeps the exact WordPress payload as immutable reference data', () => {
     const input = makeWordPressPayload({ metadata: { source: 'wordpress' } })
     const order = createWordPressOrder(input)

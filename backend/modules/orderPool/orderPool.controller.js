@@ -75,9 +75,14 @@ function buildOrderForCreate(req) {
       return createWordPressOrder(normalizeWordPressOrderPayload(orderData), orderData)
     }
 
-    // App creation accepts booking fields only. Lifecycle and pricing state are
-    // not trusted from the request.
-    return createAppOrder(pickBookingFields(orderData))
+    const appOrderData = pickBookingFields(orderData)
+    if (hasOwn(orderData, 'pricingOverrides')) {
+      appOrderData.pricingOverrides = orderData.pricingOverrides
+    }
+
+    // App creation accepts editable booking fields and manual pricing overrides.
+    // Lifecycle, reference, and derived pricing state remain server-controlled.
+    return createAppOrder(appOrderData)
   } catch (err) {
     if (err.name === 'ValidationError') throw err
     if (isOrderValidationError(err)) throw validationError(err.message)

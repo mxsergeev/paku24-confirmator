@@ -123,7 +123,11 @@ function deserializeDraft(payload) {
 
 function toCreateOrderPayload(order) {
   if (!isPlainObject(order)) throw new Error('Order must be an object')
-  return serializeBookingFields(order)
+
+  return {
+    ...serializeBookingFields(order),
+    pricingOverrides: serializePricingOverrides(order.pricingOverrides),
+  }
 }
 
 function toUpdateOrderPayload(order) {

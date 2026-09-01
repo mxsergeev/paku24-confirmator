@@ -44,7 +44,21 @@ vi.mock('../../services/ordersAPI', () => ({
 }))
 
 vi.mock('../OrderEditor/OrderEditor', () => ({
-  default: ({ order }) => <div data-testid="order-editor">{order?.name}</div>,
+  default: ({ order, onOrderChange }) => (
+    <div data-testid="order-editor">
+      <span>{order?.name}</span>
+      <button
+        type="button"
+        data-testid="set-manual-pricing"
+        onClick={() => onOrderChange({
+          ...order,
+          pricingOverrides: { price: 220, fees: [], boxesPrice: 40 },
+        })}
+      >
+        Set manual pricing
+      </button>
+    </div>
+  ),
 }))
 vi.mock('../OrderEditor/OrderSettings', () => ({ default: () => null }))
 vi.mock('../OrderEditor/ValidationDisplay', () => ({ default: () => null }))
@@ -116,5 +130,53 @@ describe('NewOrderDialog persistence workflow', () => {
       expect(window.localStorage.getItem('new_order')).toBeNull()
       expect(window.localStorage.getItem('pending_new_order_id')).toBeNull()
     })
+  })
+
+  it('sends manual pricing overrides when a new order is added', async () => {
+    mocks.ordersAPI.add.mockResolvedValue({ id: PENDING_ORDER_ID })
+    mocks.ordersAPI.confirm
+      .mockRejectedValueOnce(new Error('temporary calendar failure'))
+      .mockResolvedValueOnce({ message: 'Order confirmed' })
+
+    renderDialog()
+    fireEvent.click(screen.getByTestId('set-manual-pricing'))
+    fireEvent.click(screen.getByRole('button', { name: /add order/i }))
+
+    await waitFor(() => expect(mocks.ordersAPI.add).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mocks.ordersAPI.confirm).toHaveBeenCalledWith(PENDING_ORDER_ID))
+    const [{ order: payload }] = mocks.ordersAPI.add.mock.calls[0]
+    expect(payload.pricingOverrides).toEqual({ price: 220, fees: [], boxesPrice: 40 })
+    expect(payload).not.toHaveProperty('price')
+    expect(payload).not.toHaveProperty('fees')
+    expect(payload).not.toHaveProperty('boxesPrice')
+    expect(payload).not.toHaveProperty('originalOrder')
+
+    fireEvent.click(screen.getByRole('button', { name: /^error/i }))
+    await waitFor(() => expect(mocks.ordersAPI.confirm).toHaveBeenCalledTimes(2))
+    expect(mocks.ordersAPI.confirm).toHaveBeenNthCalledWith(1, PENDING_ORDER_ID)
+    expect(mocks.ordersAPI.confirm).toHaveBeenNthCalledWith(2, PENDING_ORDER_ID)
+    expect(mocks.ordersAPI.add).toHaveBeenCalledTimes(1)
+  })
+
+  it('recovers manual pricing before retrying the same pending order', async () => {
+    const recoveredOrder = {
+      ...makeCanonicalAppOrder({
+        name: 'Recovered manual order',
+        pricingOverrides: { price: 220, fees: [], boxesPrice: 40 },
+      }),
+      id: PENDING_ORDER_ID,
+    }
+    window.localStorage.setItem('pending_new_order_id', PENDING_ORDER_ID)
+    mocks.ordersAPI.getById.mockResolvedValue({ order: recoveredOrder })
+    mocks.ordersAPI.confirm.mockResolvedValue({ message: 'Order confirmed' })
+
+    renderDialog()
+
+    await waitFor(() => expect(screen.getByTestId('order-editor')).toHaveTextContent('Recovered manual order'))
+    expect(mocks.ordersAPI.add).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /retry confirmation/i }))
+
+    await waitFor(() => expect(mocks.ordersAPI.confirm).toHaveBeenCalledWith(PENDING_ORDER_ID))
+    expect(mocks.ordersAPI.add).not.toHaveBeenCalled()
   })
 })
