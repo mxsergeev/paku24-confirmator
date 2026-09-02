@@ -1,6 +1,5 @@
 import Order from '../../models/order.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
-import { DEFAULT_EVENT_COLOR_ID } from '../../utils/colors.js'
 import * as logger from '../../utils/logger.js'
 import { normalizeOrderPatch } from '../../../src/shared/orderModel.js'
 import { isOrderValidationError } from '../../../src/shared/orderPrimitives.js'
@@ -144,7 +143,6 @@ async function cancelOrder(id) {
       { _id: id },
       {
         canceledAt: new Date().toISOString(),
-        eventColor: '8',
       },
       { new: true },
     )
@@ -184,7 +182,7 @@ async function restoreOrder(id) {
   return withOrderCalendarLock(id, async () => {
     const restoredOrder = await Order.findByIdAndUpdate(
       { _id: id },
-      { $unset: { deletedAt: 1, canceledAt: 1 }, $set: { eventColor: DEFAULT_EVENT_COLOR_ID } },
+      { $unset: { deletedAt: 1, canceledAt: 1 } },
       { new: true },
     )
     return restoredOrder

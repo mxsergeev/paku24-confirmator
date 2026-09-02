@@ -23,9 +23,10 @@ test-e2e-install:
 
 test-e2e:
 	set -e; \
-	trap 'status=$$?; trap - EXIT INT TERM; docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) down -v --remove-orphans; docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) rm -sf app; exit $$status' EXIT INT TERM; \
-	  docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) up -d mongodb; \
-	  E2E_BACKEND_COMMAND='docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) run --rm --service-ports app' \
+	trap 'status=$$?; trap - EXIT INT TERM; docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) down --remove-orphans; exit $$status' EXIT INT TERM; \
+	  docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) up -d --wait --wait-timeout 120 mongodb app frontend; \
+	  E2E_REUSE_BACKEND_SERVER=true \
+	  E2E_REUSE_FRONTEND_SERVER=true \
 	  E2E_MONGODB_PORT=$(E2E_MONGODB_PORT) TEST_MONGODB_URI=mongodb://admin:password@127.0.0.1:$(E2E_MONGODB_PORT)/e2e?authSource=admin \
 	  E2E_BACKEND_PORT=$(E2E_BACKEND_PORT) E2E_FRONTEND_PORT=$(E2E_FRONTEND_PORT) yarn test:e2e
 

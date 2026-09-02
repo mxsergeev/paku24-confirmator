@@ -12,6 +12,7 @@ import {
 } from '../../../src/shared/date-fns-tz.js'
 import { makeCalendarEntries } from '../../../src/shared/render/googleCalendar.js'
 import dayjs from '../../../src/shared/dayjs.js'
+import { resolveEventColorId } from '../../../src/shared/eventColor.js'
 
 const env = process.env.NODE_ENV || 'production'
 
@@ -127,7 +128,7 @@ function makeGoogleEventObjects(order) {
       role: 'main',
       summary: entries.move.title,
       description: entries.move.description,
-      colorId: order.eventColor,
+      colorId: resolveEventColorId(order),
       location: [formatCalendarLocation(order.address)]
         .concat((order.extraAddresses || []).map((ea) => formatCalendarLocation(ea)))
         .concat([formatCalendarLocation(order.destination)])

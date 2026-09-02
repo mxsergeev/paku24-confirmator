@@ -215,6 +215,36 @@ describe('Calendar controls', () => {
     })
   })
 
+  it('uses the service color when an order event color is automatic', () => {
+    mocks.useCalendarOrders.mockReturnValue({
+      data: [
+        {
+          id: 'automatic-color-order',
+          date: '2026-01-15T07:00:00.000Z',
+          duration: 2,
+          service: { id: '1', name: 'Pakettiauto ja kuljettaja', eventColor: '1' },
+          address: { street: 'Mannerheimintie 10' },
+          name: 'Automatic Color Customer',
+          confirmed: true,
+          eventColor: null,
+        },
+      ],
+      refetch: vi.fn(),
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+    })
+
+    render(<Calendar />)
+
+    expect(mocks.calendarProps.events[0]).toMatchObject({
+      backgroundColor: '#7986cb',
+      borderColor: '#7986cb',
+      extendedProps: { color: '#7986cb', eventType: 'order' },
+    })
+  })
+
   it('routes directly to the receipt page by order ID', () => {
     const orderId = '66c000000000000000000001'
     mocks.location = {

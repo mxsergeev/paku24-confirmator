@@ -187,3 +187,63 @@ test('New Order exposes the browser-level pricing location', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'New Order', exact: true })).toBeVisible()
   await expect(page.getByLabel('Price estimate')).toBeVisible()
 })
+
+test('automatic and explicit event colors survive cancel and restore', async ({ page, database }) => {
+  const order = await database.seedOrder({
+    date: dateInCurrentHelsinkiMonth(12),
+    confirmed: true,
+    eventColor: null,
+    service: {
+      id: '1',
+      name: 'Pakettiauto ja kuljettaja',
+      pricePerHour: 50,
+      eventColor: '1',
+    },
+  })
+
+  await page.goto('/app/calendar')
+  const orderEvent = page.locator('.fc-event').filter({ hasText: 'E2E Customer' })
+  const orderEventColor = orderEvent.locator('.fc-event-inner')
+  await expect(orderEvent).toBeVisible()
+  await expect(orderEventColor).toHaveCSS('background-color', 'rgb(121, 134, 203)')
+  await orderEvent.click()
+
+  const dialog = page.getByRole('dialog').first()
+  await dialog.locator('.color-selector .MuiSelect-select').click()
+  await page.getByRole('option', { name: 'Tomato', exact: true }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.eventColor).toBe('11')
+  await expect(orderEventColor).toHaveCSS('background-color', 'rgb(214, 0, 0)')
+
+  await dialog.locator('.color-selector .MuiSelect-select').click()
+  await page.getByRole('option', { name: 'Automatic', exact: true }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.eventColor).toBeNull()
+  await expect(orderEventColor).toHaveCSS('background-color', 'rgb(121, 134, 203)')
+
+  await dialog.getByRole('button', { name: 'Cancel order' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel only' }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeTruthy()
+  await expect(orderEventColor).toHaveCSS('background-color', 'rgb(97, 97, 97)')
+  expect((await database.readOrder(order.id))?.eventColor).toBeNull()
+
+  await page.getByRole('dialog').first().getByRole('button', { name: 'Restore' }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeFalsy()
+  await expect((await database.readOrder(order.id))?.eventColor).toBeNull()
+  await expect(orderEventColor).toHaveCSS('background-color', 'rgb(121, 134, 203)')
+
+  await dialog.locator('.color-selector .MuiSelect-select').click()
+  await page.getByRole('option', { name: 'Tomato', exact: true }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.eventColor).toBe('11')
+  await expect(orderEventColor).toHaveCSS('background-color', 'rgb(214, 0, 0)')
+
+  await dialog.getByRole('button', { name: 'Cancel order' }).click()
+  const cancelDialog = page.getByRole('dialog').filter({ hasText: 'Cancel this order?' })
+  await cancelDialog.getByRole('button', { name: 'Cancel only' }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeTruthy()
+  await expect((await database.readOrder(order.id))?.eventColor).toBe('11')
+  await expect(orderEventColor).toHaveCSS('background-color', 'rgb(97, 97, 97)')
+
+  await dialog.getByRole('button', { name: 'Restore' }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeFalsy()
+  await expect((await database.readOrder(order.id))?.eventColor).toBe('11')
+  await expect(orderEventColor).toHaveCSS('background-color', 'rgb(214, 0, 0)')
+})

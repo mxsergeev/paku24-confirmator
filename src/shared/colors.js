@@ -1,4 +1,4 @@
-import colors from '../data/colors.json'
+import colors from '../data/colors.json' with { type: 'json' }
 
 export const DEFAULT_EVENT_COLOR_ID = '7'
 

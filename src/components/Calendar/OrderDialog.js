@@ -33,6 +33,7 @@ import { updateOrderField } from '../../shared/orderModel'
 import { toOrderPayload } from '../../shared/orderSerialization'
 import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 import { hexToRgba } from '../../shared/color.helpers'
+import { resolveEventColorId } from '../../shared/eventColor'
 import {
   buildReceiptDraftFromOrder,
   normalizeDocumentType,
@@ -459,6 +460,7 @@ export default function OrderDialog({
   const isDeletedOrder = isDeleted(order)
 
   const isCanceledOrder = isCanceled(order)
+  const effectiveEventColorId = resolveEventColorId(order)
 
   let headerBg = '#3937375d'
   if (!isDeletedOrder) {
@@ -467,7 +469,7 @@ export default function OrderDialog({
       headerBg = isCanceledOrder
         ? '#616161'
         : hexToRgba(
-            colors[String(order?.eventColor ?? '')]?.hex || colors['7']?.hex || '#039be5',
+            colors[effectiveEventColorId]?.hex || colors['7']?.hex || '#039be5',
             0.62,
           )
     }

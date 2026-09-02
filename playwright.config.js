@@ -4,7 +4,8 @@ const frontendPort = process.env.E2E_FRONTEND_PORT || '3041'
 const backendPort = process.env.E2E_BACKEND_PORT || '3040'
 const baseURL = process.env.BASE_URL || `http://127.0.0.1:${frontendPort}`
 const backendURL = process.env.BACKEND_URL || `http://127.0.0.1:${backendPort}`
-const reuseExistingServer = process.env.E2E_REUSE_EXISTING_SERVER === 'true'
+const reuseExistingBackendServer = process.env.E2E_REUSE_BACKEND_SERVER === 'true'
+const reuseExistingFrontendServer = process.env.E2E_REUSE_FRONTEND_SERVER === 'true'
 const testMongoURI =
   process.env.TEST_MONGODB_URI ||
   'mongodb://admin:password@127.0.0.1:27038/e2e?authSource=admin'
@@ -33,14 +34,14 @@ export default defineConfig({
     {
       command: backendCommand,
       url: `${backendURL}/`,
-      reuseExistingServer,
+      reuseExistingServer: reuseExistingBackendServer,
       timeout: 120_000,
     },
     {
       command:
         `PORT=${frontendPort} BACKEND_PORT=${backendPort} DEV_FRONTEND_PROXY=http://127.0.0.1 yarn dev:ui --host 127.0.0.1`,
       url: baseURL,
-      reuseExistingServer,
+      reuseExistingServer: reuseExistingFrontendServer,
       timeout: 120_000,
     },
   ],

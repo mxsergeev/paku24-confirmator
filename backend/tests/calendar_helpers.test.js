@@ -40,6 +40,22 @@ describe('makeIcons', () => {
 })
 
 describe('makeGoogleEventObjects', () => {
+  test('resolves automatic and explicit main-event colors', () => {
+    const automaticEvents = makeGoogleEventObjects({
+      ...exampleOrder,
+      eventColor: null,
+      service: { ...services[0] },
+    })
+    const explicitEvents = makeGoogleEventObjects({
+      ...exampleOrder,
+      eventColor: '11',
+      service: { ...services[0] },
+    })
+
+    expect(automaticEvents[0].colorId).toBe('1')
+    expect(explicitEvents[0].colorId).toBe('11')
+  })
+
   test('does not create box events until both box dates are available', () => {
     const events = makeGoogleEventObjects({
       ...exampleOrder,

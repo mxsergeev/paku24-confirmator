@@ -34,6 +34,7 @@ const {
   confirmOrder,
   cancelOrder,
   deleteOrder,
+  restoreOrder,
 } = await import('./orderPool.service.js')
 
 function makeOrder() {
@@ -209,6 +210,35 @@ describe('explicit calendar side effects', () => {
 
     expect(result).toMatchObject({ order, warning: { code: 'CALENDAR_SYNC_FAILED' } })
     expect(mocks.findByIdAndUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves the event color preference when canceling', async () => {
+    const order = { ...makeOrder(), confirmed: true, eventColor: '11' }
+    mocks.findById.mockResolvedValue(order)
+    mocks.findByIdAndUpdate.mockResolvedValue(order)
+
+    await cancelOrder('66c000000000000000000001')
+
+    expect(mocks.findByIdAndUpdate).toHaveBeenCalledWith(
+      { _id: '66c000000000000000000001' },
+      { canceledAt: expect.any(String) },
+      { new: true },
+    )
+    expect(order.eventColor).toBe('11')
+  })
+
+  it('preserves the event color preference when restoring', async () => {
+    const order = { ...makeOrder(), confirmed: true, eventColor: null }
+    mocks.findByIdAndUpdate.mockResolvedValue(order)
+
+    await restoreOrder('66c000000000000000000001')
+
+    expect(mocks.findByIdAndUpdate).toHaveBeenCalledWith(
+      { _id: '66c000000000000000000001' },
+      { $unset: { deletedAt: 1, canceledAt: 1 } },
+      { new: true },
+    )
+    expect(order.eventColor).toBeNull()
   })
 
   it('rejects cancellation of a deleted order before changing Mongo', async () => {

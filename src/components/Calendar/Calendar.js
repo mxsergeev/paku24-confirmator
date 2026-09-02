@@ -5,8 +5,9 @@ import OrderDialog from './OrderDialog'
 import NewOrderDialog from './NewOrderDialog'
 import ReceiptPage from './ReceiptPage'
 import { getOrderIcons, getBoxEventTitle, parseBoxEventId } from './helpers'
-import colorsData from './calendar.data.colors.json'
+import colorsData from '../../data/eventColorDefaults.json' with { type: 'json' }
 import calendarColors from '../../shared/colors'
+import { resolveEventColorId } from '../../shared/eventColor'
 import {
   HELSINKI_TIMEZONE,
   formatInTimeZone,
@@ -267,12 +268,7 @@ export default function Calendar() {
 
     return orders.flatMap((order) => {
       const events = []
-      const serviceName = order.service?.name
-      const customColorIdRaw = order?.eventColor ?? null
-      const customColorId = customColorIdRaw == null ? null : String(customColorIdRaw)
-      const serviceColorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
-      const colorId =
-        customColorId && calendarColors[customColorId] ? customColorId : serviceColorId
+      const colorId = resolveEventColorId(order)
       const canceled = isCanceled(order)
       const isDeletedOrder = isDeleted(order)
       const deletedOrderColor = '#3937375d'

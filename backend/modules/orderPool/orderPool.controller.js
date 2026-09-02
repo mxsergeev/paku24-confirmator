@@ -238,7 +238,7 @@ orderPoolRouter.delete('/v2/delete-permanent/:id', async (req, res, next) => {
   }
 })
 
-// RESTORE (clear deletedAt and canceledAt, set default Peacock color)
+// RESTORE (clear deletedAt and canceledAt)
 orderPoolRouter.post('/v2/restore/:id', async (req, res, next) => {
   const { id } = req.params
   try {
