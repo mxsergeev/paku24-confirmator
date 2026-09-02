@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { getAvailableFees } from '../../shared/fees'
 import {
   calculateAutomaticPricing,
@@ -24,27 +24,35 @@ function isNumber(value) {
 function NumericPricingRow({ order, component, automaticValue, effectiveValue, onChange }) {
   const { key, label, inputLabel } = component
   const manualValue = order.pricingOverrides?.[key]
-  const input = manualValue === null || manualValue === undefined
-    ? ''
-    : String(manualValue)
+  const [inputValue, setInputValue] = useState(
+    manualValue == null ? '' : String(manualValue),
+  )
+
+  useEffect(() => {
+    setInputValue(manualValue == null ? '' : String(manualValue))
+  }, [manualValue])
+
+  function commitInput(event) {
+    if (event?.relatedTarget?.dataset?.pricingAction) return
+
+    if (inputValue.trim() === '') {
+      onChange(clearPricingOverride(order, key))
+      return
+    }
+
+    const value = Number(inputValue)
+    if (Number.isFinite(value)) {
+      onChange(setPricingOverride(order, key, value))
+    }
+  }
 
   function useManual() {
-    if (isNumber(input)) {
-      onChange(setPricingOverride(order, key, Number(input)))
-    }
+    commitInput()
   }
 
   function useAutomatic() {
+    setInputValue('')
     onChange(clearPricingOverride(order, key))
-  }
-
-  function handleChange(event) {
-    const value = event.target.value
-    if (value.trim() === '') {
-      onChange(clearPricingOverride(order, key))
-    } else if (isNumber(value)) {
-      onChange(setPricingOverride(order, key, Number(value)))
-    }
   }
 
   return (
@@ -55,20 +63,26 @@ function NumericPricingRow({ order, component, automaticValue, effectiveValue, o
         {inputLabel}
         <input
           aria-label={inputLabel}
-          type="number"
-          value={input}
-          onChange={handleChange}
-          step="any"
+          type="text"
+          inputMode="decimal"
+          value={inputValue}
+          onChange={(event) => setInputValue(event.target.value)}
+          onBlur={commitInput}
         />
       </label>
       <p>
         Effective: <strong>{formatMoney(effectiveValue)}</strong>
       </p>
       <div className="pricing-comparison-actions">
-        <button type="button" onClick={useAutomatic}>
+        <button type="button" data-pricing-action="true" onClick={useAutomatic}>
           Use automatic
         </button>
-        <button type="button" disabled={!isNumber(input)} onClick={useManual}>
+        <button
+          type="button"
+          data-pricing-action="true"
+          disabled={!isNumber(inputValue)}
+          onClick={useManual}
+        >
           Use manual override
         </button>
       </div>
