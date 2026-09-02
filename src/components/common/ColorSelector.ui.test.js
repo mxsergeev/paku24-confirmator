@@ -40,5 +40,11 @@ describe('ColorSelector', () => {
     })
 
     expect(onChange).toHaveBeenCalledWith('eventColor', '1')
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { name: 'eventColor', value: '' },
+    })
+
+    expect(onChange).toHaveBeenCalledWith('eventColor', null)
   })
 })

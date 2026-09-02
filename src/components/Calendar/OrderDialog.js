@@ -333,7 +333,7 @@ export default function OrderDialog({
     }
   }
 
-  async function handleEventColorChange(eventColor) {
+  async function handleEventColorChange(_field, eventColor) {
     if (!orderId) return
 
     try {
@@ -516,7 +516,7 @@ export default function OrderDialog({
           <OrderDialogDetails
             order={order}
             eventType={eventType}
-            onEventColorChange={onEventColorChange}
+            onEventColorChange={handleEventColorChange}
           />
         </DialogContent>
         <DialogActions className="calendar-dialog-actions">

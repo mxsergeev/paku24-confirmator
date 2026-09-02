@@ -183,7 +183,7 @@ export default function OrderDialogDetails({
               <span className="order-dialog-details__value">
                 <ColorSelector
                   value={selectedEventColorId}
-                  onChange={(name, value) => onEventColorChange?.(value || null)}
+                  onChange={onEventColorChange}
                   colors={colors}
                 />
               </span>

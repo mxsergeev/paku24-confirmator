@@ -11,7 +11,7 @@ const ColorSelector = ({ value, onChange, colors }) => {
         variant="filled"
         name="eventColor"
         value={selectedValue}
-        onChange={(e) => onChange(e.target.name, e.target.value)}
+        onChange={(e) => onChange(e.target.name, e.target.value || null)}
         label="Event color"
         renderValue={(selectedColorId) => {
           const selectedColor = colors[selectedColorId]
