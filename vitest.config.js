@@ -10,6 +10,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     fileParallelism: false,
+    exclude: ['**/node_modules/**', '**/.git/**', '**/dist/**', 'e2e/**'],
     sequence: {
       concurrent: false,
     },

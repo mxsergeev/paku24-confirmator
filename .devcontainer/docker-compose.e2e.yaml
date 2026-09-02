@@ -1,0 +1,12 @@
+services:
+  app:
+    network_mode: bridge
+    command: ['node', 'backend/index.js']
+    environment:
+      NODE_ENV: test
+      BACKEND_PORT: '${E2E_BACKEND_PORT:-3040}'
+      TEST_MONGODB_URI: mongodb://admin:password@host.docker.internal:${E2E_MONGODB_PORT:-27038}/e2e?authSource=admin
+    ports: !override ['${E2E_BACKEND_PORT:-3040}:${E2E_BACKEND_PORT:-3040}']
+  mongodb:
+    network_mode: bridge
+    ports: !override ['${E2E_MONGODB_PORT:-27038}:27017']
