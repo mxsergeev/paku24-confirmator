@@ -252,7 +252,9 @@ function buildConfirmationEmail({ order = {}, terms = '', lang = 'fi' } = {}) {
 
   const serviceName = order?.service?.name || order?.serviceName || ''
   const paymentName = order?.paymentType?.name || ''
-  const paymentFee = Number(order?.paymentType?.fee || 0)
+  const paymentFee = Number(
+    pricing.fees.find((fee) => fee?.name === 'paymentTypeFee')?.amount || 0,
+  )
   const paymentFeeText = paymentFee > 0 ? `${paymentFee}€` : ''
   const totalPriceText = hasValue(pricing.price) ? `${Number(pricing.price)}€` : ''
   const durationText = hasValue(order?.duration) ? `${order.duration}${t.hourShort}` : ''

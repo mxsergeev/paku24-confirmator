@@ -50,6 +50,18 @@ describe('buildConfirmationEmail', () => {
     expect(body).toContain('Hinta: 0 €')
   })
 
+  test('uses the active payment fee in the confirmation email', () => {
+    const order = makeConfirmationOrder({
+      paymentType: { id: '3', name: 'Company invoice', fee: 123 },
+      pricingOverrides: { price: 167, fees: null, boxesPrice: 52 },
+    })
+
+    const { body } = buildConfirmationEmail({ order })
+
+    expect(body).toContain('5€')
+    expect(body).not.toContain('123€')
+  })
+
   test('renders order and box instants in Helsinki time', () => {
     const order = makeConfirmationOrder()
     order.date = '2026-01-15T07:00:00.000Z'

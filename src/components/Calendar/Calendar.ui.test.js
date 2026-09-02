@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   calendarQuery: null,
   isMobile: false,
   location: { state: null, search: '' },
+  newOrderProps: null,
   receiptProps: null,
   routeMatches: {},
   enqueueSnackbar: vi.fn(),
@@ -49,7 +50,12 @@ vi.mock('notistack', () => ({
 }))
 
 vi.mock('./OrderDialog', () => ({ default: () => null }))
-vi.mock('./NewOrderDialog', () => ({ default: () => null }))
+vi.mock('./NewOrderDialog', () => ({
+  default: (props) => {
+    mocks.newOrderProps = props
+    return null
+  },
+}))
 vi.mock('./ReceiptPage', () => ({
   default: (props) => {
     mocks.receiptProps = props
@@ -66,6 +72,7 @@ describe('Calendar controls', () => {
     mocks.calendarQuery = null
     mocks.isMobile = false
     mocks.location = { state: null, search: '' }
+    mocks.newOrderProps = null
     mocks.receiptProps = null
     mocks.routeMatches = {}
     mocks.enqueueSnackbar.mockReset()
@@ -106,6 +113,16 @@ describe('Calendar controls', () => {
       center: 'title',
       right: 'createOrderButton refreshOrdersButton',
     })
+  })
+
+  it('mounts the new-order dialog while closed for pending-order recovery', () => {
+    render(<Calendar />)
+
+    expect(mocks.newOrderProps).toMatchObject({ open: false })
+
+    mocks.calendarProps.customButtons.createOrderButton.click()
+
+    expect(mocks.newOrderProps).toMatchObject({ open: true })
   })
 
   it('does not install mobile swipe handlers on desktop', () => {

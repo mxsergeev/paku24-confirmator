@@ -4,7 +4,10 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeCanonicalAppOrder } from '../../shared/testFixtures/orderFixtures'
+import {
+  makeCanonicalAppOrder,
+  makeCanonicalWordPressOrder,
+} from '../../shared/testFixtures/orderFixtures'
 
 const mocks = vi.hoisted(() => ({
   getById: vi.fn(),
@@ -106,5 +109,24 @@ describe('ReceiptPage document actions', () => {
       }),
     )
     expect(window.localStorage.getItem('receipt-draft:order-1')).toBeNull()
+  })
+
+  it('uses the current catalog service price for a WordPress receipt', async () => {
+    const order = makeCanonicalWordPressOrder({
+      service: {
+        id: '1',
+        name: 'WordPress source service',
+        pricePerHour: 999,
+      },
+    })
+    mocks.getById.mockResolvedValue({ order })
+
+    render(<ReceiptPage orderId="order-1" />)
+
+    await screen.findByText('KUITTI')
+
+    const serviceRow = document.querySelector('.receipt-info-body tr')
+    expect(serviceRow.querySelector('.unit-price')).toHaveTextContent('39,84')
+    expect(serviceRow.querySelector('.value-total')).toHaveTextContent('100,00')
   })
 })

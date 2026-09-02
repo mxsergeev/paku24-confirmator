@@ -15,7 +15,7 @@ import {
 import { jsPDF } from 'jspdf'
 import './Calendar.css'
 import { formatHelsinkiInstant } from '../../shared/date-fns-tz.js'
-import { getOrderPricing } from '../../shared/orderPricing.js'
+import { getOrderPricing, resolveServiceHourlyRate } from '../../shared/orderPricing.js'
 import {
   getAddressForStairsFee,
   getFeeBaseName,
@@ -116,7 +116,7 @@ function buildReceipt(order, draft) {
   const resolvedDocumentType = normalizeDocumentType(
     mergedReceipt?.documentType || fallbackType,
   )
-  const unitBruttoPrice = num(order?.service?.pricePerHour ?? mergedReceipt.unitPrice)
+  const unitBruttoPrice = resolveServiceHourlyRate(order)
   const unitAlvPrice = roundMoney(unitBruttoPrice - unitBruttoPrice / ALV_FACTOR)
 
   return {
@@ -136,7 +136,7 @@ function buildReceiptRows(order, receipt) {
   const pricing = getOrderPricing(order)
 
   const serviceHours = num(receipt.serviceHours)
-  const serviceUnitBruttoPrice = num(order?.service?.pricePerHour ?? receipt.unitPrice)
+  const serviceUnitBruttoPrice = resolveServiceHourlyRate(order)
   const serviceUnitNettoPrice = roundMoney(serviceUnitBruttoPrice / ALV_FACTOR)
   const serviceBrutto = roundMoney(serviceHours * serviceUnitBruttoPrice)
   const serviceNetto = roundMoney(serviceUnitNettoPrice * serviceHours)
