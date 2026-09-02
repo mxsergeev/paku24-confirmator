@@ -30,7 +30,7 @@ import sendConfirmationEmail, { sendCancellationEmail } from '../../services/ema
 import sendSMS, { sendCancellationSMS } from '../../services/smsAPI'
 import { cloneValue } from '../../shared/orderPrimitives'
 import { updateOrderField } from '../../shared/orderModel'
-import { toUpdateOrderPayload } from '../../shared/orderSerialization'
+import { toOrderPayload } from '../../shared/orderSerialization'
 import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 import { hexToRgba } from '../../shared/color.helpers'
 import {
@@ -174,7 +174,7 @@ export default function OrderDialog({
 
     try {
       setSavingEdit(true)
-      const response = await ordersAPI.update(orderId, toUpdateOrderPayload(editableOrder))
+      const response = await ordersAPI.update(orderId, toOrderPayload(editableOrder))
       enqueueSnackbar(response.message || 'Order changes saved.')
       if (response.warning?.message) {
         enqueueSnackbar(response.warning.message, { variant: 'warning' })

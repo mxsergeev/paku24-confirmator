@@ -119,7 +119,3 @@ export function formatHelsinkiCalendarDate(value, fieldName = 'date') {
 
   return formatHelsinkiInstant(value, 'yyyy-MM-dd', fieldName)
 }
-
-export function isSameHelsinkiCalendarDate(left, right) {
-  return formatHelsinkiCalendarDate(left) === formatHelsinkiCalendarDate(right)
-}

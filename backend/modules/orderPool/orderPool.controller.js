@@ -19,7 +19,7 @@ import {
   deleteOrder,
   restoreOrder,
 } from './orderPool.service.js'
-import { buildStableInvoiceNumber } from '../../utils/invoiceNumber.js'
+import { buildStableInvoiceNumber } from '../../../src/shared/invoiceNumber.js'
 import {
   BOOKING_FIELDS,
   createAppOrder,

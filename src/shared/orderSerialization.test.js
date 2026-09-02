@@ -3,14 +3,11 @@ import {
   makeAppBooking,
   makeCanonicalAppOrder,
 } from './testFixtures/orderFixtures.js'
-import {
-  toCreateOrderPayload,
-  toUpdateOrderPayload,
-} from './orderSerialization.js'
+import { toOrderPayload } from './orderSerialization.js'
 
 describe('API payloads', () => {
   it('creates an app payload with automatic pricing overrides', () => {
-    const payload = toCreateOrderPayload(makeCanonicalAppOrder())
+    const payload = toOrderPayload(makeCanonicalAppOrder())
 
     expect(payload).toMatchObject({ date: '2026-06-15T06:00:00.000Z' })
     expect(payload.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
@@ -22,7 +19,7 @@ describe('API payloads', () => {
   })
 
   it('creates an app payload with manual pricing overrides', () => {
-    const payload = toCreateOrderPayload({
+    const payload = toOrderPayload({
       ...makeCanonicalAppOrder(),
       pricingOverrides: {
         price: 220,
@@ -43,7 +40,7 @@ describe('API payloads', () => {
   })
 
   it('preserves explicit zero and no-fees overrides in an app payload', () => {
-    const payload = toCreateOrderPayload({
+    const payload = toOrderPayload({
       ...makeCanonicalAppOrder(),
       pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },
     })
@@ -55,12 +52,12 @@ describe('API payloads', () => {
     expect(payload).not.toHaveProperty('boxesPrice')
   })
 
-  it('includes only pricing overrides in update payloads', () => {
+  it('includes only pricing overrides in serialized payloads', () => {
     const order = {
       ...makeCanonicalAppOrder(),
       pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },
     }
-    const payload = toUpdateOrderPayload(order)
+    const payload = toOrderPayload(order)
 
     expect(payload.pricingOverrides).toEqual({ price: 0, fees: [], boxesPrice: 0 })
     expect(payload).not.toHaveProperty('originalOrder')
@@ -71,7 +68,7 @@ describe('API payloads', () => {
 
   it('strips editor-only identity metadata from extra addresses', () => {
     const booking = makeAppBooking()
-    const payload = toUpdateOrderPayload({
+    const payload = toOrderPayload({
       ...makeCanonicalAppOrder(),
       extraAddresses: [
         {

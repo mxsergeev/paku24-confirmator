@@ -6,7 +6,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import OrderEditor from './OrderEditor'
 import { createWordPressOrder, updateOrderField } from '../../shared/orderModel'
-import { toUpdateOrderPayload } from '../../shared/orderSerialization'
+import { toOrderPayload } from '../../shared/orderSerialization'
 import { normalizeWordPressOrderPayload } from '../../shared/wordpressOrderPayload'
 import {
   makeWordPressPayload,
@@ -109,7 +109,7 @@ describe('OrderEditor extra addresses', () => {
     expect(updatedOrder.extraAddresses).toEqual([
       expect.objectContaining({ street: 'Kalevankatu 8' }),
     ])
-    const updatePayload = toUpdateOrderPayload(updatedOrder)
+    const updatePayload = toOrderPayload(updatedOrder)
     expect(updatePayload.extraAddresses).toEqual([
       expect.objectContaining({ street: 'Kalevankatu 8' }),
     ])

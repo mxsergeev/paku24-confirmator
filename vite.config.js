@@ -24,9 +24,6 @@ export default defineConfig(({ mode }) => {
       outDir: 'build',
       emptyOutDir: true,
     },
-    define: {
-      'process.env.VITE_TIMEZONE': JSON.stringify(env.VITE_TIMEZONE || 'Europe/Helsinki'),
-    },
     server: {
       port: parseInt(env.PORT) || 3031,
       proxy: {

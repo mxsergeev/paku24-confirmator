@@ -7,7 +7,6 @@ import {
   formatInTimeZone,
   isDateOnly,
   isIsoInstant,
-  isSameHelsinkiCalendarDate,
   parseCalendarDate,
   parseInstant,
 } from './date-fns-tz.js'
@@ -100,13 +99,9 @@ describe('Helsinki display helpers', () => {
 
   it('keeps date-only values as calendar dates without adding midnight', () => {
     expect(formatHelsinkiCalendarDate('2026-03-12', 'box date')).toBe('2026-03-12')
-    expect(isSameHelsinkiCalendarDate('2026-03-12', '2026-03-12')).toBe(true)
   })
 
-  it('compares instants by their Helsinki calendar date', () => {
-    expect(
-      isSameHelsinkiCalendarDate('2026-01-14T22:30:00.000Z', '2026-01-15T00:00:00.000Z'),
-    ).toBe(true)
+  it('formats instants by their Helsinki calendar date', () => {
     expect(
       formatHelsinkiCalendarDate('2026-01-15T22:30:00.000Z', 'order date'),
     ).toBe('2026-01-16')

@@ -42,7 +42,7 @@ function isConfirmedAndActive(order) {
 
 // Callers invoke this while holding the order calendar lock. Calendar sync
 // must not reacquire that lock before the mutation request can finish.
-async function syncAfterMutation(order, warning = CALENDAR_SYNC_WARNING) {
+async function syncAfterMutation(order) {
   if (!isConfirmedAndActive(order)) return resultWithWarning(order)
 
   try {
@@ -53,7 +53,7 @@ async function syncAfterMutation(order, warning = CALENDAR_SYNC_WARNING) {
     // mutations. Keep the API warning stable and log the provider detail only
     // on the server.
     logger.error('Order calendar synchronization failed after persisted mutation', err)
-    return resultWithWarning(order, warning)
+    return resultWithWarning(order, CALENDAR_SYNC_WARNING)
   }
 }
 

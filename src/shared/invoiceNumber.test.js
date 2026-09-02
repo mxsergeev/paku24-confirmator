@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildStableInvoiceNumber } from './invoiceNumber.js'
-import { buildStableInvoiceNumber as buildBackendStableInvoiceNumber } from '../../backend/utils/invoiceNumber.js'
 
 const order = {
   date: '2026-04-10T08:00:00.000Z',
@@ -25,11 +24,11 @@ describe('stable invoice numbers', () => {
     expect(buildStableInvoiceNumber(order)).toBe(invoiceNumber)
   })
 
-  it('keeps the backend default strict for invalid or missing dates', () => {
-    expect(() => buildBackendStableInvoiceNumber({ date: 'not-a-date' })).toThrow(
+  it('keeps the default strict for invalid or missing dates', () => {
+    expect(() => buildStableInvoiceNumber({ date: 'not-a-date' })).toThrow(
       'Cannot generate invoice number: order.date is missing or invalid. Provide a valid date for the order.',
     )
-    expect(() => buildBackendStableInvoiceNumber({})).toThrow(
+    expect(() => buildStableInvoiceNumber({})).toThrow(
       'Cannot generate invoice number: order.date is missing or invalid. Provide a valid date for the order.',
     )
   })

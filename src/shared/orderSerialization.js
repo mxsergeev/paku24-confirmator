@@ -82,16 +82,7 @@ function serializePricingOverrides(value, fieldName = 'pricingOverrides') {
   )
 }
 
-function toCreateOrderPayload(order) {
-  if (!isPlainObject(order)) throw new Error('Order must be an object')
-
-  return {
-    ...serializeBookingFields(order),
-    pricingOverrides: serializePricingOverrides(order.pricingOverrides),
-  }
-}
-
-function toUpdateOrderPayload(order) {
+function toOrderPayload(order) {
   if (!isPlainObject(order)) throw new Error('Order must be an object')
 
   return {
@@ -101,6 +92,5 @@ function toUpdateOrderPayload(order) {
 }
 
 export {
-  toCreateOrderPayload,
-  toUpdateOrderPayload,
+  toOrderPayload,
 }

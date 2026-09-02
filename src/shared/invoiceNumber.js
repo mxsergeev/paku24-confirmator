@@ -60,7 +60,3 @@ export function buildStableInvoiceNumber(
   const suffix = hashToFourDigits(stableSeed || datePart)
   return `${datePart}${suffix}`
 }
-
-export default {
-  buildStableInvoiceNumber,
-}
