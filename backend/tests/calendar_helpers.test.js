@@ -40,6 +40,15 @@ describe('makeIcons', () => {
 })
 
 describe('makeGoogleEventObjects', () => {
+  test('does not create box events until both box dates are available', () => {
+    const events = makeGoogleEventObjects({
+      ...exampleOrder,
+      boxes: { deliveryDate: null, returnDate: null, amount: 10 },
+    })
+
+    expect(events.map(({ role }) => role)).toEqual(['main'])
+  })
+
   test('start date time and end date time of event object are correct', () => {
     const eventObject = makeGoogleEventObjects(exampleOrder)[0]
 

@@ -17,15 +17,23 @@ for (let i = boxesSettings.minAmount; i <= boxesSettings.maxAmount; i += boxesSe
 }
 
 export default function Boxes({ order = {}, handleChange, onOrderChange, style }) {
-  const includeTimeStart = !isDateOnly(order.boxes.deliveryDate)
-  const includeTimeEnd = !isDateOnly(order.boxes.returnDate)
+  const fallbackDate = order?.date ?? new Date()
+  const storedBoxes = order?.boxes || {}
+  const boxes = {
+    ...storedBoxes,
+    deliveryDate: storedBoxes.deliveryDate ?? fallbackDate,
+    returnDate: storedBoxes.returnDate ?? fallbackDate,
+    amount: storedBoxes.amount ?? 0,
+  }
+  const includeTimeStart = !isDateOnly(boxes.deliveryDate)
+  const includeTimeEnd = !isDateOnly(boxes.returnDate)
 
   const StartPicker = includeTimeStart ? DateTimePicker : DatePicker
   const EndPicker = includeTimeEnd ? DateTimePicker : DatePicker
 
   const handleDateChange = (name, date, includeTime) =>
     handleChange('boxes', {
-      ...order.boxes,
+      ...boxes,
       // Not using .toISOString() as it will change the date to a previos day in the Helsinki/Finland timezone
       // dayjs().format() keeps the timezone info and displays the correct day
       [name]: includeTime ? dayjs(date).format() : dayjs(date).format('YYYY-MM-DD'),
@@ -66,7 +74,7 @@ export default function Boxes({ order = {}, handleChange, onOrderChange, style }
                   ampm={false}
                   format={includeTimeStart ? 'DD.MM.YYYY HH:mm' : 'DD.MM.YYYY'}
                   minutesStep={5}
-                  value={order.boxes.deliveryDate}
+                  value={boxes.deliveryDate}
                   onChange={(v) => handleDateChange('deliveryDate', v, includeTimeStart)}
                   DialogProps={{ disableScrollLock: true }}
                 />
@@ -78,7 +86,7 @@ export default function Boxes({ order = {}, handleChange, onOrderChange, style }
                   <Checkbox
                     checked={includeTimeStart}
                     onChange={() => {
-                      handleDateChange('deliveryDate', order.boxes.deliveryDate, !includeTimeStart)
+                      handleDateChange('deliveryDate', boxes.deliveryDate, !includeTimeStart)
                     }}
                     color="primary"
                   />
@@ -94,7 +102,7 @@ export default function Boxes({ order = {}, handleChange, onOrderChange, style }
                   ampm={false}
                   format={includeTimeEnd ? 'DD.MM.YYYY HH:mm' : 'DD.MM.YYYY'}
                   minutesStep={5}
-                  value={order.boxes.returnDate}
+                  value={boxes.returnDate}
                   onChange={(v) => handleDateChange('returnDate', v, includeTimeEnd)}
                   DialogProps={{ disableScrollLock: true }}
                 />
@@ -106,7 +114,7 @@ export default function Boxes({ order = {}, handleChange, onOrderChange, style }
                   <Checkbox
                     checked={includeTimeEnd}
                     onChange={() => {
-                      handleDateChange('returnDate', order.boxes.returnDate, !includeTimeEnd)
+                      handleDateChange('returnDate', boxes.returnDate, !includeTimeEnd)
                     }}
                     color="primary"
                   />
@@ -122,10 +130,10 @@ export default function Boxes({ order = {}, handleChange, onOrderChange, style }
               style={{ maxWidth: '9rem', marginTop: '0.5rem' }}
               name="amount"
               label="Amount"
-              value={order.boxes.amount}
+              value={boxes.amount}
               onChange={(e) => {
                 handleChange('boxes', {
-                  ...order.boxes,
+                  ...boxes,
                   amount: Number(e.target.value),
                 })
               }}

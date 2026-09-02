@@ -13,24 +13,38 @@ import Boxes from './Boxes'
 import Address from './Address'
 import PricingEditor from './PricingEditor'
 
+function materializeAddress(value) {
+  const inputValue = value ?? {}
+  return {
+    ...inputValue,
+    street: inputValue.street ?? '',
+    index: inputValue.index ?? '',
+    city: inputValue.city ?? '',
+    floor: inputValue.floor ?? 0,
+    elevator: inputValue.elevator ?? false,
+  }
+}
+
 export default function OrderEditor({ order, handleChange, onOrderChange }) {
+  const extraAddresses = Array.isArray(order?.extraAddresses) ? order.extraAddresses : []
+
   function handleExtraAddressChange(index, address) {
-    const nextAddresses = (order.extraAddresses || []).map((item, itemIndex) =>
-      itemIndex === index ? address : item,
+    const nextAddresses = extraAddresses.map((item, itemIndex) =>
+      itemIndex === index ? materializeAddress(address) : materializeAddress(item),
     )
     handleChange?.('extraAddresses', nextAddresses)
   }
 
   function handleExtraAddressRemove(index) {
-    const nextAddresses = (order.extraAddresses || []).filter(
-      (_, itemIndex) => itemIndex !== index,
-    )
+    const nextAddresses = extraAddresses
+      .filter((_, itemIndex) => itemIndex !== index)
+      .map(materializeAddress)
     handleChange?.('extraAddresses', nextAddresses)
   }
 
   function handleExtraAddressAdd() {
     handleChange?.('extraAddresses', [
-      ...(order.extraAddresses || []),
+      ...extraAddresses.map(materializeAddress),
       {
         street: '',
         city: '',
@@ -138,17 +152,17 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
         ))}
       </NativeSelect>
       <Address
-        value={order?.address}
+        value={materializeAddress(order?.address)}
         onChange={(address) => handleChange?.('address', address)}
         style={{
           marginTop: '0.25rem',
-          marginBottom: order?.extraAddresses?.length > 0 ? '1rem' : 0,
+          marginBottom: extraAddresses.length > 0 ? '1rem' : 0,
         }}
       />
-      {order?.extraAddresses.map((a, index) => (
+      {extraAddresses.map((a, index) => (
         <Address
           key={index}
-          value={a}
+          value={materializeAddress(a)}
           showRemove
           onChange={(address) => handleExtraAddressChange(index, address)}
           onRemove={() => handleExtraAddressRemove(index)}
@@ -158,13 +172,14 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
       <Button
         size="small"
         style={{ color: 'gray' }}
+        aria-label="Add address"
         onClick={handleExtraAddressAdd}
       >
         <PlaylistAddRoundedIcon />
       </Button>
 
       <Address
-        value={order?.destination}
+        value={materializeAddress(order?.destination)}
         onChange={(address) => handleChange?.('destination', address)}
       />
       <TextField

@@ -146,7 +146,12 @@ function makeGoogleEventObjects(order) {
     },
   ]
 
-  if (order.boxes && order.boxes.amount > 0) {
+  if (
+    order.boxes &&
+    order.boxes.amount > 0 &&
+    order.boxes.deliveryDate &&
+    order.boxes.returnDate
+  ) {
     ;['deliveryDate', 'returnDate'].forEach((f) => {
       const dateStr = order.boxes[f]
       const fieldName = f === 'deliveryDate' ? 'box delivery date' : 'box return date'

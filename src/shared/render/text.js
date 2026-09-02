@@ -69,6 +69,7 @@ function formatFees(order, pricing) {
 
 function formatBoxes(order, pricing, showHeading) {
   if (!order.boxes || order.boxes.amount <= 0) return ''
+  if (!order.boxes.deliveryDate || !order.boxes.returnDate) return ''
 
   const deliveryDate = formatBoxDate(order.boxes.deliveryDate, 'box delivery date')
   const returnDate = formatBoxDate(order.boxes.returnDate, 'box return date')

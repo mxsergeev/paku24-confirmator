@@ -61,6 +61,14 @@ describe('automatic pricing', () => {
     }
   })
 
+  it('does not price boxes until both box dates are available', () => {
+    expect(
+      calculateAutomaticBoxesPrice(
+        makeOrder({ boxes: { deliveryDate: null, returnDate: null, amount: 10 } }),
+      ),
+    ).toBe(0)
+  })
+
   it('rejects an invalid box date when boxes are charged', () => {
     expect(() =>
       calculateAutomaticBoxesPrice(

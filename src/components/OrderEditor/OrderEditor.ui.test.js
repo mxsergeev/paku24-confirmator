@@ -14,12 +14,21 @@ import {
 
 vi.mock('./Address', () => ({
   default: function TestAddress({ value = {}, onChange, onRemove, showRemove = false }) {
+    const inputValue = value ?? {}
+    const address = {
+      ...inputValue,
+      street: inputValue.street ?? '',
+      index: inputValue.index ?? '',
+      city: inputValue.city ?? '',
+      floor: inputValue.floor ?? 0,
+      elevator: inputValue.elevator ?? false,
+    }
     return (
       <div data-testid="address-row">
         <input
-          aria-label={`Street ${value.street || 'empty'}`}
-          value={value.street || ''}
-          onChange={(event) => onChange?.({ ...value, street: event.target.value })}
+          aria-label={`Street ${address.street || 'empty'}`}
+          value={address.street || ''}
+          onChange={(event) => onChange?.({ ...address, street: event.target.value })}
         />
         {showRemove && <button onClick={onRemove}>Remove address</button>}
       </div>
@@ -129,5 +138,49 @@ describe('OrderEditor extra addresses', () => {
     )
     expect(screen.getByDisplayValue('Kalevankatu 8')).toBeInTheDocument()
     expect(screen.queryByDisplayValue('Mechelininkatu 20')).not.toBeInTheDocument()
+  })
+
+  it('keeps null primary and destination addresses editable', () => {
+    const initialOrder = {
+      ...makeWordPressOrder(makeWordPressPayload()),
+      address: null,
+      destination: null,
+    }
+    const onOrderChange = vi.fn()
+
+    render(<OrderEditorHarness initialOrder={initialOrder} onOrderChange={onOrderChange} />)
+
+    fireEvent.change(screen.getAllByRole('textbox')[0], { target: { value: 'New address' } })
+
+    expect(onOrderChange.mock.lastCall[0].address).toMatchObject({ street: 'New address' })
+    expect(onOrderChange.mock.lastCall[0].destination).toBeNull()
+  })
+
+  it('normalizes sparse extra addresses before editing, removing, or adding rows', () => {
+    const initialOrder = {
+      ...makeWordPressOrder(makeWordPressPayload()),
+      extraAddresses: [null, { street: 'Partial extra address' }],
+    }
+    const onOrderChange = vi.fn()
+
+    render(<OrderEditorHarness initialOrder={initialOrder} onOrderChange={onOrderChange} />)
+    fireEvent.change(screen.getByDisplayValue('Partial extra address'), {
+      target: { value: 'Updated extra address' },
+    })
+
+    let updatedOrder = onOrderChange.mock.lastCall[0]
+    expect(updatedOrder.extraAddresses).toEqual([
+      expect.objectContaining({ street: '' }),
+      expect.objectContaining({ street: 'Updated extra address', index: '', city: '' }),
+    ])
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Remove address' })[0])
+    updatedOrder = onOrderChange.mock.lastCall[0]
+    expect(updatedOrder.extraAddresses).toHaveLength(1)
+    expect(updatedOrder.extraAddresses[0].street).toBe('Updated extra address')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add address' }))
+    updatedOrder = onOrderChange.mock.lastCall[0]
+    expect(updatedOrder.extraAddresses).toHaveLength(2)
   })
 })

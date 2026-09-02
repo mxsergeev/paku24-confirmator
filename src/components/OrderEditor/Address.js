@@ -18,6 +18,15 @@ export default function Address({
   showRemove = false,
 }) {
   const [menuAnchorEl, setMenuAnchorEl] = useState(null)
+  const inputValue = value ?? {}
+  const address = {
+    ...inputValue,
+    street: inputValue.street ?? '',
+    index: inputValue.index ?? '',
+    city: inputValue.city ?? '',
+    floor: inputValue.floor ?? 0,
+    elevator: inputValue.elevator ?? false,
+  }
 
   const openMenu = (event) => {
     setMenuAnchorEl(event.currentTarget)
@@ -41,8 +50,8 @@ export default function Address({
         style={{ flex: 3 }}
         required
         name="address"
-        value={value.street}
-        onChange={(e) => onChange({ ...value, street: e.target.value })}
+        value={address.street ?? ''}
+        onChange={(e) => onChange({ ...address, street: e.target.value })}
         label="Address"
         variant="outlined"
         size="small"
@@ -51,8 +60,8 @@ export default function Address({
         style={{ flex: 1, minWidth: '4.75rem' }}
         required
         name="index"
-        value={value.index}
-        onChange={(e) => onChange({ ...value, index: e.target.value })}
+        value={address.index ?? ''}
+        onChange={(e) => onChange({ ...address, index: e.target.value })}
         label="Index"
         variant="outlined"
         size="small"
@@ -62,8 +71,8 @@ export default function Address({
         className=""
         required
         name="city"
-        value={value.city}
-        onChange={(e) => onChange({ ...value, city: e.target.value })}
+        value={address.city ?? ''}
+        onChange={(e) => onChange({ ...address, city: e.target.value })}
         label="City"
         variant="outlined"
         size="small"
@@ -93,9 +102,9 @@ export default function Address({
             <InputLabel htmlFor="address-floor">Floor</InputLabel>
             <Select
               native
-              value={value.floor ?? 0}
+              value={address.floor ?? 0}
               onChange={(e) => {
-                onChange({ ...value, floor: Number(e.target.value) })
+                onChange({ ...address, floor: Number(e.target.value) })
                 closeMenu()
               }}
               inputProps={{
@@ -116,9 +125,9 @@ export default function Address({
             <InputLabel htmlFor="address-elevator">Elevator</InputLabel>
             <Select
               native
-              value={value.elevator ?? false}
+              value={address.elevator ?? false}
               onChange={(e) => {
-                onChange({ ...value, elevator: e.target.value === 'true' })
+                onChange({ ...address, elevator: e.target.value === 'true' })
                 closeMenu()
               }}
               inputProps={{

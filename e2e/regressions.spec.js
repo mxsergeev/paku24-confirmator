@@ -90,7 +90,95 @@ test('editing and saving a direct order URL updates the exact order', async ({ p
 
   await page.goto(`/app/calendar/order/${order.id}`)
   await page.getByRole('button', { name: 'Edit' }).click()
-  await expect(page.getByRole('heading', { name: 'Edit order' })).toBeVisible()
+  const editDialog = page.getByRole('dialog').filter({
+    has: page.getByRole('heading', { name: 'Edit order', exact: true }),
+  })
+  await expect(editDialog).toBeVisible()
+  await editDialog.locator('input[name="name"]').fill('Direct URL Customer')
+  await editDialog.getByRole('button', { name: 'Save changes' }).click()
+  await expect(editDialog).toBeHidden()
+
+  await expect.poll(async () => (await database.readOrder(order.id))?.name).toBe('Direct URL Customer')
+})
+
+test('editing a sparse order without optional data materializes boxes when used', async ({ page, database }) => {
+  const order = await database.seedOrder({
+    date: dateInCurrentHelsinkiMonth(10),
+    address: null,
+    destination: null,
+    email: undefined,
+    extraAddresses: undefined,
+    paymentType: undefined,
+    phone: undefined,
+    pricingOverrides: undefined,
+    service: undefined,
+    boxes: undefined,
+  })
+
+  await page.goto(`/app/calendar/order/${order.id}`)
+  await expect(page.getByText('E2E Customer', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Edit' }).click()
+  const editDialog = page.getByRole('dialog').filter({
+    has: page.getByRole('heading', { name: 'Edit order', exact: true }),
+  })
+  await expect(editDialog).toBeVisible()
+  await expect(editDialog.locator('input[name="name"]')).toBeVisible()
+
+  await editDialog.locator('input[name="name"]').fill('Sparse Customer')
+  await editDialog.getByRole('button', { name: 'Save changes' }).click()
+  await expect(editDialog).toBeHidden()
+  await expect(page.getByText('Sparse Customer', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await expect(editDialog).toBeVisible()
+  await expect(editDialog.locator('input[name="name"]')).toHaveValue('Sparse Customer')
+
+  await editDialog.getByText('Boxes', { exact: true }).click()
+  await editDialog.locator('select[name="amount"]').selectOption('10')
+  await editDialog.getByRole('button', { name: 'Save changes' }).click()
+  await expect(editDialog).toBeHidden()
+
+  const savedOrder = await database.readOrder(order.id)
+  expect(savedOrder.boxes).toMatchObject({ amount: 10 })
+  expect(savedOrder.boxes.deliveryDate).toBeTruthy()
+  expect(savedOrder.boxes.returnDate).toBeTruthy()
+})
+
+test('editing partially populated optional data remains usable', async ({ page, database }) => {
+  const order = await database.seedOrder({
+    date: dateInCurrentHelsinkiMonth(11),
+    address: { street: 'Only street' },
+    destination: { city: 'Only city' },
+    extraAddresses: [null, { street: 'Extra street' }],
+    service: { id: '1', name: 'Partial service' },
+    paymentType: { id: '1', name: 'Partial payment' },
+    boxes: { deliveryDate: null, returnDate: null, amount: 10 },
+  })
+
+  await page.goto(`/app/calendar/order/${order.id}`)
+  await expect(page.getByText('E2E Customer', { exact: true })).toBeVisible()
+  await expect(page.locator('body')).not.toContainText('undefined')
+
+  await page.getByRole('button', { name: 'Edit' }).click()
+  const editDialog = page.getByRole('dialog').filter({
+    has: page.getByRole('heading', { name: 'Edit order', exact: true }),
+  })
+  await expect(editDialog).toBeVisible()
+  await editDialog.locator('input[name="name"]').fill('Partial Customer')
+  await editDialog.getByRole('button', { name: 'Save changes' }).click()
+  await expect(editDialog).toBeHidden()
+
+  const savedOrder = await database.readOrder(order.id)
+  expect(savedOrder.name).toBe('Partial Customer')
+  expect(savedOrder.boxes).toMatchObject({ amount: 10 })
+  expect(savedOrder.boxes.deliveryDate).toBeTruthy()
+  expect(savedOrder.boxes.returnDate).toBeTruthy()
+  expect(savedOrder.extraAddresses).toHaveLength(1)
+  expect(savedOrder.extraAddresses[0]).toMatchObject({
+    street: 'Extra street',
+    index: '',
+    city: '',
+  })
 })
 
 test('New Order exposes the browser-level pricing location', async ({ page }) => {

@@ -19,21 +19,31 @@ export default function OrderDialogDetails({
   const hasBoxes = Number(order?.boxes?.amount) > 0
   const isBoxEvent = eventType === 'boxDelivery' || eventType === 'boxReturn'
   const showRegularOrder = order && !isBoxEvent
-  const hasExtraAddresses =
-    order?.extraAddresses && Array.isArray(order.extraAddresses) && order.extraAddresses.length > 0
+  const address = order?.address || {}
+  const destination = order?.destination || {}
+  const extraAddresses = Array.isArray(order?.extraAddresses)
+    ? order.extraAddresses.filter((address) => address !== null && address !== undefined)
+    : []
+  const hasExtraAddresses = extraAddresses.length > 0
   const hasClientEmail = Boolean(order?.email)
   const selectedEventColorId = order?.eventColor || ''
+  const boxDate =
+    eventType === 'boxDelivery' ? order?.boxes?.deliveryDate : order?.boxes?.returnDate
 
   const boxRows =
     order?.boxes && isBoxEvent && hasBoxes
       ? [
-          {
-            label: 'Date',
-            value:
-              eventType === 'boxDelivery'
-                ? formatBoxDate(order.boxes.deliveryDate, 'box delivery date')
-                : formatBoxDate(order.boxes.returnDate, 'box return date'),
-          },
+          ...(boxDate
+            ? [
+                {
+                  label: 'Date',
+                  value: formatBoxDate(
+                    boxDate,
+                    eventType === 'boxDelivery' ? 'box delivery date' : 'box return date',
+                  ),
+                },
+              ]
+            : []),
           { label: 'Boxes', value: `${order.boxes.amount} pcs` },
           {
             label: 'Price',
@@ -48,22 +58,21 @@ export default function OrderDialogDetails({
         { label: 'Payment Type', value: order.paymentType?.name || '' },
         {
           label: 'From',
-          value: `${order.address?.street} (${order.address?.floor} floor), ${order.address?.index} ${order.address?.city}`,
+          value: `${address.street || ''} (${address.floor ?? 0} floor), ${address.index || ''} ${address.city || ''}`,
         },
         hasExtraAddresses && {
           label: 'Additional addresses',
-          value: order.extraAddresses.map((addr, index) => (
+          value: extraAddresses.map((addr, index) => (
             <div
               key={index}
               className="order-dialog-details__extra-address"
-            >{`${addr.street} (${addr.floor} floor), ${addr.index} ${addr.city}`}</div>
+            >{`${addr?.street || ''} (${addr?.floor ?? 0} floor), ${addr?.index || ''} ${addr?.city || ''}`}</div>
           )),
         },
-        order.destination &&
-          order.destination.street && {
-            label: 'To',
-            value: `${order.destination.street} (${order.destination?.floor} floor), ${order.destination.index} ${order.destination.city}`,
-          },
+        destination.street && {
+          label: 'To',
+          value: `${destination.street} (${destination.floor ?? 0} floor), ${destination.index || ''} ${destination.city || ''}`,
+        },
         hasBoxes && {
           label: 'Boxes',
           value: `${order.boxes.amount} pcs, ${pricing.boxesPrice}€`,
@@ -79,7 +88,7 @@ export default function OrderDialogDetails({
           <div className="order-dialog-details__row">
             <span className="order-dialog-details__label">Address</span>
             <span className="order-dialog-details__value">
-              {order.address?.street}, {order.address?.index} {order.address?.city}
+              {address.street || ''}, {address.index || ''} {address.city || ''}
             </span>
           </div>
           {boxRows.map((row) => (

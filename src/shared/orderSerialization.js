@@ -4,21 +4,43 @@ import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
 import { cloneValue, hasOwn, isPlainObject, PRICING_COMPONENTS, toFiniteNumberOrNull } from './orderPrimitives.js'
 
 const ADDRESS_FIELDS = ['street', 'index', 'city', 'floor', 'elevator']
+const ADDRESS_DEFAULTS = {
+  street: '',
+  index: '',
+  city: '',
+  floor: 0,
+  elevator: false,
+}
+const OPTIONAL_OBJECT_FIELDS = new Set([
+  'service',
+  'paymentType',
+  'address',
+  'extraAddresses',
+  'destination',
+  'boxes',
+])
 
 function serializeAddress(value) {
   if (!isPlainObject(value)) return cloneValue(value)
 
   return Object.fromEntries(
-    ADDRESS_FIELDS.filter((field) => hasOwn(value, field)).map((field) => [
+    ADDRESS_FIELDS.map((field) => [
       field,
-      cloneValue(value[field]),
+      cloneValue(value[field] ?? ADDRESS_DEFAULTS[field]),
     ]),
   )
 }
 
 function serializeExtraAddresses(value) {
   if (!Array.isArray(value)) return cloneValue(value)
-  return value.map((address) => serializeAddress(address))
+  return value.filter((address) => address !== null && address !== undefined).map(serializeAddress)
+}
+
+function hasRequiredFields(value, fields) {
+  return isPlainObject(value) && fields.every((field) => {
+    const fieldValue = value[field]
+    return fieldValue !== null && fieldValue !== undefined && fieldValue !== ''
+  })
 }
 
 function serializeDateTime(value, fieldName) {
@@ -33,12 +55,19 @@ function serializeBoxDate(value, fieldName) {
   return serializeDateTime(value, fieldName)
 }
 
-function serializeBoxes(value, fieldName) {
+function serializeBoxes(value, fieldName, fallbackDate) {
+  if (value === null || value === undefined) return undefined
   if (!isPlainObject(value)) throw new Error(`Invalid ${fieldName}`)
 
   const boxes = cloneValue(value)
   for (const field of ['deliveryDate', 'returnDate']) {
-    if (hasOwn(value, field)) boxes[field] = serializeBoxDate(value[field], `${fieldName}.${field}`)
+    const date = value[field] ?? fallbackDate
+    if (date === null || date === undefined) throw new Error(`Invalid ${fieldName}.${field}`)
+    boxes[field] = serializeBoxDate(date, `${fieldName}.${field}`)
+  }
+  boxes.amount = value.amount ?? 0
+  for (const field of ['pricePerBox', 'deliveryPrice', 'returnPrice']) {
+    if (boxes[field] === null || boxes[field] === undefined) delete boxes[field]
   }
   return boxes
 }
@@ -48,13 +77,29 @@ function serializeBookingFields(order) {
 
   BOOKING_FIELDS.forEach((field) => {
     if (!hasOwn(order, field)) return
+    if (OPTIONAL_OBJECT_FIELDS.has(field) && (order[field] === null || order[field] === undefined)) {
+      return
+    }
 
     if (field === 'date') result.date = serializeDateTime(order.date, 'date')
-    else if (field === 'boxes') result.boxes = serializeBoxes(order.boxes, 'boxes')
+    else if (field === 'boxes') {
+      const boxes = serializeBoxes(order.boxes, 'boxes', order.date)
+      if (boxes !== undefined) result.boxes = boxes
+    }
     else if (field === 'address' || field === 'destination') {
       result[field] = serializeAddress(order[field])
     } else if (field === 'extraAddresses') {
       result.extraAddresses = serializeExtraAddresses(order.extraAddresses)
+    } else if (field === 'service') {
+      if (!hasRequiredFields(order.service, ['id', 'name', 'pricePerHour'])) return
+      result.service = cloneValue(order.service)
+      if (result.service.fee === null || result.service.fee === undefined) delete result.service.fee
+    } else if (field === 'paymentType') {
+      if (!hasRequiredFields(order.paymentType, ['id', 'name'])) return
+      result.paymentType = cloneValue(order.paymentType)
+      if (result.paymentType.fee === null || result.paymentType.fee === undefined) {
+        delete result.paymentType.fee
+      }
     } else {
       result[field] = cloneValue(order[field])
     }
@@ -87,7 +132,7 @@ function toOrderPayload(order) {
 
   return {
     ...serializeBookingFields(order),
-    pricingOverrides: serializePricingOverrides(order.pricingOverrides),
+    pricingOverrides: serializePricingOverrides(order.pricingOverrides || {}),
   }
 }
 

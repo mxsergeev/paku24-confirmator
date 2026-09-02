@@ -85,4 +85,49 @@ describe('API payloads', () => {
     expect(payload.extraAddresses[0]).not.toHaveProperty('_uiId')
   })
 
+  it('omits absent optional data and materializes partial boxes data', () => {
+    const order = makeCanonicalAppOrder()
+    const payload = toOrderPayload({
+      ...order,
+      address: null,
+      destination: null,
+      extraAddresses: undefined,
+      paymentType: null,
+      service: null,
+      boxes: { deliveryDate: null, returnDate: null, amount: null },
+    })
+
+    expect(payload).not.toHaveProperty('address')
+    expect(payload).not.toHaveProperty('destination')
+    expect(payload).not.toHaveProperty('extraAddresses')
+    expect(payload).not.toHaveProperty('paymentType')
+    expect(payload).not.toHaveProperty('service')
+    expect(payload.boxes).toEqual({
+      deliveryDate: '2026-06-15T06:00:00.000Z',
+      returnDate: '2026-06-15T06:00:00.000Z',
+      amount: 0,
+    })
+  })
+
+  it('omits nullable optional box and embedded fee metadata', () => {
+    const order = makeCanonicalAppOrder()
+    const payload = toOrderPayload({
+      ...order,
+      service: { ...order.service, fee: null },
+      paymentType: { ...order.paymentType, fee: null },
+      boxes: {
+        ...order.boxes,
+        pricePerBox: null,
+        deliveryPrice: null,
+        returnPrice: null,
+      },
+    })
+
+    expect(payload.service).not.toHaveProperty('fee')
+    expect(payload.paymentType).not.toHaveProperty('fee')
+    expect(payload.boxes).not.toHaveProperty('pricePerBox')
+    expect(payload.boxes).not.toHaveProperty('deliveryPrice')
+    expect(payload.boxes).not.toHaveProperty('returnPrice')
+  })
+
 })

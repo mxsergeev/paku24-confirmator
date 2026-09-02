@@ -104,6 +104,14 @@ describe('makeCalendarEntries', () => {
     expect(entries.move.description).not.toContain('MUUTTOLAATIKOT')
   })
 
+  it('renders safely when charged boxes have incomplete dates', () => {
+    const entries = makeCalendarEntries(
+      makeOrder({ boxes: { deliveryDate: null, returnDate: null, amount: 10 } }),
+    )
+
+    expect(entries.move.description).not.toContain('Määrä: 10 kpl')
+  })
+
   it('uses Helsinki time for absolute instants regardless of the host timezone', () => {
     const entries = makeCalendarEntries(
       makeOrder({

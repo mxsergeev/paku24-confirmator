@@ -74,6 +74,7 @@ function calculateAutomaticBoxesPrice(order) {
   const boxes = order?.boxes
   const amount = toFiniteNumberOrNull(boxes?.amount)
   if (amount === null || amount <= 0) return 0
+  if (!boxes.deliveryDate || !boxes.returnDate) return 0
 
   const duration = calculateBoxPeriod(boxes?.deliveryDate, boxes?.returnDate)
   const pricePerBox = toFiniteNumberOrNull(boxesSettings.price) ?? 0
