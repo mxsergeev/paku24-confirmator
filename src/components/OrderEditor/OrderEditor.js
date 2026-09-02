@@ -203,7 +203,12 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
         variant="outlined"
         size="small"
       />
-      <Boxes style={{ marginTop: margin.marginTop }} order={order} handleChange={handleChange} />
+      <Boxes
+        style={{ marginTop: margin.marginTop }}
+        order={order}
+        handleChange={handleChange}
+        onOrderChange={onOrderChange}
+      />
       <PricingEditor
         order={order}
         onChange={onOrderChange}

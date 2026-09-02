@@ -9,6 +9,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    setupFiles: ['./test/setup.js'],
     fileParallelism: false,
     exclude: ['**/node_modules/**', '**/.git/**', '**/dist/**', 'e2e/**'],
     sequence: {

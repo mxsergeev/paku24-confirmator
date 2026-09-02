@@ -22,6 +22,7 @@ test-e2e-install:
 	yarn test:e2e:install
 
 test-e2e:
+	set -e; \
 	trap 'status=$$?; trap - EXIT INT TERM; docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) down -v --remove-orphans; docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) rm -sf app; exit $$status' EXIT INT TERM; \
 	  docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) up -d mongodb; \
 	  E2E_BACKEND_COMMAND='docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) run --rm --service-ports app' \

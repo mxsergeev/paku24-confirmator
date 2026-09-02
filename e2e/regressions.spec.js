@@ -35,5 +35,5 @@ test('New Order exposes the browser-level pricing location', async ({ page }) =>
   await page.goto('/app/calendar')
   await page.getByRole('button', { name: 'Create order' }).click()
   await expect(page.getByRole('heading', { name: 'New Order', exact: true })).toBeVisible()
-  await expect(page.getByLabel('Manual price override')).toBeVisible()
+  await expect(page.getByLabel('Price estimate')).toBeVisible()
 })

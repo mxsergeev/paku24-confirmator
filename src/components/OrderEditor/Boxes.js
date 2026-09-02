@@ -8,13 +8,15 @@ import boxesSettings from '../../data/boxes.json'
 import CollapseWrapper from '../CollapseWrapper'
 import dayjs from '../../shared/dayjs'
 import { isDateOnly } from '../../shared/date-fns-tz'
+import { calculateAutomaticBoxesPrice } from '../../shared/orderPricing'
+import PricingOverrideField from './PricingOverrideField'
 
 const boxesAmountOptions = [0]
 for (let i = boxesSettings.minAmount; i <= boxesSettings.maxAmount; i += boxesSettings.step) {
   boxesAmountOptions.push(i)
 }
 
-export default function Boxes({ order = {}, handleChange, style }) {
+export default function Boxes({ order = {}, handleChange, onOrderChange, style }) {
   const includeTimeStart = !isDateOnly(order.boxes.deliveryDate)
   const includeTimeEnd = !isDateOnly(order.boxes.returnDate)
 
@@ -129,13 +131,22 @@ export default function Boxes({ order = {}, handleChange, style }) {
               }}
               variant="filled"
             >
-              {boxesAmountOptions.map((o) => (
+            {boxesAmountOptions.map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>
               ))}
             </NativeSelect>
-
+            <PricingOverrideField
+              order={order}
+              component="boxesPrice"
+              automaticValue={calculateAutomaticBoxesPrice(order)}
+              label="Price"
+              name="boxesPrice"
+              onChange={onOrderChange}
+              className="time-duration"
+              style={{ maxWidth: '9rem', marginTop: '0.5rem' }}
+            />
           </div>
         </div>
       </CollapseWrapper>
