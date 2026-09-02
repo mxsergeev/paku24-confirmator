@@ -47,16 +47,78 @@ export async function resetOrders() {
 
 export async function seedOrder(overrides = {}) {
   const input = { ...DEFAULT_ORDER, ...overrides }
-  const appOrder = createAppOrder(input)
+  const explicitSparseFields = [
+    'address',
+    'destination',
+    'email',
+    'extraAddresses',
+    'boxes',
+    'paymentType',
+    'phone',
+    'pricingOverrides',
+    'service',
+  ]
+  const appOrderInput = { ...input }
+  for (const field of explicitSparseFields) {
+    if (appOrderInput[field] === null || appOrderInput[field] === undefined) {
+      delete appOrderInput[field]
+    }
+  }
+  if (
+    Array.isArray(appOrderInput.extraAddresses) &&
+    appOrderInput.extraAddresses.some(
+      (address) =>
+        !address ||
+        ['street', 'index', 'city', 'floor', 'elevator'].some(
+          (field) => address[field] === null || address[field] === undefined,
+        ),
+    )
+  ) {
+    delete appOrderInput.extraAddresses
+  }
+  if (
+    appOrderInput.service &&
+    ['id', 'name', 'pricePerHour'].some(
+      (field) => appOrderInput.service[field] === null || appOrderInput.service[field] === undefined,
+    )
+  ) {
+    delete appOrderInput.service
+  }
+  if (
+    appOrderInput.paymentType &&
+    ['id', 'name'].some(
+      (field) =>
+        appOrderInput.paymentType[field] === null || appOrderInput.paymentType[field] === undefined,
+    )
+  ) {
+    delete appOrderInput.paymentType
+  }
+  if (
+    appOrderInput.boxes &&
+    ['deliveryDate', 'returnDate', 'amount'].some((field) => appOrderInput.boxes[field] == null)
+  ) {
+    delete appOrderInput.boxes
+  }
+  const appOrder = createAppOrder(appOrderInput)
+  const lifecycleFields = [
+    'canceledAt',
+    'confirmed',
+    'confirmedAt',
+    'confirmedBy',
+    'deletedAt',
+    'invoiceNumber',
+    'receivedAt',
+  ]
+  const explicitOverrides = Object.fromEntries(
+    [...explicitSparseFields, ...lifecycleFields]
+      .filter((field) => Object.prototype.hasOwnProperty.call(overrides, field))
+      .map((field) => [field, overrides[field]]),
+  )
+
   return withDatabase(async () => {
     const order = await new Order({
       ...appOrder,
-      ...(Object.prototype.hasOwnProperty.call(overrides, 'boxes')
-        ? { boxes: overrides.boxes }
-        : {}),
-      ...(Object.prototype.hasOwnProperty.call(overrides, 'extraAddresses')
-        ? { extraAddresses: overrides.extraAddresses }
-        : {}),
+      ...explicitOverrides,
     }).save()
     return order.toJSON()
   })

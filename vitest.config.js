@@ -8,6 +8,11 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    environmentOptions: {
+      jsdom: {
+        url: 'http://localhost/',
+      },
+    },
     globals: true,
     setupFiles: ['./test/setup.js'],
     fileParallelism: false,

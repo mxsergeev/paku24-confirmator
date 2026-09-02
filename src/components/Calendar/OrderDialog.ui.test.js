@@ -92,11 +92,32 @@ function renderDialog(onOrderUpdate = vi.fn()) {
   )
 }
 
+function renderMissingDialog(props = {}) {
+  return render(
+    <OrderDialog
+      onClose={vi.fn()}
+      eventId="missing-order"
+      order={null}
+      {...props}
+    />,
+  )
+}
+
 describe('OrderDialog event color updates', () => {
   beforeEach(() => {
     mocks.ordersAPI.update.mockReset()
     mocks.enqueueSnackbar.mockReset()
     mocks.history.createHref.mockClear()
+  })
+
+  it('offers only the close path while a routed order is missing', () => {
+    renderMissingDialog({ notFound: true })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Order not found')
+    expect(screen.getByRole('button', { name: 'close' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirm order' })).not.toBeInTheDocument()
   })
 
   it('renders without crashing', () => {

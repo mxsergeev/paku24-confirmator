@@ -63,6 +63,9 @@ export default function OrderDialog({
   onClose,
   eventId,
   order: incomingOrder = null,
+  loading = false,
+  notFound = false,
+  loadError = null,
   onOrderUpdate,
 }) {
   const order = incomingOrder
@@ -428,7 +431,13 @@ export default function OrderDialog({
     })
   }
 
-  const title = order
+  const title = loading
+    ? 'Loading order'
+    : notFound
+    ? 'Order not found'
+    : loadError && !order
+    ? 'Could not load order'
+    : order
     ? eventType === 'boxDelivery'
       ? getBoxEventTitle(
           order,
@@ -472,6 +481,10 @@ export default function OrderDialog({
     return null
   }
 
+  const showOrderActions = Boolean(order) && !loading && !notFound
+  const loadErrorMessage =
+    loadError?.response?.data?.error || loadError?.message || 'Could not load order.'
+
   return (
     <>
       <Dialog
@@ -513,13 +526,21 @@ export default function OrderDialog({
           </IconButton>
         </DialogTitle>
         <DialogContent className="calendar-dialog-details-content">
-          <OrderDialogDetails
-            order={order}
-            eventType={eventType}
-            onEventColorChange={handleEventColorChange}
-          />
+          {loading ? (
+            <div role="status">Loading order</div>
+          ) : notFound ? (
+            <div role="alert">Order not found</div>
+          ) : loadError && !order ? (
+            <div role="alert">{loadErrorMessage}</div>
+          ) : (
+            <OrderDialogDetails
+              order={order}
+              eventType={eventType}
+              onEventColorChange={handleEventColorChange}
+            />
+          )}
         </DialogContent>
-        <DialogActions className="calendar-dialog-actions">
+        {showOrderActions && <DialogActions className="calendar-dialog-actions">
           {!isCanceledOrder && !isDeletedOrder && isConfirmedOrder && (
             <div className="calendar-dialog-actions-group">
               <Button
@@ -630,7 +651,7 @@ export default function OrderDialog({
               </Button>
             )}
           </div>
-        </DialogActions>
+        </DialogActions>}
       </Dialog>
       <Dialog
         open={confirmDialogOpen}

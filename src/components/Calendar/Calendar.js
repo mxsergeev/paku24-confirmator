@@ -24,6 +24,7 @@ import listPlugin from '@fullcalendar/list'
 import multiMonthPlugin from '@fullcalendar/multimonth'
 import iconsData from '../../data/icons.json'
 import { useCalendarOrders } from '../../hooks/useCalendarOrders'
+import { useRoutedOrder } from '../../hooks/useRoutedOrder'
 import './Calendar.css'
 import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 
@@ -204,9 +205,13 @@ export default function Calendar() {
     error?.response?.data?.error || error?.message || 'We could not load orders for this period.'
   const selectedOrderId = orderRouteMatch?.params?.orderId || null
   const { orderId: realOrderId } = parseBoxEventId(selectedOrderId || '')
-  const selectedOrder = selectedOrderId
-    ? orders.find((order) => String(order.id) === String(realOrderId)) || null
-    : null
+  const routedOrderQuery = useRoutedOrder(realOrderId)
+  const selectedOrder = selectedOrderId ? routedOrderQuery.data || null : null
+  const isRoutedOrderLoading = Boolean(selectedOrderId && routedOrderQuery.isLoading)
+  const isRoutedOrderNotFound = Boolean(
+    selectedOrderId && routedOrderQuery.isError && routedOrderQuery.error?.response?.status === 404,
+  )
+  const routedOrderError = selectedOrderId && routedOrderQuery.isError ? routedOrderQuery.error : null
 
   const currentMonthSummary = useMemo(() => {
     if (!(currentCalendarDate instanceof Date) || Number.isNaN(currentCalendarDate.getTime())) {
@@ -403,6 +408,12 @@ export default function Calendar() {
     refetch()
   }
 
+  async function handleSelectedOrderUpdate() {
+    const refreshes = [refetch()]
+    if (selectedOrderId) refreshes.push(routedOrderQuery.refetch())
+    await Promise.all(refreshes)
+  }
+
   if (receiptRouteMatch?.params?.orderId) {
     return (
       <ReceiptPage
@@ -546,7 +557,10 @@ export default function Calendar() {
           onClose={closeModal}
           eventId={selectedOrderId}
           order={selectedOrder}
-          onOrderUpdate={refetch}
+          loading={isRoutedOrderLoading}
+          notFound={isRoutedOrderNotFound}
+          loadError={routedOrderError}
+          onOrderUpdate={handleSelectedOrderUpdate}
         />
       )}
       <NewOrderDialog

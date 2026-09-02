@@ -12,9 +12,12 @@ const mocks = vi.hoisted(() => ({
   location: { state: null, search: '' },
   newOrderProps: null,
   receiptProps: null,
+  orderDialogProps: null,
+  routedOrderProps: null,
   routeMatches: {},
   enqueueSnackbar: vi.fn(),
   useCalendarOrders: vi.fn(),
+  useRoutedOrder: vi.fn(),
   history: { goBack: vi.fn(), push: vi.fn(), replace: vi.fn() },
 }))
 
@@ -39,6 +42,13 @@ vi.mock('../../hooks/useCalendarOrders', () => ({
   },
 }))
 
+vi.mock('../../hooks/useRoutedOrder', () => ({
+  useRoutedOrder: (props) => {
+    mocks.routedOrderProps = props
+    return mocks.useRoutedOrder(props)
+  },
+}))
+
 vi.mock('react-router-dom', () => ({
   useHistory: () => mocks.history,
   useLocation: () => mocks.location,
@@ -49,7 +59,12 @@ vi.mock('notistack', () => ({
   enqueueSnackbar: mocks.enqueueSnackbar,
 }))
 
-vi.mock('./OrderDialog', () => ({ default: () => null }))
+vi.mock('./OrderDialog', () => ({
+  default: (props) => {
+    mocks.orderDialogProps = props
+    return null
+  },
+}))
 vi.mock('./NewOrderDialog', () => ({
   default: (props) => {
     mocks.newOrderProps = props
@@ -74,6 +89,8 @@ describe('Calendar controls', () => {
     mocks.location = { state: null, search: '' }
     mocks.newOrderProps = null
     mocks.receiptProps = null
+    mocks.orderDialogProps = null
+    mocks.routedOrderProps = null
     mocks.routeMatches = {}
     mocks.enqueueSnackbar.mockReset()
     mocks.history.replace.mockReset()
@@ -85,6 +102,14 @@ describe('Calendar controls', () => {
       isFetching: false,
       isError: false,
       error: null,
+    })
+    mocks.useRoutedOrder.mockReset()
+    mocks.useRoutedOrder.mockReturnValue({
+      data: null,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
     })
   })
 
@@ -205,5 +230,63 @@ describe('Calendar controls', () => {
     expect(screen.getByTestId('receipt-page')).toBeInTheDocument()
     expect(mocks.receiptProps).toEqual({ orderId })
     expect(mocks.history.replace).not.toHaveBeenCalled()
+  })
+
+  it('uses the exact routed order and refreshes both queries after a mutation', async () => {
+    const calendarRefetch = vi.fn().mockResolvedValue({})
+    const routedRefetch = vi.fn().mockResolvedValue({})
+    const routedOrder = { id: 'order-1', name: 'Routed Customer' }
+
+    mocks.useCalendarOrders.mockReturnValue({
+      data: [],
+      refetch: calendarRefetch,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+    })
+    mocks.useRoutedOrder.mockReturnValue({
+      data: routedOrder,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: routedRefetch,
+    })
+    mocks.routeMatches['/calendar/order/:orderId'] = { params: { orderId: 'order-1' } }
+
+    render(<Calendar />)
+
+    expect(mocks.routedOrderProps).toBe('order-1')
+    expect(mocks.orderDialogProps).toMatchObject({
+      eventId: 'order-1',
+      order: routedOrder,
+      loading: false,
+      notFound: false,
+    })
+
+    await mocks.orderDialogProps.onOrderUpdate()
+
+    expect(calendarRefetch).toHaveBeenCalledTimes(1)
+    expect(routedRefetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('passes a 404 routed order state without enabling order actions', () => {
+    mocks.routeMatches['/calendar/order/:orderId'] = { params: { orderId: 'missing-order' } }
+    mocks.useRoutedOrder.mockReturnValue({
+      data: null,
+      isLoading: false,
+      isError: true,
+      error: { response: { status: 404 } },
+      refetch: vi.fn(),
+    })
+
+    render(<Calendar />)
+
+    expect(mocks.orderDialogProps).toMatchObject({
+      eventId: 'missing-order',
+      order: null,
+      loading: false,
+      notFound: true,
+    })
   })
 })
