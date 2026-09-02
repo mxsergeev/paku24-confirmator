@@ -14,7 +14,6 @@ import {
 import { getOrderPricing } from '../orderPricing.js'
 
 function makeIcons(order) {
-  const sizeIcon = order.XL ? icons.size.XL : ''
   const distanceIcon = icons.misc[order.distance] || ''
   const feeIcons = getOrderPricing(order).fees
     .map((fee) => icons.fees[fee.name])
@@ -24,7 +23,7 @@ function makeIcons(order) {
   const paymentIcons = icons.payment[order.paymentType?.id] || ''
 
   return {
-    move: `${sizeIcon}${distanceIcon}${feeIcons}${serviceIcons}${paymentIcons}`,
+    move: `${distanceIcon}${feeIcons}${serviceIcons}${paymentIcons}`,
     boxesDelivery: icons.boxes.delivery,
     boxesPickup: icons.boxes.pickup,
   }

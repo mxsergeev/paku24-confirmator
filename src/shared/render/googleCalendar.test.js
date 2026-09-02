@@ -9,7 +9,6 @@ const makeOrder = (overrides = {}) => ({
   service: services[0],
   paymentType: paymentTypes[0],
   distance: 'insideCapital',
-  XL: false,
   fees: [],
   address: {
     street: 'Testikatu 1 A 2',
@@ -44,11 +43,10 @@ const makeOrder = (overrides = {}) => ({
 })
 
 describe('makeIcons', () => {
-  it('combines size, distance, fee, service, and payment icons in order', () => {
+  it('combines distance, fee, service, and payment icons in order', () => {
     expect(
       makeIcons(
         makeOrder({
-          XL: true,
           distance: 'outsideCapital',
           pricingOverrides: {
             price: 320,
@@ -57,7 +55,7 @@ describe('makeIcons', () => {
           },
         }),
       ),
-    ).toEqual({ boxesDelivery: '📦', boxesPickup: '📦', move: 'XL🚧🌚🚚💳' })
+    ).toEqual({ boxesDelivery: '📦', boxesPickup: '📦', move: '🚧🌚🚚💳' })
   })
 })
 

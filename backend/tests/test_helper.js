@@ -77,7 +77,6 @@ const exampleOrder = {
 }
 
 const exampleOptions = {
-  XL: false,
   distance: 'insideCapital',
   hsy: false,
   altColorPalette: false,
@@ -108,7 +107,6 @@ const exampleEvent = {
   options: {
     distance: 'insideCapital',
     hsy: false,
-    XL: false,
   },
   entry:
     'Raiviosuonmäki 2 E 68\nMÄÄRÄNPÄÄ\nSortti-asema\nNIMI\nMaxim Sergeev\nSÄHKÖPOSTI\nthemaximsergeev@gmail.com\nPUHELIN\n+358449747442\nLISÄTIETOJA\nHello!',

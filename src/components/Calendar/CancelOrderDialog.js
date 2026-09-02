@@ -21,10 +21,7 @@ export default function CancelOrderDialog({
         <h3 className="calendar-dialog-title">Cancel this order?</h3>
       </DialogTitle>
       <DialogContent>
-        <p>Are you sure you want to cancel this order?</p>
-        <p className="calendar-dialog-muted-text">
-          Notifications will be sent automatically to available channels (email and/or SMS).
-        </p>
+        <p>Choose whether to cancel only or cancel and notify the customer.</p>
       </DialogContent>
       <DialogActions className="calendar-dialog-actions calendar-dialog-actions--compact">
         <Button

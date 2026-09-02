@@ -182,7 +182,6 @@ async function restoreOrder(id) {
   if (!id) return null
 
   return withOrderCalendarLock(id, async () => {
-    await getOrderById(id)
     const restoredOrder = await Order.findByIdAndUpdate(
       { _id: id },
       { $unset: { deletedAt: 1, canceledAt: 1 }, $set: { eventColor: DEFAULT_EVENT_COLOR_ID } },

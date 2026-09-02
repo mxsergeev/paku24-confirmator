@@ -16,7 +16,6 @@ import {
 const BOOKING_FIELDS = [
   'distance',
   'hsy',
-  'XL',
   'eventColor',
   'date',
   'duration',
@@ -44,7 +43,7 @@ const BOX_FIELDS = [
 const BOX_NUMBER_FIELDS = ['amount', 'pricePerBox', 'deliveryPrice', 'returnPrice']
 const NULLABLE_BOOKING_FIELDS = new Set(['eventColor', 'name', 'email', 'phone', 'comment'])
 const STRING_BOOKING_FIELDS = new Set(['distance', 'name', 'email', 'phone', 'comment', 'eventColor'])
-const BOOLEAN_BOOKING_FIELDS = new Set(['hsy', 'XL'])
+const BOOLEAN_BOOKING_FIELDS = new Set(['hsy'])
 
 function makeCalendarEventIds() {
   return Object.fromEntries(CALENDAR_EVENT_ROLES.map((role) => [role, null]))
@@ -84,7 +83,6 @@ function makeDefaultState() {
   return {
     distance: distances.insideCapital,
     hsy: false,
-    XL: false,
     eventColor: null,
     date: new Date(now.getTime()),
     duration: 1,

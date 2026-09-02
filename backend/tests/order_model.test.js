@@ -13,7 +13,6 @@ const address = {
 const makeOrder = (overrides = {}) => ({
   distance: 'insideCapital',
   hsy: false,
-  XL: false,
   eventColor: '7',
   date: '2026-01-15T07:00:00.000Z',
   duration: 2,

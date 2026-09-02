@@ -15,9 +15,6 @@ export function getOrderIcons(order, iconsData) {
       }
     })
   }
-  if (order.size && iconsData.size && iconsData.size[order.size]) {
-    icons.push(iconsData.size[order.size])
-  }
   return icons.join(' ')
 }
 

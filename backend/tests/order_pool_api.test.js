@@ -32,7 +32,6 @@ function makeOrder(overrides = {}) {
   return {
     distance: 'insideCapital',
     hsy: false,
-    XL: false,
     eventColor: '1',
     date: '2026-04-10T08:00:00.000Z',
     duration: 2,
@@ -223,7 +222,6 @@ describe('Order pool v2/add', () => {
   test.each([
     ['duration', { duration: 'garbage' }],
     ['hsy', { hsy: 'false' }],
-    ['XL', { XL: 1 }],
     ['eventColor', { eventColor: { invalid: true } }],
     ['name', { name: { invalid: true } }],
     ['email', { email: { invalid: true } }],
@@ -397,7 +395,6 @@ describe('Order pool v2/:id updates', () => {
     ['malformed override', { updateData: { pricingOverrides: { price: 'bad' } } }],
     ['malformed duration', { updateData: { duration: 'garbage' } }],
     ['malformed hsy', { updateData: { hsy: 'false' } }],
-    ['malformed XL', { updateData: { XL: 1 } }],
     ['malformed eventColor', { updateData: { eventColor: { invalid: true } } }],
     ['unknown eventColor', { updateData: { eventColor: 'not-configured' } }],
     ['malformed name', { updateData: { name: { invalid: true } } }],

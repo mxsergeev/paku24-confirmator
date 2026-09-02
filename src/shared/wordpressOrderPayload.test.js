@@ -26,7 +26,6 @@ describe('normalizeWordPressOrderPayload', () => {
 
     expect(payload).not.toHaveProperty('distance')
     expect(payload).not.toHaveProperty('hsy')
-    expect(payload).not.toHaveProperty('XL')
     expect(payload).not.toHaveProperty('eventColor')
 
     const order = normalizeWordPressOrderPayload(payload)
@@ -40,7 +39,6 @@ describe('normalizeWordPressOrderPayload', () => {
     expect(order).not.toHaveProperty('unknown')
     expect(order).not.toHaveProperty('distance')
     expect(order).not.toHaveProperty('hsy')
-    expect(order).not.toHaveProperty('XL')
     expect(order).not.toHaveProperty('eventColor')
   })
 

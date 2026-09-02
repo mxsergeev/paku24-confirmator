@@ -150,7 +150,6 @@ const order = new mongoose.Schema({
   // Editable booking data
   distance: String,
   hsy: Boolean,
-  XL: Boolean,
   eventColor: String,
   date: Date,
   duration: finiteNumberPath(),

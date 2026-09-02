@@ -67,20 +67,6 @@ export default function OrderSettings(props) {
           labelPlacement="start"
         />
 
-        <FormControlLabel
-          style={{ display: 'none' }}
-          className="flex-item"
-          control={
-            <Checkbox
-              checked={order.XL}
-              onChange={(e) => handleChange('XL', e.target.checked)}
-              color="primary"
-            />
-          }
-          name="XL"
-          label="XL"
-          labelPlacement="start"
-        />
       </FormControl>
     </div>
   )

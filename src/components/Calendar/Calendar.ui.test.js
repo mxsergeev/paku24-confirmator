@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   calendarProps: null,
   calendarQuery: null,
+  isMobile: false,
   location: { state: null, search: '' },
   receiptProps: null,
   routeMatches: {},
@@ -17,10 +18,17 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@fullcalendar/react', () => ({
-  default: React.forwardRef((props, _ref) => {
+  default: React.forwardRef((props, ref) => {
     mocks.calendarProps = props
+    React.useImperativeHandle(ref, () => ({
+      getApi: () => ({ prev: vi.fn(), next: vi.fn() }),
+    }))
     return null
   }),
+}))
+
+vi.mock('@material-ui/core/useMediaQuery', () => ({
+  default: () => mocks.isMobile,
 }))
 
 vi.mock('../../hooks/useCalendarOrders', () => ({
@@ -56,6 +64,7 @@ describe('Calendar controls', () => {
     window.localStorage.clear()
     mocks.calendarProps = null
     mocks.calendarQuery = null
+    mocks.isMobile = false
     mocks.location = { state: null, search: '' }
     mocks.receiptProps = null
     mocks.routeMatches = {}
@@ -97,6 +106,24 @@ describe('Calendar controls', () => {
       center: 'title',
       right: 'createOrderButton refreshOrdersButton',
     })
+  })
+
+  it('does not install mobile swipe handlers on desktop', () => {
+    const addEventListener = vi.spyOn(HTMLElement.prototype, 'addEventListener')
+
+    try {
+      render(<Calendar />)
+
+      const calendarElement = document.querySelector('.calendar')
+      const swipeCalls = addEventListener.mock.calls.filter(([type], index) =>
+        (type === 'touchstart' || type === 'touchend') &&
+        addEventListener.mock.contexts[index] === calendarElement,
+      )
+
+      expect(swipeCalls).toHaveLength(0)
+    } finally {
+      addEventListener.mockRestore()
+    }
   })
 
   it('passes order and box colors through FullCalendar event props', () => {

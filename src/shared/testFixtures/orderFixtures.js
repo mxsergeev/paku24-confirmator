@@ -123,7 +123,6 @@ export function makeAppBooking(overrides = {}) {
     }),
     distance: distances.insideCapital,
     hsy: false,
-    XL: false,
     eventColor: '1',
     ...overrides,
   }
@@ -162,7 +161,6 @@ export function makeCustomerCommunicationPayload() {
     ...makeWordPressPayload(),
     distance: distances.insideCapital,
     hsy: false,
-    XL: false,
     eventColor: '1',
   }
 }

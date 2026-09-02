@@ -134,6 +134,7 @@ export default function Calendar() {
   // Mobile: enable swipe left/right to navigate calendar (prev/next)
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (!isMobile) return
     if (!calendarWrapRef.current) return
 
     const el = calendarWrapRef.current
