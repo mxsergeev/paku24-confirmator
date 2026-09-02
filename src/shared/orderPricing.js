@@ -107,7 +107,9 @@ function resolvePricingOverrides(order) {
   const source = typeof order?.toObject === 'function' ? order.toObject() : order
   const overrides = order?.pricingOverrides || source?.pricingOverrides || {}
   const hasPersistedOverrides =
-    typeof order?.$isDefault === 'function' && !order.$isDefault('pricingOverrides')
+    typeof order?.$isDefault === 'function'
+      ? !order.$isDefault('pricingOverrides')
+      : Object.prototype.hasOwnProperty.call(source || {}, 'pricingOverrides')
   if (!hasLegacyPricing(source) || hasPersistedOverrides) return overrides
 
   return {

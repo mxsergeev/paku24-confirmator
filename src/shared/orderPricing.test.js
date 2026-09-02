@@ -106,11 +106,11 @@ describe('effective pricing and manual overrides', () => {
 
   it('preserves pricing stored by the legacy order shape', () => {
     const order = makeOrder({
-      pricingOverrides: { price: null, fees: [], boxesPrice: null },
       price: 167,
       fees: [{ name: 'legacyFee', amount: 15 }],
       boxesPrice: 52,
     })
+    delete order.pricingOverrides
 
     expect(getOrderPricing(order)).toEqual({
       price: 167,
