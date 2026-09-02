@@ -227,6 +227,7 @@ test('automatic and explicit event colors survive cancel and restore', async ({ 
 
   await page.getByRole('dialog').first().getByRole('button', { name: 'Restore' }).click()
   await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeFalsy()
+  await expect(page.getByRole('button', { name: 'Cancel order' })).toBeVisible()
   await expect((await database.readOrder(order.id))?.eventColor).toBeNull()
   await expect(orderEventColor).toHaveCSS('background-color', 'rgb(121, 134, 203)')
 

@@ -101,12 +101,16 @@ function readStoredReceiptDraft(orderId) {
     return rawDraft ? normalizeReceiptDraft(JSON.parse(rawDraft)) : null
   } catch {
     return null
-  } finally {
-    try {
-      window.localStorage.removeItem(storageKey)
-    } catch {
-      // Best effort cleanup when browser storage is unavailable.
-    }
+  }
+}
+
+function removeStoredReceiptDraft(orderId) {
+  if (typeof window === 'undefined' || !orderId) return
+
+  try {
+    window.localStorage.removeItem(`receipt-draft:${orderId}`)
+  } catch {
+    // Best effort cleanup when browser storage is unavailable.
   }
 }
 
@@ -239,6 +243,10 @@ export default function ReceiptPage({ orderId }) {
   const [sending, setSending] = useState(false)
   const [order, setOrder] = useState(null)
   const [storedDraft] = useState(() => readStoredReceiptDraft(orderId))
+
+  useEffect(() => {
+    removeStoredReceiptDraft(orderId)
+  }, [orderId])
 
   useEffect(() => {
     async function loadOrder() {

@@ -4,6 +4,8 @@ E2E_PROJECT ?= confirmator-e2e
 E2E_MONGODB_PORT ?= 27038
 E2E_BACKEND_PORT ?= 3040
 E2E_FRONTEND_PORT ?= 3041
+E2E_ORDER_POOL_KEY ?= e2e-order-pool-key
+export E2E_ORDER_POOL_KEY
 
 .PHONY: dev build-ui test test-e2e test-e2e-install stop clean prod
 

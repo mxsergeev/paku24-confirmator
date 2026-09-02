@@ -378,7 +378,7 @@ export default function OrderDialog({
       return
     }
 
-    const nextDocumentType = normalizeDocumentType(receiptDocumentType)
+    const nextDocumentType = normalizeDocumentType(draft?.documentType || receiptDocumentType)
     const safeDraft = normalizeReceiptDraft(draft, nextDocumentType)
 
     if (!safeDraft) {

@@ -9,6 +9,7 @@ const reuseExistingFrontendServer = process.env.E2E_REUSE_FRONTEND_SERVER === 't
 const testMongoURI =
   process.env.TEST_MONGODB_URI ||
   'mongodb://admin:password@127.0.0.1:27038/e2e?authSource=admin'
+const e2eOrderPoolKey = process.env.E2E_ORDER_POOL_KEY || 'e2e-order-pool-key'
 
 process.env.TEST_MONGODB_URI = testMongoURI
 const backendCommand =
@@ -34,6 +35,7 @@ export default defineConfig({
     {
       command: backendCommand,
       url: `${backendURL}/`,
+      env: { ...process.env, ORDER_POOL_KEY: e2eOrderPoolKey },
       reuseExistingServer: reuseExistingBackendServer,
       timeout: 120_000,
     },
