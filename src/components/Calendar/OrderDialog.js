@@ -510,7 +510,11 @@ export default function OrderDialog({
               }
         }
       >
-        <DialogTitle className="calendar-order-dialog-title-wrap" style={{ background: headerBg }}>
+        <DialogTitle
+          disableTypography
+          className="calendar-order-dialog-title-wrap"
+          style={{ background: headerBg }}
+        >
           <h3 className="calendar-dialog-title">
             {isDeletedOrder ? (
               <span className="calendar-dialog-title-icon calendar-dialog-title-icon--deleted">

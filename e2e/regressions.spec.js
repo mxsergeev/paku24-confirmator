@@ -77,6 +77,7 @@ test('a nonexistent direct order URL shows only the close path', async ({ page }
 
   await page.goto(`/app/calendar/order/${missingId}`)
   await expect(page.getByRole('heading', { name: /Order not found/, exact: false }).last()).toBeVisible()
+  await expect(page.locator('[role="dialog"] h2 h3')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'close' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(0)
