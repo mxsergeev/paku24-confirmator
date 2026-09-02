@@ -95,9 +95,36 @@ function calculateAutomaticPricing(order) {
   }
 }
 
+function hasLegacyPricing(order) {
+  return (
+    order?.price !== undefined ||
+    order?.fees !== undefined ||
+    order?.boxesPrice !== undefined
+  )
+}
+
+function resolvePricingOverrides(order) {
+  const source = typeof order?.toObject === 'function' ? order.toObject() : order
+  const overrides = order?.pricingOverrides || source?.pricingOverrides || {}
+  const hasPersistedOverrides =
+    typeof order?.$isDefault === 'function' && !order.$isDefault('pricingOverrides')
+  if (!hasLegacyPricing(source) || hasPersistedOverrides) return overrides
+
+  return {
+    price: overrides.price ?? toFiniteNumberOrNull(source.price),
+    fees:
+      Array.isArray(overrides.fees) && overrides.fees.length > 0
+        ? overrides.fees
+        : Array.isArray(source.fees)
+        ? source.fees
+        : overrides.fees ?? null,
+    boxesPrice: overrides.boxesPrice ?? toFiniteNumberOrNull(source.boxesPrice),
+  }
+}
+
 function getOrderPricing(order) {
   const automatic = calculateAutomaticPricing(order)
-  const overrides = order?.pricingOverrides || {}
+  const overrides = resolvePricingOverrides(order)
   const fees = overrides.fees === null || overrides.fees === undefined
     ? automatic.fees
     : normalizeFeeList(overrides.fees, 'Manual fees')
@@ -169,7 +196,9 @@ export {
   calculateBoxPeriod,
   calculateAutomaticPricing,
   getOrderPricing,
+  hasLegacyPricing,
   normalizeFeeList,
+  resolvePricingOverrides,
   setPricingOverride,
   clearPricingOverride,
   orderTime,

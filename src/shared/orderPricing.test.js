@@ -104,6 +104,33 @@ describe('effective pricing and manual overrides', () => {
     expect(getOrderPricing(order)).toEqual(calculateAutomaticPricing(order))
   })
 
+  it('preserves pricing stored by the legacy order shape', () => {
+    const order = makeOrder({
+      pricingOverrides: { price: null, fees: [], boxesPrice: null },
+      price: 167,
+      fees: [{ name: 'legacyFee', amount: 15 }],
+      boxesPrice: 52,
+    })
+
+    expect(getOrderPricing(order)).toEqual({
+      price: 167,
+      fees: [{ name: 'legacyFee', amount: 15 }],
+      boxesPrice: 52,
+    })
+  })
+
+  it('prefers persisted canonical overrides when legacy fields remain', () => {
+    const order = makeOrder({
+      pricingOverrides: { price: null, fees: [], boxesPrice: null },
+      price: 167,
+      fees: [{ name: 'legacyFee', amount: 15 }],
+      boxesPrice: 52,
+      $isDefault: () => false,
+    })
+
+    expect(getOrderPricing(order)).toEqual({ price: 100, fees: [], boxesPrice: 0 })
+  })
+
   it('supports manual price zero, empty fees, and manual boxes price zero', () => {
     const order = makeOrder({
       pricingOverrides: { price: 0, fees: [], boxesPrice: 0 },

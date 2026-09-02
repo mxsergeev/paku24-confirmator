@@ -67,6 +67,28 @@ describe('Order Mongoose schema', () => {
     expect(Order.schema.path('originalOrder').instance).toBe('Mixed')
   })
 
+  it('exposes legacy pricing through the canonical API shape', () => {
+    const legacy = makeOrder()
+    delete legacy.pricingOverrides
+    legacy.price = 167
+    legacy.fees = [{ name: 'legacyFee', amount: 15 }]
+    legacy.boxesPrice = 52
+
+    const json = Order.hydrate({
+      ...legacy,
+      _id: '66c000000000000000000003',
+    }).toJSON()
+
+    expect(json.pricingOverrides).toEqual({
+      price: 167,
+      fees: [{ name: 'legacyFee', amount: 15 }],
+      boxesPrice: 52,
+    })
+    expect(json).not.toHaveProperty('price')
+    expect(json).not.toHaveProperty('fees')
+    expect(json).not.toHaveProperty('boxesPrice')
+  })
+
   it('keeps date-only boxes as strings while casting datetime boxes to Date', () => {
     const order = new Order(makeOrder())
 

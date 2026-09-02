@@ -640,7 +640,7 @@ export default function OrderDialog({
                 {isDeletedOrder ? 'Delete permanently' : 'Delete'}
               </Button>
             )}
-            {isConfirmedOrder && !isCanceledOrder && (
+            {isConfirmedOrder && !isCanceledOrder && !isDeletedOrder && (
               <Button
                 variant="text"
                 color="secondary"

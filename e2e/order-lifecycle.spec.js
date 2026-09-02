@@ -101,3 +101,16 @@ test('soft-deleted orders can be restored and permanently deleted', async ({ pag
   await permanentDialog.getByRole('button', { name: 'Delete permanently' }).click()
   await expect.poll(async () => database.readOrder(order.id)).toBeNull()
 })
+
+test('deleted confirmed orders do not expose cancellation', async ({ page, database }) => {
+  const order = await database.seedOrder({
+    name: 'Deleted confirmed customer',
+    date: dateInCurrentHelsinkiMonth(10),
+    confirmed: true,
+    deletedAt: new Date(),
+  })
+
+  await page.goto(`/app/calendar/order/${order.id}`)
+  await expect(page.getByRole('button', { name: 'Restore' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cancel order' })).toHaveCount(0)
+})

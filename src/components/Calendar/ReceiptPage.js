@@ -221,19 +221,34 @@ function buildReceiptRows(order, receipt) {
     })
   })
 
+  const calculatedBrutto = roundMoney(rows.reduce((sum, row) => sum + num(row.brutto), 0))
+  const hasTotalAmount =
+    receipt?.totalAmount !== null &&
+    receipt?.totalAmount !== undefined &&
+    String(receipt.totalAmount).trim() !== ''
+  const totalAmount = roundMoney(receipt?.totalAmount)
+  const totalAdjustment = roundMoney(totalAmount - calculatedBrutto)
+
+  if (hasTotalAmount && totalAdjustment !== 0) {
+    const { netto, alv, brutto } = toAlvParts(totalAdjustment)
+    rows.push({
+      key: 'total-adjustment',
+      name: 'Hinnan oikaisu',
+      hours: '',
+      unitPrice: '',
+      netto,
+      alv,
+      brutto,
+    })
+  }
+
   return rows
 }
 
-function buildReceiptTotals(receipt, receiptRows) {
+function buildReceiptTotals(receiptRows) {
   const netto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.netto), 0))
   const alv = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.alv), 0))
-  const calculatedBrutto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.brutto), 0))
-  const totalAmount = receipt?.totalAmount
-  const brutto = roundMoney(
-    totalAmount === null || totalAmount === undefined || String(totalAmount).trim() === ''
-      ? calculatedBrutto
-      : totalAmount,
-  )
+  const brutto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.brutto), 0))
 
   return { netto, alv, brutto }
 }
@@ -270,7 +285,7 @@ export default function ReceiptPage({ orderId }) {
 
   const isInvoice = receipt?.isInvoice || false
   const receiptRows = order && receipt ? buildReceiptRows(order, receipt) : []
-  const totals = buildReceiptTotals(receipt, receiptRows)
+  const totals = buildReceiptTotals(receiptRows)
 
   const handleSend = async () => {
     if (!receipt?.customerEmail) {

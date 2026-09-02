@@ -11,12 +11,18 @@ function dateInCurrentHelsinkiMonth(day) {
   return new Date(Date.UTC(year, month - 1, day, 10, 0, 0)).toISOString()
 }
 
-async function openDocument(page, buttonName) {
+async function openDocument(page, buttonName, { totalAmount } = {}) {
   await page.getByRole('button', { name: buttonName }).click()
   const editor = page.getByRole('dialog').filter({ hasText: /data/ }).last()
   const documentType = buttonName === 'Create invoice' ? 'Invoice data' : 'Receipt data'
   await expect(editor.getByRole('heading', { name: documentType, exact: true })).toBeVisible()
   await expect(editor.getByRole('button', { name: 'Open document' })).toBeVisible()
+  if (totalAmount !== undefined) {
+    const total = editor.locator('input').nth(2)
+    await total.fill(totalAmount)
+    await total.blur()
+    await expect(total).toHaveValue(totalAmount)
+  }
   const popupPromise = page.waitForEvent('popup')
   await editor.getByRole('button', { name: 'Open document' }).click()
   const documentPage = await popupPromise
@@ -38,9 +44,13 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
 
   await page.goto(`/app/calendar/order/${order.id}`)
   await expect(page.getByText('Document customer', { exact: true })).toBeVisible()
-  const { documentPage: receiptPage } = await openDocument(page, 'Create receipt')
+  const { documentPage: receiptPage } = await openDocument(page, 'Create receipt', {
+    totalAmount: '125.50',
+  })
   await expect(receiptPage.getByText('KUITTI', { exact: true })).toBeVisible()
   await expect(receiptPage.locator('#cart-receipt')).toContainText('Document customer')
+  await expect(receiptPage.locator('.receipt-info-service').last()).toContainText('Hinnan oikaisu')
+  await expect(receiptPage.locator('.receipt-summary-row').nth(2)).toContainText('125,50')
 
   const receiptDownload = receiptPage.waitForEvent('download')
   await receiptPage.getByRole('button', { name: 'Download' }).click()
