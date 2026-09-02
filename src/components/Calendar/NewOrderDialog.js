@@ -72,6 +72,10 @@ function clearSavedDraft() {
   }
 }
 
+function isMissingOrderError(err) {
+  return err?.response?.status === 404
+}
+
 export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   const isMobile = useMediaQuery('(max-width:600px)')
   const [pendingOrderId] = useState(readPendingOrderId)
@@ -101,6 +105,12 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
       })
       .catch((err) => {
         if (!active || err.message === 'logout') return
+        if (isMissingOrderError(err)) {
+          clearPendingOrderId()
+          setOrder((previous) => (previous ? { ...previous, id: null } : previous))
+          setRecovering(false)
+          return
+        }
         setRecovering(false)
         enqueueSnackbar(
           err.response?.data?.error || 'Could not recover the pending order. Please try again.',
@@ -124,7 +134,6 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   }
 
   function handleOrderPersisted(id) {
-    clearSavedDraft()
     savePendingOrderId(id)
     setOrder((previous) => (previous ? { ...previous, id } : previous))
   }
@@ -136,9 +145,9 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   async function handleAddOrder() {
     if (saving || recovering || order?.deletedAt) return
 
+    let id = order?.id
     try {
       setSaving(true)
-      let id = order?.id
       if (!id) {
         const response = await ordersAPI.add({ order: toOrderPayload(order) })
         id = response?.id
@@ -148,10 +157,19 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
 
       const response = await ordersAPI.confirm(id)
       clearPendingOrderId()
+      clearSavedDraft()
       if (response?.message) enqueueSnackbar(response.message)
       handleComplete()
     } catch (err) {
       if (err.message === 'logout') return
+      if (isMissingOrderError(err) && id) {
+        clearPendingOrderId()
+        setOrder((previous) => (previous ? { ...previous, id: null } : previous))
+        enqueueSnackbar('The pending order no longer exists. Please review and add it again.', {
+          variant: 'warning',
+        })
+        return
+      }
       enqueueSnackbar(err.response?.data?.error || err.message || String(err), { variant: 'error' })
     } finally {
       setSaving(false)

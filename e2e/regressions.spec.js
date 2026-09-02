@@ -247,3 +247,82 @@ test('automatic and explicit event colors survive cancel and restore', async ({ 
   await expect((await database.readOrder(order.id))?.eventColor).toBe('11')
   await expect(orderEventColor).toHaveCSS('background-color', 'rgb(214, 0, 0)')
 })
+
+test('pending new orders retry by ID and stale IDs restore the draft', async ({ page, database }) => {
+  let confirmAttempts = 0
+  let addRequests = 0
+  await page.route('**/api/order-pool/v2/confirm/*', async (route) => {
+    confirmAttempts += 1
+    if (confirmAttempts === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Temporary calendar failure' }),
+      })
+      return
+    }
+    await route.continue()
+  })
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().includes('/api/order-pool/v2/add')) {
+      addRequests += 1
+    }
+  })
+
+  await page.goto('/app/calendar')
+  await page.getByRole('button', { name: 'Create order' }).click()
+  await page.locator('input[name="name"]').fill('Pending Customer')
+  await page.locator('input[name="phone"]').fill('+358401234567')
+
+  const addResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().includes('/api/order-pool/v2/add'),
+  )
+  await page.getByRole('button', { name: /add order/i }).click()
+  const addResponse = await addResponsePromise
+  const createdId = (await addResponse.json()).id
+  await expect(page.getByRole('button', { name: /retry confirmation/i })).toBeVisible()
+  expect(confirmAttempts).toBe(1)
+  expect(addRequests).toBe(1)
+  expect((await database.readOrder(createdId))?.confirmed).toBe(false)
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Create order' }).click()
+  await expect(page.locator('input[name="name"]')).toHaveValue('Pending Customer')
+  await expect(page.getByRole('button', { name: /retry confirmation/i })).toBeVisible()
+  await page.getByRole('button', { name: /retry confirmation/i }).click()
+  await expect.poll(async () => (await database.readOrder(createdId))?.confirmed).toBe(true)
+  expect(confirmAttempts).toBe(2)
+  expect(addRequests).toBe(1)
+
+  await page.reload()
+  await page.evaluate(() => {
+    localStorage.setItem('pending_new_order_id', '66c000000000000000000099')
+    localStorage.setItem(
+      'new_order',
+      JSON.stringify({
+        id: null,
+        name: 'Stale pending draft',
+        phone: '+358401234567',
+      }),
+    )
+  })
+  await page.reload()
+  const missingOrderResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/order-pool/v2/66c000000000000000000099'),
+  )
+  await page.getByRole('button', { name: 'Create order' }).click()
+  expect((await missingOrderResponsePromise).status()).toBe(404)
+  await expect(page.locator('input[name="name"]')).toHaveValue('Stale pending draft')
+  await expect(page.getByRole('button', { name: /add order/i })).toBeEnabled()
+  expect(addRequests).toBe(1)
+  expect(
+    await page.evaluate(() => ({
+      pendingId: localStorage.getItem('pending_new_order_id'),
+      draftId: JSON.parse(localStorage.getItem('new_order')).id,
+    })),
+  ).toEqual({ pendingId: null, draftId: null })
+})

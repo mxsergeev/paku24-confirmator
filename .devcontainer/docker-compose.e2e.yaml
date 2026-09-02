@@ -19,6 +19,9 @@ services:
     build:
       dockerfile: .devcontainer/Dockerfile
       context: ..
+    volumes:
+      - ..:/app:cached
+      - /app/node_modules
     command: ['yarn', 'dev:ui', '--host', '0.0.0.0']
     environment:
       PORT: '${E2E_FRONTEND_PORT:-3041}'

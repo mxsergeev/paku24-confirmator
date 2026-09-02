@@ -126,6 +126,43 @@ describe('NewOrderDialog persistence workflow', () => {
     })
   })
 
+  it('restores the saved draft when a pending order is missing', async () => {
+    const savedDraft = makeCanonicalAppOrder({ name: 'Stale draft' })
+    window.localStorage.setItem('new_order', JSON.stringify(savedDraft))
+    window.localStorage.setItem('pending_new_order_id', PENDING_ORDER_ID)
+    mocks.ordersAPI.getById.mockRejectedValue({
+      response: { status: 404, data: { error: 'Order not found' } },
+    })
+
+    renderDialog()
+
+    await waitFor(() => expect(screen.getByTestId('order-editor')).toHaveTextContent('Stale draft'))
+    expect(screen.getByRole('button', { name: /add order/i })).toBeEnabled()
+    expect(window.localStorage.getItem('pending_new_order_id')).toBeNull()
+    expect(JSON.parse(window.localStorage.getItem('new_order'))).toHaveProperty('id', null)
+  })
+
+  it('restores the draft when confirmation reports a missing pending order', async () => {
+    const recoveredOrder = {
+      ...makeCanonicalAppOrder({ name: 'Missing confirmation order' }),
+      id: PENDING_ORDER_ID,
+    }
+    window.localStorage.setItem('pending_new_order_id', PENDING_ORDER_ID)
+    mocks.ordersAPI.getById.mockResolvedValue({ order: recoveredOrder })
+    mocks.ordersAPI.confirm.mockRejectedValue({
+      response: { status: 404, data: { error: 'Order not found' } },
+    })
+
+    renderDialog()
+
+    const retryButton = await screen.findByRole('button', { name: /retry confirmation/i })
+    fireEvent.click(retryButton)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /add order/i })).toBeEnabled())
+    expect(window.localStorage.getItem('pending_new_order_id')).toBeNull()
+    expect(JSON.parse(window.localStorage.getItem('new_order'))).toHaveProperty('id', null)
+  })
+
   it('sends manual pricing overrides when a new order is added', async () => {
     mocks.ordersAPI.add.mockResolvedValue({ id: PENDING_ORDER_ID })
     mocks.ordersAPI.confirm
