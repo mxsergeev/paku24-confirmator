@@ -28,25 +28,6 @@ test('unconfirmed orders can be confirmed through the real order dialog', async 
 })
 
 test('cancel only and cancel with notifications preserve lifecycle state', async ({ page, database }) => {
-  const cancellationEmailPayloads = []
-  const cancellationSmsPayloads = []
-  await page.route('**/api/email/send-cancellation', async (route) => {
-    cancellationEmailPayloads.push(route.request().postDataJSON())
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ message: 'Cancellation email sent.' }),
-    })
-  })
-  await page.route('**/api/sms/cancellation', async (route) => {
-    cancellationSmsPayloads.push(route.request().postDataJSON())
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ message: 'Cancellation SMS sent.' }),
-    })
-  })
-
   const order = await database.seedOrder({
     name: 'Cancellation customer',
     date: dateInCurrentHelsinkiMonth(10),
@@ -54,22 +35,50 @@ test('cancel only and cancel with notifications preserve lifecycle state', async
   })
 
   await page.goto(`/app/calendar/order/${order.id}`)
+  await page.evaluate(async () => {
+    const response = await fetch('/api/test/communications', { method: 'DELETE' })
+    if (!response.ok) throw new Error(`Could not reset provider fake: ${response.status}`)
+  })
   await expect(page.getByText('Cancellation customer', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel order' }).click()
   const cancelDialog = page.getByRole('dialog').filter({ hasText: 'Choose whether to cancel only or cancel and notify the customer.' })
   await cancelDialog.getByRole('button', { name: 'Cancel only' }).click()
   await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeTruthy()
-  expect(cancellationEmailPayloads).toEqual([])
-  expect(cancellationSmsPayloads).toEqual([])
+  await expect.poll(async () => {
+    const response = await page.evaluate(() => fetch('/api/test/communications').then((result) => result.json()))
+    return response
+  }).toEqual({ email: [], sms: [] })
 
   await page.getByRole('button', { name: 'Restore' }).click()
   await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeFalsy()
 
   await page.getByRole('button', { name: 'Cancel order' }).click()
+  const cancellationEmailResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().includes('/api/email/send-cancellation'),
+  )
+  const cancellationSmsResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/sms/cancellation'),
+  )
   await page.getByRole('dialog').filter({ hasText: 'Choose whether to cancel only or cancel and notify the customer.' }).getByRole('button', { name: 'Cancel & notify' }).click()
+  expect((await cancellationEmailResponse).status()).toBe(200)
+  expect((await cancellationSmsResponse).status()).toBe(200)
   await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeTruthy()
-  await expect.poll(() => cancellationEmailPayloads).toEqual([{ orderId: order.id }])
-  await expect.poll(() => cancellationSmsPayloads).toEqual([{ orderId: order.id }])
+  await expect.poll(async () => {
+    const response = await page.evaluate(() => fetch('/api/test/communications').then((result) => result.json()))
+    return response.email
+  }).toEqual([
+    expect.objectContaining({ email: 'customer@example.com', subject: 'VARAUKSEN PERUUTUS' }),
+  ])
+  await expect.poll(async () => {
+    const response = await page.evaluate(() => fetch('/api/test/communications').then((result) => result.json()))
+    return response.sms
+  }).toEqual([
+    expect.objectContaining({ phone: '+358401234567', msg: expect.stringContaining('Cancellation customer') }),
+  ])
   await expect(page.getByText(/Notifications: 2 sent/)).toBeVisible()
 })
 

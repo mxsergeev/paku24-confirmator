@@ -5,6 +5,7 @@ import Order from '../models/order.js'
 import { smsOrderPayload } from './test_helper.js'
 import { generateJWT } from '../modules/authentication/auth.middleware.js'
 import useTestDatabase from './database_harness.js'
+import { clearSentCommunications, getSentCommunications } from '../modules/testCommunicationProvider.js'
 
 vi.mock('axios', () => {
   return {
@@ -38,6 +39,7 @@ describe('SMS API', () => {
   beforeEach(() => {
     axios.get.mockReset()
     axios.get.mockResolvedValue({ data: {} })
+    clearSentCommunications()
   })
 
   afterEach(async () => {
@@ -55,10 +57,10 @@ describe('SMS API', () => {
       .expect(200)
       .expect('Content-Type', /application\/json/)
 
-    expect(axios.get).toHaveBeenCalled()
-    expect(axios.get).toHaveBeenCalledWith('https://semysms.net/api/3/sms.php', {
-      params: expect.objectContaining({ phone: order.phone }),
-    })
+    expect(getSentCommunications().sms).toEqual(expect.arrayContaining([
+      expect.objectContaining({ phone: order.phone }),
+    ]))
+    expect(axios.get).not.toHaveBeenCalled()
   })
 
   test('returns 403 when access token is missing', async () => {

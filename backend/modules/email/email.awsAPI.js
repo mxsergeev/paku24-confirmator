@@ -1,6 +1,7 @@
 import AWS from 'aws-sdk'
 import * as logger from '../../utils/logger.js'
 import { SOURCE_EMAIL } from '../../utils/config.js'
+import { recordEmail } from '../testCommunicationProvider.js'
 
 AWS.config.update({ region: 'eu-north-1' })
 
@@ -35,6 +36,11 @@ function sendMail({ email, subject, body, html = false, sourceEmail = SOURCE_EMA
 
   html ? (params.Message.Body.Html = messageBody) : (params.Message.Body.Text = messageBody)
 
+  if (process.env.NODE_ENV === 'test') {
+    recordEmail({ email, subject, body, html, sourceEmail })
+    return Promise.resolve()
+  }
+
   if (process.env.NODE_ENV !== 'test') {
     const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' }).sendEmail(params).promise()
 
@@ -48,7 +54,6 @@ function sendMail({ email, subject, body, html = false, sourceEmail = SOURCE_EMA
       })
   }
 
-  return Promise.resolve()
 }
 
 function splitBase64Lines(input = '', lineLength = 76) {
@@ -115,6 +120,19 @@ function sendMailWithAttachment({
     `--${boundary}--`,
   ].join('\n')
 
+  if (process.env.NODE_ENV === 'test') {
+    recordEmail({
+      email,
+      subject,
+      body,
+      pdfBase64,
+      fileName,
+      documentType,
+      sourceEmail,
+    })
+    return Promise.resolve()
+  }
+
   if (process.env.NODE_ENV !== 'test') {
     return new AWS.SES({ apiVersion: '2010-12-01' })
       .sendRawEmail({
@@ -132,7 +150,6 @@ function sendMailWithAttachment({
       })
   }
 
-  return Promise.resolve()
 }
 
 export { sendMailWithAttachment }

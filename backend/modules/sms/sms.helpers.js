@@ -3,6 +3,7 @@ import termsData from '../email/email.data.terms.json' with { type: 'json' }
 import { formatOrderForSms } from '../../../src/shared/render/text.js'
 import { formatHelsinkiInstant } from '../../../src/shared/date-fns-tz.js'
 import { SEMYSMS_DEVICE_ID, SEMYSMS_API_TOKEN } from '../../utils/config.js'
+import { recordSms } from '../testCommunicationProvider.js'
 
 const MAX_PARTS_PER_SEND = 3
 const GSM_7BIT_BASIC_CHARS =
@@ -105,6 +106,11 @@ async function sendSmsInChunks(phone, message, { maxChunks = 3 } = {}) {
 function sendSMSWithGateway(phone, msg) {
   if (!phone || !msg) {
     throw new Error('Phone number and message are required to send SMS')
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    recordSms({ phone, msg })
+    return Promise.resolve({ success: true })
   }
 
   if (!SEMYSMS_API_TOKEN || !SEMYSMS_DEVICE_ID) {
