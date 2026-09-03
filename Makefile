@@ -1,10 +1,15 @@
-COMPOSE_DEV = -f .devcontainer/docker-compose.yaml -f .devcontainer/docker-compose.dev.yaml
-COMPOSE_E2E = -f .devcontainer/docker-compose.yaml -f .devcontainer/docker-compose.e2e.yaml
-E2E_PROJECT ?= confirmator-e2e
 E2E_MONGODB_PORT ?= 27038
 E2E_BACKEND_PORT ?= 3040
 E2E_FRONTEND_PORT ?= 3041
 E2E_ORDER_POOL_KEY ?= e2e-order-pool-key
+
+COMPOSE_DEV = -f .devcontainer/docker-compose.yaml -f .devcontainer/docker-compose.dev.yaml
+COMPOSE_TEST = -f .devcontainer/docker-compose.yaml -f .devcontainer/docker-compose.test.yaml
+COMPOSE_E2E = -f .devcontainer/docker-compose.yaml -f .devcontainer/docker-compose.e2e.yaml
+
+TEST_PROJECT ?= confirmator-test
+E2E_PROJECT ?= confirmator-e2e
+
 export E2E_ORDER_POOL_KEY
 
 .PHONY: dev build-ui test test-e2e test-e2e-install stop clean prod
@@ -16,8 +21,11 @@ build-ui:
 	docker compose $(COMPOSE_DEV) run --rm app yarn build:ui --mode production
 
 test:
-	docker compose -f .devcontainer/docker-compose.yaml -f .devcontainer/docker-compose.test.yaml \
-	  -p confirmator-test \
+	set -e; \
+	trap 'status=$$?; trap - EXIT INT TERM; \
+	  docker compose $(COMPOSE_TEST) -p $(TEST_PROJECT) down -v --remove-orphans --rmi local; \
+	  exit $$status' EXIT INT TERM; \
+	docker compose $(COMPOSE_TEST) -p $(TEST_PROJECT) \
 	  up --abort-on-container-exit --exit-code-from app --attach app
 
 test-e2e-install:
@@ -25,12 +33,18 @@ test-e2e-install:
 
 test-e2e:
 	set -e; \
-	trap 'status=$$?; trap - EXIT INT TERM; docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) down --remove-orphans; exit $$status' EXIT INT TERM; \
-	  docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) up -d --wait --wait-timeout 120 mongodb app frontend; \
-	  E2E_REUSE_BACKEND_SERVER=true \
-	  E2E_REUSE_FRONTEND_SERVER=true \
-	  E2E_MONGODB_PORT=$(E2E_MONGODB_PORT) TEST_MONGODB_URI=mongodb://admin:password@127.0.0.1:$(E2E_MONGODB_PORT)/e2e?authSource=admin \
-	  E2E_BACKEND_PORT=$(E2E_BACKEND_PORT) E2E_FRONTEND_PORT=$(E2E_FRONTEND_PORT) yarn test:e2e
+	trap 'status=$$?; trap - EXIT INT TERM; \
+	  docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) down -v --remove-orphans --rmi local; \
+	  exit $$status' EXIT INT TERM; \
+	docker compose $(COMPOSE_E2E) -p $(E2E_PROJECT) \
+	  up -d --wait --wait-timeout 120 mongodb app frontend; \
+	E2E_REUSE_BACKEND_SERVER=true \
+	E2E_REUSE_FRONTEND_SERVER=true \
+	E2E_MONGODB_PORT=$(E2E_MONGODB_PORT) \
+	TEST_MONGODB_URI=mongodb://admin:password@127.0.0.1:$(E2E_MONGODB_PORT)/e2e?authSource=admin \
+	E2E_BACKEND_PORT=$(E2E_BACKEND_PORT) \
+	E2E_FRONTEND_PORT=$(E2E_FRONTEND_PORT) \
+	yarn test:e2e
 
 stop:
 	docker compose $(COMPOSE_DEV) down
