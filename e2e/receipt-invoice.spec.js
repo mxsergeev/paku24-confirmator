@@ -40,17 +40,20 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
       returnDate: dateInCurrentHelsinkiMonth(12),
       amount: 10,
     },
+    pricingOverrides: {
+      price: null,
+      fees: [{ name: 'Manual fee', amount: 10 }],
+      boxesPrice: 20,
+    },
   })
 
   await page.goto(`/app/calendar/order/${order.id}`)
   await expect(page.getByText('Document customer', { exact: true })).toBeVisible()
-  const { documentPage: receiptPage } = await openDocument(page, 'Create receipt', {
-    totalAmount: '125.50',
-  })
+  const { documentPage: receiptPage } = await openDocument(page, 'Create receipt')
   await expect(receiptPage.getByText('KUITTI', { exact: true })).toBeVisible()
   await expect(receiptPage.locator('#cart-receipt')).toContainText('Document customer')
-  await expect(receiptPage.locator('.receipt-info-service').last()).toContainText('Hinnan oikaisu')
-  await expect(receiptPage.locator('.receipt-summary-row').nth(2)).toContainText('125,50')
+  await expect(receiptPage.locator('.receipt-info-service').last()).toContainText('Manual Fee')
+  await expect(receiptPage.locator('.receipt-summary-row').nth(2)).toContainText('130,00')
 
   const receiptDownload = receiptPage.waitForEvent('download')
   await receiptPage.getByRole('button', { name: 'Download' }).click()

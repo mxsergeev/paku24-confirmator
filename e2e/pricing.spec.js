@@ -90,3 +90,45 @@ test('editing and reopening an order preserves all pricing overrides', async ({ 
   await reopenedEditDialog.getByText('Boxes', { exact: true }).click()
   await expect(reopenedEditDialog.getByLabel('Price', { exact: true })).toHaveValue('0')
 })
+
+test('automatic price estimate includes manual fees and boxes and recomputes after duration changes', async ({ page, database }) => {
+  const now = new Date()
+  const orderDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 10, 10, 0, 0))
+  const order = await database.seedOrder({
+    date: orderDate.toISOString(),
+    duration: 2,
+    name: 'Composed pricing customer',
+    service: { id: '1', name: 'Pakettiauto ja kuljettaja', pricePerHour: 50 },
+    boxes: { amount: 0, deliveryDate: orderDate.toISOString(), returnDate: orderDate.toISOString() },
+    pricingOverrides: { price: null, fees: null, boxesPrice: null },
+  })
+
+  await page.goto(`/app/calendar/order/${order.id}`)
+  await page.getByRole('button', { name: 'Edit' }).click()
+  const editDialog = page.getByRole('dialog').filter({
+    has: page.getByRole('heading', { name: 'Edit order', exact: true }),
+  })
+  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('100')
+
+  await editDialog.getByRole('button', { name: 'Manage fees' }).click()
+  const feeDialog = page.getByRole('dialog', { name: 'Fees' })
+  await feeDialog.getByRole('radio', { name: 'Manual' }).check()
+  const holidayFee = feeDialog.getByRole('checkbox', { name: 'Select PYHÄLISÄ fee' })
+  await holidayFee.check()
+  await feeDialog.getByRole('button', { name: 'Done' }).click()
+
+  await editDialog.getByText('Boxes', { exact: true }).click()
+  const boxesPrice = editDialog.getByLabel('Price', { exact: true })
+  await boxesPrice.fill('12')
+  await boxesPrice.blur()
+  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('127')
+
+  await editDialog.locator('select[name="duration"]').selectOption('3')
+  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('177')
+  await expect(boxesPrice).toHaveValue('12')
+
+  await editDialog.getByRole('button', { name: 'Manage fees' }).click()
+  await expect(page.getByRole('dialog', { name: 'Fees' }).getByRole('checkbox', {
+    name: 'Select PYHÄLISÄ fee',
+  })).toBeChecked()
+})

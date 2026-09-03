@@ -112,7 +112,39 @@ describe('effective pricing and manual overrides', () => {
     expect(getOrderPricing(order)).toEqual({ price: 0, fees: [], boxesPrice: 0 })
   })
 
-  it('keeps component overrides independent', () => {
+  it('includes manual fees in the automatic total', () => {
+    const order = makeOrder({
+      pricingOverrides: {
+        price: null,
+        fees: [{ name: 'customFee', amount: 20 }],
+        boxesPrice: null,
+      },
+    })
+
+    expect(getOrderPricing(order)).toEqual({
+      price: 120,
+      fees: [{ name: 'customFee', amount: 20 }],
+      boxesPrice: 0,
+    })
+  })
+
+  it('includes a manual boxes price in the automatic total', () => {
+    const order = makeOrder({
+      pricingOverrides: {
+        price: null,
+        fees: null,
+        boxesPrice: 12,
+      },
+    })
+
+    expect(getOrderPricing(order)).toEqual({
+      price: 112,
+      fees: [],
+      boxesPrice: 12,
+    })
+  })
+
+  it('includes both manual component overrides in the automatic total', () => {
     const order = makeOrder({
       pricingOverrides: {
         price: null,
@@ -122,10 +154,40 @@ describe('effective pricing and manual overrides', () => {
     })
 
     expect(getOrderPricing(order)).toEqual({
-      price: 100,
+      price: 132,
       fees: [{ name: 'customFee', amount: 20 }],
       boxesPrice: 12,
     })
+  })
+
+  it('keeps an explicit total override independent of component overrides', () => {
+    const order = makeOrder({
+      pricingOverrides: {
+        price: 250,
+        fees: [{ name: 'customFee', amount: 20 }],
+        boxesPrice: 12,
+      },
+    })
+
+    expect(getOrderPricing(order)).toEqual({
+      price: 250,
+      fees: [{ name: 'customFee', amount: 20 }],
+      boxesPrice: 12,
+    })
+  })
+
+  it('resumes composed pricing when only the total override is cleared', () => {
+    const order = makeOrder({
+      pricingOverrides: {
+        price: 250,
+        fees: [{ name: 'customFee', amount: 20 }],
+        boxesPrice: 12,
+      },
+    })
+
+    const cleared = clearPricingOverride(order, 'price')
+
+    expect(getOrderPricing(cleared).price).toBe(132)
   })
 
   it('sets and clears overrides without mutating the order', () => {
@@ -139,11 +201,22 @@ describe('effective pricing and manual overrides', () => {
   })
 
   it('recalculates automatic pricing after a booking change', () => {
-    const order = makeOrder({ duration: 2 })
+    const order = makeOrder({
+      duration: 2,
+      pricingOverrides: {
+        price: null,
+        fees: [{ name: 'customFee', amount: 20 }],
+        boxesPrice: 12,
+      },
+    })
     const changed = { ...order, duration: 3 }
 
-    expect(getOrderPricing(order).price).toBe(100)
-    expect(getOrderPricing(changed).price).toBe(150)
+    expect(getOrderPricing(order).price).toBe(132)
+    expect(getOrderPricing(changed)).toEqual({
+      price: 182,
+      fees: [{ name: 'customFee', amount: 20 }],
+      boxesPrice: 12,
+    })
   })
 })
 

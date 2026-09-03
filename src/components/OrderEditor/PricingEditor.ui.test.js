@@ -77,6 +77,21 @@ describe('PricingEditor', () => {
     expect(input).toHaveValue('100')
   })
 
+  it('shows composed component overrides while the total remains automatic', () => {
+    const order = {
+      ...makeCanonicalAppOrder(),
+      pricingOverrides: {
+        price: null,
+        fees: [{ name: 'customFee', amount: 20 }],
+        boxesPrice: 12,
+      },
+    }
+
+    renderPricingEditor(order)
+
+    expect(screen.getByRole('textbox', { name: 'Price estimate' })).toHaveValue('132')
+  })
+
   it('preserves a manual price when booking data changes', () => {
     const order = setPricingOverride(makeCanonicalAppOrder(), 'price', 220)
     const { onChange, rerender } = renderPricingEditor(order)

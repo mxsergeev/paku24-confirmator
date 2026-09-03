@@ -108,7 +108,7 @@ function getOrderPricing(order) {
   if (boxesPrice === null) throw new OrderValidationError('Invalid pricingOverrides.boxesPrice')
 
   const price = overrides.price === null || overrides.price === undefined
-    ? automatic.price
+    ? calculateServiceSubtotal(order) + boxesPrice + sumFees(fees)
     : toFiniteNumberOrNull(overrides.price)
 
   if (price === null) throw new OrderValidationError('Invalid pricingOverrides.price')

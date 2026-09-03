@@ -1,5 +1,5 @@
 import React from 'react'
-import { calculateAutomaticPricing } from '../../shared/orderPricing'
+import { getOrderPricing } from '../../shared/orderPricing'
 import FeeSelector from './FeeSelector'
 import OriginalWordPressOrderDialog from './OriginalWordPressOrderDialog'
 import PricingOverrideField from './PricingOverrideField'
@@ -7,7 +7,7 @@ import PricingOverrideField from './PricingOverrideField'
 export default function PricingEditor({ order, onChange }) {
   if (!order) return null
 
-  const automatic = calculateAutomaticPricing(order)
+  const effective = getOrderPricing(order)
 
   return (
     <div
@@ -18,7 +18,7 @@ export default function PricingEditor({ order, onChange }) {
       <PricingOverrideField
         order={order}
         component="price"
-        automaticValue={automatic.price}
+        automaticValue={effective.price}
         label="Price estimate"
         name="price"
         onChange={onChange}

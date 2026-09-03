@@ -146,6 +146,37 @@ describe('Order pool v2/add', () => {
     expect(saved.originalOrder).toBeNull()
   })
 
+  test('composes effective pricing from persisted manual components when total is automatic', async () => {
+    const source = makeOrder({
+      name: 'App Composed Pricing Order',
+      boxes: { ...makeOrder().boxes, amount: 0 },
+      pricingOverrides: {
+        price: null,
+        fees: [{ name: 'Manual fee', amount: 10 }],
+        boxesPrice: 20,
+      },
+    })
+    names.push(source.name)
+
+    const res = await api
+      .post('/api/order-pool/v2/add')
+      .set('Cookie', [`at=${appToken}`])
+      .send({ order: source })
+      .expect(200)
+
+    const saved = await Order.findById(res.body.id).lean()
+    expect(saved.pricingOverrides).toEqual({
+      price: null,
+      fees: [{ name: 'Manual fee', amount: 10 }],
+      boxesPrice: 20,
+    })
+    expect(getOrderPricing(saved)).toEqual({
+      price: 130,
+      fees: [{ name: 'Manual fee', amount: 10 }],
+      boxesPrice: 20,
+    })
+  })
+
   test('authenticated app creation preserves explicit zero and no-fees overrides', async () => {
     const source = makeOrder({
       name: 'App Zero Pricing Order',
