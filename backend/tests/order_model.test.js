@@ -89,6 +89,17 @@ describe('Order Mongoose schema', () => {
     expect(json).not.toHaveProperty('boxesPrice')
   })
 
+  it('retains legacy calendar links for migration without exposing them in the API', () => {
+    const json = Order.hydrate({
+      ...makeOrder(),
+      _id: '66c000000000000000000004',
+      googleEventId: 'legacy-main-event',
+    }).toJSON()
+
+    expect(json).not.toHaveProperty('googleEventId')
+    expect(Order.schema.path('googleEventId').options.default).toBeUndefined()
+  })
+
   it('keeps date-only boxes as strings while casting datetime boxes to Date', () => {
     const order = new Order(makeOrder())
 

@@ -139,6 +139,8 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   }
 
   function handleComplete() {
+    setOrder(createAppOrder())
+    setRecovering(false)
     onOrderCreated && onOrderCreated()
   }
 

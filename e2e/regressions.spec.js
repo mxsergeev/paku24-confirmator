@@ -298,6 +298,11 @@ test('pending new orders retry by ID and stale IDs restore the draft', async ({ 
   expect(confirmAttempts).toBe(2)
   expect(addRequests).toBe(1)
 
+  await page.getByRole('button', { name: 'Create order' }).click()
+  await expect(page.getByRole('button', { name: /add order/i })).toBeVisible()
+  await expect(page.getByRole('button', { name: /retry confirmation/i })).toHaveCount(0)
+  await page.getByRole('button', { name: 'close' }).click()
+
   await page.reload()
   await page.evaluate(() => {
     localStorage.setItem('pending_new_order_id', '66c000000000000000000099')

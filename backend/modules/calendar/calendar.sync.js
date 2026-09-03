@@ -13,11 +13,27 @@ import {
 } from '../../../src/shared/orderModel.js'
 
 function storedCalendarEventIds(order) {
-  const ids = order?.calendarEventIds || {}
+  const source = typeof order?.toObject === 'function' ? order.toObject() : order
+  const ids = source?.calendarEventIds || {}
+  const legacyMainId = source?.googleEventId || order?.googleEventId || null
   return CALENDAR_EVENT_ROLES.reduce((result, role) => {
-    result[role] = ids[role] || null
+    result[role] = ids[role] || (role === 'main' ? legacyMainId : null)
     return result
   }, makeCalendarEventIds())
+}
+
+function legacyGoogleEventId(order) {
+  const source = typeof order?.toObject === 'function' ? order.toObject() : order
+  return source?.googleEventId || order?.googleEventId || null
+}
+
+function clearLegacyGoogleEventId(order) {
+  if (!order) return
+  if (typeof order.set === 'function') {
+    order.set('googleEventId', undefined)
+  } else {
+    delete order.googleEventId
+  }
 }
 
 function desiredEvents(order) {
@@ -91,25 +107,33 @@ function assertPersistenceSucceeded(result, orderId) {
   }
 }
 
-async function persistCalendarEventIds(order, ids) {
+async function persistCalendarEventIds(order, ids, { clearLegacy = true } = {}) {
   if (!order?._id) return null
 
+  const update = { $set: { calendarEventIds: { ...ids } } }
+  if (clearLegacy && legacyGoogleEventId(order)) update.$unset = { googleEventId: '' }
   const result = await OrderModel.updateOne(
     { _id: order._id },
-    { $set: { calendarEventIds: { ...ids } } },
+    update,
   )
   assertPersistenceSucceeded(result, order._id)
+  if (clearLegacy) clearLegacyGoogleEventId(order)
   return result
 }
 
-async function persistCalendarEventId(order, role, eventId) {
+async function persistCalendarEventId(order, role, eventId, { clearLegacy = false } = {}) {
   if (!order?._id) return null
 
+  const update = { $set: { [`calendarEventIds.${role}`]: eventId } }
+  if (clearLegacy && role === 'main' && legacyGoogleEventId(order)) {
+    update.$unset = { googleEventId: '' }
+  }
   const result = await OrderModel.updateOne(
     { _id: order._id },
-    { $set: { [`calendarEventIds.${role}`]: eventId } },
+    update,
   )
   assertPersistenceSucceeded(result, order._id)
+  if (clearLegacy) clearLegacyGoogleEventId(order)
   return result
 }
 
@@ -165,6 +189,17 @@ function throwDeletionFailures(failures, context) {
   throw aggregate
 }
 
+async function deleteDistinctLegacyMainEvent(order, canonicalMainId) {
+  const legacyId = legacyGoogleEventId(order)
+  if (!legacyId || legacyId === canonicalMainId) return
+
+  try {
+    await deleteEventFromCalendar(legacyId)
+  } catch (error) {
+    if (!isCalendarEventNotFound(error)) throw error
+  }
+}
+
 /**
  * Reconcile all calendar events owned by an order using role-specific IDs.
  *
@@ -185,6 +220,8 @@ async function reconcileOrderToCalendar(order) {
   const nextIds = { ...previousIds }
   const responses = {}
   const createdEvents = []
+  const legacyMainId = legacyGoogleEventId(order)
+  const legacyMainCanBeCleared = !legacyMainId || legacyMainId === previousIds.main
 
   try {
     // Clear stale roles before creating missing roles. Successful clears are
@@ -208,7 +245,9 @@ async function reconcileOrderToCalendar(order) {
 
       nextIds[role] = null
       try {
-        await persistCalendarEventIds(order, nextIds)
+        await persistCalendarEventIds(order, nextIds, {
+          clearLegacy: legacyMainCanBeCleared,
+        })
         order.calendarEventIds = { ...nextIds }
       } catch (error) {
         deletionFailures.push({ role, eventId: previousIds[role], error })
@@ -231,7 +270,9 @@ async function reconcileOrderToCalendar(order) {
           // before creating a replacement so a failed replacement cannot
           // leave Mongo pointing at a known-missing event.
           nextIds[role] = null
-          await persistCalendarEventId(order, role, null)
+          await persistCalendarEventId(order, role, null, {
+            clearLegacy: role === 'main' && legacyMainCanBeCleared,
+          })
           order.calendarEventIds = { ...nextIds }
         }
       }
@@ -245,6 +286,7 @@ async function reconcileOrderToCalendar(order) {
       createdEvents.push({ role, eventId: id })
     }
 
+    await deleteDistinctLegacyMainEvent(order, previousIds.main)
     await persistCalendarEventIds(order, nextIds)
     order.calendarEventIds = { ...nextIds }
 
@@ -282,11 +324,29 @@ async function removeOrderEvents(order) {
   if (!order) return null
 
   const ids = storedCalendarEventIds(order)
+  const legacyId = legacyGoogleEventId(order)
+  const hasDistinctLegacyMain = Boolean(legacyId && legacyId !== ids.main)
   const activeRoles = CALENDAR_EVENT_ROLES.filter((role) => ids[role])
-  if (activeRoles.length === 0) return null
+  if (activeRoles.length === 0 && !hasDistinctLegacyMain) return null
 
   const deletionFailures = []
   const nextIds = { ...ids }
+  let legacyMainDeleted = !hasDistinctLegacyMain
+
+  if (hasDistinctLegacyMain) {
+    try {
+      await deleteEventFromCalendar(legacyId)
+      legacyMainDeleted = true
+    } catch (error) {
+      if (isCalendarEventNotFound(error)) {
+        legacyMainDeleted = true
+      } else {
+        deletionFailures.push({ role: 'legacy-main', eventId: legacyId, error })
+        logger.error(`Failed to delete legacy calendar event ${legacyId}`, error)
+      }
+    }
+  }
+
   for (const role of activeRoles) {
     try {
       await deleteEventFromCalendar(ids[role])
@@ -302,11 +362,21 @@ async function removeOrderEvents(order) {
     }
 
     try {
-      await persistCalendarEventIds(order, nextIds)
+      await persistCalendarEventIds(order, nextIds, { clearLegacy: legacyMainDeleted })
       order.calendarEventIds = { ...nextIds }
     } catch (error) {
       deletionFailures.push({ role, eventId: ids[role], error })
       logger.error(`Failed to clear calendar event ID ${ids[role]}`, error)
+    }
+  }
+
+  if (activeRoles.length === 0 && legacyMainDeleted) {
+    try {
+      await persistCalendarEventIds(order, nextIds)
+      order.calendarEventIds = { ...nextIds }
+    } catch (error) {
+      deletionFailures.push({ role: 'legacy-main', eventId: legacyId, error })
+      logger.error(`Failed to clear legacy calendar event ID ${legacyId}`, error)
     }
   }
 
