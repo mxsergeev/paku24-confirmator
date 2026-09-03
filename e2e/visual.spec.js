@@ -6,6 +6,14 @@ const MOBILE_VIEWPORT = { width: 390, height: 1200 }
 async function openNewOrder(page, viewport) {
   await page.setViewportSize(viewport)
   await page.goto('/app/calendar')
+  await page.evaluate(() => {
+    const draft = JSON.parse(window.localStorage.getItem('new_order') || '{}')
+    window.localStorage.setItem(
+      'new_order',
+      JSON.stringify({ ...draft, id: null, date: '2026-01-15T08:00:00.000Z' }),
+    )
+  })
+  await page.reload()
   await page.getByRole('button', { name: 'Create order' }).click()
 
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'New Order', exact: true }) })
