@@ -1,6 +1,5 @@
 import mongoose from 'mongoose'
 import { isDateOnly, parseCalendarDate, parseInstant } from '../../src/shared/date-fns-tz.js'
-import { hasLegacyPricing, resolvePricingOverrides } from '../../src/shared/orderPricing.js'
 
 /**
  * A box date is either a calendar date (which must remain a string) or an
@@ -201,12 +200,6 @@ const order = new mongoose.Schema({
     default: null,
   },
   canceledAt: Date,
-  // Legacy main-event link retained long enough for calendar sync to migrate
-  // orders created before role-specific calendarEventIds were introduced.
-  googleEventId: {
-    type: String,
-    default: undefined,
-  },
   calendarEventIds: {
     type: nestedSchema({
       main: { type: String, default: null },
@@ -219,13 +212,6 @@ const order = new mongoose.Schema({
 
 order.set('toJSON', {
   transform: (document, returnedObject) => {
-    if (hasLegacyPricing(returnedObject)) {
-      returnedObject.pricingOverrides = resolvePricingOverrides(document || returnedObject)
-      delete returnedObject.price
-      delete returnedObject.fees
-      delete returnedObject.boxesPrice
-    }
-    delete returnedObject.googleEventId
     returnedObject.id = returnedObject._id.toString()
     delete returnedObject._id
     delete returnedObject.__v
