@@ -84,85 +84,6 @@ describe('calendar reconciliation', () => {
     expect(result.calendarEventIds).toEqual(order.calendarEventIds)
   })
 
-  it('uses and migrates a legacy main calendar event ID', async () => {
-    const order = {
-      _id: ORDER_ID,
-      googleEventId: 'legacy-main',
-      calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
-    }
-
-    await syncOrderToCalendar(order)
-
-    expect(mocks.updateEventInCalendar).toHaveBeenCalledWith('legacy-main', {
-      summary: 'move',
-    })
-    expect(mocks.addEventToCalendar).toHaveBeenCalledTimes(2)
-    expect(mocks.updateOne).toHaveBeenLastCalledWith(
-      { _id: ORDER_ID },
-      {
-        $set: {
-          calendarEventIds: {
-            main: 'legacy-main',
-            boxDelivery: 'delivery-created',
-            boxReturn: 'return-created',
-          },
-        },
-        $unset: { googleEventId: '' },
-      },
-    )
-    expect(order.googleEventId).toBeUndefined()
-  })
-
-  it('removes a distinct legacy event before clearing its migrated link', async () => {
-    const order = {
-      _id: ORDER_ID,
-      googleEventId: 'legacy-main',
-      calendarEventIds: { main: 'canonical-main', boxDelivery: null, boxReturn: null },
-    }
-
-    await syncOrderToCalendar(order)
-
-    expect(mocks.updateEventInCalendar).toHaveBeenCalledWith('canonical-main', {
-      summary: 'move',
-    })
-    expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('legacy-main')
-    expect(mocks.updateOne).toHaveBeenLastCalledWith(
-      { _id: ORDER_ID },
-      {
-        $set: {
-          calendarEventIds: {
-            main: 'canonical-main',
-            boxDelivery: 'delivery-created',
-            boxReturn: 'return-created',
-          },
-        },
-        $unset: { googleEventId: '' },
-      },
-    )
-  })
-
-  it('keeps a distinct legacy event linked until a missing canonical event is replaced', async () => {
-    mocks.updateEventInCalendar.mockRejectedValueOnce({ response: { status: 404 } })
-    const order = {
-      _id: ORDER_ID,
-      googleEventId: 'legacy-main',
-      calendarEventIds: { main: 'canonical-missing', boxDelivery: null, boxReturn: null },
-    }
-
-    await syncOrderToCalendar(order)
-
-    expect(mocks.updateOne).toHaveBeenNthCalledWith(
-      1,
-      { _id: ORDER_ID },
-      { $set: { 'calendarEventIds.main': null } },
-    )
-    expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('legacy-main')
-    expect(mocks.updateOne).toHaveBeenLastCalledWith(
-      { _id: ORDER_ID },
-      expect.objectContaining({ $unset: { googleEventId: '' } }),
-    )
-  })
-
   it('rejects deleted orders before touching Google Calendar', async () => {
     const deletedOrder = {
       _id: ORDER_ID,
@@ -515,48 +436,6 @@ describe('calendar reconciliation', () => {
     await expect(deleteOrderEvent(order)).resolves.toBe(true)
     expect(mocks.deleteEventFromCalendar).toHaveBeenCalledTimes(4)
     expect(order.calendarEventIds).toEqual({ main: null, boxDelivery: null, boxReturn: null })
-  })
-
-  it('deletes and migrates a legacy main calendar event ID', async () => {
-    const order = {
-      _id: ORDER_ID,
-      googleEventId: 'legacy-main',
-      calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
-    }
-
-    await expect(deleteOrderEvent(order)).resolves.toBe(true)
-
-    expect(mocks.deleteEventFromCalendar).toHaveBeenCalledWith('legacy-main')
-    expect(mocks.updateOne).toHaveBeenCalledWith(
-      { _id: ORDER_ID },
-      {
-        $set: { calendarEventIds: { main: null, boxDelivery: null, boxReturn: null } },
-        $unset: { googleEventId: '' },
-      },
-    )
-    expect(order.googleEventId).toBeUndefined()
-  })
-
-  it('deletes both canonical and distinct legacy main calendar events', async () => {
-    const order = {
-      _id: ORDER_ID,
-      googleEventId: 'legacy-main',
-      calendarEventIds: { main: 'canonical-main', boxDelivery: null, boxReturn: null },
-    }
-
-    await expect(deleteOrderEvent(order)).resolves.toBe(true)
-
-    expect(mocks.deleteEventFromCalendar.mock.calls.map(([id]) => id)).toEqual([
-      'legacy-main',
-      'canonical-main',
-    ])
-    expect(mocks.updateOne).toHaveBeenCalledWith(
-      { _id: ORDER_ID },
-      {
-        $set: { calendarEventIds: { main: null, boxDelivery: null, boxReturn: null } },
-        $unset: { googleEventId: '' },
-      },
-    )
   })
 
   it('does not create duplicate role triplets when sync calls overlap', async () => {
