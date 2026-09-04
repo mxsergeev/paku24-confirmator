@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Button, Dialog, DialogContent, DialogTitle, IconButton } from '@material-ui/core'
 import useMediaQuery from '@material-ui/core/useMediaQuery'
 import CloseIcon from '@material-ui/icons/Close'
@@ -7,38 +7,12 @@ import { enqueueSnackbar } from 'notistack'
 
 import './Calendar.css'
 import OrderEditor from '../OrderEditor/OrderEditor'
-
 import OrderSettings from '../OrderEditor/OrderSettings'
 import ValidationDisplay from '../OrderEditor/ValidationDisplay'
 import { createAppOrder, updateOrderField } from '../../shared/orderModel'
 import ordersAPI from '../../services/ordersAPI'
 
 const NEW_ORDER_DRAFT_STORAGE_KEY = 'new_order'
-const PENDING_NEW_ORDER_ID_STORAGE_KEY = 'pending_new_order_id'
-
-function readPendingOrderId() {
-  try {
-    return window.localStorage.getItem(PENDING_NEW_ORDER_ID_STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
-
-function savePendingOrderId(id) {
-  try {
-    window.localStorage.setItem(PENDING_NEW_ORDER_ID_STORAGE_KEY, id)
-  } catch {
-    // A pending ID is only reload recovery; the in-memory order remains usable.
-  }
-}
-
-function clearPendingOrderId() {
-  try {
-    window.localStorage.removeItem(PENDING_NEW_ORDER_ID_STORAGE_KEY)
-  } catch {
-    // Best effort cleanup when browser storage is unavailable.
-  }
-}
 
 function readSavedDraft() {
   try {
@@ -71,114 +45,49 @@ function clearSavedDraft() {
   }
 }
 
-function isMissingOrderError(err) {
-  return err?.response?.status === 404
-}
-
 export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
   const isMobile = useMediaQuery('(max-width:600px)')
-  const [pendingOrderId] = useState(readPendingOrderId)
-  const [order, setOrder] = useState(() => {
-    const draft = readSavedDraft() || createAppOrder()
-    return pendingOrderId ? { ...draft, id: pendingOrderId } : draft
-  })
+  const [order, setOrder] = useState(() => readSavedDraft() || createAppOrder())
   const [saving, setSaving] = useState(false)
-  const [recovering, setRecovering] = useState(Boolean(pendingOrderId))
+  const skipDraftSave = useRef(false)
 
   useEffect(() => {
-    if (order?.id) return
-    writeSavedDraft(order)
-  }, [order])
-
-  useEffect(() => {
-    if (!pendingOrderId) return undefined
-
-    let active = true
-    ordersAPI
-      .getById(pendingOrderId)
-      .then((response) => {
-        if (!active) return
-        const recoveredOrder = response?.order || response
-        setOrder(recoveredOrder)
-        setRecovering(false)
-      })
-      .catch((err) => {
-        if (!active || err.message === 'logout') return
-        if (isMissingOrderError(err)) {
-          clearPendingOrderId()
-          setOrder((previous) => (previous ? { ...previous, id: null } : previous))
-          setRecovering(false)
-          return
-        }
-        setRecovering(false)
-        enqueueSnackbar(
-          err.response?.data?.error || 'Could not recover the pending order. Please try again.',
-          { variant: 'error' },
-        )
-      })
-
-    return () => {
-      active = false
+    if (skipDraftSave.current) {
+      skipDraftSave.current = false
+      return
     }
-  }, [pendingOrderId])
+    if (open && !order.id) writeSavedDraft(order)
+  }, [open, order])
 
   function handleOrderChange(key, value) {
-    if (order?.id) return
     setOrder((previous) => updateOrderField(previous, key, value))
   }
 
   function handleOrderReplace(nextOrder) {
-    if (order?.id) return
     setOrder(nextOrder)
   }
 
-  function handleOrderPersisted(id) {
-    savePendingOrderId(id)
-    setOrder((previous) => (previous ? { ...previous, id } : previous))
-  }
-
   function handleComplete() {
+    skipDraftSave.current = true
+    clearSavedDraft()
     setOrder(createAppOrder())
-    setRecovering(false)
     onOrderCreated && onOrderCreated()
   }
 
   async function handleAddOrder() {
-    if (saving || recovering || order?.deletedAt) return
+    if (saving) return
 
-    let id = order?.id
     try {
       setSaving(true)
-      if (!id) {
-        const response = await ordersAPI.add({ order })
-        id = response?.id
-        if (!id) throw new Error('Order was added but no ID was returned')
-        handleOrderPersisted(id)
-        if (response?.warning?.message) {
-          enqueueSnackbar(response.warning.message, { variant: 'warning' })
-        }
-      }
-
-      const response = await ordersAPI.confirm(id)
-      if (response?.warning?.message) {
+      const response = await ordersAPI.add({ order })
+      if (!response?.id) throw new Error('Order was added but no ID was returned')
+      if (response.message) enqueueSnackbar(response.message)
+      if (response.warning?.message) {
         enqueueSnackbar(response.warning.message, { variant: 'warning' })
-        setRecovering(false)
-        return
       }
-      clearPendingOrderId()
-      clearSavedDraft()
-      if (response?.message) enqueueSnackbar(response.message)
       handleComplete()
     } catch (err) {
       if (err.message === 'logout') return
-      if (isMissingOrderError(err) && id) {
-        clearPendingOrderId()
-        setOrder((previous) => (previous ? { ...previous, id: null } : previous))
-        enqueueSnackbar('The pending order no longer exists. Please review and add it again.', {
-          variant: 'warning',
-        })
-        return
-      }
       enqueueSnackbar(err.response?.data?.error || err.message || String(err), { variant: 'error' })
     } finally {
       setSaving(false)
@@ -195,34 +104,20 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
       PaperProps={{
         className: 'calendar-new-order-dialog-paper',
         style: isMobile
-          ? {
-              width: '100vw',
-              maxWidth: '100vw',
-              margin: 0,
-              borderRadius: 0,
-            }
+          ? { width: '100vw', maxWidth: '100vw', margin: 0, borderRadius: 0 }
           : undefined,
       }}
     >
       <DialogTitle className="calendar-new-order-dialog-title">
         <h3 className="calendar-new-order-dialog-title-text">New Order</h3>
-        <IconButton
-          aria-label="close"
-          onClick={onClose}
-          className="calendar-new-order-dialog-close"
-        >
+        <IconButton aria-label="close" onClick={onClose} className="calendar-new-order-dialog-close">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
       <DialogContent className="calendar-new-order-dialog-content">
         <div className="calendar-new-order-dialog-content-wrap">
           <div className="flex-container calendar-new-order-flex-container">
-            <OrderEditor
-              order={order}
-              handleChange={handleOrderChange}
-              onOrderChange={handleOrderReplace}
-            />
-
+            <OrderEditor order={order} handleChange={handleOrderChange} onOrderChange={handleOrderReplace} />
             <OrderSettings handleChange={handleOrderChange} order={order} />
             <ValidationDisplay order={order} />
             <div className="order-operations">
@@ -232,20 +127,9 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
                   variant="contained"
                   size="small"
                   onClick={handleAddOrder}
-                  disabled={
-                    saving ||
-                    recovering ||
-                    Boolean(order?.deletedAt)
-                  }
+                  disabled={saving || Boolean(order?.deletedAt)}
                 >
-                  {recovering
-                    ? 'Recovering order'
-                    : saving
-                    ? 'Saving...'
-                    : order?.id
-                    ? 'Retry confirmation'
-                    : 'Add order'}{' '}
-                  <NoteAddIcon />
+                  {saving ? 'Saving...' : 'Add order'} <NoteAddIcon />
                 </Button>
               </div>
             </div>

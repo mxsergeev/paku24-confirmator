@@ -1,16 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { InputAdornment, TextField } from '@material-ui/core'
-import {
-  parseAndFormatDecimalString,
-  sanitizeDecimalString,
-} from '../../helpers/decimalStringHelpers'
-import { clearPricingOverride, setPricingOverride } from '../../shared/orderPricing'
+import { parseAndFormatDecimalString, sanitizeDecimalString } from '../../helpers/decimalStringHelpers'
 
-function toInputValue(overrideValue, automaticValue) {
-  const value = overrideValue === null || overrideValue === undefined
-    ? automaticValue
-    : overrideValue
-
+function overrideInputValue(value) {
   return value === null || value === undefined ? '' : String(value)
 }
 
@@ -25,43 +17,21 @@ export default function PricingOverrideField({
   style,
 }) {
   const overrideValue = order?.pricingOverrides?.[component]
-  const [inputValue, setInputValue] = useState(() =>
-    toInputValue(overrideValue, automaticValue),
-  )
-  const focused = useRef(false)
-  const dirty = useRef(false)
+  const [inputValue, setInputValue] = useState(() => overrideInputValue(overrideValue))
 
   useEffect(() => {
-    if (!focused.current) {
-      setInputValue(toInputValue(overrideValue, automaticValue))
-    }
-  }, [automaticValue, overrideValue])
+    setInputValue(overrideInputValue(overrideValue))
+  }, [overrideValue])
 
   if (!order) return null
 
   function commit() {
-    focused.current = false
-
-    if (!dirty.current) {
-      setInputValue(toInputValue(overrideValue, automaticValue))
-      return
-    }
-
     const { formatted, numeric } = parseAndFormatDecimalString(inputValue)
-    dirty.current = false
-
-    if (numeric === null) {
-      setInputValue(toInputValue(null, automaticValue))
-      if (overrideValue !== null && overrideValue !== undefined) {
-        onChange?.(clearPricingOverride(order, component))
-      }
-      return
-    }
-
     setInputValue(formatted)
-    if (overrideValue !== numeric) {
-      onChange?.(setPricingOverride(order, component, numeric))
-    }
+    onChange?.({
+      ...order,
+      pricingOverrides: { ...order.pricingOverrides, [component]: numeric },
+    })
   }
 
   return (
@@ -74,19 +44,11 @@ export default function PricingOverrideField({
       variant="outlined"
       size="small"
       value={inputValue}
-      onFocus={() => {
-        focused.current = true
-        dirty.current = false
-      }}
-      onChange={(event) => {
-        dirty.current = true
-        setInputValue(sanitizeDecimalString(event.target.value))
-      }}
+      onChange={(event) => setInputValue(sanitizeDecimalString(event.target.value))}
       onBlur={commit}
+      helperText={`Automatic: ${automaticValue} €`}
       inputProps={{ inputMode: 'decimal' }}
-      InputProps={{
-        endAdornment: <InputAdornment position="end">€</InputAdornment>,
-      }}
+      InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
       style={style}
     />
   )

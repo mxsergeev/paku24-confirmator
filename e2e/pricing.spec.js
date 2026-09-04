@@ -18,7 +18,7 @@ test('New Order keeps pricing controls compact and supports manual overrides', a
 
   const price = page.getByLabel('Price estimate')
   await expect(price).toBeVisible()
-  await expect(page.getByText('Automatic:', { exact: false })).toHaveCount(0)
+  await expect(page.getByText('Automatic:', { exact: false })).toHaveCount(2)
   await expect(page.getByText('Effective:', { exact: false })).toHaveCount(0)
 
   await price.fill('125,50')
@@ -145,7 +145,8 @@ test('automatic price estimate includes manual fees and boxes and recomputes aft
   const editDialog = page.getByRole('dialog').filter({
     has: page.getByRole('heading', { name: 'Edit order', exact: true }),
   })
-  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('100')
+  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('')
+  await expect(editDialog.getByText('Automatic: 100 €', { exact: true })).toBeVisible()
 
   await editDialog.getByRole('button', { name: 'Manage fees' }).click()
   const feeDialog = page.getByRole('dialog', { name: 'Fees' })
@@ -158,10 +159,10 @@ test('automatic price estimate includes manual fees and boxes and recomputes aft
   const boxesPrice = editDialog.getByLabel('Price', { exact: true })
   await boxesPrice.fill('12')
   await boxesPrice.blur()
-  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('127')
+  await expect(editDialog.getByText('Automatic: 127 €', { exact: true })).toBeVisible()
 
   await editDialog.locator('select[name="duration"]').selectOption('3')
-  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('177')
+  await expect(editDialog.getByText('Automatic: 177 €', { exact: true })).toBeVisible()
   await expect(boxesPrice).toHaveValue('12')
 
   await editDialog.getByRole('button', { name: 'Manage fees' }).click()

@@ -5,11 +5,9 @@ import {
   calculateAutomaticPricing,
   calculateBoxPeriod,
   calculateServiceSubtotal,
-  clearPricingOverride,
   getOrderPricing,
   orderTime,
   resolveServiceHourlyRate,
-  setPricingOverride,
 } from './orderPricing.js'
 
 const makeOrder = (overrides = {}) => ({
@@ -214,30 +212,6 @@ describe('effective pricing and manual overrides', () => {
       fees: [{ name: 'customFee', amount: 20 }],
       boxesPrice: 12,
     })
-  })
-
-  it('resumes composed pricing when only the total override is cleared', () => {
-    const order = makeOrder({
-      pricingOverrides: {
-        price: 250,
-        fees: [{ name: 'customFee', amount: 20 }],
-        boxesPrice: 12,
-      },
-    })
-
-    const cleared = clearPricingOverride(order, 'price')
-
-    expect(getOrderPricing(cleared).price).toBe(132)
-  })
-
-  it('sets and clears overrides without mutating the order', () => {
-    const order = makeOrder()
-    const changed = setPricingOverride(order, 'price', 220)
-    const cleared = clearPricingOverride(changed, 'price')
-
-    expect(order.pricingOverrides.price).toBeNull()
-    expect(changed.pricingOverrides.price).toBe(220)
-    expect(cleared.pricingOverrides.price).toBeNull()
   })
 
   it('recalculates automatic pricing after a booking change', () => {

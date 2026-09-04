@@ -45,8 +45,6 @@ export default function Calendar() {
   const calendarWrapRef = useRef(null)
   const calendarRef = useRef(null)
   const [showDeletedOrders, setShowDeletedOrders] = useState(() => {
-    if (typeof window === 'undefined') return false
-
     try {
       return window.localStorage.getItem(SHOW_DELETED_ORDERS_STORAGE_KEY) === 'true'
     } catch {
@@ -55,8 +53,6 @@ export default function Calendar() {
     }
   })
   const [calendarView, setCalendarView] = useState(() => {
-    if (typeof window === 'undefined') return DEFAULT_CALENDAR_VIEW
-
     try {
       const savedView = window.localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY)
       return AVAILABLE_CALENDAR_VIEWS.includes(savedView) ? savedView : DEFAULT_CALENDAR_VIEW
@@ -114,8 +110,6 @@ export default function Calendar() {
   }
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
     try {
       window.localStorage.setItem(
         SHOW_DELETED_ORDERS_STORAGE_KEY,
@@ -175,8 +169,6 @@ export default function Calendar() {
   }, [isMobile])
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
     try {
       window.localStorage.setItem(CALENDAR_VIEW_STORAGE_KEY, calendarView)
     } catch {

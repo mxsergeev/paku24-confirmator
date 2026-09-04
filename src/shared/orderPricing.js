@@ -9,7 +9,6 @@ import {
 import { calculateAutomaticFees } from './fees.js'
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
-const PRICING_COMPONENTS = ['price', 'fees', 'boxesPrice']
 
 function finiteNumberOrNull(value) {
   if (value === null || value === undefined) return null
@@ -117,45 +116,6 @@ function getOrderPricing(order) {
   return { price, fees, boxesPrice }
 }
 
-function setPricingOverride(order, component, value) {
-  if (!order || typeof order !== 'object') throw new Error('Order must be an object')
-  if (!PRICING_COMPONENTS.includes(component)) {
-    throw new Error(`Unknown pricing component: ${String(component)}`)
-  }
-
-  const normalized = component === 'fees' ? normalizeFeeList(value, 'Manual fees') : finiteNumberOrNull(value)
-  if (normalized === null) throw new Error(`Invalid pricingOverrides.${component}`)
-
-  return {
-    ...order,
-    pricingOverrides: {
-      price: null,
-      fees: null,
-      boxesPrice: null,
-      ...(order.pricingOverrides || {}),
-      [component]: normalized,
-    },
-  }
-}
-
-function clearPricingOverride(order, component) {
-  if (!order || typeof order !== 'object') throw new Error('Order must be an object')
-  if (!PRICING_COMPONENTS.includes(component)) {
-    throw new Error(`Unknown pricing component: ${String(component)}`)
-  }
-
-  return {
-    ...order,
-    pricingOverrides: {
-      price: null,
-      fees: null,
-      boxesPrice: null,
-      ...(order.pricingOverrides || {}),
-      [component]: null,
-    },
-  }
-}
-
 function orderTime(order) {
   const date = parseInstant(order?.date, 'order date')
   return formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)
@@ -169,7 +129,5 @@ export {
   calculateAutomaticPricing,
   getOrderPricing,
   normalizeFeeList,
-  setPricingOverride,
-  clearPricingOverride,
   orderTime,
 }

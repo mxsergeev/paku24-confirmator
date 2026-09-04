@@ -27,11 +27,14 @@ test('unconfirmed orders can be confirmed through the real order dialog', async 
   })
 
   await page.goto(`/app/calendar/order/${order.id}`)
+  await page.request.delete('/api/test/calendar')
+  await page.request.post('/api/test/calendar/fail-next', { data: { operation: 'update' } })
   await page.getByRole('button', { name: 'Confirm order' }).click()
   const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Are you sure you want to confirm this order?' })
   await confirmDialog.getByRole('button', { name: 'Confirm' }).click()
 
   await expect.poll(async () => (await database.readOrder(order.id))?.confirmed).toBe(true)
+  await expect(page.getByText('Order was saved, but Google Calendar could not be synchronized.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Cancel order' })).toBeVisible()
 })
 

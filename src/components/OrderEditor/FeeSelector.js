@@ -13,7 +13,6 @@ import {
   RadioGroup,
 } from '@material-ui/core'
 import { calculateAutomaticFees, getAvailableFees } from '../../shared/fees'
-import { clearPricingOverride, setPricingOverride } from '../../shared/orderPricing'
 
 function feeLabel(fee) {
   return `${fee.label || fee.name} (${fee.amount}€)`
@@ -42,11 +41,10 @@ export default function FeeSelector({ order, onChange }) {
   const feeOptions = getFeeOptions(order, manualFees)
 
   function selectMode(mode) {
-    if (mode === 'manual') {
-      onChange?.(setPricingOverride(order, 'fees', selectedFees))
-    } else {
-      onChange?.(clearPricingOverride(order, 'fees'))
-    }
+    onChange?.({
+      ...order,
+      pricingOverrides: { ...order.pricingOverrides, fees: mode === 'manual' ? selectedFees : null },
+    })
   }
 
   function toggleFee(fee) {
@@ -57,7 +55,10 @@ export default function FeeSelector({ order, onChange }) {
       ? manualFees.filter((item) => item.name !== fee.name)
       : manualFees.concat(fee)
 
-    onChange?.(setPricingOverride(order, 'fees', nextFees))
+    onChange?.({
+      ...order,
+      pricingOverrides: { ...order.pricingOverrides, fees: nextFees },
+    })
   }
 
   return (

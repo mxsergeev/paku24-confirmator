@@ -190,86 +190,54 @@ test('automatic and explicit event colors survive cancel and restore', async ({ 
   await expect(orderEventColor).toHaveCSS('background-color', 'rgb(214, 0, 0)')
 })
 
-test('pending new orders retry by ID and stale IDs restore the draft', async ({ page, database }) => {
-  let confirmAttempts = 0
+test('manual order creation uses one request and confirms the Mongo row', async ({ page, database }) => {
   let addRequests = 0
-  await page.route('**/api/order-pool/v2/confirm/*', async (route) => {
-    confirmAttempts += 1
-    if (confirmAttempts === 1) {
-      await route.fulfill({
-        status: 503,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: 'Temporary calendar failure' }),
-      })
-      return
-    }
-    await route.continue()
-  })
+  let confirmRequests = 0
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().includes('/api/order-pool/v2/add')) {
-      addRequests += 1
-    }
+    if (request.method() === 'POST' && request.url().includes('/api/order-pool/v2/add')) addRequests += 1
+    if (request.method() === 'PUT' && request.url().includes('/api/order-pool/v2/confirm/')) confirmRequests += 1
   })
 
   await page.goto('/app/calendar')
   await page.getByRole('button', { name: 'Create order' }).click()
-  await page.locator('input[name="name"]').fill('Pending Customer')
+  await page.locator('input[name="name"]').fill('One request customer')
   await page.locator('input[name="phone"]').fill('+358401234567')
-
-  const addResponsePromise = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response.url().includes('/api/order-pool/v2/add'),
-  )
+  const addResponsePromise = page.waitForResponse((response) =>
+    response.request().method() === 'POST' && response.url().includes('/api/order-pool/v2/add'))
   await page.getByRole('button', { name: /add order/i }).click()
   const addResponse = await addResponsePromise
   const createdId = (await addResponse.json()).id
-  await expect(page.getByRole('button', { name: /retry confirmation/i })).toBeVisible()
-  expect(confirmAttempts).toBe(1)
-  expect(addRequests).toBe(1)
-  expect((await database.readOrder(createdId))?.confirmed).toBe(true)
 
-  await page.reload()
-  await page.getByRole('button', { name: 'Create order' }).click()
-  await expect(page.locator('input[name="name"]')).toHaveValue('Pending Customer')
-  await expect(page.getByRole('button', { name: /retry confirmation/i })).toBeVisible()
-  await page.getByRole('button', { name: /retry confirmation/i }).click()
+  await expect(page.getByRole('heading', { name: 'New Order', exact: true })).toBeHidden()
   await expect.poll(async () => (await database.readOrder(createdId))?.confirmed).toBe(true)
-  expect(confirmAttempts).toBe(2)
   expect(addRequests).toBe(1)
+  expect(confirmRequests).toBe(0)
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('new_order'))).toBeNull()
+})
 
+test('manual creation warns on Calendar failure, clears the draft, and converges on a later edit', async ({ page, database }) => {
+  await page.request.delete('/api/test/calendar')
+  await page.request.post('/api/test/calendar/fail-next', { data: { operation: 'update' } })
+  await page.goto('/app/calendar')
   await page.getByRole('button', { name: 'Create order' }).click()
-  await expect(page.getByRole('button', { name: /add order/i })).toBeVisible()
-  await expect(page.getByRole('button', { name: /retry confirmation/i })).toHaveCount(0)
-  await page.getByRole('button', { name: 'close' }).click()
+  await page.locator('input[name="name"]').fill('Calendar warning new customer')
+  await page.locator('input[name="phone"]').fill('+358401234567')
+  const addResponsePromise = page.waitForResponse((response) =>
+    response.request().method() === 'POST' && response.url().includes('/api/order-pool/v2/add'))
+  await page.getByRole('button', { name: /add order/i }).click()
+  const addResponse = await addResponsePromise
+  const body = await addResponse.json()
 
-  await page.reload()
-  await page.evaluate(() => {
-    localStorage.setItem('pending_new_order_id', '66c000000000000000000099')
-    localStorage.setItem(
-      'new_order',
-      JSON.stringify({
-        id: null,
-        name: 'Stale pending draft',
-        phone: '+358401234567',
-      }),
-    )
-  })
-  await page.reload()
-  const missingOrderResponsePromise = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'GET' &&
-      response.url().includes('/api/order-pool/v2/66c000000000000000000099'),
-  )
-  await page.getByRole('button', { name: 'Create order' }).click()
-  expect((await missingOrderResponsePromise).status()).toBe(404)
-  await expect(page.locator('input[name="name"]')).toHaveValue('Stale pending draft')
-  await expect(page.getByRole('button', { name: /add order/i })).toBeEnabled()
-  expect(addRequests).toBe(1)
-  expect(
-    await page.evaluate(() => ({
-      pendingId: localStorage.getItem('pending_new_order_id'),
-      draftId: JSON.parse(localStorage.getItem('new_order')).id,
-    })),
-  ).toEqual({ pendingId: null, draftId: null })
+  expect(body.warning.code).toBe('CALENDAR_SYNC_FAILED')
+  await expect(page.getByText('Order was saved, but Google Calendar could not be synchronized.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New Order', exact: true })).toBeHidden()
+  await expect.poll(async () => (await database.readOrder(body.id))?.confirmed).toBe(true)
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('new_order'))).toBeNull()
+
+  await page.goto(`/app/calendar/order/${body.id}`)
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.locator('input[name="name"]').fill('Calendar warning recovered customer')
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await expect.poll(async () => (await database.readOrder(body.id))?.name).toBe('Calendar warning recovered customer')
+  await expect.poll(async () => (await page.request.get('/api/test/calendar').then((response) => response.json())).events).toHaveLength(1)
 })

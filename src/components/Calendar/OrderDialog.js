@@ -141,6 +141,9 @@ export default function OrderDialog({
       const response = await ordersAPI.confirm(order.id)
       await onOrderUpdate?.()
       if (response.message) enqueueSnackbar(response.message)
+      if (response.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+      }
     } catch (err) {
       enqueueSnackbar('Failed to confirm order. Please try again.', { variant: 'error' })
     } finally {
@@ -209,6 +212,9 @@ export default function OrderDialog({
         response.message ||
           (deleteMode === 'permanent' ? 'Order permanently deleted.' : 'Order marked as deleted.')
       )
+      if (response.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+      }
 
       setDeleteConfirmOpen(false)
       setDeleteMode('soft')
