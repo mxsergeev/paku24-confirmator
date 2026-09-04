@@ -84,6 +84,40 @@ describe('calendar reconciliation', () => {
     expect(result.calendarEventIds).toEqual(order.calendarEventIds)
   })
 
+  it('updates existing canceled events with the canceled presentation', async () => {
+    const canceledEvents = [
+      { role: 'main', summary: '(CANCELED) move', colorId: '8' },
+      { role: 'boxDelivery', summary: '(CANCELED) delivery', colorId: '8' },
+      { role: 'boxReturn', summary: '(CANCELED) return', colorId: '8' },
+    ]
+    mocks.makeGoogleEventObjects.mockReturnValue(canceledEvents)
+
+    await syncOrderToCalendar({
+      _id: ORDER_ID,
+      canceledAt: new Date('2026-03-10T07:00:00.000Z'),
+      calendarEventIds: {
+        main: 'main-123',
+        boxDelivery: 'delivery-123',
+        boxReturn: 'return-123',
+      },
+    })
+
+    expect(mocks.updateEventInCalendar).toHaveBeenCalledTimes(3)
+    expect(mocks.updateEventInCalendar).toHaveBeenNthCalledWith(1, 'main-123', {
+      summary: '(CANCELED) move',
+      colorId: '8',
+    })
+    expect(mocks.updateEventInCalendar).toHaveBeenNthCalledWith(2, 'delivery-123', {
+      summary: '(CANCELED) delivery',
+      colorId: '8',
+    })
+    expect(mocks.updateEventInCalendar).toHaveBeenNthCalledWith(3, 'return-123', {
+      summary: '(CANCELED) return',
+      colorId: '8',
+    })
+    expect(mocks.addEventToCalendar).not.toHaveBeenCalled()
+  })
+
   it('rejects deleted orders before touching Google Calendar', async () => {
     const deletedOrder = {
       _id: ORDER_ID,

@@ -56,6 +56,45 @@ describe('makeGoogleEventObjects', () => {
     expect(explicitEvents[0].colorId).toBe('11')
   })
 
+  test('marks canceled events without changing the stored color preference', () => {
+    const order = {
+      ...exampleOrder,
+      eventColor: '11',
+      canceledAt: new Date('2026-03-10T07:00:00.000Z'),
+      boxes: {
+        deliveryDate: '2026-03-12',
+        returnDate: '2026-03-20',
+        amount: 10,
+      },
+    }
+
+    const events = makeGoogleEventObjects(order)
+
+    expect(events).toHaveLength(3)
+    expect(events.every((event) => event.summary.startsWith('(CANCELED) '))).toBe(true)
+    expect(events.every((event) => event.colorId === '8')).toBe(true)
+    expect(order.eventColor).toBe('11')
+    expect(order.canceledAt).toEqual(new Date('2026-03-10T07:00:00.000Z'))
+  })
+
+  test('restored events use the normal summary and preference colors', () => {
+    const events = makeGoogleEventObjects({
+      ...exampleOrder,
+      eventColor: '11',
+      canceledAt: null,
+      boxes: {
+        deliveryDate: '2026-03-12',
+        returnDate: '2026-03-20',
+        amount: 10,
+      },
+    })
+
+    expect(events[0].summary).not.toContain('(CANCELED)')
+    expect(events[0].colorId).toBe('11')
+    expect(events.slice(1).every((event) => !event.summary.includes('(CANCELED)'))).toBe(true)
+    expect(events.slice(1).every((event) => event.colorId === '1')).toBe(true)
+  })
+
   test('does not create box events until both box dates are available', () => {
     const events = makeGoogleEventObjects({
       ...exampleOrder,

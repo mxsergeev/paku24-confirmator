@@ -26,6 +26,7 @@ const CREDENTIALS_PATH = path.join(process.cwd(), `credentials/${credsFileName}`
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first time.
 const TOKEN_PATH = path.join(process.cwd(), `credentials/${tokenFileName}`)
+const CANCELED_EVENT_COLOR_ID = '8'
 
 /**
  * Serializes token to a file compatible with GoogleAuth.fromJSON.
@@ -107,6 +108,14 @@ function formatCalendarLocation(address) {
   return formatAddressLocation(address)
 }
 
+function makeCalendarSummary(order, summary) {
+  return order.canceledAt ? `(CANCELED) ${summary}` : summary
+}
+
+function makeCalendarColor(order, normalColor) {
+  return order.canceledAt ? CANCELED_EVENT_COLOR_ID : normalColor
+}
+
 /**
  * Creates move, boxes delivery and pickup event objects for Google Calendar API.
  * @param {Object} eventInfo
@@ -126,9 +135,9 @@ function makeGoogleEventObjects(order) {
   const events = [
     {
       role: 'main',
-      summary: entries.move.title,
+      summary: makeCalendarSummary(order, entries.move.title),
       description: entries.move.description,
-      colorId: resolveEventColorId(order),
+      colorId: makeCalendarColor(order, resolveEventColorId(order)),
       location: [formatCalendarLocation(order.address)]
         .concat((order.extraAddresses || []).map((ea) => formatCalendarLocation(ea)))
         .concat([formatCalendarLocation(order.destination)])
@@ -169,9 +178,9 @@ function makeGoogleEventObjects(order) {
 
       events.push({
         role: f === 'deliveryDate' ? 'boxDelivery' : 'boxReturn',
-        summary: entries[f].title,
+        summary: makeCalendarSummary(order, entries[f].title),
         description: entries[f].description,
-        colorId: '1',
+        colorId: makeCalendarColor(order, '1'),
         location,
         start: !dateOnly
           ? {

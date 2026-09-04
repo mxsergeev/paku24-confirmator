@@ -32,6 +32,7 @@ test('cancel only and cancel with notifications preserve lifecycle state', async
     name: 'Cancellation customer',
     date: dateInCurrentHelsinkiMonth(10),
     confirmed: true,
+    eventColor: '11',
   })
 
   await page.goto(`/app/calendar/order/${order.id}`)
@@ -43,14 +44,20 @@ test('cancel only and cancel with notifications preserve lifecycle state', async
   await page.getByRole('button', { name: 'Cancel order' }).click()
   const cancelDialog = page.getByRole('dialog').filter({ hasText: 'Choose whether to cancel only or cancel and notify the customer.' })
   await cancelDialog.getByRole('button', { name: 'Cancel only' }).click()
-  await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeTruthy()
+  await expect.poll(async () => {
+    const saved = await database.readOrder(order.id)
+    return { canceledAt: Boolean(saved?.canceledAt), eventColor: saved?.eventColor }
+  }).toEqual({ canceledAt: true, eventColor: '11' })
   await expect.poll(async () => {
     const response = await page.evaluate(() => fetch('/api/test/communications').then((result) => result.json()))
     return response
   }).toEqual({ email: [], sms: [] })
 
   await page.getByRole('button', { name: 'Restore' }).click()
-  await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeFalsy()
+  await expect.poll(async () => {
+    const saved = await database.readOrder(order.id)
+    return { canceledAt: Boolean(saved?.canceledAt), eventColor: saved?.eventColor }
+  }).toEqual({ canceledAt: false, eventColor: '11' })
 
   await page.getByRole('button', { name: 'Cancel order' }).click()
   const cancellationEmailResponse = page.waitForResponse(
