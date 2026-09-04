@@ -62,8 +62,10 @@ describe('makeGoogleEventObjects', () => {
       eventColor: '11',
       canceledAt: new Date('2026-03-10T07:00:00.000Z'),
       boxes: {
-        deliveryDate: '2026-03-12',
-        returnDate: '2026-03-20',
+        deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
+        deliveryHasTime: false,
+        returnDate: new Date('2026-03-20T00:00:00.000Z'),
+        returnHasTime: false,
         amount: 10,
       },
     }
@@ -83,8 +85,10 @@ describe('makeGoogleEventObjects', () => {
       eventColor: '11',
       canceledAt: null,
       boxes: {
-        deliveryDate: '2026-03-12',
-        returnDate: '2026-03-20',
+        deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
+        deliveryHasTime: false,
+        returnDate: new Date('2026-03-20T00:00:00.000Z'),
+        returnHasTime: false,
         amount: 10,
       },
     })
@@ -131,7 +135,9 @@ describe('makeGoogleEventObjects', () => {
       destination: { street: 'Satamakatu 2', index: '00160', city: 'Helsinki' },
       boxes: {
         deliveryDate: '2026-03-12T07:00:00.000Z',
+        deliveryHasTime: true,
         returnDate: '2026-03-20T07:00:00.000Z',
+        returnHasTime: true,
         amount: 10,
       },
     })
@@ -154,7 +160,9 @@ describe('makeGoogleEventObjects', () => {
       duration: 2,
       boxes: {
         deliveryDate: new Date('2026-03-12T07:00:00.000Z'),
+        deliveryHasTime: true,
         returnDate: new Date('2026-03-20T07:00:00.000Z'),
+        returnHasTime: true,
         amount: 10,
       },
       pricingOverrides: {
@@ -179,7 +187,9 @@ describe('makeGoogleEventObjects', () => {
       ...dateBoxes,
       boxes: {
         deliveryDate: '2026-03-12T10:00:00+03:00',
+        deliveryHasTime: true,
         returnDate: '2026-03-20T10:00:00+03:00',
+        returnHasTime: true,
         amount: 10,
       },
     })
@@ -195,7 +205,13 @@ describe('makeGoogleEventObjects', () => {
 
     const dateOnlyEvents = makeGoogleEventObjects({
       ...dateBoxes,
-      boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount: 10 },
+      boxes: {
+        deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
+        deliveryHasTime: false,
+        returnDate: new Date('2026-03-20T00:00:00.000Z'),
+        returnHasTime: false,
+        amount: 10,
+      },
     })
 
     expect(dateOnlyEvents[1].start).toEqual({ date: '2026-03-12' })

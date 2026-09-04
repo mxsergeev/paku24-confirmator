@@ -37,7 +37,9 @@ describe('normalizeWordPressOrderPayload', () => {
     expect(order.boxes).toEqual({
       amount: 10,
       deliveryDate: new Date('2026-01-16T07:00:00.000Z'),
+      deliveryHasTime: true,
       returnDate: new Date('2026-01-24T07:00:00.000Z'),
+      returnHasTime: true,
     })
     expect(order).not.toHaveProperty('price')
     expect(order).not.toHaveProperty('fees')
@@ -71,13 +73,21 @@ describe('normalizeWordPressOrderPayload', () => {
     expect(emptyBoxesOrder.boxes).toEqual({
       amount: 0,
       deliveryDate: new Date('2026-01-15T07:00:00.000Z'),
+      deliveryHasTime: true,
       returnDate: new Date('2026-01-15T07:00:00.000Z'),
+      returnHasTime: true,
     })
     expect(() => createWordPressOrder(emptyBoxesOrder, wordpressPayload({ boxes: {} }))).not.toThrow()
     const boxes = normalizeWordPressOrderPayload(wordpressPayload({ boxes: {
       amount: '0', deliveryDate: '2026-01-16', returnDate: '2026-01-24',
     } })).boxes
-    expect(boxes).toEqual({ amount: 0, deliveryDate: '2026-01-16', returnDate: '2026-01-24' })
+    expect(boxes).toEqual({
+      amount: 0,
+      deliveryDate: new Date('2026-01-16T00:00:00.000Z'),
+      deliveryHasTime: false,
+      returnDate: new Date('2026-01-24T00:00:00.000Z'),
+      returnHasTime: false,
+    })
   })
 
   it('ignores source-only box pricing when determining whether boxes are supplied', () => {
@@ -93,7 +103,9 @@ describe('normalizeWordPressOrderPayload', () => {
     expect(normalized.boxes).toEqual({
       amount: 0,
       deliveryDate: new Date('2026-01-15T07:00:00.000Z'),
+      deliveryHasTime: true,
       returnDate: new Date('2026-01-15T07:00:00.000Z'),
+      returnHasTime: true,
     })
     expect(order.originalOrder.boxes).toEqual(raw.boxes)
   })
@@ -113,8 +125,10 @@ describe('normalizeWordPressOrderPayload', () => {
 
     expect(order.boxes).toEqual({
       amount: 10,
-      deliveryDate: '2026-01-16',
-      returnDate: '2026-01-24',
+      deliveryDate: new Date('2026-01-16T00:00:00.000Z'),
+      deliveryHasTime: false,
+      returnDate: new Date('2026-01-24T00:00:00.000Z'),
+      returnHasTime: false,
     })
     expect(order.boxes).not.toHaveProperty('metadata')
   })

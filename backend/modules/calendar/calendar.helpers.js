@@ -6,8 +6,7 @@ import { formatAddressLocation } from '../../../src/shared/render/text.js'
 import {
   HELSINKI_TIMEZONE,
   calendarDateToUtc,
-  isDateOnly,
-  parseCalendarDate,
+  formatHelsinkiCalendarDate,
   parseInstant,
 } from '../../../src/shared/date-fns-tz.js'
 import { makeCalendarEntries } from '../../../src/shared/render/googleCalendar.js'
@@ -98,7 +97,7 @@ async function getCalendar() {
 }
 
 function nextCalendarDate(value, fieldName) {
-  const date = calendarDateToUtc(value, fieldName)
+  const date = calendarDateToUtc(formatHelsinkiCalendarDate(value, fieldName), fieldName)
   date.setUTCDate(date.getUTCDate() + 1)
   return date.toISOString().slice(0, 10)
 }
@@ -163,12 +162,12 @@ function makeGoogleEventObjects(order) {
     order.boxes.returnDate
   ) {
     ;['deliveryDate', 'returnDate'].forEach((f) => {
-      const dateStr = order.boxes[f]
+      const dateValue = order.boxes[f]
       const fieldName = f === 'deliveryDate' ? 'box delivery date' : 'box return date'
-      const dateOnly = isDateOnly(dateStr)
-      if (dateOnly) parseCalendarDate(dateStr, fieldName)
-      const parsedDate = dateOnly ? null : parseInstant(dateStr, fieldName)
-      const dateTime = parsedDate?.toISOString()
+      const hasTime = order.boxes[f === 'deliveryDate' ? 'deliveryHasTime' : 'returnHasTime']
+      const parsedDate = parseInstant(dateValue, fieldName)
+      const dateTime = parsedDate.toISOString()
+      const calendarDate = formatHelsinkiCalendarDate(dateValue, fieldName)
 
       let location = ''
 
@@ -182,22 +181,22 @@ function makeGoogleEventObjects(order) {
         description: entries[f].description,
         colorId: makeCalendarColor(order, '1'),
         location,
-        start: !dateOnly
+        start: hasTime
           ? {
               dateTime,
               timeZone: HELSINKI_TIMEZONE,
             }
           : {
-              date: dateStr,
+              date: calendarDate,
             },
-        end: !dateOnly
+        end: hasTime
           ? {
               dateTime: dayjs(parsedDate).add(1, 'hour').toISOString(),
               timeZone: HELSINKI_TIMEZONE,
             }
           : {
-              date: nextCalendarDate(dateStr, `${fieldName} end`),
-          },
+              date: nextCalendarDate(dateValue, `${fieldName} end`),
+            },
         reminders: {
           useDefault: false,
         },

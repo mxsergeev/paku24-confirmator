@@ -2,7 +2,11 @@ import distances from '../data/distances.json' with { type: 'json' }
 import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
 import services from '../data/services.json' with { type: 'json' }
 import colors from '../data/colors.json' with { type: 'json' }
-import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
+import {
+  calendarDateToUtc,
+  formatHelsinkiCalendarDate,
+  parseInstant,
+} from './date-fns-tz.js'
 import { normalizeFeeList } from './orderPricing.js'
 import {
   cloneValue,
@@ -34,7 +38,9 @@ const BOOKING_FIELDS = [
 const CALENDAR_EVENT_ROLES = ['main', 'boxDelivery', 'boxReturn']
 const BOX_FIELDS = [
   'deliveryDate',
+  'deliveryHasTime',
   'returnDate',
+  'returnHasTime',
   'amount',
 ]
 const BOX_NUMBER_FIELDS = ['amount']
@@ -59,7 +65,9 @@ function makeAddress() {
 function makeBoxes(now = new Date()) {
   return {
     deliveryDate: new Date(now.getTime()),
+    deliveryHasTime: true,
     returnDate: new Date(now.getTime()),
+    returnHasTime: true,
     amount: 0,
   }
 }
@@ -113,13 +121,11 @@ function makeDefaultState() {
   }
 }
 
-function normalizeBoxDate(value, fieldName) {
-  if (isDateOnly(value)) {
-    parseCalendarDate(value, fieldName)
-    return value
-  }
+function normalizeBoxDate(value, fieldName, hasTime) {
+  const date = parseInstant(value, fieldName)
+  if (hasTime) return date
 
-  return parseInstant(value, fieldName)
+  return calendarDateToUtc(formatHelsinkiCalendarDate(date, fieldName), fieldName)
 }
 
 function normalizePricingValue(component, value, fieldName) {
@@ -238,7 +244,7 @@ function normalizeDuration(value, field = 'duration') {
 
 function normalizeBoxes(value, field = 'boxes') {
   requireObject(value, field)
-  for (const key of ['deliveryDate', 'returnDate', 'amount']) {
+  for (const key of ['deliveryDate', 'deliveryHasTime', 'returnDate', 'returnHasTime', 'amount']) {
     if (!hasOwn(value, key) || value[key] === undefined || value[key] === null) {
       throw new OrderValidationError(`Invalid ${field}.${key}: required`)
     }
@@ -257,9 +263,22 @@ function normalizeBoxes(value, field = 'boxes') {
     boxes[boxField] = number
   }
 
-  for (const dateField of ['deliveryDate', 'returnDate']) {
-    boxes[dateField] = normalizeBoxDate(boxes[dateField], `${field}.${dateField}`)
+  for (const timeField of ['deliveryHasTime', 'returnHasTime']) {
+    if (typeof boxes[timeField] !== 'boolean') {
+      throw new OrderValidationError(`Invalid ${field}.${timeField}`)
+    }
   }
+
+  boxes.deliveryDate = normalizeBoxDate(
+    boxes.deliveryDate,
+    `${field}.deliveryDate`,
+    boxes.deliveryHasTime,
+  )
+  boxes.returnDate = normalizeBoxDate(
+    boxes.returnDate,
+    `${field}.returnDate`,
+    boxes.returnHasTime,
+  )
 
   return boxes
 }

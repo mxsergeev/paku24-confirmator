@@ -69,14 +69,17 @@ describe('order model boundaries', () => {
       date: source.date.toISOString(),
       boxes: {
         ...source.boxes,
-        deliveryDate: '2026-03-15',
-        returnDate: '2026-03-20T07:00:00.000Z',
+        deliveryDate: new Date('2026-03-15T20:00:00.000Z'),
+        deliveryHasTime: false,
+        returnDate: new Date('2026-03-20T07:00:00.000Z'),
+        returnHasTime: true,
       },
       pricingOverrides: undefined,
     })
 
     expect(order.date).toEqual(source.date)
-    expect(order.boxes.deliveryDate).toBe('2026-03-15')
+    expect(order.boxes.deliveryDate).toEqual(new Date('2026-03-15T00:00:00.000Z'))
+    expect(order.boxes.deliveryHasTime).toBe(false)
     expect(order.boxes.returnDate).toEqual(new Date('2026-03-20T07:00:00.000Z'))
     expect(order.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
   })
@@ -107,7 +110,9 @@ describe('order model boundaries', () => {
     expect(patch.boxes).toEqual({
       amount: 5,
       deliveryDate: new Date('2026-06-16T06:00:00.000Z'),
+      deliveryHasTime: true,
       returnDate: new Date('2026-06-24T06:00:00.000Z'),
+      returnHasTime: true,
     })
   })
 

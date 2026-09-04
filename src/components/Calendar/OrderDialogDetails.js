@@ -40,6 +40,9 @@ export default function OrderDialogDetails({
                   value: formatBoxDate(
                     boxDate,
                     eventType === 'boxDelivery' ? 'box delivery date' : 'box return date',
+                    eventType === 'boxDelivery'
+                      ? order.boxes.deliveryHasTime
+                      : order.boxes.returnHasTime,
                   ),
                 },
               ]

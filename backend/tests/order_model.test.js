@@ -33,7 +33,9 @@ const makeOrder = (overrides = {}) => ({
   destination: address,
   boxes: {
     deliveryDate: new Date('2026-03-12T07:00:00.000Z'),
-    returnDate: '2026-03-20',
+    deliveryHasTime: true,
+    returnDate: new Date('2026-03-20T00:00:00.000Z'),
+    returnHasTime: false,
     amount: 10,
   },
   name: 'WordPress Customer',
@@ -67,11 +69,13 @@ describe('Order Mongoose schema', () => {
     expect(Order.schema.path('originalOrder').instance).toBe('Mixed')
   })
 
-  it('keeps date-only boxes as strings while casting datetime boxes to Date', () => {
+  it('persists both box dates as Dates with explicit time modes', () => {
     const order = new Order(makeOrder())
 
     expect(order.boxes.deliveryDate).toBeInstanceOf(Date)
-    expect(order.boxes.returnDate).toBe('2026-03-20')
+    expect(order.boxes.deliveryHasTime).toBe(true)
+    expect(order.boxes.returnDate).toBeInstanceOf(Date)
+    expect(order.boxes.returnHasTime).toBe(false)
     expect(order.validateSync()).toBeUndefined()
   })
 
@@ -95,8 +99,6 @@ describe('Order Mongoose schema', () => {
   })
 
   it.each([
-    ['date-only delivery date', { boxes: { deliveryDate: '2026-02-29', returnDate: '2026-03-20', amount: 1 } }, /boxes\.deliveryDate/],
-    ['timezone-less box datetime', { boxes: { deliveryDate: '2026-03-12T09:00:00', returnDate: '2026-03-20', amount: 1 } }, /boxes\.deliveryDate/],
     ['manual price', { pricingOverrides: { price: 'not-a-number', fees: null, boxesPrice: null } }, /pricingOverrides\.price/],
   ])('rejects invalid %s', (_name, overrides, errorPattern) => {
     const error = new Order(makeOrder(overrides)).validateSync()

@@ -1,72 +1,4 @@
 import mongoose from 'mongoose'
-import { isDateOnly, parseCalendarDate, parseInstant } from '../../src/shared/date-fns-tz.js'
-
-/**
- * A box date is either a calendar date (which must remain a string) or an
- * absolute instant (which is persisted as a Date). A regular Mongoose Date
- * path cannot represent both because it casts date-only strings to midnight.
- */
-class DateOrDateOnly extends mongoose.SchemaType {
-  constructor(key, options) {
-    super(key, options, 'DateOrDateOnly')
-  }
-
-  cast(value) {
-    if (value === null || value === undefined) return value
-
-    if (value instanceof Date) {
-      if (Number.isNaN(value.getTime())) {
-        throw new mongoose.Error.CastError(this.instance, value, this.path)
-      }
-      return value
-    }
-
-    if (typeof value === 'string') {
-      if (isDateOnly(value)) {
-        try {
-          parseCalendarDate(value, this.path)
-        } catch {
-          throw new mongoose.Error.CastError(this.instance, value, this.path)
-        }
-        return value
-      }
-
-      try {
-        return parseInstant(value, this.path)
-      } catch {
-        throw new mongoose.Error.CastError(this.instance, value, this.path)
-      }
-    }
-
-    throw new mongoose.Error.CastError(this.instance, value, this.path)
-  }
-}
-
-// SchemaType does not provide conditional handlers by default. Keep query
-// casting on this type so ISO instants become Dates while calendar dates stay
-// date-only strings, just as they do when assigning a document value.
-function castDateOrDateOnly(value) {
-  return this.cast(value)
-}
-
-function castDateOrDateOnlyArray(value) {
-  const values = Array.isArray(value) ? value : [value]
-  return values.map((item) => this.cast(item))
-}
-
-DateOrDateOnly.prototype.$conditionalHandlers = {
-  $eq: castDateOrDateOnly,
-  $ne: castDateOrDateOnly,
-  $gt: castDateOrDateOnly,
-  $gte: castDateOrDateOnly,
-  $lt: castDateOrDateOnly,
-  $lte: castDateOrDateOnly,
-  $in: castDateOrDateOnlyArray,
-  $nin: castDateOrDateOnlyArray,
-}
-
-DateOrDateOnly.schemaName = 'DateOrDateOnly'
-mongoose.Schema.Types.DateOrDateOnly = DateOrDateOnly
 
 function finiteNumberPath(options = {}) {
   return {
@@ -132,8 +64,10 @@ const feeSchema = nestedSchema({
 })
 
 const boxesSchema = nestedSchema({
-  deliveryDate: { type: DateOrDateOnly },
-  returnDate: { type: DateOrDateOnly },
+  deliveryDate: Date,
+  deliveryHasTime: Boolean,
+  returnDate: Date,
+  returnHasTime: Boolean,
   amount: finiteNumberPath(),
 })
 

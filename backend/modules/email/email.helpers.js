@@ -1,9 +1,5 @@
 import termsData from './email.data.terms.json' with { type: 'json' }
-import {
-  formatHelsinkiInstant,
-  isDateOnly,
-  parseCalendarDate,
-} from '../../../src/shared/date-fns-tz.js'
+import { formatHelsinkiInstant } from '../../../src/shared/date-fns-tz.js'
 import { SOURCE_EMAIL, COMPANY_PHONE } from '../../utils/config.js'
 import { getOrderPricing } from '../../../src/shared/orderPricing.js'
 
@@ -127,12 +123,11 @@ function hasValue(value) {
   return Boolean(value)
 }
 
-function formatDate(value, lang, fieldName = 'date') {
+function formatDate(value, lang, fieldName = 'date', hasTime = true) {
   if (!value) return ''
 
-  if (isDateOnly(value)) {
-    parseCalendarDate(value, fieldName)
-    const [year, month, day] = value.split('-')
+  if (!hasTime) {
+    const [year, month, day] = formatHelsinkiInstant(value, 'yyyy-MM-dd', fieldName).split('-')
     return lang === 'en' ? `${year}-${month}-${day}` : `${day}.${month}.${year}`
   }
 
@@ -196,12 +191,12 @@ function renderBoxesHtml(boxes, boxesPrice, t, locale) {
 
   const deliveryDate = boxes?.deliveryDate
   if (deliveryDate) {
-    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.deliveryDate)}: ${escapeHtml(formatDate(deliveryDate, locale, 'box delivery date'))}</td></tr>`
+    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.deliveryDate)}: ${escapeHtml(formatDate(deliveryDate, locale, 'box delivery date', boxes.deliveryHasTime))}</td></tr>`
   }
 
   const returnDate = boxes?.returnDate
   if (returnDate) {
-    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.returnDate)}: ${escapeHtml(formatDate(returnDate, locale, 'box return date'))}</td></tr>`
+    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.returnDate)}: ${escapeHtml(formatDate(returnDate, locale, 'box return date', boxes.returnHasTime))}</td></tr>`
   }
 
   html += '</table>'

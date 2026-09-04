@@ -77,8 +77,10 @@ describe('buildConfirmationEmail', () => {
 
   test('keeps date-only box values date-only in confirmation email', () => {
     const order = makeConfirmationOrder()
-    order.boxes.deliveryDate = '2026-03-12'
-    order.boxes.returnDate = '2026-03-20'
+    order.boxes.deliveryDate = new Date('2026-03-12T00:00:00.000Z')
+    order.boxes.deliveryHasTime = false
+    order.boxes.returnDate = new Date('2026-03-20T00:00:00.000Z')
+    order.boxes.returnHasTime = false
 
     const { body } = buildConfirmationEmail({ order })
 
@@ -94,7 +96,9 @@ describe('email date rendering', () => {
     expect(formatDate('2026-01-15T07:00:00.000Z', 'fi', 'order date')).toBe('15.01.2026 09:00')
   })
 
-  test('does not add midnight to date-only values', () => {
-    expect(formatDate('2026-03-12', 'fi', 'box delivery date')).toBe('12.03.2026')
+  test('formats all-day box dates without a time', () => {
+    expect(formatDate(new Date('2026-03-12T23:00:00.000Z'), 'fi', 'box delivery date', false)).toBe(
+      '13.03.2026',
+    )
   })
 })

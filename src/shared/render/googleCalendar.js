@@ -2,8 +2,6 @@ import icons from '../../data/icons.json' with { type: 'json' }
 import {
   HELSINKI_TIMEZONE,
   formatInTimeZone,
-  isDateOnly,
-  parseCalendarDate,
   parseInstant,
 } from '../date-fns-tz.js'
 import {
@@ -34,13 +32,9 @@ function formatOrderTime(value) {
   return formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)
 }
 
-function formatBoxTime(value, fieldName) {
+function formatBoxTime(value, fieldName, hasTime) {
   if (value === null || value === undefined || value === '') return ''
-
-  if (isDateOnly(value)) {
-    parseCalendarDate(value, fieldName)
-    return ''
-  }
+  if (!hasTime) return ''
 
   const date = parseInstant(value, fieldName)
   return `${formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)} `
@@ -49,9 +43,19 @@ function formatBoxTime(value, fieldName) {
 function makeCalendarEntries(order) {
   const orderIcons = makeIcons(order)
   const moveTitle = `${orderIcons.move}${formatOrderTime(order.date)}(${order.duration}h)`
-  const boxes = order.boxes || { amount: 0, deliveryDate: '', returnDate: '' }
-  const deliveryTime = formatBoxTime(boxes.deliveryDate, 'box delivery date')
-  const returnTime = formatBoxTime(boxes.returnDate, 'box return date')
+  const boxes = order.boxes || {
+    amount: 0,
+    deliveryDate: '',
+    deliveryHasTime: false,
+    returnDate: '',
+    returnHasTime: false,
+  }
+  const deliveryTime = formatBoxTime(
+    boxes.deliveryDate,
+    'box delivery date',
+    boxes.deliveryHasTime,
+  )
+  const returnTime = formatBoxTime(boxes.returnDate, 'box return date', boxes.returnHasTime)
 
   const boxesDeliveryTitle = `${boxes.amount} ${orderIcons.boxesDelivery} ${deliveryTime}`
   const boxesPickupTitle = `NOUTO ${boxes.amount} ${orderIcons.boxesPickup} ${returnTime}`

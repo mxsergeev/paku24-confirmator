@@ -158,19 +158,7 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
       $or: [
         { date: { $gte: from, $lte: to } },
         { 'boxes.deliveryDate': { $gte: from, $lte: to } },
-        {
-          'boxes.deliveryDate': {
-            $gte: from.slice(0, 10),
-            $lte: to.slice(0, 10),
-          },
-        },
         { 'boxes.returnDate': { $gte: from, $lte: to } },
-        {
-          'boxes.returnDate': {
-            $gte: from.slice(0, 10),
-            $lte: to.slice(0, 10),
-          },
-        },
       ],
     }
     const match = Object.keys(deletedFilter).length

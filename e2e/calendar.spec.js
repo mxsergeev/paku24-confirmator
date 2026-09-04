@@ -19,6 +19,15 @@ function dateInVisibleMonth(monthHeading, day) {
   return new Date(Date.UTC(Number(yearValue), month, day, 10, 0, 0)).toISOString()
 }
 
+function timeInHelsinki(value) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Helsinki',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(value)
+}
+
 test('calendar loads box events and supports every calendar view', async ({ page, database }) => {
   await page.goto('/app/calendar')
   const monthHeading = await page.getByRole('heading', { level: 2 }).textContent()
@@ -70,4 +79,38 @@ test('calendar hides deleted orders until the deleted toggle is enabled', async 
 
   await page.locator('label.calendar-toolbar-toggle').click()
   await expect(page.locator('.fc-event').filter({ hasText: 'Deleted calendar customer' })).toBeVisible()
+})
+
+test('calendar keeps all-day and timed box events on their intended day', async ({ page, database }) => {
+  await page.goto('/app/calendar')
+  const bookingDate = new Date()
+  bookingDate.setUTCHours(10, 0, 0, 0)
+  const deliveryDate = new Date(bookingDate)
+  deliveryDate.setUTCHours(0, 0, 0, 0)
+  const timedReturnDate = new Date(bookingDate.getTime() + 2 * 60 * 60 * 1000)
+  const order = await database.seedOrder({
+    name: 'Mixed box modes customer',
+    date: bookingDate.toISOString(),
+    boxes: {
+      deliveryDate: deliveryDate.toISOString(),
+      deliveryHasTime: false,
+      returnDate: timedReturnDate.toISOString(),
+      returnHasTime: true,
+      amount: 10,
+    },
+  })
+
+  await page.reload()
+  await page.getByRole('tab', { name: 'week view' }).click()
+  await expect(
+    page.locator(`.fc-daygrid-day[data-date="${deliveryDate.toISOString().slice(0, 10)}"] .fc-daygrid-event`).filter({
+      hasText: order.name,
+    }),
+  ).toBeVisible()
+  await expect(
+    page
+      .locator('.fc-timegrid-event')
+      .filter({ hasText: order.name })
+      .filter({ hasText: timeInHelsinki(timedReturnDate) }),
+  ).toBeVisible()
 })

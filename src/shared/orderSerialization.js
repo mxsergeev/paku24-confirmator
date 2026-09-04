@@ -1,6 +1,6 @@
 import { BOOKING_FIELDS } from './orderModel.js'
 import { normalizeFeeList } from './orderPricing.js'
-import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
+import { parseInstant } from './date-fns-tz.js'
 import { cloneValue, hasOwn, isPlainObject, PRICING_COMPONENTS, toFiniteNumberOrNull } from './orderPrimitives.js'
 
 const ADDRESS_FIELDS = ['street', 'index', 'city', 'floor', 'elevator']
@@ -48,10 +48,6 @@ function serializeDateTime(value, fieldName) {
 }
 
 function serializeBoxDate(value, fieldName) {
-  if (isDateOnly(value)) {
-    parseCalendarDate(value, fieldName)
-    return value
-  }
   return serializeDateTime(value, fieldName)
 }
 
@@ -62,10 +58,14 @@ function serializeBoxes(value, fieldName, fallbackDate) {
   const boxes = {
     amount: value.amount ?? 0,
   }
-  for (const field of ['deliveryDate', 'returnDate']) {
+  for (const [field, hasTimeField] of [
+    ['deliveryDate', 'deliveryHasTime'],
+    ['returnDate', 'returnHasTime'],
+  ]) {
     const date = value[field] ?? fallbackDate
     if (date === null || date === undefined) throw new Error(`Invalid ${fieldName}.${field}`)
     boxes[field] = serializeBoxDate(date, `${fieldName}.${field}`)
+    boxes[hasTimeField] = value[hasTimeField]
   }
   return boxes
 }

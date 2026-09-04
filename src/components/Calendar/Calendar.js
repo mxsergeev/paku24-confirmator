@@ -12,8 +12,6 @@ import {
   HELSINKI_TIMEZONE,
   formatInTimeZone,
   formatHelsinkiCalendarDate,
-  isDateOnly,
-  parseCalendarDate,
   parseInstant,
 } from '../../shared/date-fns-tz'
 import { orderTime } from '../../shared/orderPricing'
@@ -35,16 +33,13 @@ const DEFAULT_CALENDAR_VIEW = 'dayGridMonth'
 const AVAILABLE_CALENDAR_VIEWS = ['dayGridMonth', 'timeGridWeek', 'listWeek', 'multiMonthYear']
 // use `isDeleted` helper from shared/orderState.helpers
 
-function calendarEventStart(value, fieldName) {
-  if (isDateOnly(value)) {
-    parseCalendarDate(value, fieldName)
-    return value
-  }
+function calendarEventStart(value, fieldName, allDay = false) {
+  if (allDay) return formatHelsinkiCalendarDate(value, fieldName)
   return parseInstant(value, fieldName).toISOString()
 }
 
-function calendarEventTime(value, fieldName) {
-  if (isDateOnly(value)) return ''
+function calendarEventTime(value, fieldName, hasTime) {
+  if (!hasTime) return ''
   return formatInTimeZone(parseInstant(value, fieldName), 'HH:mm', HELSINKI_TIMEZONE)
 }
 
@@ -315,16 +310,21 @@ export default function Calendar() {
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
           : '#7986cb'
-        const deliveryDateOnly = isDateOnly(order.boxes.deliveryDate)
+        const deliveryHasTime = order.boxes.deliveryHasTime === true
         const deliveryTime = calendarEventTime(
           order.boxes.deliveryDate,
           'box delivery date',
+          deliveryHasTime,
         )
         events.push({
           id: `${order.id}-box-delivery`,
           title: `${addIcon}${getBoxEventTitle(order, 'boxDelivery', deliveryTime, iconsData)}`,
-          start: calendarEventStart(order.boxes.deliveryDate, 'box delivery date'),
-          ...(deliveryDateOnly ? { allDay: true } : {}),
+          start: calendarEventStart(
+            order.boxes.deliveryDate,
+            'box delivery date',
+            !deliveryHasTime,
+          ),
+          ...(deliveryHasTime ? {} : { allDay: true }),
           backgroundColor: boxColor,
           borderColor: boxColor,
           extendedProps: {
@@ -346,13 +346,21 @@ export default function Calendar() {
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
           : '#7986cb'
-        const returnDateOnly = isDateOnly(order.boxes.returnDate)
-        const returnTime = calendarEventTime(order.boxes.returnDate, 'box return date')
+        const returnHasTime = order.boxes.returnHasTime === true
+        const returnTime = calendarEventTime(
+          order.boxes.returnDate,
+          'box return date',
+          returnHasTime,
+        )
         events.push({
           id: `${order.id}-box-return`,
           title: `${addIcon}${getBoxEventTitle(order, 'boxReturn', returnTime, iconsData)}`,
-          start: calendarEventStart(order.boxes.returnDate, 'box return date'),
-          ...(returnDateOnly ? { allDay: true } : {}),
+          start: calendarEventStart(
+            order.boxes.returnDate,
+            'box return date',
+            !returnHasTime,
+          ),
+          ...(returnHasTime ? {} : { allDay: true }),
           backgroundColor: boxColor,
           borderColor: boxColor,
           extendedProps: {

@@ -134,7 +134,9 @@ const smsOrderPayload = {
   paymentType: { id: '1', name: 'Maksukortti', fee: 0 },
   boxes: {
     deliveryDate: '2021-04-22T17:00:00.000Z',
+    deliveryHasTime: true,
     returnDate: '2021-04-22T19:00:00.000Z',
+    returnHasTime: true,
     amount: 0,
   },
   boxesPrice: 0,

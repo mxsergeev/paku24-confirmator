@@ -21,8 +21,10 @@ const makeOrder = (overrides = {}) => ({
   destination: { street: '', index: '', city: 'Helsinki', floor: 0, elevator: false },
   extraAddresses: [],
   boxes: {
-    deliveryDate: '2026-03-12',
-    returnDate: '2026-03-20',
+    deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
+    deliveryHasTime: false,
+    returnDate: new Date('2026-03-20T00:00:00.000Z'),
+    returnHasTime: false,
     amount: 0,
   },
   pricingOverrides: { price: null, fees: null, boxesPrice: null },
@@ -34,7 +36,13 @@ describe('automatic pricing', () => {
     const order = makeOrder({
       duration: 2,
       service: { id: '1', pricePerHour: 999 },
-      boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount: 10 },
+      boxes: {
+        deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
+        deliveryHasTime: false,
+        returnDate: new Date('2026-03-20T00:00:00.000Z'),
+        returnHasTime: false,
+        amount: 10,
+      },
     })
 
     expect(resolveServiceHourlyRate(order)).toBe(50)
@@ -44,7 +52,7 @@ describe('automatic pricing', () => {
   })
 
   it('uses Helsinki calendar days for box periods', () => {
-    expect(calculateBoxPeriod('2026-03-12', '2026-03-20')).toBe(8)
+    expect(calculateBoxPeriod(new Date('2026-03-12T00:00:00.000Z'), new Date('2026-03-20T00:00:00.000Z'))).toBe(8)
     expect(calculateBoxPeriod('2026-03-28T22:00:00Z', '2026-04-05T21:00:00Z')).toBe(8)
     expect(calculateBoxPeriod('2026-03-28T22:00:00Z', '2026-03-29T00:30:00Z')).toBe(7)
   })
@@ -54,7 +62,13 @@ describe('automatic pricing', () => {
       expect(
         calculateAutomaticBoxesPrice(
           makeOrder({
-            boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount },
+            boxes: {
+              deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
+              deliveryHasTime: false,
+              returnDate: new Date('2026-03-20T00:00:00.000Z'),
+              returnHasTime: false,
+              amount,
+            },
           }),
         ),
       ).toBe(0)
@@ -64,7 +78,15 @@ describe('automatic pricing', () => {
   it('does not price boxes until both box dates are available', () => {
     expect(
       calculateAutomaticBoxesPrice(
-        makeOrder({ boxes: { deliveryDate: null, returnDate: null, amount: 10 } }),
+        makeOrder({
+          boxes: {
+            deliveryDate: null,
+            deliveryHasTime: false,
+            returnDate: null,
+            returnHasTime: false,
+            amount: 10,
+          },
+        }),
       ),
     ).toBe(0)
   })
@@ -73,7 +95,13 @@ describe('automatic pricing', () => {
     expect(() =>
       calculateAutomaticBoxesPrice(
         makeOrder({
-          boxes: { deliveryDate: '2026-02-29', returnDate: '2026-03-20', amount: 1 },
+          boxes: {
+            deliveryDate: '2026-02-29T00:00:00.000Z',
+            deliveryHasTime: false,
+            returnDate: new Date('2026-03-20T00:00:00.000Z'),
+            returnHasTime: false,
+            amount: 1,
+          },
         }),
       ),
     ).toThrow('Invalid boxes.deliveryDate')
@@ -81,7 +109,13 @@ describe('automatic pricing', () => {
 
   it('calculates automatic fees independently of box dates', () => {
     const order = makeOrder({
-      boxes: { amount: 10, deliveryDate: 'not-a-date', returnDate: 'also-not-a-date' },
+      boxes: {
+        amount: 10,
+        deliveryDate: 'not-a-date',
+        deliveryHasTime: false,
+        returnDate: 'also-not-a-date',
+        returnHasTime: false,
+      },
     })
 
     expect(calculateAutomaticFees(order)).toEqual([])
@@ -98,7 +132,13 @@ describe('automatic pricing', () => {
 describe('effective pricing and manual overrides', () => {
   it('uses automatic values when every override is null', () => {
     const order = makeOrder({
-      boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount: 10 },
+      boxes: {
+        deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
+        deliveryHasTime: false,
+        returnDate: new Date('2026-03-20T00:00:00.000Z'),
+        returnHasTime: false,
+        amount: 10,
+      },
     })
 
     expect(getOrderPricing(order)).toEqual(calculateAutomaticPricing(order))

@@ -114,6 +114,9 @@ export async function seedOrder(overrides = {}) {
       .filter((field) => Object.prototype.hasOwnProperty.call(overrides, field))
       .map((field) => [field, overrides[field]]),
   )
+  if (Object.prototype.hasOwnProperty.call(overrides, 'boxes') && overrides.boxes) {
+    explicitOverrides.boxes = appOrder.boxes
+  }
 
   return withDatabase(async () => {
     const order = await new Order({

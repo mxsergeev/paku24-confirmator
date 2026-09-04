@@ -15,8 +15,10 @@ test('direct order URL outside the visible month loads the exact order', async (
   const order = await database.seedOrder({
     date: '2020-01-15T10:00:00.000Z',
     boxes: {
-      deliveryDate: '2020-01-15',
-      returnDate: '2020-01-15',
+      deliveryDate: '2020-01-15T00:00:00.000Z',
+      deliveryHasTime: false,
+      returnDate: '2020-01-15T00:00:00.000Z',
+      returnHasTime: false,
       amount: 0,
     },
   })
@@ -153,7 +155,13 @@ test('editing partially populated optional data remains usable', async ({ page, 
     extraAddresses: [null, { street: 'Extra street' }],
     service: { id: '1', name: 'Partial service' },
     paymentType: { id: '1', name: 'Partial payment' },
-    boxes: { deliveryDate: null, returnDate: null, amount: 10 },
+    boxes: {
+      deliveryDate: dateInCurrentHelsinkiMonth(11),
+      deliveryHasTime: true,
+      returnDate: dateInCurrentHelsinkiMonth(12),
+      returnHasTime: true,
+      amount: 10,
+    },
   })
 
   await page.goto(`/app/calendar/order/${order.id}`)

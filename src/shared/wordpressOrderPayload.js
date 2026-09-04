@@ -1,4 +1,4 @@
-import { isDateOnly, parseCalendarDate, parseInstant } from './date-fns-tz.js'
+import { calendarDateToUtc, isDateOnly, parseInstant } from './date-fns-tz.js'
 import {
   cloneValue,
   hasOwn,
@@ -66,10 +66,9 @@ function normalizeEmbedded(value, field, rateField) {
 
 function normalizeBoxDate(value, field) {
   if (isDateOnly(value)) {
-    parseCalendarDate(value, field)
-    return value
+    return { date: calendarDateToUtc(value, field), hasTime: false }
   }
-  return parseInstant(value, field)
+  return { date: parseInstant(value, field), hasTime: true }
 }
 
 function normalizeWordPressString(value, field) {
@@ -86,7 +85,9 @@ function normalizeBoxes(value, orderDate) {
     return {
       amount: 0,
       deliveryDate: new Date(orderDate.getTime()),
+      deliveryHasTime: true,
       returnDate: new Date(orderDate.getTime()),
+      returnHasTime: true,
     }
   }
 
@@ -94,10 +95,14 @@ function normalizeBoxes(value, orderDate) {
     if (!hasOwn(value, key)) throw new OrderValidationError(`Invalid boxes.${key}: required for populated boxes`)
   }
 
+  const delivery = normalizeBoxDate(value.deliveryDate, 'boxes.deliveryDate')
+  const returned = normalizeBoxDate(value.returnDate, 'boxes.returnDate')
   const boxes = {
     amount: requireFiniteNumber(value.amount, 'boxes.amount'),
-    deliveryDate: normalizeBoxDate(value.deliveryDate, 'boxes.deliveryDate'),
-    returnDate: normalizeBoxDate(value.returnDate, 'boxes.returnDate'),
+    deliveryDate: delivery.date,
+    deliveryHasTime: delivery.hasTime,
+    returnDate: returned.date,
+    returnHasTime: returned.hasTime,
   }
   if (boxes.amount < 0) throw new OrderValidationError('Invalid boxes.amount: must be non-negative')
 

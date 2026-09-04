@@ -4,8 +4,6 @@ import {
   HELSINKI_TIMEZONE,
   calendarDateToUtc,
   formatInTimeZone,
-  isDateOnly,
-  parseCalendarDate,
   parseInstant,
 } from './date-fns-tz.js'
 import { calculateAutomaticFees } from './fees.js'
@@ -36,7 +34,6 @@ function findServiceById(id) {
 }
 
 function parseBoxCalendarDate(value, fieldName) {
-  if (isDateOnly(value)) return parseCalendarDate(value, fieldName)
   return formatInTimeZone(parseInstant(value, fieldName), 'yyyy-MM-dd', HELSINKI_TIMEZONE)
 }
 

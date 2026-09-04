@@ -44,7 +44,9 @@ function makeOrder(overrides = {}) {
     boxes: {
       amount: 2,
       deliveryDate: '2026-04-10T08:00:00.000Z',
+      deliveryHasTime: true,
       returnDate: '2026-04-12T08:00:00.000Z',
+      returnHasTime: true,
     },
     name: 'API Order',
     email: 'order@example.com',
@@ -349,7 +351,24 @@ describe('Order pool listing and reads', () => {
   test('filters deleted orders by calendar range and rejects legacy pagination', async () => {
     const active = await createPersistedOrder({ name: 'Active listing order' })
     const deleted = await createPersistedOrder({ name: 'Deleted listing order', deletedAt: new Date() })
-    orderIds.push(active.id, deleted.id)
+    const boxOnly = await createPersistedOrder({
+      name: 'Box-only listing order',
+      date: '2026-05-10T08:00:00.000Z',
+      boxes: {
+        ...makeOrder().boxes,
+        deliveryDate: '2026-04-15T00:00:00.000Z',
+        deliveryHasTime: false,
+        returnDate: '2026-04-16T08:00:00.000Z',
+        returnHasTime: true,
+      },
+    })
+    orderIds.push(active.id, deleted.id, boxOnly.id)
+
+    const reloadedBoxOnly = await Order.findById(boxOnly.id).lean()
+    expect(reloadedBoxOnly.boxes.deliveryDate).toEqual(expect.any(Date))
+    expect(reloadedBoxOnly.boxes.returnDate).toEqual(expect.any(Date))
+    expect(reloadedBoxOnly.boxes.deliveryHasTime).toBe(false)
+    expect(reloadedBoxOnly.boxes.returnHasTime).toBe(true)
 
     const activeResponse = await api
       .get(
@@ -365,6 +384,12 @@ describe('Order pool listing and reads', () => {
       .expect(200)
 
     expect(activeResponse.body.orders.map((item) => item.name)).toContain('Active listing order')
+    expect(activeResponse.body.orders.map((item) => item.name)).toContain('Box-only listing order')
+    const listedBoxOnly = activeResponse.body.orders.find((item) => item.name === 'Box-only listing order')
+    expect(listedBoxOnly.boxes.deliveryDate).toEqual('2026-04-15T00:00:00.000Z')
+    expect(listedBoxOnly.boxes.returnDate).toEqual('2026-04-16T08:00:00.000Z')
+    expect(listedBoxOnly.boxes.deliveryHasTime).toBe(false)
+    expect(listedBoxOnly.boxes.returnHasTime).toBe(true)
     expect(activeResponse.body.orders.map((item) => item.name)).not.toContain('Deleted listing order')
     expect(deletedResponse.body.orders.map((item) => item.name)).toContain('Deleted listing order')
     expect(activeResponse.body).not.toHaveProperty('limitPerPage')

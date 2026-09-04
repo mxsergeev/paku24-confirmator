@@ -39,23 +39,16 @@ import {
   normalizeDocumentType,
   normalizeReceiptDraft,
 } from './receiptData.helpers'
-import {
-  formatHelsinkiInstant,
-  isDateOnly,
-  parseCalendarDate,
-} from '../../shared/date-fns-tz'
+import { formatHelsinkiInstant } from '../../shared/date-fns-tz'
 
 const DOCUMENT_TYPES = {
   RECEIPT: 'receipt',
   INVOICE: 'invoice',
 }
 
-function formatDialogEventTime(value, fieldName) {
+function formatDialogEventTime(value, fieldName, hasTime = true) {
   if (!value) return ''
-  if (isDateOnly(value)) {
-    parseCalendarDate(value, fieldName)
-    return ''
-  }
+  if (!hasTime) return ''
 
   return formatHelsinkiInstant(value, 'HH:mm', fieldName)
 }
@@ -443,14 +436,22 @@ export default function OrderDialog({
       ? getBoxEventTitle(
           order,
           'boxDelivery',
-          formatDialogEventTime(order.boxes?.deliveryDate, 'box delivery date'),
+          formatDialogEventTime(
+            order.boxes?.deliveryDate,
+            'box delivery date',
+            order.boxes?.deliveryHasTime,
+          ),
           iconsData
         )
       : eventType === 'boxReturn'
       ? getBoxEventTitle(
           order,
           'boxReturn',
-          formatDialogEventTime(order.boxes?.returnDate, 'box return date'),
+          formatDialogEventTime(
+            order.boxes?.returnDate,
+            'box return date',
+            order.boxes?.returnHasTime,
+          ),
           iconsData
         )
       : `${getOrderIcons(order, iconsData)} ${formatDialogEventTime(order.date, 'order date')}(${order.duration}h) ${order.name}`

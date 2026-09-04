@@ -31,7 +31,9 @@ const makeOrder = (overrides = {}) => ({
   comment: 'Fixture comment',
   boxes: {
     deliveryDate: '2026-03-12T07:00:00Z',
+    deliveryHasTime: true,
     returnDate: '2026-03-20T07:00:00Z',
+    returnHasTime: true,
     amount: 10,
   },
   pricingOverrides: {
@@ -80,14 +82,22 @@ describe('makeCalendarEntries', () => {
       makeOrder({
         boxes: {
           deliveryDate: new Date('2026-03-12T07:00:00.000Z'),
+          deliveryHasTime: true,
           returnDate: new Date('2026-03-20T07:00:00.000Z'),
+          returnHasTime: true,
           amount: 10,
         },
       }),
     )
     const dateOnlyValues = makeCalendarEntries(
       makeOrder({
-        boxes: { deliveryDate: '2026-03-12', returnDate: '2026-03-20', amount: 10 },
+        boxes: {
+          deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
+          deliveryHasTime: false,
+          returnDate: new Date('2026-03-20T00:00:00.000Z'),
+          returnHasTime: false,
+          amount: 10,
+        },
       }),
     )
 
@@ -118,7 +128,9 @@ describe('makeCalendarEntries', () => {
         date: '2026-03-10T07:00:00Z',
         boxes: {
           deliveryDate: '2026-03-12T07:00:00Z',
+          deliveryHasTime: true,
           returnDate: '2026-03-20T07:00:00Z',
+          returnHasTime: true,
           amount: 10,
         },
       }),
@@ -135,7 +147,9 @@ describe('makeCalendarEntries', () => {
         makeOrder({
           boxes: {
             deliveryDate: {},
+            deliveryHasTime: true,
             returnDate: '2026-03-20T07:00:00Z',
+            returnHasTime: true,
             amount: 10,
           },
         }),

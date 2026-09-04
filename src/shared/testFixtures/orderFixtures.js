@@ -116,7 +116,9 @@ export function makeAppBooking(overrides = {}) {
       date: '2026-06-15T06:00:00.000Z',
       boxes: makeBoxes({
         deliveryDate: '2026-06-16T06:00:00.000Z',
+        deliveryHasTime: true,
         returnDate: '2026-06-24T06:00:00.000Z',
+        returnHasTime: true,
         amount: 0,
       }),
       name: 'App Customer',
@@ -202,8 +204,10 @@ export const helsinkiDstTransitions = {
 
 export function makeDateOnlyBoxes() {
   return {
-    deliveryDate: '2026-03-12',
-    returnDate: '2026-03-20',
+    deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
+    deliveryHasTime: false,
+    returnDate: new Date('2026-03-20T00:00:00.000Z'),
+    returnHasTime: false,
     amount: 10,
   }
 }

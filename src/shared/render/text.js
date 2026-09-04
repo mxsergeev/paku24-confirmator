@@ -1,8 +1,6 @@
 import {
   HELSINKI_TIMEZONE,
   formatInTimeZone,
-  isDateOnly,
-  parseCalendarDate,
   parseInstant,
 } from '../date-fns-tz.js'
 import { getOrderPricing, resolveServiceHourlyRate } from '../orderPricing.js'
@@ -46,15 +44,9 @@ function formatOrderDate(value, format, fieldName) {
   return formatInTimeZone(date, format, HELSINKI_TIMEZONE)
 }
 
-function formatBoxDate(value, fieldName) {
-  if (isDateOnly(value)) {
-    parseCalendarDate(value, fieldName)
-    const [year, month, day] = value.split('-')
-    return day + '-' + month + '-' + year
-  }
-
+function formatBoxDate(value, fieldName, hasTime) {
   const date = parseInstant(value, fieldName)
-  return formatInTimeZone(date, 'dd-MM-yyyy HH:mm', HELSINKI_TIMEZONE)
+  return formatInTimeZone(date, hasTime ? 'dd-MM-yyyy HH:mm' : 'dd-MM-yyyy', HELSINKI_TIMEZONE)
 }
 
 function serviceName(order) {
@@ -71,8 +63,16 @@ function formatBoxes(order, pricing, showHeading) {
   if (!order.boxes || order.boxes.amount <= 0) return ''
   if (!order.boxes.deliveryDate || !order.boxes.returnDate) return ''
 
-  const deliveryDate = formatBoxDate(order.boxes.deliveryDate, 'box delivery date')
-  const returnDate = formatBoxDate(order.boxes.returnDate, 'box return date')
+  const deliveryDate = formatBoxDate(
+    order.boxes.deliveryDate,
+    'box delivery date',
+    order.boxes.deliveryHasTime,
+  )
+  const returnDate = formatBoxDate(
+    order.boxes.returnDate,
+    'box return date',
+    order.boxes.returnHasTime,
+  )
   const heading = showHeading ? 'MUUTTOLAATIKOT\n' : ''
 
   return heading +

@@ -6,8 +6,10 @@ import locale_en from 'dayjs/locale/en'
 import React from 'react'
 import boxesSettings from '../../data/boxes.json'
 import CollapseWrapper from '../CollapseWrapper'
-import dayjs from '../../shared/dayjs'
-import { isDateOnly } from '../../shared/date-fns-tz'
+import {
+  calendarDateToUtc,
+  formatHelsinkiCalendarDate,
+} from '../../shared/date-fns-tz'
 import { calculateAutomaticBoxesPrice } from '../../shared/orderPricing'
 import PricingOverrideField from './PricingOverrideField'
 
@@ -22,22 +24,27 @@ export default function Boxes({ order = {}, handleChange, onOrderChange, style }
   const boxes = {
     ...storedBoxes,
     deliveryDate: storedBoxes.deliveryDate ?? fallbackDate,
+    deliveryHasTime: storedBoxes.deliveryHasTime ?? true,
     returnDate: storedBoxes.returnDate ?? fallbackDate,
+    returnHasTime: storedBoxes.returnHasTime ?? true,
     amount: storedBoxes.amount ?? 0,
   }
-  const includeTimeStart = !isDateOnly(boxes.deliveryDate)
-  const includeTimeEnd = !isDateOnly(boxes.returnDate)
+  const includeTimeStart = boxes.deliveryHasTime === true
+  const includeTimeEnd = boxes.returnHasTime === true
 
   const StartPicker = includeTimeStart ? DateTimePicker : DatePicker
   const EndPicker = includeTimeEnd ? DateTimePicker : DatePicker
 
-  const handleDateChange = (name, date, includeTime) =>
+  const handleDateChange = (name, date, includeTime) => {
+    const dateValue = date?.toDate ? date.toDate() : new Date(date)
+    const calendarDate = formatHelsinkiCalendarDate(dateValue, `box ${name}`)
+
     handleChange('boxes', {
       ...boxes,
-      // Not using .toISOString() as it will change the date to a previos day in the Helsinki/Finland timezone
-      // dayjs().format() keeps the timezone info and displays the correct day
-      [name]: includeTime ? dayjs(date).format() : dayjs(date).format('YYYY-MM-DD'),
+      [name]: includeTime ? dateValue : calendarDateToUtc(calendarDate, `box ${name}`),
+      [name === 'deliveryDate' ? 'deliveryHasTime' : 'returnHasTime']: includeTime,
     })
+  }
 
   return (
     <>
