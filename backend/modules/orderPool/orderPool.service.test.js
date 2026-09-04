@@ -338,8 +338,52 @@ describe('explicit calendar side effects', () => {
 
     await expect(restoreOrder('66c000000000000000000001')).rejects.toBe(databaseFailure)
 
-    expect(mocks.syncOrderToCalendar).toHaveBeenNthCalledWith(1, expect.not.objectContaining({ canceledAt: expect.anything() }), { lock: false })
-    expect(mocks.syncOrderToCalendar).toHaveBeenNthCalledWith(2, order, { lock: false })
+    const restoredCandidate = mocks.syncOrderToCalendar.mock.calls[0][0]
+    const rollbackCandidate = mocks.syncOrderToCalendar.mock.calls[1][0]
+    expect(restoredCandidate).not.toHaveProperty('canceledAt')
+    expect(rollbackCandidate).toMatchObject({
+      canceledAt: order.canceledAt,
+      calendarEventIds: order.calendarEventIds,
+    })
+    expect(rollbackCandidate).not.toBe(order)
+    expect(rollbackCandidate).not.toBe(restoredCandidate)
+    expect(mocks.deleteOrderEvent).not.toHaveBeenCalled()
+  })
+
+  it('rolls back using replacement Calendar IDs after uncancel activation fails', async () => {
+    const originalCanceledAt = new Date('2026-01-02T00:00:00.000Z')
+    const order = {
+      ...makeOrder(),
+      confirmed: true,
+      deletedAt: null,
+      canceledAt: originalCanceledAt,
+      calendarEventIds: {
+        main: 'stale-main',
+        boxDelivery: null,
+        boxReturn: null,
+      },
+    }
+    order.toObject = () => {
+      const { save, toObject, ...snapshot } = order
+      return { ...snapshot, calendarEventIds: { ...order.calendarEventIds } }
+    }
+    const databaseFailure = new Error('database unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockImplementationOnce(async (candidate) => {
+      candidate.calendarEventIds.main = 'replacement-main'
+      return candidate
+    })
+    mocks.findByIdAndUpdate.mockRejectedValue(databaseFailure)
+
+    await expect(restoreOrder('66c000000000000000000001')).rejects.toBe(databaseFailure)
+
+    expect(order.calendarEventIds.main).toBe('stale-main')
+    const rollbackCandidate = mocks.syncOrderToCalendar.mock.calls[1][0]
+    expect(rollbackCandidate).toMatchObject({
+      canceledAt: originalCanceledAt,
+      calendarEventIds: { main: 'replacement-main' },
+    })
+    expect(rollbackCandidate).not.toBe(order)
     expect(mocks.deleteOrderEvent).not.toHaveBeenCalled()
   })
 

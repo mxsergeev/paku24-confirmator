@@ -236,7 +236,11 @@ async function restoreOrder(id) {
         if (wasDeleted) {
           await deleteOrderEvent(restoredCandidate, { lock: false })
         } else {
-          await syncOrderToCalendar(order, { lock: false })
+          const rollbackCandidate = {
+            ...restoredCandidate,
+            canceledAt: order.canceledAt,
+          }
+          await syncOrderToCalendar(rollbackCandidate, { lock: false })
         }
       } catch (rollbackError) {
         err.rollbackError = rollbackError
