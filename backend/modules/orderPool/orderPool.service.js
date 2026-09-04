@@ -55,6 +55,21 @@ function isConfirmedAndActive(order) {
   return Boolean(order?.confirmed && !order?.deletedAt)
 }
 
+async function compensateCalendarAfterDeleteFailure(order, err, operation) {
+  logger.error(`Mongo ${operation} persistence failed after Calendar cleanup`, err)
+
+  if (!isConfirmedAndActive(order)) throw err
+
+  try {
+    await syncOrderToCalendar(order, { lock: false })
+  } catch (rollbackError) {
+    err.rollbackError = rollbackError
+    logger.error(`Calendar compensation failed after Mongo ${operation} failure`, rollbackError)
+  }
+
+  throw err
+}
+
 // Callers invoke this while holding the order calendar lock. Calendar sync
 // must not reacquire that lock before the mutation request can finish.
 async function syncAfterMutation(order) {
@@ -182,11 +197,16 @@ async function deleteOrder(id) {
       throw calendarUnavailableError(CALENDAR_DELETE_WARNING.message)
     }
 
-    const deletedOrder = await Order.findByIdAndUpdate(
-      { _id: id },
-      { deletedAt: new Date().toISOString() },
-      { new: true },
-    )
+    let deletedOrder
+    try {
+      deletedOrder = await Order.findByIdAndUpdate(
+        { _id: id },
+        { deletedAt: new Date().toISOString() },
+        { new: true },
+      )
+    } catch (err) {
+      await compensateCalendarAfterDeleteFailure(order, err, 'soft-deletion')
+    }
 
     return deletedOrder ? resultWithWarning(deletedOrder) : null
   })
@@ -270,7 +290,13 @@ async function deleteOrderPermanently(id) {
   const result = await withOrderCalendarLock(id, async () => {
     const order = await getOrderById(id)
     await deleteOrderEvent(order, { lock: false })
-    return { order, result: await Order.deleteOne({ _id: id }) }
+    let deletionResult
+    try {
+      deletionResult = await Order.deleteOne({ _id: id })
+    } catch (err) {
+      await compensateCalendarAfterDeleteFailure(order, err, 'permanent deletion')
+    }
+    return { order, result: deletionResult }
   })
   const deleted = result?.result?.deletedCount ?? result?.result?.n
   if (deleted === 0) {

@@ -131,6 +131,45 @@ describe('permanent order deletion', () => {
     expect(mocks.deleteOrderEvent).toHaveBeenCalledTimes(2)
     expect(mocks.deleteOne).toHaveBeenCalledTimes(2)
   })
+
+  it('compensates an active confirmed order when permanent deletion fails', async () => {
+    const order = makeOrder()
+    order.confirmed = true
+    const failure = new Error('database unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.deleteOrderEvent.mockImplementation(async () => {
+      order.calendarEventIds.main = null
+    })
+    mocks.deleteOne.mockRejectedValue(failure)
+    mocks.syncOrderToCalendar.mockResolvedValue(order)
+
+    await expect(deleteOrderPermanently('66c000000000000000000001')).rejects.toBe(failure)
+
+    expect(mocks.deleteOrderEvent).toHaveBeenCalledWith(order, { lock: false })
+    expect(mocks.deleteOne).toHaveBeenCalledTimes(1)
+    expect(mocks.syncOrderToCalendar).toHaveBeenCalledWith(order, { lock: false })
+    expect(mocks.deleteOrderEvent.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.deleteOne.mock.invocationCallOrder[0],
+    )
+    expect(mocks.deleteOne.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.syncOrderToCalendar.mock.invocationCallOrder[0],
+    )
+    expect(order.calendarEventIds.main).toBeNull()
+  })
+
+  it('does not compensate an already-deleted order when permanent deletion fails', async () => {
+    const order = makeOrder()
+    order.confirmed = true
+    order.deletedAt = new Date('2026-01-01T00:00:00.000Z')
+    const failure = new Error('database unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.deleteOne.mockRejectedValue(failure)
+
+    await expect(deleteOrderPermanently('66c000000000000000000001')).rejects.toBe(failure)
+
+    expect(mocks.syncOrderToCalendar).not.toHaveBeenCalled()
+    expect(mocks.deleteOne).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('explicit calendar side effects', () => {
@@ -444,5 +483,52 @@ describe('explicit calendar side effects', () => {
     expect(mocks.deleteOrderEvent.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.findByIdAndUpdate.mock.invocationCallOrder[0],
     )
+  })
+
+  it('restores Calendar after soft deletion persistence fails', async () => {
+    const order = makeOrder()
+    order.confirmed = true
+    order.calendarEventIds.main = 'main-event'
+    const databaseFailure = new Error('database unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.deleteOrderEvent.mockImplementation(async () => {
+      order.calendarEventIds.main = null
+    })
+    mocks.findByIdAndUpdate.mockRejectedValue(databaseFailure)
+    mocks.syncOrderToCalendar.mockResolvedValue(order)
+
+    await expect(deleteOrder('66c000000000000000000001')).rejects.toBe(databaseFailure)
+
+    expect(mocks.deleteOrderEvent).toHaveBeenCalledWith(order, { lock: false })
+    expect(mocks.findByIdAndUpdate).toHaveBeenCalledTimes(1)
+    expect(mocks.syncOrderToCalendar).toHaveBeenCalledWith(order, { lock: false })
+    expect(order).toBe(mocks.syncOrderToCalendar.mock.calls[0][0])
+    expect(order.confirmed).toBe(true)
+    expect(order.deletedAt).toBeNull()
+    expect(order.calendarEventIds.main).toBeNull()
+    expect(mocks.deleteOrderEvent.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.findByIdAndUpdate.mock.invocationCallOrder[0],
+    )
+    expect(mocks.findByIdAndUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.syncOrderToCalendar.mock.invocationCallOrder[0],
+    )
+    expect(mocks.withOrderCalendarLock).toHaveBeenCalledTimes(1)
+  })
+
+  it('exposes soft deletion Calendar compensation failure without hiding the database error', async () => {
+    const order = makeOrder()
+    order.confirmed = true
+    const databaseFailure = new Error('database unavailable')
+    const rollbackFailure = new Error('rollback unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.deleteOrderEvent.mockResolvedValue(true)
+    mocks.findByIdAndUpdate.mockRejectedValue(databaseFailure)
+    mocks.syncOrderToCalendar.mockRejectedValue(rollbackFailure)
+
+    await expect(deleteOrder('66c000000000000000000001')).rejects.toBe(databaseFailure)
+
+    expect(databaseFailure.rollbackError).toBe(rollbackFailure)
+    expect(mocks.syncOrderToCalendar).toHaveBeenCalledTimes(1)
+    expect(mocks.findByIdAndUpdate).toHaveBeenCalledTimes(1)
   })
 })
