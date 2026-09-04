@@ -13,7 +13,7 @@ Internal tool for order management in Paku24.
    ```bash
    git clone https://github.com/mxsergeev/paku24-confirmator.git
    cd paku24-confirmator
-   
+
    # Create and populate `.env` file
    cp .env.example .env
    ```
