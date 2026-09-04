@@ -320,13 +320,143 @@ describe('explicit calendar side effects', () => {
     const order = { ...makeOrder(), confirmed: true, deletedAt: new Date() }
     const failure = new Error('calendar unavailable')
     mocks.findById.mockResolvedValue(order)
-    mocks.syncOrderToCalendar.mockRejectedValue(failure)
+    mocks.syncOrderToCalendar.mockImplementationOnce(async (candidate) => {
+      candidate.calendarEventIds.main = 'partially-restored-main'
+      throw failure
+    })
 
     await expect(restoreOrder('66c000000000000000000001')).rejects.toMatchObject({
       name: 'CalendarUnavailableError',
       message: 'Order was not restored because its calendar events could not be synchronized.',
     })
     expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
+    expect(mocks.deleteOrderEvent).toHaveBeenCalledWith(
+      mocks.syncOrderToCalendar.mock.calls[0][0],
+      { lock: false },
+    )
+    expect(mocks.deleteOrderEvent.mock.calls[0][0].calendarEventIds.main).toBe(
+      'partially-restored-main',
+    )
+    expect(mocks.syncOrderToCalendar).toHaveBeenCalledTimes(1)
+  })
+
+  it('reconciles the canceled Calendar projection when restore sync fails', async () => {
+    const originalCanceledAt = new Date('2026-01-02T00:00:00.000Z')
+    const order = {
+      ...makeOrder(),
+      confirmed: true,
+      deletedAt: null,
+      canceledAt: originalCanceledAt,
+      calendarEventIds: {
+        main: 'main-123',
+        boxDelivery: 'delivery-123',
+        boxReturn: 'return-123',
+      },
+    }
+    const calendarFailure = new Error('calendar unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar
+      .mockRejectedValueOnce(calendarFailure)
+      .mockResolvedValueOnce(order)
+
+    await expect(restoreOrder('66c000000000000000000001')).rejects.toMatchObject({
+      name: 'CalendarUnavailableError',
+      message: 'Order was not restored because its calendar events could not be synchronized.',
+      cause: calendarFailure,
+    })
+
+    const restoredCandidate = mocks.syncOrderToCalendar.mock.calls[0][0]
+    const rollbackCandidate = mocks.syncOrderToCalendar.mock.calls[1][0]
+    expect(restoredCandidate).not.toHaveProperty('canceledAt')
+    expect(rollbackCandidate).toMatchObject({
+      canceledAt: originalCanceledAt,
+      calendarEventIds: order.calendarEventIds,
+    })
+    expect(mocks.syncOrderToCalendar).toHaveBeenNthCalledWith(1, restoredCandidate, { lock: false })
+    expect(mocks.syncOrderToCalendar).toHaveBeenNthCalledWith(2, rollbackCandidate, { lock: false })
+    expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
+    expect(mocks.withOrderCalendarLock).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses replacement Calendar IDs when compensating a failed restore sync', async () => {
+    const originalCanceledAt = new Date('2026-01-02T00:00:00.000Z')
+    const order = {
+      ...makeOrder(),
+      confirmed: true,
+      deletedAt: null,
+      canceledAt: originalCanceledAt,
+      calendarEventIds: {
+        main: 'stale-main',
+        boxDelivery: null,
+        boxReturn: null,
+      },
+    }
+    order.toObject = () => {
+      const { save, toObject, ...snapshot } = order
+      return { ...snapshot, calendarEventIds: { ...order.calendarEventIds } }
+    }
+    const calendarFailure = new Error('calendar unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockImplementationOnce(async (candidate) => {
+      candidate.calendarEventIds.main = 'replacement-main'
+      throw calendarFailure
+    }).mockResolvedValueOnce(order)
+
+    await expect(restoreOrder('66c000000000000000000001')).rejects.toMatchObject({
+      name: 'CalendarUnavailableError',
+      cause: calendarFailure,
+    })
+
+    expect(mocks.syncOrderToCalendar.mock.calls[1][0]).toMatchObject({
+      canceledAt: originalCanceledAt,
+      calendarEventIds: { main: 'replacement-main' },
+    })
+    expect(order.calendarEventIds.main).toBe('stale-main')
+  })
+
+  it('exposes failed Calendar compensation on the restore error', async () => {
+    const order = {
+      ...makeOrder(),
+      confirmed: true,
+      deletedAt: null,
+      canceledAt: new Date('2026-01-02T00:00:00.000Z'),
+    }
+    const calendarFailure = new Error('calendar unavailable')
+    const rollbackFailure = new Error('rollback unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar
+      .mockRejectedValueOnce(calendarFailure)
+      .mockRejectedValueOnce(rollbackFailure)
+
+    await expect(restoreOrder('66c000000000000000000001')).rejects.toMatchObject({
+      name: 'CalendarUnavailableError',
+      cause: calendarFailure,
+      rollbackError: rollbackFailure,
+    })
+    expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
+  })
+
+  it('does not expose an internal Calendar rollback failure after lifecycle compensation succeeds', async () => {
+    const order = {
+      ...makeOrder(),
+      confirmed: true,
+      deletedAt: null,
+      canceledAt: new Date('2026-01-02T00:00:00.000Z'),
+    }
+    const calendarFailure = new Error('calendar unavailable')
+    calendarFailure.rollbackError = new Error('internal rollback unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar
+      .mockRejectedValueOnce(calendarFailure)
+      .mockResolvedValueOnce(order)
+
+    const restoreError = await restoreOrder('66c000000000000000000001').catch((error) => error)
+
+    expect(restoreError).toMatchObject({
+      name: 'CalendarUnavailableError',
+      cause: calendarFailure,
+    })
+    expect(restoreError).not.toHaveProperty('rollbackError')
   })
 
   it('restores an unconfirmed order without contacting calendar', async () => {

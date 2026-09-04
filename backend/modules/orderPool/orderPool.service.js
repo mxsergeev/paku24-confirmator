@@ -212,6 +212,19 @@ async function deleteOrder(id) {
   })
 }
 
+async function restorePreviousCalendarProjection(order, restoredCandidate, wasDeleted) {
+  if (wasDeleted) {
+    await deleteOrderEvent(restoredCandidate, { lock: false })
+    return
+  }
+
+  const rollbackCandidate = {
+    ...restoredCandidate,
+    canceledAt: order.canceledAt,
+  }
+  await syncOrderToCalendar(rollbackCandidate, { lock: false })
+}
+
 async function restoreOrder(id) {
   if (!id) return null
 
@@ -236,7 +249,12 @@ async function restoreOrder(id) {
       logger.error('Order calendar synchronization failed before restore', err)
       const restoreError = calendarUnavailableError(CALENDAR_RESTORE_WARNING.message)
       restoreError.cause = err
-      if (err?.rollbackError) restoreError.rollbackError = err.rollbackError
+      try {
+        await restorePreviousCalendarProjection(order, restoredCandidate, wasDeleted)
+      } catch (rollbackError) {
+        restoreError.rollbackError = rollbackError
+        logger.error('Calendar rollback failed after restore synchronization error', rollbackError)
+      }
       throw restoreError
     }
 
@@ -253,15 +271,7 @@ async function restoreOrder(id) {
     } catch (err) {
       logger.error('Mongo activation failed after restoring order calendar events', err)
       try {
-        if (wasDeleted) {
-          await deleteOrderEvent(restoredCandidate, { lock: false })
-        } else {
-          const rollbackCandidate = {
-            ...restoredCandidate,
-            canceledAt: order.canceledAt,
-          }
-          await syncOrderToCalendar(rollbackCandidate, { lock: false })
-        }
+        await restorePreviousCalendarProjection(order, restoredCandidate, wasDeleted)
       } catch (rollbackError) {
         err.rollbackError = rollbackError
         logger.error('Calendar rollback failed after restore activation error', rollbackError)
