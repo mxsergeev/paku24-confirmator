@@ -1,5 +1,9 @@
 import { test, expect } from './fixtures.js'
 
+test.beforeEach(async ({ page }) => {
+  await page.request.delete('/api/test/calendar')
+})
+
 function dateInCurrentHelsinkiMonth(day) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Europe/Helsinki',
@@ -9,6 +13,10 @@ function dateInCurrentHelsinkiMonth(day) {
   const year = Number(parts.find((part) => part.type === 'year').value)
   const month = Number(parts.find((part) => part.type === 'month').value)
   return new Date(Date.UTC(year, month - 1, day, 10, 0, 0)).toISOString()
+}
+
+async function calendarEvents(page) {
+  return page.evaluate(() => fetch('/api/test/calendar').then((response) => response.json()).then((body) => body.events))
 }
 
 test('unconfirmed orders can be confirmed through the real order dialog', async ({ page, database }) => {
@@ -129,7 +137,7 @@ test('confirmed deleted orders recreate Calendar ownership when restored', async
   await page.getByRole('button', { name: 'Confirm order' }).click()
   await page.getByRole('dialog').filter({ hasText: 'Are you sure you want to confirm this order?' }).getByRole('button', { name: 'Confirm' }).click()
   await expect.poll(async () => (await database.readOrder(order.id))?.confirmed).toBe(true)
-  await expect.poll(async () => (await database.readOrder(order.id))?.calendarEventIds?.main).toBeTruthy()
+  await expect.poll(async () => (await calendarEvents(page)).some((event) => event.id === `paku24${order.id}m`)).toBe(true)
 
   await page.getByRole('button', { name: 'Cancel order' }).click()
   await page.getByRole('dialog').filter({ hasText: 'Choose whether to cancel only or cancel and notify the customer.' }).getByRole('button', { name: 'Cancel only' }).click()
@@ -138,7 +146,7 @@ test('confirmed deleted orders recreate Calendar ownership when restored', async
   await page.getByRole('button', { name: 'Delete' }).click()
   await page.getByRole('dialog').filter({ hasText: 'This will remove the order from active planning.' }).getByRole('button', { name: 'Delete' }).click()
   await expect.poll(async () => (await database.readOrder(order.id))?.deletedAt).toBeTruthy()
-  await expect.poll(async () => (await database.readOrder(order.id))?.calendarEventIds?.main).toBeFalsy()
+  await expect.poll(async () => (await calendarEvents(page)).some((event) => event.id === `paku24${order.id}m`)).toBe(false)
 
   await page.locator('label.calendar-toolbar-toggle').click()
   await page.locator('.fc-event').filter({ hasText: order.name }).click()
@@ -148,7 +156,7 @@ test('confirmed deleted orders recreate Calendar ownership when restored', async
     return saved && {
       deletedAt: Boolean(saved.deletedAt),
       confirmed: saved.confirmed,
-      main: Boolean(saved.calendarEventIds?.main),
+      main: (await calendarEvents(page)).some((event) => event.id === `paku24${order.id}m`),
     }
   }).toEqual({ deletedAt: false, confirmed: true, main: true })
   await expect(page.getByRole('button', { name: 'Cancel order' })).toBeVisible()

@@ -9,15 +9,20 @@ import {
   makeAppBooking,
   makeWordPressPayloadMissingPricing,
 } from '../../src/shared/testFixtures/orderFixtures.js'
+import { clear as clearCalendar, failNext as failNextCalendar, getEvents as getCalendarEvents } from '../modules/calendar/testCalendarProvider.js'
 
 const api = supertest(app)
 useTestDatabase()
 
 const key = process.env.ORDER_POOL_KEY || '1234'
 const appToken = generateJWT(
-  { name: 'Tester', username: 'tester', id: '123456789' },
+  { name: 'Tester', username: 'tester', id: '66c000000000000000000001' },
   { expiresIn: '10m' },
 )
+
+afterEach(() => {
+  clearCalendar()
+})
 
 function makeMinimalAddress(street) {
   return {
@@ -191,6 +196,37 @@ describe('Order pool v2/add', () => {
     expect(saved.originalOrder).toBeNull()
   })
 
+  test('authenticated app creation confirms the order and creates deterministic calendar events', async () => {
+    const source = makeOrder({ name: 'App Calendar Order' })
+    names.push(source.name)
+
+    const res = await api
+      .post('/api/order-pool/v2/add')
+      .set('Cookie', [`at=${appToken}`])
+      .send({ order: source })
+      .expect(200)
+
+    const events = getCalendarEvents()
+    expect(res.body.warning).toBeNull()
+    expect(events.map((event) => event.id).sort()).toEqual([
+      `paku24${res.body.id}d`,
+      `paku24${res.body.id}m`,
+      `paku24${res.body.id}r`,
+    ])
+    const saved = await Order.findById(res.body.id).lean()
+    expect(saved.confirmed).toBe(true)
+    expect(saved.confirmedBy.toString()).toBe('66c000000000000000000001')
+  })
+
+  test('WordPress imports remain unconfirmed and have no calendar events', async () => {
+    const source = makeWordPressPayloadMissingPricing({ name: 'WordPress Calendar Order' })
+    names.push(source.name)
+
+    const res = await api.post('/api/order-pool/v2/add').send({ key, order: source }).expect(200)
+    expect(getCalendarEvents()).toEqual([])
+    expect((await Order.findById(res.body.id).lean()).confirmed).toBe(false)
+  })
+
   test('composes effective pricing from persisted manual components when total is automatic', async () => {
     const source = makeOrder({
       name: 'App Composed Pricing Order',
@@ -250,7 +286,6 @@ describe('Order pool v2/add', () => {
       canceledAt: '1999-01-02T00:00:00.000Z',
       deletedAt: '1999-01-03T00:00:00.000Z',
       invoiceNumber: 'attacker-invoice',
-      calendarEventIds: { main: 'attacker-event-id' },
       originalOrder: { injected: true },
       pricingOverrides: { price: 220, fees: [], boxesPrice: 40 },
       price: 999999,
@@ -269,14 +304,13 @@ describe('Order pool v2/add', () => {
     expect(saved.originalOrder).toBeNull()
     expect(saved.pricingOverrides).toEqual({ price: 220, fees: [], boxesPrice: 40 })
     expect(getOrderPricing(saved)).toEqual({ price: 220, fees: [], boxesPrice: 40 })
-    expect(saved.confirmed).toBe(false)
-    expect(saved.confirmedBy).not.toBe('66c000000000000000000002')
-    expect(saved.confirmedAt).not.toEqual(new Date('1999-01-01T00:00:00.000Z'))
+    expect(saved.confirmed).toBe(true)
+    expect(saved.confirmedBy.toString()).toBe('66c000000000000000000001')
+    expect(saved.confirmedAt).toEqual(expect.any(Date))
     expect(saved.invoiceNumber).not.toBe('attacker-invoice')
     expect(saved.receivedAt).not.toEqual(new Date('1999-01-01T00:00:00.000Z'))
     expect(saved.canceledAt).not.toEqual(new Date('1999-01-02T00:00:00.000Z'))
     expect(saved.deletedAt).not.toEqual(new Date('1999-01-03T00:00:00.000Z'))
-    expect(saved.calendarEventIds.main).not.toBe('attacker-event-id')
     expect(saved).not.toHaveProperty('price')
     expect(saved).not.toHaveProperty('fees')
     expect(saved).not.toHaveProperty('boxesPrice')
@@ -505,9 +539,81 @@ describe('Order pool deletion', () => {
     await api
       .delete(`/api/order-pool/v2/delete-permanent/${order.id}`)
       .set('Cookie', [`at=${appToken}`])
+      .expect(400)
+    expect(await Order.findById(order.id).lean()).not.toBeNull()
+
+    await api
+      .delete(`/api/order-pool/delete/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .expect(200)
+
+    await api
+      .delete(`/api/order-pool/v2/delete-permanent/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
       .expect(200)
 
     expect(await Order.findById(order.id).lean()).toBeNull()
+  })
+})
+
+describe('Order pool calendar reconciliation', () => {
+  const orderIds = []
+
+  afterEach(async () => {
+    await Order.deleteMany({ _id: { $in: orderIds } })
+    orderIds.length = 0
+  })
+
+  test('confirmation, edits, cancellation, deletion, and restore converge on stable IDs', async () => {
+    const order = await createPersistedOrder({ name: 'Calendar lifecycle order' })
+    orderIds.push(order.id)
+
+    await api.put(`/api/order-pool/v2/confirm/${order.id}`).set('Cookie', [`at=${appToken}`]).expect(200)
+    expect(getCalendarEvents().map((event) => event.id).sort()).toEqual([
+      `paku24${order.id}d`, `paku24${order.id}m`, `paku24${order.id}r`,
+    ])
+
+    await api.put(`/api/order-pool/v2/${order.id}`).set('Cookie', [`at=${appToken}`]).send({
+      updateData: { name: 'Calendar lifecycle edited' },
+    }).expect(200)
+    expect(getCalendarEvents()).toHaveLength(3)
+
+    await api.put(`/api/order-pool/v2/cancel/${order.id}`).set('Cookie', [`at=${appToken}`]).expect(200)
+    expect(getCalendarEvents().every((event) => event.summary.includes('(CANCELED)'))).toBe(true)
+
+    await api.delete(`/api/order-pool/delete/${order.id}`).set('Cookie', [`at=${appToken}`]).expect(200)
+    expect(getCalendarEvents()).toEqual([])
+
+    const accessUser = await User.findOne({ username: 'unicorn123' })
+    const accessToken = generateJWT(
+      { name: accessUser.name, username: accessUser.username, id: accessUser.id },
+      { expiresIn: '10m' },
+    )
+    await api.post(`/api/order-pool/v2/restore/${order.id}`).set('Cookie', [`at=${accessToken}`]).expect(200)
+    expect(getCalendarEvents().map((event) => event.id).sort()).toEqual([
+      `paku24${order.id}d`, `paku24${order.id}m`, `paku24${order.id}r`,
+    ])
+  })
+
+  test('a missing event is recovered and a provider failure returns a stable warning after Mongo saves', async () => {
+    const order = await createPersistedOrder({ name: 'Calendar recovery order', confirmed: true })
+    orderIds.push(order.id)
+
+    failNextCalendar('update')
+    const failed = await api.put(`/api/order-pool/v2/${order.id}`).set('Cookie', [`at=${appToken}`]).send({
+      updateData: { name: 'Saved despite calendar failure' },
+    }).expect(200)
+    expect(failed.body.warning).toEqual({
+      code: 'CALENDAR_SYNC_FAILED',
+      message: 'Order was saved, but Google Calendar could not be synchronized.',
+    })
+    expect((await Order.findById(order.id).lean()).name).toBe('Saved despite calendar failure')
+    expect(getCalendarEvents()).toEqual([])
+
+    await api.put(`/api/order-pool/v2/${order.id}`).set('Cookie', [`at=${appToken}`]).send({
+      updateData: { comment: 'Retry' },
+    }).expect(200)
+    expect(getCalendarEvents()).toHaveLength(3)
   })
 })
 
@@ -525,7 +631,6 @@ describe('Order pool restore', () => {
       confirmed: true,
       deletedAt: new Date(),
       canceledAt: new Date(),
-      calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
     })
     orderIds.push(order.id)
     const accessUser = await User.findOne({ username: 'unicorn123' })
@@ -543,6 +648,5 @@ describe('Order pool restore', () => {
     expect(saved.confirmed).toBe(true)
     expect(saved.deletedAt).toBeUndefined()
     expect(saved.canceledAt).toBeUndefined()
-    expect(saved.calendarEventIds.main).toEqual(expect.any(String))
   })
 })

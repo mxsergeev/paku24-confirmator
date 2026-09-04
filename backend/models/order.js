@@ -97,14 +97,6 @@ const order = new mongoose.Schema({
     default: null,
   },
   canceledAt: Date,
-  calendarEventIds: {
-    type: nestedSchema({
-      main: { type: String, default: null },
-      boxDelivery: { type: String, default: null },
-      boxReturn: { type: String, default: null },
-    }),
-    default: () => ({ main: null, boxDelivery: null, boxReturn: null }),
-  },
 })
 
 order.set('toJSON', {

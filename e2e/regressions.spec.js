@@ -104,6 +104,24 @@ test('editing and saving a direct order URL updates the exact order', async ({ p
   await expect.poll(async () => (await database.readOrder(order.id))?.name).toBe('Direct URL Customer')
 })
 
+test('calendar provider warnings do not roll back a saved edit', async ({ page, database }) => {
+  const order = await database.seedOrder({
+    name: 'Calendar warning customer',
+    date: dateInCurrentHelsinkiMonth(10),
+    confirmed: true,
+  })
+
+  await page.request.delete('/api/test/calendar')
+  await page.request.post('/api/test/calendar/fail-next', { data: { operation: 'update' } })
+  await page.goto(`/app/calendar/order/${order.id}`)
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.locator('input[name="name"]').fill('Saved warning customer')
+  await page.getByRole('button', { name: 'Save changes' }).click()
+
+  await expect.poll(async () => (await database.readOrder(order.id))?.name).toBe('Saved warning customer')
+  await expect(page.getByText('Order was saved, but Google Calendar could not be synchronized.')).toBeVisible()
+})
+
 test('New Order exposes the browser-level pricing location', async ({ page }) => {
   await page.goto('/app/calendar')
   await page.getByRole('button', { name: 'Create order' }).click()
@@ -209,7 +227,7 @@ test('pending new orders retry by ID and stale IDs restore the draft', async ({ 
   await expect(page.getByRole('button', { name: /retry confirmation/i })).toBeVisible()
   expect(confirmAttempts).toBe(1)
   expect(addRequests).toBe(1)
-  expect((await database.readOrder(createdId))?.confirmed).toBe(false)
+  expect((await database.readOrder(createdId))?.confirmed).toBe(true)
 
   await page.reload()
   await page.getByRole('button', { name: 'Create order' }).click()

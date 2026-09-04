@@ -1,299 +1,109 @@
 import Order from '../../models/order.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import * as logger from '../../utils/logger.js'
-import {
-  deleteOrderEvent,
-  syncOrderToCalendar,
-  withOrderCalendarLock,
-} from '../calendar/calendar.sync.js'
+import { syncOrderToGoogleCalendar } from '../calendar/googleCalendar.js'
 
 const EDITABLE_FIELDS = [
-  'distance',
-  'hsy',
-  'eventColor',
-  'date',
-  'duration',
-  'service',
-  'paymentType',
-  'address',
-  'extraAddresses',
-  'destination',
-  'boxes',
-  'name',
-  'email',
-  'phone',
-  'comment',
-  'pricingOverrides',
+  'distance', 'hsy', 'eventColor', 'date', 'duration', 'service', 'paymentType',
+  'address', 'extraAddresses', 'destination', 'boxes', 'name', 'email', 'phone',
+  'comment', 'pricingOverrides',
 ]
 
 const CALENDAR_SYNC_WARNING = {
   code: 'CALENDAR_SYNC_FAILED',
-  message: 'Order was saved, but its calendar events could not be synchronized.',
-}
-
-const CALENDAR_CONFIRMATION_WARNING = {
-  code: 'CALENDAR_CONFIRMATION_FAILED',
-  message: 'Order remains unconfirmed because its calendar events could not be synchronized.',
-}
-
-const CALENDAR_DELETE_WARNING = {
-  code: 'CALENDAR_DELETE_FAILED',
-  message: 'Order was not deleted because its calendar events could not be removed.',
-}
-
-const CALENDAR_RESTORE_WARNING = {
-  code: 'CALENDAR_RESTORE_FAILED',
-  message: 'Order was not restored because its calendar events could not be synchronized.',
-}
-
-function calendarUnavailableError(message) {
-  return newErrorWithCustomName('CalendarUnavailableError', message)
-}
-
-function makeRestoredCalendarCandidate(order) {
-  const candidate = typeof order?.toObject === 'function'
-    ? order.toObject()
-    : { ...order }
-
-  if (candidate._id === undefined && order?._id !== undefined) candidate._id = order._id
-  delete candidate.deletedAt
-  delete candidate.canceledAt
-  return candidate
-}
-
-function resultWithWarning(order, warning = null) {
-  return {
-    order,
-    warning: warning ? { ...warning } : null,
-  }
-}
-
-function isConfirmedAndActive(order) {
-  return Boolean(order?.confirmed && !order?.deletedAt)
-}
-
-async function compensateCalendarAfterDeleteFailure(order, err, operation) {
-  logger.error(`Mongo ${operation} persistence failed after Calendar cleanup`, err)
-
-  if (!isConfirmedAndActive(order)) throw err
-
-  try {
-    await syncOrderToCalendar(order, { lock: false })
-  } catch (rollbackError) {
-    err.rollbackError = rollbackError
-    logger.error(`Calendar compensation failed after Mongo ${operation} failure`, rollbackError)
-  }
-
-  throw err
-}
-
-// Callers invoke this while holding the order calendar lock. Calendar sync
-// must not reacquire that lock before the mutation request can finish.
-async function syncAfterMutation(order) {
-  if (!isConfirmedAndActive(order)) return resultWithWarning(order)
-
-  try {
-    await syncOrderToCalendar(order, { lock: false })
-    return resultWithWarning(order)
-  } catch (err) {
-    // Calendar reconciliation is deliberately best effort for ordinary order
-    // mutations. Keep the API warning stable and log the provider detail only
-    // on the server.
-    logger.error('Order calendar synchronization failed after persisted mutation', err)
-    return resultWithWarning(order, CALENDAR_SYNC_WARNING)
-  }
+  message: 'Order was saved, but Google Calendar could not be synchronized.',
 }
 
 function validationError(message) {
   return newErrorWithCustomName('ValidationError', message)
 }
 
+function resultWithWarning(order, warning = null) {
+  return { order, warning: warning ? { ...warning } : null }
+}
+
 async function getOrderById(id) {
   const order = await Order.findById(id)
-
-  if (!order) {
-    throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-  }
-
+  if (!order) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
   return order
 }
 
-async function updateOrder(id, updateData) {
-  return withOrderCalendarLock(id, async () => {
-    const order = await getOrderById(id)
-    if (!updateData || typeof updateData !== 'object' || Array.isArray(updateData)) {
-      throw validationError('updateData must be an object')
-    }
+async function syncAfterSave(order) {
+  if (!order.confirmed) return resultWithWarning(order)
+  try {
+    await syncOrderToGoogleCalendar(order)
+    return resultWithWarning(order)
+  } catch (error) {
+    logger.error('Order calendar synchronization failed after persisted mutation', error)
+    return resultWithWarning(order, CALENDAR_SYNC_WARNING)
+  }
+}
 
-    for (const field of EDITABLE_FIELDS) {
-      if (Object.hasOwn(updateData, field)) order[field] = updateData[field]
-    }
-    await order.save()
-    return syncAfterMutation(order)
-  })
+async function updateOrder(id, updateData) {
+  const order = await getOrderById(id)
+  if (!updateData || typeof updateData !== 'object' || Array.isArray(updateData)) {
+    throw validationError('updateData must be an object')
+  }
+  for (const field of EDITABLE_FIELDS) {
+    if (Object.hasOwn(updateData, field)) order[field] = updateData[field]
+  }
+  await order.save()
+  return syncAfterSave(order)
 }
 
 async function confirmOrder(id, userId) {
   if (!id) return null
-
-  return withOrderCalendarLock(id, async () => {
-    const order = await getOrderById(id)
-
-    if (order.deletedAt) {
-      throw validationError('Deleted orders cannot be confirmed')
-    }
-
-    // Confirmation is idempotent. A repeated request must not depend on a
-    // transient calendar provider response once the lifecycle flag is true.
-    if (order.confirmed) return resultWithWarning(order)
-
-    // Confirmation has an external precondition. Reconcile the persisted order
-    // first, so a calendar failure cannot leave Mongo marked as confirmed.
-    try {
-      await syncOrderToCalendar(order, { lock: false })
-    } catch (err) {
-      logger.error('Order calendar synchronization failed before confirmation', err)
-      throw calendarUnavailableError(
-        CALENDAR_CONFIRMATION_WARNING.message,
-      )
-    }
-
-    const confirmed = await Order.findByIdAndUpdate(
-      { _id: id },
-      {
-        confirmed: true,
-        confirmedBy: userId,
-        confirmedAt: new Date().toISOString(),
-      },
-      { new: true },
-    )
-
-    if (!confirmed) {
-      throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-    }
-
-    return resultWithWarning(confirmed)
-  })
+  const order = await getOrderById(id)
+  if (order.deletedAt) throw validationError('Deleted orders cannot be confirmed')
+  if (!order.confirmed) {
+    const now = new Date()
+    order.confirmed = true
+    order.confirmedBy = userId
+    order.confirmedAt = now
+    await order.save()
+  }
+  return syncAfterSave(order)
 }
 
 async function cancelOrder(id) {
   if (!id) return null
-
-  return withOrderCalendarLock(id, async () => {
-    const order = await getOrderById(id)
-    if (order.deletedAt) {
-      throw validationError('Deleted orders cannot be canceled')
-    }
-
-    const canceled = await Order.findByIdAndUpdate(
-      { _id: id },
-      {
-        canceledAt: new Date().toISOString(),
-      },
-      { new: true },
-    )
-
-    return canceled ? syncAfterMutation(canceled) : null
-  })
+  const order = await getOrderById(id)
+  if (order.deletedAt) throw validationError('Deleted orders cannot be canceled')
+  if (!order.canceledAt) {
+    order.canceledAt = new Date()
+    await order.save()
+  }
+  return syncAfterSave(order)
 }
 
 async function deleteOrder(id) {
   if (!id) return null
-
-  // Calendar events are owned by the order. Delete every owned role before
-  // marking the row deleted; a failed provider call leaves the row active so
-  // the operation can be retried with the IDs that remain linked.
-  return withOrderCalendarLock(id, async () => {
-    const order = await getOrderById(id)
-    try {
-      await deleteOrderEvent(order, { lock: false })
-    } catch (err) {
-      logger.error('Order calendar deletion failed before soft delete', err)
-      throw calendarUnavailableError(CALENDAR_DELETE_WARNING.message)
-    }
-
-    let deletedOrder
-    try {
-      deletedOrder = await Order.findByIdAndUpdate(
-        { _id: id },
-        { deletedAt: new Date().toISOString() },
-        { new: true },
-      )
-    } catch (err) {
-      await compensateCalendarAfterDeleteFailure(order, err, 'soft-deletion')
-    }
-
-    return deletedOrder ? resultWithWarning(deletedOrder) : null
-  })
-}
-
-async function restorePreviousCalendarProjection(order, restoredCandidate, wasDeleted) {
-  if (wasDeleted) {
-    await deleteOrderEvent(restoredCandidate, { lock: false })
-    return
+  const order = await getOrderById(id)
+  if (!order.deletedAt) {
+    order.deletedAt = new Date()
+    await order.save()
   }
-
-  const rollbackCandidate = {
-    ...restoredCandidate,
-    canceledAt: order.canceledAt,
-  }
-  await syncOrderToCalendar(rollbackCandidate, { lock: false })
+  return syncAfterSave(order)
 }
 
 async function restoreOrder(id) {
   if (!id) return null
+  const order = await getOrderById(id)
+  order.deletedAt = undefined
+  order.canceledAt = undefined
+  await order.save()
+  return syncAfterSave(order)
+}
 
-  return withOrderCalendarLock(id, async () => {
-    const order = await getOrderById(id)
-    const wasDeleted = Boolean(order.deletedAt)
-    const lifecycleUpdate = { $unset: { deletedAt: 1, canceledAt: 1 } }
-
-    if (!order.confirmed) {
-      const restoredOrder = await Order.findByIdAndUpdate(
-        { _id: id },
-        lifecycleUpdate,
-        { new: true },
-      )
-      return restoredOrder ? resultWithWarning(restoredOrder) : null
-    }
-
-    const restoredCandidate = makeRestoredCalendarCandidate(order)
-    try {
-      await syncOrderToCalendar(restoredCandidate, { lock: false })
-    } catch (err) {
-      logger.error('Order calendar synchronization failed before restore', err)
-      const restoreError = calendarUnavailableError(CALENDAR_RESTORE_WARNING.message)
-      restoreError.cause = err
-      try {
-        await restorePreviousCalendarProjection(order, restoredCandidate, wasDeleted)
-      } catch (rollbackError) {
-        restoreError.rollbackError = rollbackError
-        logger.error('Calendar rollback failed after restore synchronization error', rollbackError)
-      }
-      throw restoreError
-    }
-
-    try {
-      const restoredOrder = await Order.findByIdAndUpdate(
-        { _id: id },
-        lifecycleUpdate,
-        { new: true },
-      )
-      if (!restoredOrder) {
-        throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-      }
-      return resultWithWarning(restoredOrder)
-    } catch (err) {
-      logger.error('Mongo activation failed after restoring order calendar events', err)
-      try {
-        await restorePreviousCalendarProjection(order, restoredCandidate, wasDeleted)
-      } catch (rollbackError) {
-        err.rollbackError = rollbackError
-        logger.error('Calendar rollback failed after restore activation error', rollbackError)
-      }
-      throw err
-    }
-  })
+async function deleteOrderPermanently(id) {
+  if (!id) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
+  const order = await getOrderById(id)
+  if (!order.deletedAt) throw validationError('Order must be soft-deleted before permanent deletion')
+  await syncOrderToGoogleCalendar(order)
+  const result = await Order.deleteOne({ _id: id })
+  const deleted = result?.deletedCount ?? result?.n
+  if (deleted === 0) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
+  return order
 }
 
 export {
@@ -303,32 +113,5 @@ export {
   cancelOrder,
   deleteOrder,
   restoreOrder,
+  deleteOrderPermanently,
 }
-
-async function deleteOrderPermanently(id) {
-  if (!id) throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-
-  // Remove external calendar state before deleting the row so a Google
-  // failure leaves the order and its IDs available for a retry. Hold the
-  // per-order lock across both operations so a concurrent sync cannot create
-  // events after cleanup but before the row disappears.
-  const result = await withOrderCalendarLock(id, async () => {
-    const order = await getOrderById(id)
-    await deleteOrderEvent(order, { lock: false })
-    let deletionResult
-    try {
-      deletionResult = await Order.deleteOne({ _id: id })
-    } catch (err) {
-      await compensateCalendarAfterDeleteFailure(order, err, 'permanent deletion')
-    }
-    return { order, result: deletionResult }
-  })
-  const deleted = result?.result?.deletedCount ?? result?.result?.n
-  if (deleted === 0) {
-    throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
-  }
-
-  return result.order
-}
-
-export { deleteOrderPermanently }

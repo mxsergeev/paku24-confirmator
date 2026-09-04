@@ -154,9 +154,17 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
         id = response?.id
         if (!id) throw new Error('Order was added but no ID was returned')
         handleOrderPersisted(id)
+        if (response?.warning?.message) {
+          enqueueSnackbar(response.warning.message, { variant: 'warning' })
+        }
       }
 
       const response = await ordersAPI.confirm(id)
+      if (response?.warning?.message) {
+        enqueueSnackbar(response.warning.message, { variant: 'warning' })
+        setRecovering(false)
+        return
+      }
       clearPendingOrderId()
       clearSavedDraft()
       if (response?.message) enqueueSnackbar(response.message)

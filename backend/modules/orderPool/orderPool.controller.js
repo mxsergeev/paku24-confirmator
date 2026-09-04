@@ -24,6 +24,8 @@ import {
   createAppOrder,
 } from '../../../src/shared/orderModel.js'
 import { normalizeWordPressOrderPayload } from '../../../src/shared/wordpressOrderPayload.js'
+import { syncOrderToGoogleCalendar } from '../calendar/googleCalendar.js'
+import * as logger from '../../utils/logger.js'
 
 const APP_CREATE_FIELDS = [
   'distance',
@@ -113,9 +115,34 @@ orderPoolRouter.post('/v2/add', checkKeyOrAuth, async (req, res, next) => {
       invoiceNumber: buildStableInvoiceNumber(order),
     })
 
+    if (req.orderPoolOrigin === 'app') {
+      const now = new Date()
+      receivedOrder.confirmed = true
+      receivedOrder.confirmedBy = req.user.id
+      receivedOrder.confirmedAt = now
+    }
+
     await receivedOrder.save()
 
-    return res.status(200).send({ message: 'Order added to the pool.', id: receivedOrder._id })
+    let warning = null
+    if (req.orderPoolOrigin === 'app') {
+      try {
+        await syncOrderToGoogleCalendar(receivedOrder)
+      } catch (error) {
+        logger.error('Order calendar synchronization failed after app creation', error)
+        warning = {
+          code: 'CALENDAR_SYNC_FAILED',
+          message: 'Order was saved, but Google Calendar could not be synchronized.',
+        }
+      }
+    }
+
+    return res.status(200).send({
+      message: 'Order added to the pool.',
+      id: receivedOrder._id,
+      order: receivedOrder,
+      warning,
+    })
   } catch (err) {
     return next(err)
   }
