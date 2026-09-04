@@ -3,9 +3,9 @@ This repository is a full-stack Node + React app for Paku24's "Confirmator" serv
 Key points (read these first)
 
 - Backend: Node + Express app in `backend/` (entry: `backend/index.js`, app config: `backend/app.js`). MongoDB via Mongoose is initialized in `backend/app.js` using `backend/utils/config.js`.
-- Frontend: React app in `src/` (Create React App). Production build served from `build/` by Express static middleware.
+- Frontend: Vite + React app in `src/`. Production build served from `build/` by Express static middleware.
 - Authentication: custom rotating refresh-token strategy implemented in `backend/modules/authentication/` (important files: `auth.middleware.js`, `auth.token.controller.js`, `auth.login.controller.js`). Refresh tokens are stored in `models/refreshToken.js`.
-- External integrations: Google Calendar (`backend/modules/calendar/*`), AWS SES for email (`backend/modules/email/*`), SemySMS gateway for SMS (`backend/modules/sms/*`). Credentials live in `credentials/` and via environment variables defined in `.env` (see `.env.example`).
+- External integrations: Google Calendar (`backend/modules/calendar/googleCalendar.js`), AWS SES for email (`backend/modules/email/*`), SemySMS gateway for SMS (`backend/modules/sms/*`). Credentials live in `credentials/` and via environment variables defined in `.env` (see `.env.example`).
 
 Developer workflow and commands
 
@@ -28,8 +28,8 @@ Project-specific conventions and patterns
 - Token handling: Access token stored in cookie `at`, refresh token in cookie `rt`. The refresh-token rotation logic is implemented in `auth.middleware.js` (functions: `authenticateAccessToken`, `authenticateRefreshToken`, `generateRefreshToken`, `updateOrDeleteOldToken`, `setTokenCookies`). Any change to auth must preserve cookie names and rotation semantics.
 - Error types: Custom errors are created with `utils/newErrorWithCustomName.js`; controllers forward errors to `backend/utils/errorHandler.middleware.js`.
 - Router protection: Most API routes call `auth.middleware.authenticateAccessToken` (e.g., `modules/calendar`, `modules/email`, `modules/orderPool`). If adding endpoints that require auth follow the same pattern and return consistent HTTP codes.
-- Frontend API: UI posts to `/api/...`. Example: calendar events are posted to `/api/calendar` with body { order, calendarEntries } and the server maps these to Google events using `calendar.helpers.js`.
-- Order model: Check `backend/models/order.js` and `backend/models/rawOrder.js` for the canonical data shape when adding or transforming orders; `modules/orderPool/orderPool.controller.js` implements upload/processing logic.
+- Frontend API: UI posts to `/api/...`. Order creation, edits, and lifecycle changes use `/api/order-pool`; the order-pool controller synchronizes confirmed orders with Google Calendar.
+- Order model: Check `backend/models/order.js` for the canonical data shape when adding or transforming orders; `modules/orderPool/orderPool.controller.js` implements upload/processing logic.
 
 Integration notes & gotchas
 
@@ -42,7 +42,7 @@ Files to inspect first when modifying behavior
 
 - `backend/app.js` - middleware, routing, static serving
 - `backend/modules/authentication/auth.middleware.js` - auth flow and token rotation
-- `backend/modules/calendar/calendar.googleAPI.js` and `calendar.helpers.js` - calendar integration and event shaping
+- `backend/modules/calendar/googleCalendar.js` - calendar integration and event shaping
 - `backend/modules/email/email.awsAPI.js` and `email.helpers.js` - email body generation
 - `backend/models/*` - data schemas (User, RefreshToken, Order)
 - `src/services/*` and `src/components/*` - how the UI calls the API and data shapes expected by backend endpoints
