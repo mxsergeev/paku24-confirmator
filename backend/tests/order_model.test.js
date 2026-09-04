@@ -75,6 +75,18 @@ describe('Order Mongoose schema', () => {
     expect(order.validateSync()).toBeUndefined()
   })
 
+  it('does not persist legacy box pricing fields', () => {
+    const order = new Order(new Order(makeOrder()).toObject())
+    order.boxes.pricePerBox = 1
+    order.boxes.deliveryPrice = 2
+    order.boxes.returnPrice = 3
+
+    expect(order.toObject().boxes).not.toHaveProperty('pricePerBox')
+    expect(order.toObject().boxes).not.toHaveProperty('deliveryPrice')
+    expect(order.toObject().boxes).not.toHaveProperty('returnPrice')
+    expect(order.validateSync()).toBeUndefined()
+  })
+
   it('does not persist a null deletedAt value for an active order', () => {
     const order = new Order(makeOrder({ deletedAt: null }))
 

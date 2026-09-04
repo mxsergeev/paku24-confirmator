@@ -135,9 +135,6 @@ const boxesSchema = nestedSchema({
   deliveryDate: { type: DateOrDateOnly },
   returnDate: { type: DateOrDateOnly },
   amount: finiteNumberPath(),
-  pricePerBox: finiteNumberPath(),
-  deliveryPrice: finiteNumberPath(),
-  returnPrice: finiteNumberPath(),
 })
 
 const pricingOverridesSchema = nestedSchema({

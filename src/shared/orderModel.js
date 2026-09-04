@@ -36,11 +36,8 @@ const BOX_FIELDS = [
   'deliveryDate',
   'returnDate',
   'amount',
-  'pricePerBox',
-  'deliveryPrice',
-  'returnPrice',
 ]
-const BOX_NUMBER_FIELDS = ['amount', 'pricePerBox', 'deliveryPrice', 'returnPrice']
+const BOX_NUMBER_FIELDS = ['amount']
 const NULLABLE_BOOKING_FIELDS = new Set(['eventColor', 'name', 'email', 'phone', 'comment'])
 const STRING_BOOKING_FIELDS = new Set(['distance', 'name', 'email', 'phone', 'comment', 'eventColor'])
 const BOOLEAN_BOOKING_FIELDS = new Set(['hsy'])

@@ -84,6 +84,15 @@ describe('Order pool v2/add', () => {
   test('key creates an editable WordPress order with an immutable reference', async () => {
     const source = makeWordPressPayloadMissingPricing({
       name: 'WordPress Order',
+      price: 'legacy-price',
+      fees: { legacy: 'shape' },
+      boxesPrice: ['old'],
+      boxes: {
+        ...makeWordPressPayloadMissingPricing().boxes,
+        pricePerBox: 'old',
+        deliveryPrice: { old: true },
+        returnPrice: 'not-a-number',
+      },
       metadata: { source: 'wordpress' },
     })
     names.push(source.name)
@@ -100,10 +109,14 @@ describe('Order pool v2/add', () => {
     expect(saved).not.toHaveProperty('price')
     expect(saved).not.toHaveProperty('fees')
     expect(saved).not.toHaveProperty('boxesPrice')
+    expect(saved.boxes).not.toHaveProperty('pricePerBox')
+    expect(saved.boxes).not.toHaveProperty('deliveryPrice')
+    expect(saved.boxes).not.toHaveProperty('returnPrice')
 
     const effective = getOrderPricing(saved)
     expect(effective.price).toEqual(expect.any(Number))
     expect(effective.fees).toEqual(expect.any(Array))
+    expect(effective.price).not.toBe('legacy-price')
   })
 
   test('key preserves WordPress scalar casting semantics', async () => {

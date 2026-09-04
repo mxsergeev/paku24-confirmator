@@ -81,6 +81,36 @@ describe('order model boundaries', () => {
     expect(order.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
   })
 
+  it('keeps legacy box pricing out of canonical create and update paths', () => {
+    const order = createAppOrder({
+      ...makeAppBooking(),
+      boxes: {
+        ...makeAppBooking().boxes,
+        pricePerBox: 999,
+        deliveryPrice: 888,
+        returnPrice: 777,
+      },
+    })
+    const patch = normalizeOrderPatch({
+      boxes: {
+        ...makeAppBooking().boxes,
+        amount: 5,
+        pricePerBox: 1,
+        deliveryPrice: 2,
+        returnPrice: 3,
+      },
+    })
+
+    expect(order.boxes).not.toHaveProperty('pricePerBox')
+    expect(order.boxes).not.toHaveProperty('deliveryPrice')
+    expect(order.boxes).not.toHaveProperty('returnPrice')
+    expect(patch.boxes).toEqual({
+      amount: 5,
+      deliveryDate: new Date('2026-06-16T06:00:00.000Z'),
+      returnDate: new Date('2026-06-24T06:00:00.000Z'),
+    })
+  })
+
   it('preserves manual overrides across ordinary booking edits', () => {
     const manual = setPricingOverride(makeCanonicalAppOrder(), 'price', 220)
     const updated = {

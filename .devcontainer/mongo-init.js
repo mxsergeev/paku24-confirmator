@@ -77,9 +77,6 @@ if (db.orders.countDocuments() === 0) {
       },
       boxes: {
         amount: 30,
-        pricePerBox: 0.15,
-        deliveryPrice: 20,
-        returnPrice: 20,
         deliveryDate: ISODate('2026-02-13T11:00:00.000Z'),
         returnDate: ISODate('2026-02-15T11:00:00.000Z'),
       },

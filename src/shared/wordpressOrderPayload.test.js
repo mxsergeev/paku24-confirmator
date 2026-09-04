@@ -34,7 +34,14 @@ describe('normalizeWordPressOrderPayload', () => {
     expect(order.duration).toBe(2)
     expect(order.service).toEqual(payload.service)
     expect(order.paymentType).toEqual(payload.paymentType)
-    expect(order.boxes).toMatchObject({ amount: 10, pricePerBox: 2, deliveryPrice: 10, returnPrice: 10 })
+    expect(order.boxes).toEqual({
+      amount: 10,
+      deliveryDate: new Date('2026-01-16T07:00:00.000Z'),
+      returnDate: new Date('2026-01-24T07:00:00.000Z'),
+    })
+    expect(order).not.toHaveProperty('price')
+    expect(order).not.toHaveProperty('fees')
+    expect(order).not.toHaveProperty('boxesPrice')
     expect(order).not.toHaveProperty('servicePrice')
     expect(order).not.toHaveProperty('unknown')
     expect(order).not.toHaveProperty('distance')
@@ -73,15 +80,15 @@ describe('normalizeWordPressOrderPayload', () => {
     expect(boxes).toEqual({ amount: 0, deliveryDate: '2026-01-16', returnDate: '2026-01-24' })
   })
 
-  it('keeps supported box fields while dropping unrelated metadata', () => {
+  it('excludes legacy box pricing from the normalized current booking', () => {
     const order = normalizeWordPressOrderPayload(wordpressPayload({
       boxes: {
         amount: '10',
         deliveryDate: '2026-01-16',
         returnDate: '2026-01-24',
-        pricePerBox: '2',
-        deliveryPrice: '10',
-        returnPrice: '10',
+        pricePerBox: 'garbage',
+        deliveryPrice: { old: true },
+        returnPrice: ['legacy'],
         metadata: { source: 'wordpress' },
       },
     }))
@@ -90,20 +97,48 @@ describe('normalizeWordPressOrderPayload', () => {
       amount: 10,
       deliveryDate: '2026-01-16',
       returnDate: '2026-01-24',
-      pricePerBox: 2,
-      deliveryPrice: 10,
-      returnPrice: 10,
     })
     expect(order.boxes).not.toHaveProperty('metadata')
   })
 
-  it('preserves zero and empty imported prices while omitting missing components', () => {
-    const withZeroes = normalizeWordPressOrderPayload(wordpressPayload({ price: '0', boxesPrice: '0', fees: [] }))
-    expect(withZeroes).toMatchObject({ price: 0, boxesPrice: 0, fees: [] })
-    const missing = normalizeWordPressOrderPayload(wordpressPayload({ price: undefined, boxesPrice: undefined, fees: undefined }))
-    expect(missing).not.toHaveProperty('price')
-    expect(missing).not.toHaveProperty('boxesPrice')
-    expect(missing).not.toHaveProperty('fees')
+  it('ignores malformed source pricing instead of rejecting an import', () => {
+    const order = normalizeWordPressOrderPayload(wordpressPayload({
+      price: 'legacy-garbage',
+      fees: { ancientPluginShape: true },
+      boxesPrice: ['whatever'],
+    }))
+
+    expect(order).not.toHaveProperty('price')
+    expect(order).not.toHaveProperty('fees')
+    expect(order).not.toHaveProperty('boxesPrice')
+  })
+
+  it('preserves raw source pricing and keeps current overrides automatic', () => {
+    const raw = wordpressPayload({
+      price: 'legacy-garbage',
+      fees: { ancientPluginShape: true },
+      boxesPrice: ['whatever'],
+      boxes: {
+        amount: 10,
+        deliveryDate: '2026-01-16',
+        returnDate: '2026-01-24',
+        pricePerBox: 'old',
+        deliveryPrice: { old: true },
+        returnPrice: ['legacy'],
+      },
+    })
+    const normalized = normalizeWordPressOrderPayload(raw)
+    const order = createWordPressOrder(normalized, raw)
+
+    expect(order.originalOrder.price).toBe('legacy-garbage')
+    expect(order.originalOrder.fees).toEqual({ ancientPluginShape: true })
+    expect(order.originalOrder.boxesPrice).toEqual(['whatever'])
+    expect(order.originalOrder.boxes).toMatchObject({
+      pricePerBox: 'old',
+      deliveryPrice: { old: true },
+      returnPrice: ['legacy'],
+    })
+    expect(order.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
   })
 
   it.each([
@@ -125,9 +160,6 @@ describe('normalizeWordPressOrderPayload', () => {
     ],
     [wordpressPayload({ boxes: { amount: 1, deliveryDate: '2026-01-16T09:00:00', returnDate: '2026-01-24T07:00:00Z' } }), /boxes\.deliveryDate/i],
     [wordpressPayload({ boxes: { amount: -1, deliveryDate: '2026-01-16', returnDate: '2026-01-24' } }), /boxes\.amount/i],
-    [wordpressPayload({ fees: [{ name: 'bad', amount: 'nope' }] }), /fees\.0\.amount/i],
-    [wordpressPayload({ fees: [{ amount: 10 }] }), /fees\.0\.name/i],
-    [wordpressPayload({ price: 'nope' }), /price/i],
   ])('rejects invalid input with its field name', (payload, error) => {
     expect(() => normalizeWordPressOrderPayload(payload)).toThrow(error)
   })

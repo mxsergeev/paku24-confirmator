@@ -159,11 +159,7 @@ function buildReceiptRows(order, receipt) {
   }
 
   const boxesAmount = num(order?.boxes?.amount)
-  const boxesFromFields =
-    boxesAmount * num(order?.boxes?.pricePerBox) +
-    num(order?.boxes?.deliveryPrice) +
-    num(order?.boxes?.returnPrice)
-  const boxesBrutto = roundMoney(pricing.boxesPrice ?? boxesFromFields)
+  const boxesBrutto = roundMoney(pricing.boxesPrice)
 
   if (boxesBrutto > 0) {
     const boxesUnitBruttoPrice = boxesAmount > 0 ? roundMoney(boxesBrutto / boxesAmount) : 0

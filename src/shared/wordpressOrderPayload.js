@@ -4,7 +4,6 @@ import {
   hasOwn,
   isPlainObject,
   OrderValidationError,
-  PRICING_COMPONENTS,
   requireFiniteNumber,
 } from './orderPrimitives.js'
 
@@ -22,8 +21,6 @@ const BOOKING_FIELDS = [
   'phone',
   'comment',
 ]
-
-const BOX_PRICE_FIELDS = ['pricePerBox', 'deliveryPrice', 'returnPrice']
 
 function normalizeAddress(value, field) {
   if (!isPlainObject(value)) throw new OrderValidationError(`Invalid ${field}: expected a structured address`)
@@ -65,18 +62,6 @@ function normalizeEmbedded(value, field, rateField) {
   }
 }
 
-function normalizeFees(value) {
-  if (!Array.isArray(value)) throw new OrderValidationError('Invalid fees: expected an array')
-  return value.map((fee, index) => {
-    if (!isPlainObject(fee)) throw new OrderValidationError(`Invalid fees.${index}: expected an object`)
-    if (typeof fee.name !== 'string' || fee.name.trim() === '') {
-      throw new OrderValidationError(`Invalid fees.${index}.name`)
-    }
-    if (!hasOwn(fee, 'amount')) throw new OrderValidationError(`Invalid fees.${index}.amount`)
-    return { ...cloneValue(fee), amount: requireFiniteNumber(fee.amount, `fees.${index}.amount`) }
-  })
-}
-
 function normalizeBoxDate(value, field) {
   if (isDateOnly(value)) {
     parseCalendarDate(value, field)
@@ -113,9 +98,6 @@ function normalizeBoxes(value, orderDate) {
   }
   if (boxes.amount < 0) throw new OrderValidationError('Invalid boxes.amount: must be non-negative')
 
-  BOX_PRICE_FIELDS.forEach((field) => {
-    if (hasOwn(value, field)) boxes[field] = requireFiniteNumber(value[field], `boxes.${field}`)
-  })
   return boxes
 }
 
@@ -142,11 +124,6 @@ export function normalizeWordPressOrderPayload(input) {
     else if (['name', 'email', 'phone', 'comment'].includes(field)) {
       result[field] = normalizeWordPressString(input[field], field)
     } else result[field] = cloneValue(input[field])
-  })
-
-  PRICING_COMPONENTS.forEach((field) => {
-    if (!hasOwn(input, field) || input[field] === null || input[field] === undefined) return
-    result[field] = field === 'fees' ? normalizeFees(input.fees) : requireFiniteNumber(input[field], field)
   })
 
   return result

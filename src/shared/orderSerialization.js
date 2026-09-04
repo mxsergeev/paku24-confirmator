@@ -59,15 +59,13 @@ function serializeBoxes(value, fieldName, fallbackDate) {
   if (value === null || value === undefined) return undefined
   if (!isPlainObject(value)) throw new Error(`Invalid ${fieldName}`)
 
-  const boxes = cloneValue(value)
+  const boxes = {
+    amount: value.amount ?? 0,
+  }
   for (const field of ['deliveryDate', 'returnDate']) {
     const date = value[field] ?? fallbackDate
     if (date === null || date === undefined) throw new Error(`Invalid ${fieldName}.${field}`)
     boxes[field] = serializeBoxDate(date, `${fieldName}.${field}`)
-  }
-  boxes.amount = value.amount ?? 0
-  for (const field of ['pricePerBox', 'deliveryPrice', 'returnPrice']) {
-    if (boxes[field] === null || boxes[field] === undefined) delete boxes[field]
   }
   return boxes
 }
