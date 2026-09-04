@@ -24,8 +24,24 @@ const CALENDAR_DELETE_WARNING = {
   message: 'Order was not deleted because its calendar events could not be removed.',
 }
 
+const CALENDAR_RESTORE_WARNING = {
+  code: 'CALENDAR_RESTORE_FAILED',
+  message: 'Order was not restored because its calendar events could not be synchronized.',
+}
+
 function calendarUnavailableError(message) {
   return newErrorWithCustomName('CalendarUnavailableError', message)
+}
+
+function makeRestoredCalendarCandidate(order) {
+  const candidate = typeof order?.toObject === 'function'
+    ? order.toObject()
+    : { ...order }
+
+  if (candidate._id === undefined && order?._id !== undefined) candidate._id = order._id
+  delete candidate.deletedAt
+  delete candidate.canceledAt
+  return candidate
 }
 
 function resultWithWarning(order, warning = null) {
@@ -180,14 +196,49 @@ async function restoreOrder(id) {
   if (!id) return null
 
   return withOrderCalendarLock(id, async () => {
-    const restoredOrder = await Order.findByIdAndUpdate(
-      { _id: id },
-      { $unset: { deletedAt: 1, canceledAt: 1 } },
-      { new: true },
-    )
-    return restoredOrder
-      ? syncAfterMutation(restoredOrder)
-      : null
+    const order = await getOrderById(id)
+    const lifecycleUpdate = { $unset: { deletedAt: 1, canceledAt: 1 } }
+
+    if (!order.confirmed) {
+      const restoredOrder = await Order.findByIdAndUpdate(
+        { _id: id },
+        lifecycleUpdate,
+        { new: true },
+      )
+      return restoredOrder ? resultWithWarning(restoredOrder) : null
+    }
+
+    const restoredCandidate = makeRestoredCalendarCandidate(order)
+    try {
+      await syncOrderToCalendar(restoredCandidate, { lock: false })
+    } catch (err) {
+      logger.error('Order calendar synchronization failed before restore', err)
+      const restoreError = calendarUnavailableError(CALENDAR_RESTORE_WARNING.message)
+      restoreError.cause = err
+      if (err?.rollbackError) restoreError.rollbackError = err.rollbackError
+      throw restoreError
+    }
+
+    try {
+      const restoredOrder = await Order.findByIdAndUpdate(
+        { _id: id },
+        lifecycleUpdate,
+        { new: true },
+      )
+      if (!restoredOrder) {
+        throw newErrorWithCustomName('OrderNotFoundError', 'Order not found')
+      }
+      return resultWithWarning(restoredOrder)
+    } catch (err) {
+      logger.error('Mongo activation failed after restoring order calendar events', err)
+      try {
+        await deleteOrderEvent(restoredCandidate, { lock: false })
+      } catch (rollbackError) {
+        err.rollbackError = rollbackError
+        logger.error('Calendar rollback failed after restore activation error', rollbackError)
+      }
+      throw err
+    }
   })
 }
 

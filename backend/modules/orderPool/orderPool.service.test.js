@@ -42,7 +42,10 @@ function makeOrder() {
     confirmed: false,
     deletedAt: null,
     calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
-    toObject: () => ({ name: 'Existing order' }),
+    toObject() {
+      const { save, toObject, ...snapshot } = this
+      return snapshot
+    },
     save: vi.fn(),
   }
 }
@@ -229,9 +232,11 @@ describe('explicit calendar side effects', () => {
 
   it('preserves the event color preference when restoring', async () => {
     const order = { ...makeOrder(), confirmed: true, eventColor: null }
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockResolvedValue(order)
     mocks.findByIdAndUpdate.mockResolvedValue(order)
 
-    await restoreOrder('66c000000000000000000001')
+    await expect(restoreOrder('66c000000000000000000001')).resolves.toMatchObject({ order })
 
     expect(mocks.findByIdAndUpdate).toHaveBeenCalledWith(
       { _id: '66c000000000000000000001' },
@@ -239,6 +244,99 @@ describe('explicit calendar side effects', () => {
       { new: true },
     )
     expect(order.eventColor).toBeNull()
+  })
+
+  it('reconciles a confirmed restore before activating Mongo', async () => {
+    const order = {
+      ...makeOrder(),
+      confirmed: true,
+      deletedAt: new Date('2026-01-01T00:00:00.000Z'),
+      canceledAt: new Date('2026-01-02T00:00:00.000Z'),
+      eventColor: '11',
+      pricingOverrides: { price: null, fees: null, boxesPrice: null },
+    }
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockResolvedValue(order)
+    mocks.findByIdAndUpdate.mockResolvedValue({ ...order, deletedAt: undefined, canceledAt: undefined })
+
+    await restoreOrder('66c000000000000000000001')
+
+    const candidate = mocks.syncOrderToCalendar.mock.calls[0][0]
+    expect(candidate).not.toHaveProperty('deletedAt')
+    expect(candidate).not.toHaveProperty('canceledAt')
+    expect(candidate.eventColor).toBe('11')
+    expect(candidate.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
+    expect(mocks.syncOrderToCalendar).toHaveBeenCalledWith(candidate, { lock: false })
+    expect(mocks.syncOrderToCalendar.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.findByIdAndUpdate.mock.invocationCallOrder[0],
+    )
+    expect(mocks.findByIdAndUpdate).toHaveBeenCalledWith(
+      { _id: '66c000000000000000000001' },
+      { $unset: { deletedAt: 1, canceledAt: 1 } },
+      { new: true },
+    )
+  })
+
+  it('does not activate a confirmed order when calendar restore fails', async () => {
+    const order = { ...makeOrder(), confirmed: true, deletedAt: new Date() }
+    const failure = new Error('calendar unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockRejectedValue(failure)
+
+    await expect(restoreOrder('66c000000000000000000001')).rejects.toMatchObject({
+      name: 'CalendarUnavailableError',
+      message: 'Order was not restored because its calendar events could not be synchronized.',
+    })
+    expect(mocks.findByIdAndUpdate).not.toHaveBeenCalled()
+  })
+
+  it('restores an unconfirmed order without contacting calendar', async () => {
+    const order = { ...makeOrder(), deletedAt: new Date() }
+    const restored = { ...order, deletedAt: undefined, canceledAt: undefined }
+    mocks.findById.mockResolvedValue(order)
+    mocks.findByIdAndUpdate.mockResolvedValue(restored)
+
+    await expect(restoreOrder('66c000000000000000000001')).resolves.toMatchObject({ order: restored })
+
+    expect(mocks.syncOrderToCalendar).not.toHaveBeenCalled()
+    expect(mocks.findByIdAndUpdate).toHaveBeenCalledWith(
+      { _id: '66c000000000000000000001' },
+      { $unset: { deletedAt: 1, canceledAt: 1 } },
+      { new: true },
+    )
+  })
+
+  it('rolls Calendar back when Mongo activation fails after confirmed restore', async () => {
+    const order = { ...makeOrder(), confirmed: true, deletedAt: new Date() }
+    const failure = new Error('database unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockResolvedValue(order)
+    mocks.findByIdAndUpdate.mockRejectedValue(failure)
+
+    await expect(restoreOrder('66c000000000000000000001')).rejects.toBe(failure)
+
+    const candidate = mocks.syncOrderToCalendar.mock.calls[0][0]
+    expect(mocks.deleteOrderEvent).toHaveBeenCalledWith(candidate, { lock: false })
+  })
+
+  it('keeps restore failed when Calendar rollback also fails', async () => {
+    const order = { ...makeOrder(), confirmed: true, deletedAt: new Date() }
+    const databaseFailure = new Error('database unavailable')
+    const rollbackFailure = new Error('rollback unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockResolvedValue(order)
+    mocks.findByIdAndUpdate.mockRejectedValue(databaseFailure)
+    mocks.deleteOrderEvent.mockRejectedValue(rollbackFailure)
+
+    await expect(restoreOrder('66c000000000000000000001')).rejects.toMatchObject({
+      message: 'database unavailable',
+      rollbackError: rollbackFailure,
+    })
+    expect(mocks.findByIdAndUpdate).not.toHaveBeenCalledWith(
+      { _id: '66c000000000000000000001' },
+      { $set: expect.anything() },
+      expect.anything(),
+    )
   })
 
   it('rejects cancellation of a deleted order before changing Mongo', async () => {

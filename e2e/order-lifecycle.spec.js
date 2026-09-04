@@ -111,6 +111,42 @@ test('soft-deleted orders can be restored and permanently deleted', async ({ pag
   await expect.poll(async () => database.readOrder(order.id)).toBeNull()
 })
 
+test('confirmed deleted orders recreate Calendar ownership when restored', async ({ page, database }) => {
+  const order = await database.seedOrder({
+    name: 'Confirmed deletion customer',
+    date: dateInCurrentHelsinkiMonth(10),
+    confirmed: false,
+  })
+
+  await page.goto(`/app/calendar/order/${order.id}`)
+  await page.getByRole('button', { name: 'Confirm order' }).click()
+  await page.getByRole('dialog').filter({ hasText: 'Are you sure you want to confirm this order?' }).getByRole('button', { name: 'Confirm' }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.confirmed).toBe(true)
+  await expect.poll(async () => (await database.readOrder(order.id))?.calendarEventIds?.main).toBeTruthy()
+
+  await page.getByRole('button', { name: 'Cancel order' }).click()
+  await page.getByRole('dialog').filter({ hasText: 'Choose whether to cancel only or cancel and notify the customer.' }).getByRole('button', { name: 'Cancel only' }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.canceledAt).toBeTruthy()
+
+  await page.getByRole('button', { name: 'Delete' }).click()
+  await page.getByRole('dialog').filter({ hasText: 'This will remove the order from active planning.' }).getByRole('button', { name: 'Delete' }).click()
+  await expect.poll(async () => (await database.readOrder(order.id))?.deletedAt).toBeTruthy()
+  await expect.poll(async () => (await database.readOrder(order.id))?.calendarEventIds?.main).toBeFalsy()
+
+  await page.locator('label.calendar-toolbar-toggle').click()
+  await page.locator('.fc-event').filter({ hasText: order.name }).click()
+  await page.getByRole('button', { name: 'Restore' }).click()
+  await expect.poll(async () => {
+    const saved = await database.readOrder(order.id)
+    return saved && {
+      deletedAt: Boolean(saved.deletedAt),
+      confirmed: saved.confirmed,
+      main: Boolean(saved.calendarEventIds?.main),
+    }
+  }).toEqual({ deletedAt: false, confirmed: true, main: true })
+  await expect(page.getByRole('button', { name: 'Cancel order' })).toBeVisible()
+})
+
 test('deleted confirmed orders do not expose cancellation', async ({ page, database }) => {
   const order = await database.seedOrder({
     name: 'Deleted confirmed customer',

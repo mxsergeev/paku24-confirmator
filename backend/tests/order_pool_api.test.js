@@ -1,6 +1,7 @@
 import supertest from 'supertest'
 import app from '../app.js'
 import Order from '../models/order.js'
+import User from '../models/user.js'
 import { generateJWT } from '../modules/authentication/auth.middleware.js'
 import useTestDatabase from './database_harness.js'
 import { getOrderPricing } from '../../src/shared/orderPricing.js'
@@ -476,5 +477,41 @@ describe('Order pool deletion', () => {
       .expect(200)
 
     expect(await Order.findById(order.id).lean()).toBeNull()
+  })
+})
+
+describe('Order pool restore', () => {
+  const orderIds = []
+
+  afterEach(async () => {
+    await Order.deleteMany({ _id: { $in: orderIds } })
+    orderIds.length = 0
+  })
+
+  test('restores a confirmed deleted order only after recreating Calendar ownership', async () => {
+    const order = await createPersistedOrder({
+      name: 'Confirmed restore order',
+      confirmed: true,
+      deletedAt: new Date(),
+      canceledAt: new Date(),
+      calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
+    })
+    orderIds.push(order.id)
+    const accessUser = await User.findOne({ username: 'unicorn123' })
+    const accessToken = generateJWT(
+      { name: accessUser.name, username: accessUser.username, id: accessUser.id },
+      { expiresIn: '10m' },
+    )
+
+    await api
+      .post(`/api/order-pool/v2/restore/${order.id}`)
+      .set('Cookie', [`at=${accessToken}`])
+      .expect(200)
+
+    const saved = await Order.findById(order.id).lean()
+    expect(saved.confirmed).toBe(true)
+    expect(saved.deletedAt).toBeUndefined()
+    expect(saved.canceledAt).toBeUndefined()
+    expect(saved.calendarEventIds.main).toEqual(expect.any(String))
   })
 })
