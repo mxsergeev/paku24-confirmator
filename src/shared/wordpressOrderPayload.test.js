@@ -80,6 +80,24 @@ describe('normalizeWordPressOrderPayload', () => {
     expect(boxes).toEqual({ amount: 0, deliveryDate: '2026-01-16', returnDate: '2026-01-24' })
   })
 
+  it('ignores source-only box pricing when determining whether boxes are supplied', () => {
+    const raw = wordpressPayload({
+      boxes: {
+        pricePerBox: 'legacy',
+        deliveryPrice: { ancient: true },
+      },
+    })
+    const normalized = normalizeWordPressOrderPayload(raw)
+    const order = createWordPressOrder(normalized, raw)
+
+    expect(normalized.boxes).toEqual({
+      amount: 0,
+      deliveryDate: new Date('2026-01-15T07:00:00.000Z'),
+      returnDate: new Date('2026-01-15T07:00:00.000Z'),
+    })
+    expect(order.originalOrder.boxes).toEqual(raw.boxes)
+  })
+
   it('excludes legacy box pricing from the normalized current booking', () => {
     const order = normalizeWordPressOrderPayload(wordpressPayload({
       boxes: {

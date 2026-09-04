@@ -319,6 +319,30 @@ describe('explicit calendar side effects', () => {
     expect(mocks.deleteOrderEvent).toHaveBeenCalledWith(candidate, { lock: false })
   })
 
+  it('reconciles the canceled Calendar projection when uncancel activation fails', async () => {
+    const order = {
+      ...makeOrder(),
+      confirmed: true,
+      deletedAt: null,
+      canceledAt: new Date('2026-01-02T00:00:00.000Z'),
+      calendarEventIds: {
+        main: 'main-123',
+        boxDelivery: 'delivery-123',
+        boxReturn: 'return-123',
+      },
+    }
+    const databaseFailure = new Error('database unavailable')
+    mocks.findById.mockResolvedValue(order)
+    mocks.syncOrderToCalendar.mockResolvedValue(order)
+    mocks.findByIdAndUpdate.mockRejectedValue(databaseFailure)
+
+    await expect(restoreOrder('66c000000000000000000001')).rejects.toBe(databaseFailure)
+
+    expect(mocks.syncOrderToCalendar).toHaveBeenNthCalledWith(1, expect.not.objectContaining({ canceledAt: expect.anything() }), { lock: false })
+    expect(mocks.syncOrderToCalendar).toHaveBeenNthCalledWith(2, order, { lock: false })
+    expect(mocks.deleteOrderEvent).not.toHaveBeenCalled()
+  })
+
   it('keeps restore failed when Calendar rollback also fails', async () => {
     const order = { ...makeOrder(), confirmed: true, deletedAt: new Date() }
     const databaseFailure = new Error('database unavailable')

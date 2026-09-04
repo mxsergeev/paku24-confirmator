@@ -141,6 +141,31 @@ describe('Order pool v2/add', () => {
     expect(saved.comment).toBe(String(source.comment))
   })
 
+  test('key accepts a no-box WordPress order with only legacy box pricing metadata', async () => {
+    const source = makeWordPressPayloadMissingPricing({
+      name: 'WordPress No Boxes Legacy Pricing Order',
+      boxes: {
+        pricePerBox: 'legacy',
+        deliveryPrice: { ancient: true },
+      },
+    })
+    names.push(source.name)
+
+    const res = await api
+      .post('/api/order-pool/v2/add')
+      .send({ key, order: source })
+      .expect(200)
+
+    const saved = await Order.findById(res.body.id).lean()
+    expect(saved.originalOrder.boxes).toEqual(source.boxes)
+    expect(saved.boxes).toMatchObject({ amount: 0 })
+    expect(saved.boxes).not.toHaveProperty('pricePerBox')
+    expect(saved.boxes).not.toHaveProperty('deliveryPrice')
+    expect(saved.boxes).not.toHaveProperty('returnPrice')
+    expect(saved.pricingOverrides).toEqual({ price: null, fees: null, boxesPrice: null })
+    expect(getOrderPricing(saved).price).toEqual(expect.any(Number))
+  })
+
   test('authenticated app creation persists manual pricing overrides', async () => {
     const source = makeOrder({
       name: 'App Manual Pricing Order',

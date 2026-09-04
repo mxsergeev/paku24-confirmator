@@ -197,6 +197,7 @@ async function restoreOrder(id) {
 
   return withOrderCalendarLock(id, async () => {
     const order = await getOrderById(id)
+    const wasDeleted = Boolean(order.deletedAt)
     const lifecycleUpdate = { $unset: { deletedAt: 1, canceledAt: 1 } }
 
     if (!order.confirmed) {
@@ -231,9 +232,13 @@ async function restoreOrder(id) {
       return resultWithWarning(restoredOrder)
     } catch (err) {
       logger.error('Mongo activation failed after restoring order calendar events', err)
-      try {
+    try {
+      if (wasDeleted) {
         await deleteOrderEvent(restoredCandidate, { lock: false })
-      } catch (rollbackError) {
+      } else {
+        await syncOrderToCalendar(order, { lock: false })
+      }
+    } catch (rollbackError) {
         err.rollbackError = rollbackError
         logger.error('Calendar rollback failed after restore activation error', rollbackError)
       }

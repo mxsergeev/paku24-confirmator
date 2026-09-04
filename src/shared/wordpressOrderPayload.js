@@ -22,6 +22,8 @@ const BOOKING_FIELDS = [
   'comment',
 ]
 
+const BOX_BOOKING_FIELDS = ['amount', 'deliveryDate', 'returnDate']
+
 function normalizeAddress(value, field) {
   if (!isPlainObject(value)) throw new OrderValidationError(`Invalid ${field}: expected a structured address`)
 
@@ -79,7 +81,8 @@ function normalizeWordPressString(value, field) {
 
 function normalizeBoxes(value, orderDate) {
   if (!isPlainObject(value)) throw new OrderValidationError('Invalid boxes: expected an object')
-  if (Object.keys(value).length === 0) {
+  const suppliedBookingFields = BOX_BOOKING_FIELDS.filter((field) => hasOwn(value, field))
+  if (suppliedBookingFields.length === 0) {
     return {
       amount: 0,
       deliveryDate: new Date(orderDate.getTime()),
@@ -87,7 +90,7 @@ function normalizeBoxes(value, orderDate) {
     }
   }
 
-  for (const key of ['amount', 'deliveryDate', 'returnDate']) {
+  for (const key of BOX_BOOKING_FIELDS) {
     if (!hasOwn(value, key)) throw new OrderValidationError(`Invalid boxes.${key}: required for populated boxes`)
   }
 
