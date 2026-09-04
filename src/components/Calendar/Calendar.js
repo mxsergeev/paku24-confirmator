@@ -25,13 +25,11 @@ import iconsData from '../../data/icons.json'
 import { useCalendarOrders } from '../../hooks/useCalendarOrders'
 import { useRoutedOrder } from '../../hooks/useRoutedOrder'
 import './Calendar.css'
-import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 
 const SHOW_DELETED_ORDERS_STORAGE_KEY = 'calendar-show-deleted-orders'
 const CALENDAR_VIEW_STORAGE_KEY = 'calendar-selected-view'
 const DEFAULT_CALENDAR_VIEW = 'dayGridMonth'
 const AVAILABLE_CALENDAR_VIEWS = ['dayGridMonth', 'timeGridWeek', 'listWeek', 'multiMonthYear']
-// use `isDeleted` helper from shared/orderState.helpers
 
 function calendarEventStart(value, fieldName, allDay = false) {
   if (allDay) return formatHelsinkiCalendarDate(value, fieldName)
@@ -227,7 +225,7 @@ export default function Calendar() {
     orders.forEach((order) => {
       if (!order?.date) return
 
-      if (isDeleted(order)) return
+      if (order.deletedAt) return
 
       let orderMonth
       try {
@@ -241,7 +239,7 @@ export default function Calendar() {
       if (!matchesCurrentMonth) return
 
       total += 1
-      const isCanceledOrder = isCanceled(order)
+      const isCanceledOrder = Boolean(order.canceledAt)
       if (isCanceledOrder) {
         canceled += 1
         return
@@ -264,12 +262,12 @@ export default function Calendar() {
     return orders.flatMap((order) => {
       const events = []
       const colorId = resolveEventColorId(order)
-      const canceled = isCanceled(order)
-      const isDeletedOrder = isDeleted(order)
+      const canceled = Boolean(order.canceledAt)
+      const isDeletedOrder = Boolean(order.deletedAt)
       const deletedOrderColor = '#3937375d'
       const deletedIcon = '❗️'
       const notConfirmedIcon = '❓'
-      const isConfirmedOrder = isConfirmed(order)
+      const isConfirmedOrder = Boolean(order.confirmed)
       const addIcon = isDeletedOrder ? deletedIcon : !isConfirmedOrder ? notConfirmedIcon : ''
       const color = isDeletedOrder
         ? deletedOrderColor

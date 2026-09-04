@@ -28,10 +28,7 @@ import colors from '../../shared/colors'
 import ordersAPI from '../../services/ordersAPI'
 import sendConfirmationEmail, { sendCancellationEmail } from '../../services/emailAPI'
 import sendSMS, { sendCancellationSMS } from '../../services/smsAPI'
-import { cloneValue } from '../../shared/orderPrimitives'
 import { updateOrderField } from '../../shared/orderModel'
-import { toOrderPayload } from '../../shared/orderSerialization'
-import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 import { hexToRgba } from '../../shared/color.helpers'
 import { resolveEventColorId } from '../../shared/eventColor'
 import {
@@ -84,7 +81,7 @@ export default function OrderDialog({
   const [receiptDocumentType, setReceiptDocumentType] = useState(DOCUMENT_TYPES.RECEIPT)
 
   const handleSendEmail = async () => {
-    if (isDeleted(order)) {
+    if (Boolean(order?.deletedAt)) {
       enqueueSnackbar('Deleted orders cannot send messages.', { variant: 'warning' })
       return
     }
@@ -95,7 +92,7 @@ export default function OrderDialog({
 
     try {
       setSendingEmail(true)
-      const response = isCanceled(order)
+      const response = Boolean(order?.canceledAt)
         ? await sendCancellationEmail({ orderId })
         : await sendConfirmationEmail({ orderId })
 
@@ -111,7 +108,7 @@ export default function OrderDialog({
   }
 
   const handleSendSMS = async () => {
-    if (isDeleted(order)) {
+    if (Boolean(order?.deletedAt)) {
       enqueueSnackbar('Deleted orders cannot send messages.', { variant: 'warning' })
       return
     }
@@ -122,7 +119,7 @@ export default function OrderDialog({
 
     try {
       setSendingSMS(true)
-      const response = isCanceled(order)
+      const response = Boolean(order?.canceledAt)
         ? await sendCancellationSMS({ orderId })
         : await sendSMS({ orderId })
 
@@ -154,7 +151,7 @@ export default function OrderDialog({
   const handleEdit = () => {
     if (!order) return
 
-    setEditableOrder(cloneValue(order))
+    setEditableOrder(structuredClone(order))
     setEditOpen(true)
   }
 
@@ -171,7 +168,7 @@ export default function OrderDialog({
 
     try {
       setSavingEdit(true)
-      const response = await ordersAPI.update(orderId, toOrderPayload(editableOrder))
+      const response = await ordersAPI.update(orderId, editableOrder)
       enqueueSnackbar(response.message || 'Order changes saved.')
       if (response.warning?.message) {
         enqueueSnackbar(response.warning.message, { variant: 'warning' })
@@ -190,7 +187,7 @@ export default function OrderDialog({
   }
 
   const handleDeleteClick = () => {
-    setDeleteMode(isDeleted(order) ? 'permanent' : 'soft')
+    setDeleteMode(Boolean(order?.deletedAt) ? 'permanent' : 'soft')
     setDeleteConfirmOpen(true)
   }
 
@@ -262,7 +259,7 @@ export default function OrderDialog({
 
   const handleCancelConfirmDirect = async () => {
     if (!orderId) return
-    if (isDeleted(order)) {
+    if (Boolean(order?.deletedAt)) {
       enqueueSnackbar('Deleted orders cannot be canceled.', { variant: 'warning' })
       return
     }
@@ -287,7 +284,7 @@ export default function OrderDialog({
 
   const handleCancelAndNotify = async () => {
     if (!orderId) return
-    if (isDeleted(order)) {
+    if (Boolean(order?.deletedAt)) {
       enqueueSnackbar('Deleted orders cannot be canceled or notified.', { variant: 'warning' })
       return
     }
@@ -457,10 +454,10 @@ export default function OrderDialog({
       : `${getOrderIcons(order, iconsData)} ${formatDialogEventTime(order.date, 'order date')}(${order.duration}h) ${order.name}`
     : 'Order not found in this calendar view'
 
-  const isConfirmedOrder = isConfirmed(order)
-  const isDeletedOrder = isDeleted(order)
+  const isConfirmedOrder = Boolean(order?.confirmed)
+  const isDeletedOrder = Boolean(order?.deletedAt)
 
-  const isCanceledOrder = isCanceled(order)
+  const isCanceledOrder = Boolean(order?.canceledAt)
   const effectiveEventColorId = resolveEventColorId(order)
 
   let headerBg = '#3937375d'

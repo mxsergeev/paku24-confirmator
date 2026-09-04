@@ -20,19 +20,7 @@ describe('resolveEventColorId', () => {
     ).toBe('11')
   })
 
-  it('uses the legacy service-name mapping and a safe default', () => {
-    expect(
-      resolveEventColorId({
-        eventColor: null,
-        service: { name: 'Van and two movers' },
-      }),
-    ).toBe('9')
-    expect(
-      resolveEventColorId({
-        eventColor: null,
-        service: { name: 'Pakettiauto, kantava kuljettaja ja kaksi kantajaa' },
-      }),
-    ).toBe('9')
+  it('uses the default when no configured color exists', () => {
     expect(resolveEventColorId({ eventColor: null, service: { name: 'Unknown service' } })).toBe('7')
   })
 })

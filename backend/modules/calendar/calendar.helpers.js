@@ -103,7 +103,6 @@ function nextCalendarDate(value, fieldName) {
 }
 
 function formatCalendarLocation(address) {
-  if (typeof address === 'string') return address
   return formatAddressLocation(address)
 }
 
@@ -138,7 +137,7 @@ function makeGoogleEventObjects(order) {
       description: entries.move.description,
       colorId: makeCalendarColor(order, resolveEventColorId(order)),
       location: [formatCalendarLocation(order.address)]
-        .concat((order.extraAddresses || []).map((ea) => formatCalendarLocation(ea)))
+        .concat(order.extraAddresses.map((ea) => formatCalendarLocation(ea)))
         .concat([formatCalendarLocation(order.destination)])
         .join('\n'),
       start: {
@@ -156,7 +155,6 @@ function makeGoogleEventObjects(order) {
   ]
 
   if (
-    order.boxes &&
     order.boxes.amount > 0 &&
     order.boxes.deliveryDate &&
     order.boxes.returnDate

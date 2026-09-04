@@ -12,7 +12,6 @@ export function buildStableInvoiceNumber(order, existingInvoiceNumber = '') {
 
 function formatAddressForReceipt(address) {
   if (!address) return ''
-  if (typeof address === 'string') return address
 
   const parts = [address.street, address.index, address.city].filter(Boolean)
   return parts.join(', ')

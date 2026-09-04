@@ -97,6 +97,8 @@ describe('Order pool v2/add', () => {
       },
       metadata: { source: 'wordpress' },
     })
+    source.service.details = { source: 'wordpress' }
+    source.paymentType.details = { source: 'wordpress' }
     names.push(source.name)
 
     const res = await api
@@ -114,6 +116,8 @@ describe('Order pool v2/add', () => {
     expect(saved.boxes).not.toHaveProperty('pricePerBox')
     expect(saved.boxes).not.toHaveProperty('deliveryPrice')
     expect(saved.boxes).not.toHaveProperty('returnPrice')
+    expect(saved.service).not.toHaveProperty('details')
+    expect(saved.paymentType).not.toHaveProperty('details')
 
     const effective = getOrderPricing(saved)
     expect(effective.price).toEqual(expect.any(Number))
@@ -276,41 +280,6 @@ describe('Order pool v2/add', () => {
     expect(saved).not.toHaveProperty('price')
     expect(saved).not.toHaveProperty('fees')
     expect(saved).not.toHaveProperty('boxesPrice')
-  })
-
-  test.each([
-    ['price', { price: 'bad' }],
-    ['fees', { fees: {} }],
-    ['fee amount', { fees: [{ name: 'Bad fee', amount: 'bad' }] }],
-    ['boxesPrice', { boxesPrice: 'bad' }],
-  ])('rejects malformed pricing override: %s', async (_description, pricingOverrides) => {
-    await api
-      .post('/api/order-pool/v2/add')
-      .set('Cookie', [`at=${appToken}`])
-      .send({ order: makeOrder({ pricingOverrides }) })
-      .expect(400)
-  })
-
-  test.each([
-    ['duration', { duration: 'garbage' }],
-    ['hsy', { hsy: 'false' }],
-    ['eventColor', { eventColor: { invalid: true } }],
-    ['name', { name: { invalid: true } }],
-    ['email', { email: { invalid: true } }],
-    ['phone', { phone: { invalid: true } }],
-    ['comment', { comment: { invalid: true } }],
-    [
-      'service.pricePerHour',
-      { service: { id: 'external-service', name: 'Service', pricePerHour: 'garbage' } },
-    ],
-    ['address.floor', { address: { ...makeMinimalAddress('Start street 1'), floor: { invalid: true } } }],
-    ['address.elevator', { address: { ...makeMinimalAddress('Start street 1'), elevator: 'false' } }],
-  ])('rejects malformed booking value: %s', async (_description, bookingFields) => {
-    await api
-      .post('/api/order-pool/v2/add')
-      .set('Cookie', [`at=${appToken}`])
-      .send({ order: makeOrder(bookingFields) })
-      .expect(400)
   })
 
   test('rejects unauthenticated, non-object, and invalid WordPress requests', async () => {
@@ -483,40 +452,39 @@ describe('Order pool v2/:id updates', () => {
     })
   })
 
-  test.each([
-    ['non-object updateData', { updateData: [] }],
-    ['unknown field', { updateData: { origin: 'app' } }],
-    ['derived price', { updateData: { price: 99 } }],
-    ['malformed override', { updateData: { pricingOverrides: { price: 'bad' } } }],
-    ['malformed duration', { updateData: { duration: 'garbage' } }],
-    ['malformed hsy', { updateData: { hsy: 'false' } }],
-    ['malformed eventColor', { updateData: { eventColor: { invalid: true } } }],
-    ['unknown eventColor', { updateData: { eventColor: 'not-configured' } }],
-    ['malformed name', { updateData: { name: { invalid: true } } }],
-    ['malformed email', { updateData: { email: { invalid: true } } }],
-    ['malformed phone', { updateData: { phone: { invalid: true } } }],
-    ['malformed comment', { updateData: { comment: { invalid: true } } }],
-    [
-      'malformed service.pricePerHour',
-      { updateData: { service: { id: 'external-service', name: 'Service', pricePerHour: 'garbage' } } },
-    ],
-    [
-      'malformed address.floor',
-      { updateData: { address: { ...makeMinimalAddress('Start street 1'), floor: { invalid: true } } } },
-    ],
-    [
-      'malformed address.elevator',
-      { updateData: { address: { ...makeMinimalAddress('Start street 1'), elevator: 'false' } } },
-    ],
-  ])('rejects %s', async (_description, body) => {
+  test('rejects non-object updateData', async () => {
     const order = await createPersistedOrder()
     orderIds.push(order.id)
 
     await api
       .put(`/api/order-pool/v2/${order.id}`)
       .set('Cookie', [`at=${appToken}`])
-      .send(body)
+      .send({ updateData: [] })
       .expect(400)
+  })
+
+  test('ignores source-owned and unknown update fields', async () => {
+    const order = await createPersistedOrder()
+    orderIds.push(order.id)
+
+    await api
+      .put(`/api/order-pool/v2/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .send({
+        updateData: {
+          origin: 'app',
+          price: 99,
+          confirmed: true,
+          originalOrder: { injected: true },
+        },
+      })
+      .expect(200)
+
+    const saved = await Order.findById(order.id).lean()
+    expect(saved.confirmed).toBe(false)
+    expect(saved.originalOrder).toEqual({ source: 'wordpress', name: 'Original name' })
+    expect(saved).not.toHaveProperty('origin')
+    expect(saved).not.toHaveProperty('price')
   })
 
   test('the removed revert route is not available', async () => {

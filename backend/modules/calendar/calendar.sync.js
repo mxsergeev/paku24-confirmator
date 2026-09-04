@@ -7,10 +7,12 @@ import {
 } from './calendar.googleAPI.js'
 import * as logger from '../../utils/logger.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
-import {
-  CALENDAR_EVENT_ROLES,
-  makeCalendarEventIds,
-} from '../../../src/shared/orderModel.js'
+
+const CALENDAR_EVENT_ROLES = ['main', 'boxDelivery', 'boxReturn']
+
+function makeCalendarEventIds() {
+  return { main: null, boxDelivery: null, boxReturn: null }
+}
 
 function storedCalendarEventIds(order) {
   const source = typeof order?.toObject === 'function' ? order.toObject() : order

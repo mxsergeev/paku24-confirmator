@@ -106,22 +106,6 @@ describe('makeCalendarEntries', () => {
     expect(dateOnlyValues.returnDate.title).toBe('NOUTO 10 📦 Test Customer')
   })
 
-  it('renders safely when boxes are missing', () => {
-    const entries = makeCalendarEntries(makeOrder({ boxes: undefined }))
-
-    expect(entries.deliveryDate.title).toBe('0 📦 Test Customer')
-    expect(entries.returnDate.title).toBe('NOUTO 0 📦 Test Customer')
-    expect(entries.move.description).not.toContain('MUUTTOLAATIKOT')
-  })
-
-  it('renders safely when charged boxes have incomplete dates', () => {
-    const entries = makeCalendarEntries(
-      makeOrder({ boxes: { deliveryDate: null, returnDate: null, amount: 10 } }),
-    )
-
-    expect(entries.move.description).not.toContain('Määrä: 10 kpl')
-  })
-
   it('uses Helsinki time for absolute instants regardless of the host timezone', () => {
     const entries = makeCalendarEntries(
       makeOrder({

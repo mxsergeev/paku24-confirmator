@@ -50,7 +50,7 @@ function formatBoxDate(value, fieldName, hasTime) {
 }
 
 function serviceName(order) {
-  return order.serviceName ?? order.service?.name
+  return order.service?.name
 }
 
 function formatFees(order, pricing) {
@@ -60,7 +60,7 @@ function formatFees(order, pricing) {
 }
 
 function formatBoxes(order, pricing, showHeading) {
-  if (!order.boxes || order.boxes.amount <= 0) return ''
+  if (order.boxes.amount <= 0) return ''
   if (!order.boxes.deliveryDate || !order.boxes.returnDate) return ''
 
   const deliveryDate = formatBoxDate(
@@ -88,7 +88,7 @@ function formatContactDetails(order) {
 }
 
 function formatExtraAddresses(order) {
-  if (!order.extraAddresses || order.extraAddresses.length === 0) return ''
+  if (order.extraAddresses.length === 0) return ''
   return 'LISÄPYSÄHDYKSET\n' + order.extraAddresses.map(formatAddress).join('')
 }
 

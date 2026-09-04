@@ -1,16 +1,5 @@
 import mongoose from 'mongoose'
 
-function finiteNumberPath(options = {}) {
-  return {
-    type: Number,
-    ...options,
-    validate: {
-      validator: (value) => value === null || value === undefined || Number.isFinite(value),
-      message: (props) => `${props.path} must be a finite number`,
-    },
-  }
-}
-
 function nestedSchema(definition, options = {}) {
   return new mongoose.Schema(definition, {
     _id: false,
@@ -23,44 +12,34 @@ const addressSchema = nestedSchema({
   street: String,
   index: String,
   city: String,
-  floor: finiteNumberPath(),
+  floor: Number,
   elevator: Boolean,
 })
 
-// WordPress can provide service metadata that is not part of the local
-// catalog. Keep the embedded source object intact, just as paymentType does,
-// so normalization and persistence expose the same contract.
-const serviceSchema = nestedSchema(
-  {
-    id: String,
-    name: String,
-    pricePerHour: finiteNumberPath(),
-    price: finiteNumberPath(),
-    eventColor: String,
-    hsy: Boolean,
-    multiplier: finiteNumberPath(),
-  },
-  { strict: false },
-)
+const serviceSchema = nestedSchema({
+  id: String,
+  name: String,
+  pricePerHour: Number,
+  eventColor: String,
+  hsy: Boolean,
+  multiplier: Number,
+})
 
-const paymentTypeSchema = nestedSchema(
-  {
-    id: String,
-    name: String,
-    fee: finiteNumberPath(),
-    additionalFieldLabel: String,
-    additionalFieldValue: String,
-  },
-  { strict: false },
-)
+const paymentTypeSchema = nestedSchema({
+  id: String,
+  name: String,
+  fee: Number,
+  additionalFieldLabel: String,
+  additionalFieldValue: String,
+})
 
 const feeSchema = nestedSchema({
   name: String,
   label: String,
-  amount: finiteNumberPath(),
+  amount: Number,
   comment: String,
-  baseFee: finiteNumberPath(),
-  startFloor: finiteNumberPath(),
+  baseFee: Number,
+  startFloor: Number,
 })
 
 const boxesSchema = nestedSchema({
@@ -68,22 +47,21 @@ const boxesSchema = nestedSchema({
   deliveryHasTime: Boolean,
   returnDate: Date,
   returnHasTime: Boolean,
-  amount: finiteNumberPath(),
+  amount: Number,
 })
 
 const pricingOverridesSchema = nestedSchema({
-  price: finiteNumberPath({ default: null }),
+  price: { type: Number, default: null },
   fees: { type: [feeSchema], default: null },
-  boxesPrice: finiteNumberPath({ default: null }),
+  boxesPrice: { type: Number, default: null },
 })
 
 const order = new mongoose.Schema({
-  // Editable booking data
   distance: String,
   hsy: Boolean,
   eventColor: String,
   date: Date,
-  duration: finiteNumberPath(),
+  duration: Number,
   service: { type: serviceSchema, default: undefined },
   paymentType: { type: paymentTypeSchema, default: undefined },
   address: { type: addressSchema, default: undefined },
@@ -94,34 +72,22 @@ const order = new mongoose.Schema({
   email: String,
   phone: String,
   comment: String,
-
-  // Immutable source data retained for WordPress imports.
   originalOrder: {
     type: mongoose.Schema.Types.Mixed,
     default: null,
     immutable: true,
   },
-
-  // Null means that the automatic value is used.
   pricingOverrides: {
     type: pricingOverridesSchema,
     default: () => ({}),
   },
-
-  // Lifecycle metadata
   confirmed: {
     type: Boolean,
     default: false,
   },
   receivedAt: Date,
   confirmedAt: Date,
-  // An active order has no deletion timestamp. Treat an explicit null as
-  // missing so canonical creation state does not materialize a null field in
-  // MongoDB, while real deletion timestamps remain ordinary Dates.
-  deletedAt: {
-    type: Date,
-    set: (value) => (value === null ? undefined : value),
-  },
+  deletedAt: Date,
   confirmedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

@@ -12,7 +12,6 @@ import OrderSettings from '../OrderEditor/OrderSettings'
 import ValidationDisplay from '../OrderEditor/ValidationDisplay'
 import { createAppOrder, updateOrderField } from '../../shared/orderModel'
 import ordersAPI from '../../services/ordersAPI'
-import { toOrderPayload } from '../../shared/orderSerialization'
 
 const NEW_ORDER_DRAFT_STORAGE_KEY = 'new_order'
 const PENDING_NEW_ORDER_ID_STORAGE_KEY = 'pending_new_order_id'
@@ -151,7 +150,7 @@ export default function NewOrderDialog({ open, onClose, onOrderCreated }) {
     try {
       setSaving(true)
       if (!id) {
-        const response = await ordersAPI.add({ order: toOrderPayload(order) })
+        const response = await ordersAPI.add({ order })
         id = response?.id
         if (!id) throw new Error('Order was added but no ID was returned')
         handleOrderPersisted(id)

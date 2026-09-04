@@ -31,7 +31,7 @@ function getAddressForStairsFee(order, feeName) {
   const addressIndex = Number(match[1])
   if (!Number.isFinite(addressIndex)) return null
 
-  const addresses = [order?.address, order?.destination, ...(order?.extraAddresses || [])]
+  const addresses = [order.address, order.destination, ...order.extraAddresses]
   return addresses[addressIndex] || null
 }
 

@@ -1,13 +1,30 @@
 import Order from '../../models/order.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import * as logger from '../../utils/logger.js'
-import { normalizeOrderPatch } from '../../../src/shared/orderModel.js'
-import { isOrderValidationError } from '../../../src/shared/orderPrimitives.js'
 import {
   deleteOrderEvent,
   syncOrderToCalendar,
   withOrderCalendarLock,
 } from '../calendar/calendar.sync.js'
+
+const EDITABLE_FIELDS = [
+  'distance',
+  'hsy',
+  'eventColor',
+  'date',
+  'duration',
+  'service',
+  'paymentType',
+  'address',
+  'extraAddresses',
+  'destination',
+  'boxes',
+  'name',
+  'email',
+  'phone',
+  'comment',
+  'pricingOverrides',
+]
 
 const CALENDAR_SYNC_WARNING = {
   code: 'CALENDAR_SYNC_FAILED',
@@ -104,15 +121,13 @@ async function getOrderById(id) {
 async function updateOrder(id, updateData) {
   return withOrderCalendarLock(id, async () => {
     const order = await getOrderById(id)
-    let patch
-    try {
-      patch = normalizeOrderPatch(updateData)
-    } catch (err) {
-      if (!isOrderValidationError(err)) throw err
-      throw validationError(err.message)
+    if (!updateData || typeof updateData !== 'object' || Array.isArray(updateData)) {
+      throw validationError('updateData must be an object')
     }
 
-    Object.assign(order, patch)
+    for (const field of EDITABLE_FIELDS) {
+      if (Object.hasOwn(updateData, field)) order[field] = updateData[field]
+    }
     await order.save()
     return syncAfterMutation(order)
   })

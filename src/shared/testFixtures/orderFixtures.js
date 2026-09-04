@@ -2,7 +2,7 @@ import distances from '../../data/distances.json' with { type: 'json' }
 import fees from '../../data/fees.json' with { type: 'json' }
 import paymentTypes from '../../data/paymentTypes.json' with { type: 'json' }
 import services from '../../data/services.json' with { type: 'json' }
-import { createAppOrder, createWordPressOrder } from '../orderModel.js'
+import { createAppOrder } from '../orderModel.js'
 import { normalizeWordPressOrderPayload } from '../wordpressOrderPayload.js'
 
 const START_ADDRESS = {
@@ -60,7 +60,9 @@ function makePaymentType() {
 function makeBoxes(overrides = {}) {
   return {
     deliveryDate: '2026-01-16T07:00:00.000Z',
+    deliveryHasTime: true,
     returnDate: '2026-01-24T07:00:00.000Z',
+    returnHasTime: true,
     amount: 10,
     ...overrides,
   }
@@ -132,30 +134,14 @@ export function makeAppBooking(overrides = {}) {
 
 export function makeCanonicalWordPressOrder(overrides = {}) {
   const source = makeWordPressPayload(overrides)
-  return createWordPressOrder(normalizeWordPressOrderPayload(source), source)
+  return {
+    ...normalizeWordPressOrderPayload(source),
+    originalOrder: structuredClone(source),
+  }
 }
 
 export function makeCanonicalAppOrder(overrides = {}) {
   return createAppOrder(makeAppBooking(overrides))
-}
-
-export function makePersistedApiOrder() {
-  return {
-    ...makeCanonicalWordPressOrder(),
-    id: '66c000000000000000000001',
-    confirmed: true,
-    confirmedBy: '66c000000000000000000002',
-    confirmedAt: '2026-01-10T12:00:00.000Z',
-    receivedAt: '2026-01-10T11:30:00.000Z',
-    canceledAt: null,
-    deletedAt: null,
-    invoiceNumber: '2026-001',
-    calendarEventIds: {
-      main: 'fixture-google-event-id',
-      boxDelivery: null,
-      boxReturn: null,
-    },
-  }
 }
 
 export function makeCustomerCommunicationPayload() {
@@ -200,14 +186,4 @@ export const helsinkiDstTransitions = {
       instant: '2026-10-25T01:00:00.000Z',
     },
   },
-}
-
-export function makeDateOnlyBoxes() {
-  return {
-    deliveryDate: new Date('2026-03-12T00:00:00.000Z'),
-    deliveryHasTime: false,
-    returnDate: new Date('2026-03-20T00:00:00.000Z'),
-    returnHasTime: false,
-    amount: 10,
-  }
 }

@@ -7,21 +7,25 @@ import {
   parseInstant,
 } from './date-fns-tz.js'
 import { calculateAutomaticFees } from './fees.js'
-import {
-  OrderValidationError,
-  PRICING_COMPONENTS,
-  toFiniteNumberOrNull,
-} from './orderPrimitives.js'
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
+const PRICING_COMPONENTS = ['price', 'fees', 'boxesPrice']
+
+function finiteNumberOrNull(value) {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'number' && typeof value !== 'string') return null
+  if (typeof value === 'string' && value.trim() === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
 
 function normalizeFeeList(value, description = 'Fees') {
-  if (!Array.isArray(value)) throw new OrderValidationError(`${description} must be an array`)
+  if (!Array.isArray(value)) throw new Error(`${description} must be an array`)
 
   return value.map((fee) => {
-    const amount = toFiniteNumberOrNull(fee?.amount)
+    const amount = finiteNumberOrNull(fee?.amount)
     if (!fee || typeof fee !== 'object' || amount === null) {
-      throw new OrderValidationError(`${description} must contain finite fee amounts`)
+      throw new Error(`${description} must contain finite fee amounts`)
     }
 
     return { ...fee, amount }
@@ -58,25 +62,25 @@ function sumFees(feeList) {
 function resolveServiceHourlyRate(order) {
   const embeddedService = order?.service
   const catalogService = findServiceById(embeddedService?.id)
-  return toFiniteNumberOrNull(catalogService?.pricePerHour ?? embeddedService?.pricePerHour) ?? 0
+  return finiteNumberOrNull(catalogService?.pricePerHour ?? embeddedService?.pricePerHour) ?? 0
 }
 
 function calculateServiceSubtotal(order) {
-  const duration = toFiniteNumberOrNull(order?.duration)
+  const duration = finiteNumberOrNull(order?.duration)
   if (duration === null) return 0
   return resolveServiceHourlyRate(order) * duration
 }
 
 function calculateAutomaticBoxesPrice(order) {
   const boxes = order?.boxes
-  const amount = toFiniteNumberOrNull(boxes?.amount)
+  const amount = finiteNumberOrNull(boxes?.amount)
   if (amount === null || amount <= 0) return 0
   if (!boxes.deliveryDate || !boxes.returnDate) return 0
 
-  const duration = calculateBoxPeriod(boxes?.deliveryDate, boxes?.returnDate)
-  const pricePerBox = toFiniteNumberOrNull(boxesSettings.price) ?? 0
-  const deliveryFee = toFiniteNumberOrNull(boxesSettings.deliveryFee) ?? 0
-  const pickupFee = toFiniteNumberOrNull(boxesSettings.pickupFee) ?? 0
+  const duration = calculateBoxPeriod(boxes.deliveryDate, boxes.returnDate)
+  const pricePerBox = finiteNumberOrNull(boxesSettings.price) ?? 0
+  const deliveryFee = finiteNumberOrNull(boxesSettings.deliveryFee) ?? 0
+  const pickupFee = finiteNumberOrNull(boxesSettings.pickupFee) ?? 0
 
   return amount * pricePerBox * duration + deliveryFee + pickupFee
 }
@@ -100,29 +104,27 @@ function getOrderPricing(order) {
     : normalizeFeeList(overrides.fees, 'Manual fees')
   const boxesPrice = overrides.boxesPrice === null || overrides.boxesPrice === undefined
     ? automatic.boxesPrice
-    : toFiniteNumberOrNull(overrides.boxesPrice)
+    : finiteNumberOrNull(overrides.boxesPrice)
 
-  if (boxesPrice === null) throw new OrderValidationError('Invalid pricingOverrides.boxesPrice')
+  if (boxesPrice === null) throw new Error('Invalid pricingOverrides.boxesPrice')
 
   const price = overrides.price === null || overrides.price === undefined
     ? calculateServiceSubtotal(order) + boxesPrice + sumFees(fees)
-    : toFiniteNumberOrNull(overrides.price)
+    : finiteNumberOrNull(overrides.price)
 
-  if (price === null) throw new OrderValidationError('Invalid pricingOverrides.price')
+  if (price === null) throw new Error('Invalid pricingOverrides.price')
 
   return { price, fees, boxesPrice }
 }
 
 function setPricingOverride(order, component, value) {
-  if (!order || typeof order !== 'object') throw new OrderValidationError('Order must be an object')
+  if (!order || typeof order !== 'object') throw new Error('Order must be an object')
   if (!PRICING_COMPONENTS.includes(component)) {
-    throw new OrderValidationError(`Unknown pricing component: ${String(component)}`)
+    throw new Error(`Unknown pricing component: ${String(component)}`)
   }
 
-  const normalized = component === 'fees'
-    ? normalizeFeeList(value, 'Manual fees')
-    : toFiniteNumberOrNull(value)
-  if (normalized === null) throw new OrderValidationError(`Invalid pricingOverrides.${component}`)
+  const normalized = component === 'fees' ? normalizeFeeList(value, 'Manual fees') : finiteNumberOrNull(value)
+  if (normalized === null) throw new Error(`Invalid pricingOverrides.${component}`)
 
   return {
     ...order,
@@ -137,9 +139,9 @@ function setPricingOverride(order, component, value) {
 }
 
 function clearPricingOverride(order, component) {
-  if (!order || typeof order !== 'object') throw new OrderValidationError('Order must be an object')
+  if (!order || typeof order !== 'object') throw new Error('Order must be an object')
   if (!PRICING_COMPONENTS.includes(component)) {
-    throw new OrderValidationError(`Unknown pricing component: ${String(component)}`)
+    throw new Error(`Unknown pricing component: ${String(component)}`)
   }
 
   return {

@@ -43,13 +43,7 @@ function formatBoxTime(value, fieldName, hasTime) {
 function makeCalendarEntries(order) {
   const orderIcons = makeIcons(order)
   const moveTitle = `${orderIcons.move}${formatOrderTime(order.date)}(${order.duration}h)`
-  const boxes = order.boxes || {
-    amount: 0,
-    deliveryDate: '',
-    deliveryHasTime: false,
-    returnDate: '',
-    returnHasTime: false,
-  }
+  const boxes = order.boxes
   const deliveryTime = formatBoxTime(
     boxes.deliveryDate,
     'box delivery date',

@@ -18,17 +18,8 @@ for (let i = boxesSettings.minAmount; i <= boxesSettings.maxAmount; i += boxesSe
   boxesAmountOptions.push(i)
 }
 
-export default function Boxes({ order = {}, handleChange, onOrderChange, style }) {
-  const fallbackDate = order?.date ?? new Date()
-  const storedBoxes = order?.boxes || {}
-  const boxes = {
-    ...storedBoxes,
-    deliveryDate: storedBoxes.deliveryDate ?? fallbackDate,
-    deliveryHasTime: storedBoxes.deliveryHasTime ?? true,
-    returnDate: storedBoxes.returnDate ?? fallbackDate,
-    returnHasTime: storedBoxes.returnHasTime ?? true,
-    amount: storedBoxes.amount ?? 0,
-  }
+export default function Boxes({ order, handleChange, onOrderChange, style }) {
+  const boxes = order.boxes
   const includeTimeStart = boxes.deliveryHasTime === true
   const includeTimeEnd = boxes.returnHasTime === true
 

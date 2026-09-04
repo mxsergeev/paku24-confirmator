@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   deleteOrderEvent: vi.fn(),
   syncOrderToCalendar: vi.fn(),
   withOrderCalendarLock: vi.fn((_order, operation) => operation()),
-  normalizeOrderPatch: vi.fn(),
 }))
 
 vi.mock('../../models/order.js', () => ({
@@ -24,10 +23,6 @@ vi.mock('../calendar/calendar.sync.js', () => ({
   withOrderCalendarLock: mocks.withOrderCalendarLock,
 }))
 
-vi.mock('../../../src/shared/orderModel.js', () => ({
-  normalizeOrderPatch: mocks.normalizeOrderPatch,
-}))
-
 const {
   deleteOrderPermanently,
   updateOrder,
@@ -40,7 +35,6 @@ const {
 function makeOrder() {
   return {
     confirmed: false,
-    deletedAt: null,
     calendarEventIds: { main: null, boxDelivery: null, boxReturn: null },
     toObject() {
       const { save, toObject, ...snapshot } = this
@@ -49,21 +43,6 @@ function makeOrder() {
     save: vi.fn(),
   }
 }
-
-describe('order pool service error handling', () => {
-  it('propagates unexpected update errors without converting them to validation errors', async () => {
-    const order = makeOrder()
-    const failure = new TypeError('programmer failure')
-    mocks.findById.mockResolvedValue(order)
-    mocks.normalizeOrderPatch.mockImplementation(() => {
-      throw failure
-    })
-
-    await expect(updateOrder('66c000000000000000000001', { name: 'Updated' })).rejects.toBe(failure)
-    expect(order.save).not.toHaveBeenCalled()
-  })
-
-})
 
 describe('permanent order deletion', () => {
   beforeEach(() => {
@@ -184,7 +163,6 @@ describe('explicit calendar side effects', () => {
     order.confirmed = true
     const failure = new Error('calendar unavailable')
     mocks.findById.mockResolvedValue(order)
-    mocks.normalizeOrderPatch.mockReturnValue({ name: 'Updated' })
     mocks.syncOrderToCalendar.mockRejectedValue(failure)
 
     const result = await updateOrder('66c000000000000000000001', { name: 'Updated' })
@@ -345,7 +323,6 @@ describe('explicit calendar side effects', () => {
     const order = {
       ...makeOrder(),
       confirmed: true,
-      deletedAt: null,
       canceledAt: originalCanceledAt,
       calendarEventIds: {
         main: 'main-123',
@@ -383,7 +360,6 @@ describe('explicit calendar side effects', () => {
     const order = {
       ...makeOrder(),
       confirmed: true,
-      deletedAt: null,
       canceledAt: originalCanceledAt,
       calendarEventIds: {
         main: 'stale-main',
@@ -418,7 +394,6 @@ describe('explicit calendar side effects', () => {
     const order = {
       ...makeOrder(),
       confirmed: true,
-      deletedAt: null,
       canceledAt: new Date('2026-01-02T00:00:00.000Z'),
     }
     const calendarFailure = new Error('calendar unavailable')
@@ -440,7 +415,6 @@ describe('explicit calendar side effects', () => {
     const order = {
       ...makeOrder(),
       confirmed: true,
-      deletedAt: null,
       canceledAt: new Date('2026-01-02T00:00:00.000Z'),
     }
     const calendarFailure = new Error('calendar unavailable')
@@ -492,7 +466,6 @@ describe('explicit calendar side effects', () => {
     const order = {
       ...makeOrder(),
       confirmed: true,
-      deletedAt: null,
       canceledAt: new Date('2026-01-02T00:00:00.000Z'),
       calendarEventIds: {
         main: 'main-123',
@@ -524,7 +497,6 @@ describe('explicit calendar side effects', () => {
     const order = {
       ...makeOrder(),
       confirmed: true,
-      deletedAt: null,
       canceledAt: originalCanceledAt,
       calendarEventIds: {
         main: 'stale-main',
@@ -634,7 +606,7 @@ describe('explicit calendar side effects', () => {
     expect(mocks.syncOrderToCalendar).toHaveBeenCalledWith(order, { lock: false })
     expect(order).toBe(mocks.syncOrderToCalendar.mock.calls[0][0])
     expect(order.confirmed).toBe(true)
-    expect(order.deletedAt).toBeNull()
+    expect(order.deletedAt).toBeUndefined()
     expect(order.calendarEventIds.main).toBeNull()
     expect(mocks.deleteOrderEvent.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.findByIdAndUpdate.mock.invocationCallOrder[0],

@@ -245,7 +245,7 @@ function buildConfirmationEmail({ order = {}, terms = '', lang = 'fi' } = {}) {
 
   const firstName = (order?.name || '').split(' ')[0]
 
-  const serviceName = order?.service?.name || order?.serviceName || ''
+  const serviceName = order?.service?.name || ''
   const paymentName = order?.paymentType?.name || ''
   const paymentFee = Number(
     pricing.fees.find((fee) => fee?.name === 'paymentTypeFee')?.amount || 0,

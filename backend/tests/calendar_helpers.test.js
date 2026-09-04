@@ -6,15 +6,27 @@ import services from '../../src/data/services.json' with { type: 'json' }
 import dayjs from '../../src/shared/dayjs.js'
 import { makeIcons } from '../../src/shared/render/googleCalendar.js'
 
+const calendarOrder = {
+  ...exampleOrder,
+  extraAddresses: [],
+  boxes: {
+    deliveryDate: new Date('2026-03-12T07:00:00.000Z'),
+    deliveryHasTime: true,
+    returnDate: new Date('2026-03-20T07:00:00.000Z'),
+    returnHasTime: true,
+    amount: 0,
+  },
+}
+
 describe('makeIcons', () => {
   test('title created right', () => {
     const title = makeIcons({
-      ...exampleOrder,
+      ...calendarOrder,
       pricingOverrides: { price: null, fees: [], boxesPrice: null },
     })
     const title2 = makeIcons(
       {
-        ...exampleOrder,
+        ...calendarOrder,
         pricingOverrides: { price: null, fees: [], boxesPrice: null },
         service: services.find((s) => s.id === '3'),
         paymentType: paymentTypes.find((p) => p.id === '3'),
@@ -24,7 +36,7 @@ describe('makeIcons', () => {
     )
     const title3 = makeIcons(
       {
-        ...exampleOrder,
+        ...calendarOrder,
         service: services.find((s) => s.id === '2'),
         paymentType: paymentTypes.find((p) => p.id === '2'),
         time: new Date('2021-04-22 21:00'),
@@ -42,12 +54,12 @@ describe('makeIcons', () => {
 describe('makeGoogleEventObjects', () => {
   test('resolves automatic and explicit main-event colors', () => {
     const automaticEvents = makeGoogleEventObjects({
-      ...exampleOrder,
+      ...calendarOrder,
       eventColor: null,
       service: { ...services[0] },
     })
     const explicitEvents = makeGoogleEventObjects({
-      ...exampleOrder,
+      ...calendarOrder,
       eventColor: '11',
       service: { ...services[0] },
     })
@@ -58,7 +70,7 @@ describe('makeGoogleEventObjects', () => {
 
   test('marks canceled events without changing the stored color preference', () => {
     const order = {
-      ...exampleOrder,
+      ...calendarOrder,
       eventColor: '11',
       canceledAt: new Date('2026-03-10T07:00:00.000Z'),
       boxes: {
@@ -81,7 +93,7 @@ describe('makeGoogleEventObjects', () => {
 
   test('restored events use the normal summary and preference colors', () => {
     const events = makeGoogleEventObjects({
-      ...exampleOrder,
+      ...calendarOrder,
       eventColor: '11',
       canceledAt: null,
       boxes: {
@@ -99,22 +111,13 @@ describe('makeGoogleEventObjects', () => {
     expect(events.slice(1).every((event) => event.colorId === '1')).toBe(true)
   })
 
-  test('does not create box events until both box dates are available', () => {
-    const events = makeGoogleEventObjects({
-      ...exampleOrder,
-      boxes: { deliveryDate: null, returnDate: null, amount: 10 },
-    })
-
-    expect(events.map(({ role }) => role)).toEqual(['main'])
-  })
-
   test('start date time and end date time of event object are correct', () => {
-    const eventObject = makeGoogleEventObjects(exampleOrder)[0]
+    const eventObject = makeGoogleEventObjects(calendarOrder)[0]
 
     const d2 = new Date('2021-07-10 23:00')
 
     const eventObject2 = makeGoogleEventObjects({
-      ...exampleOrder,
+      ...calendarOrder,
       date: d2,
       duration: 4,
     })[0]
@@ -130,7 +133,7 @@ describe('makeGoogleEventObjects', () => {
 
   test('labels each event role explicitly and formats box locations as strings', () => {
     const events = makeGoogleEventObjects({
-      ...exampleOrder,
+      ...calendarOrder,
       address: { street: 'Asematie 1', index: '00100', city: 'Helsinki' },
       destination: { street: 'Satamakatu 2', index: '00160', city: 'Helsinki' },
       boxes: {
@@ -155,7 +158,7 @@ describe('makeGoogleEventObjects', () => {
 
   test('renders Date and date-only box values in calendar descriptions and event times', () => {
     const dateBoxes = {
-      ...exampleOrder,
+      ...calendarOrder,
       date: new Date('2026-03-10T07:00:00.000Z'),
       duration: 2,
       boxes: {

@@ -7,7 +7,6 @@
  */
 
 import { formatInTimeZone as _formatInTimeZone } from 'date-fns-tz'
-import { OrderValidationError } from './orderPrimitives.js'
 
 export const HELSINKI_TIMEZONE = 'Europe/Helsinki'
 
@@ -24,7 +23,7 @@ export function isDateOnly(value) {
 
 // Validate once and produce UTC midnight for the conversion helper below.
 function parseCalendarDateToUtc(value, fieldName) {
-  if (!isDateOnly(value)) throw new OrderValidationError(`Invalid ${fieldName}`)
+  if (!isDateOnly(value)) throw new Error(`Invalid ${fieldName}`)
 
   const [year, month, day] = value.split('-').map(Number)
   const parsed = new Date(0)
@@ -37,26 +36,14 @@ function parseCalendarDateToUtc(value, fieldName) {
     parsed.getUTCMonth() !== month - 1 ||
     parsed.getUTCDate() !== day
   ) {
-    throw new OrderValidationError(`Invalid ${fieldName}`)
+    throw new Error(`Invalid ${fieldName}`)
   }
 
   return parsed
 }
 
 /**
- * Validate and return a canonical calendar date without converting it to an
- * instant. Calendar dates intentionally remain strings at persistence and API
- * boundaries so that they can be rendered as all-day values.
- */
-export function parseCalendarDate(value, fieldName = 'date') {
-  parseCalendarDateToUtc(value, fieldName)
-  return value
-}
-
-/**
- * Convert a validated calendar date to a UTC-midnight Date when an API needs
- * a Date for arithmetic. This is deliberately separate from parseCalendarDate
- * so date-only values are not accidentally treated as instants.
+ * Convert a validated external calendar date to a UTC-midnight Date.
  */
 export function calendarDateToUtc(value, fieldName = 'date') {
   return parseCalendarDateToUtc(value, fieldName)
@@ -78,22 +65,22 @@ export function isIsoInstant(value) {
  * input must convert it explicitly for the relevant timezone.
  */
 export function parseInstant(value, fieldName = 'date') {
-  if (value === null || value === undefined) throw new OrderValidationError(`Invalid ${fieldName}`)
+  if (value === null || value === undefined) throw new Error(`Invalid ${fieldName}`)
 
   if (value instanceof Date) {
-    if (!Number.isFinite(value.getTime())) throw new OrderValidationError(`Invalid ${fieldName}`)
+    if (!Number.isFinite(value.getTime())) throw new Error(`Invalid ${fieldName}`)
     return new Date(value.getTime())
   }
 
   if (!isIsoInstant(value)) {
-    throw new OrderValidationError(`Invalid ${fieldName}: expected an absolute instant`)
+    throw new Error(`Invalid ${fieldName}: expected an absolute instant`)
   }
 
   // JavaScript normalizes impossible dates in some ISO strings, so validate
   // the calendar portion before accepting the parsed instant.
-  parseCalendarDate(value.slice(0, 10), fieldName)
+  parseCalendarDateToUtc(value.slice(0, 10), fieldName)
   const parsed = new Date(value)
-  if (!Number.isFinite(parsed.getTime())) throw new OrderValidationError(`Invalid ${fieldName}`)
+  if (!Number.isFinite(parsed.getTime())) throw new Error(`Invalid ${fieldName}`)
   return parsed
 }
 
@@ -114,7 +101,8 @@ export function formatHelsinkiInstant(value, formatStr, fieldName = 'date') {
  */
 export function formatHelsinkiCalendarDate(value, fieldName = 'date') {
   if (isDateOnly(value)) {
-    return parseCalendarDate(value, fieldName)
+    parseCalendarDateToUtc(value, fieldName)
+    return value
   }
 
   return formatHelsinkiInstant(value, 'yyyy-MM-dd', fieldName)

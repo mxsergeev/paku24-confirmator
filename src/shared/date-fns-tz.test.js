@@ -7,7 +7,6 @@ import {
   formatInTimeZone,
   isDateOnly,
   isIsoInstant,
-  parseCalendarDate,
   parseInstant,
 } from './date-fns-tz.js'
 import { helsinkiDstTransitions } from './testFixtures/orderFixtures.js'
@@ -20,23 +19,16 @@ describe('date-only values', () => {
     expect(isDateOnly(new Date('2026-01-15T00:00:00.000Z'))).toBe(false)
   })
 
-  it('validates calendar dates without converting them to instants', () => {
-    const parsed = parseCalendarDate('2026-03-12')
-
-    expect(parsed).toBe('2026-03-12')
-    expect(calendarDateToUtc(parsed).toISOString()).toBe('2026-03-12T00:00:00.000Z')
-  })
-
   it.each(['2026-02-29', '2026-04-31', '2026-00-15', '2026-13-01', '2026-01-00'])(
     'rejects impossible date-only value %s',
     (value) => {
-      expect(() => parseCalendarDate(value, 'box date')).toThrow('Invalid box date')
+      expect(() => calendarDateToUtc(value, 'box date')).toThrow('Invalid box date')
     },
   )
 
   it('rejects values that are not date-only strings', () => {
-    expect(() => parseCalendarDate('2026-01-15T00:00:00Z')).toThrow('Invalid date')
-    expect(() => parseCalendarDate('2026-1-15')).toThrow('Invalid date')
+    expect(() => calendarDateToUtc('2026-01-15T00:00:00Z')).toThrow('Invalid date')
+    expect(() => calendarDateToUtc('2026-1-15')).toThrow('Invalid date')
   })
 })
 

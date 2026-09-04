@@ -198,12 +198,6 @@ describe('formatOrderForSms', () => {
     ).toThrow('Invalid boxes.deliveryDate')
   })
 
-  it('omits the boxes section when boxes are missing', () => {
-    const output = formatOrderForSms(makeOrder({ boxes: undefined }))
-
-    expect(output).not.toContain('MUUTTOLAATIKOT')
-  })
-
   it('omits a short destination while still rendering fees and price', () => {
     const output = formatOrderForSms(
       makeOrder({

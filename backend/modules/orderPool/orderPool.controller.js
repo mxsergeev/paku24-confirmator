@@ -21,16 +21,27 @@ import {
 } from './orderPool.service.js'
 import { buildStableInvoiceNumber } from '../../../src/shared/invoiceNumber.js'
 import {
-  BOOKING_FIELDS,
   createAppOrder,
-  createWordPressOrder,
 } from '../../../src/shared/orderModel.js'
-import {
-  hasOwn,
-  isOrderValidationError,
-  isPlainObject,
-} from '../../../src/shared/orderPrimitives.js'
 import { normalizeWordPressOrderPayload } from '../../../src/shared/wordpressOrderPayload.js'
+
+const APP_CREATE_FIELDS = [
+  'distance',
+  'hsy',
+  'eventColor',
+  'date',
+  'duration',
+  'service',
+  'paymentType',
+  'address',
+  'extraAddresses',
+  'destination',
+  'boxes',
+  'name',
+  'email',
+  'phone',
+  'comment',
+]
 
 function checkKeyOrAuth(req, res, next) {
   if (ORDER_POOL_KEY && req.body?.key === ORDER_POOL_KEY) {
@@ -55,8 +66,8 @@ function sendOrderResult(res, result, message) {
 function pickBookingFields(orderData) {
   const bookingFields = {}
 
-  BOOKING_FIELDS.forEach((field) => {
-    if (hasOwn(orderData, field)) bookingFields[field] = orderData[field]
+  APP_CREATE_FIELDS.forEach((field) => {
+    if (Object.hasOwn(orderData, field)) bookingFields[field] = orderData[field]
   })
 
   return bookingFields
@@ -65,17 +76,20 @@ function pickBookingFields(orderData) {
 function buildOrderForCreate(req) {
   const orderData = req.body?.order
 
-  if (!isPlainObject(orderData)) {
+  if (!orderData || typeof orderData !== 'object' || Array.isArray(orderData)) {
     throw validationError('order must be an object')
   }
 
   try {
     if (req.orderPoolOrigin === 'wordpress') {
-      return createWordPressOrder(normalizeWordPressOrderPayload(orderData), orderData)
+      return {
+        ...normalizeWordPressOrderPayload(orderData),
+        originalOrder: structuredClone(orderData),
+      }
     }
 
     const appOrderData = pickBookingFields(orderData)
-    if (hasOwn(orderData, 'pricingOverrides')) {
+    if (Object.hasOwn(orderData, 'pricingOverrides')) {
       appOrderData.pricingOverrides = orderData.pricingOverrides
     }
 
@@ -83,9 +97,7 @@ function buildOrderForCreate(req) {
     // Lifecycle, reference, and derived pricing state remain server-controlled.
     return createAppOrder(appOrderData)
   } catch (err) {
-    if (err.name === 'ValidationError') throw err
-    if (isOrderValidationError(err)) throw validationError(err.message)
-    throw err
+    throw validationError(err.message)
   }
 }
 
@@ -136,10 +148,8 @@ orderPoolRouter.put('/v2/:id', authMW.authenticateAccessToken, async (req, res, 
 orderPoolRouter.use(authMW.authenticateAccessToken)
 
 function makeDeletedFilter(deleted) {
-  if (deleted === 'true') return { deletedAt: { $exists: true, $ne: null } }
-  if (deleted === 'false') {
-    return { $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }] }
-  }
+  if (deleted === 'true') return { deletedAt: { $exists: true } }
+  if (deleted === 'false') return { deletedAt: { $exists: false } }
   return {}
 }
 
@@ -147,7 +157,7 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
   try {
     const { from, to, deleted } = req.query
     const deletedFilter = makeDeletedFilter(deleted)
-    if (hasOwn(req.query, 'pages')) {
+    if (Object.hasOwn(req.query, 'pages')) {
       throw validationError('pages query is no longer supported')
     }
     if (typeof from !== 'string' || typeof to !== 'string' || !from || !to) {

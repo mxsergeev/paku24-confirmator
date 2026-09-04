@@ -1,7 +1,6 @@
 import React from 'react'
 import colors from '../../shared/colors'
 import ColorSelector from '../common/ColorSelector'
-import { isCanceled, isDeleted } from '../../shared/orderState.helpers'
 import { HELSINKI_TIMEZONE, formatInTimeZone, parseInstant } from '../../shared/date-fns-tz'
 import { formatBoxDate } from '../../shared/render/text'
 import { resolveFeeDisplayName } from '../../shared/render/fees'
@@ -12,18 +11,16 @@ export default function OrderDialogDetails({
   eventType,
   onEventColorChange,
 }) {
-  const isCanceledOrder = isCanceled(order)
-  const isDeletedOrder = isDeleted(order)
+  const isCanceledOrder = Boolean(order?.canceledAt)
+  const isDeletedOrder = Boolean(order?.deletedAt)
   const pricing = order ? getOrderPricing(order) : null
   const hasClientNumber = Boolean(order?.phone)
   const hasBoxes = Number(order?.boxes?.amount) > 0
   const isBoxEvent = eventType === 'boxDelivery' || eventType === 'boxReturn'
   const showRegularOrder = order && !isBoxEvent
-  const address = order?.address || {}
-  const destination = order?.destination || {}
-  const extraAddresses = Array.isArray(order?.extraAddresses)
-    ? order.extraAddresses.filter((address) => address !== null && address !== undefined)
-    : []
+  const address = order?.address
+  const destination = order?.destination
+  const extraAddresses = order ? order.extraAddresses : []
   const hasExtraAddresses = extraAddresses.length > 0
   const hasClientEmail = Boolean(order?.email)
   const selectedEventColorId = order?.eventColor || ''

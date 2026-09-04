@@ -11,22 +11,14 @@ import MenuRoundedIcon from '@material-ui/icons/MenuRounded'
 import React, { useState } from 'react'
 
 export default function Address({
-  value = {},
+  value,
   onChange = () => {},
   onRemove = null,
   style = {},
   showRemove = false,
 }) {
   const [menuAnchorEl, setMenuAnchorEl] = useState(null)
-  const inputValue = value ?? {}
-  const address = {
-    ...inputValue,
-    street: inputValue.street ?? '',
-    index: inputValue.index ?? '',
-    city: inputValue.city ?? '',
-    floor: inputValue.floor ?? 0,
-    elevator: inputValue.elevator ?? false,
-  }
+  const address = value
 
   const openMenu = (event) => {
     setMenuAnchorEl(event.currentTarget)

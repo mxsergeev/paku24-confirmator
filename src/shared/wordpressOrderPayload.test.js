@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { makeWordPressPayload } from './testFixtures/orderFixtures.js'
-import { createWordPressOrder } from './orderModel.js'
-import { OrderValidationError } from './orderPrimitives.js'
 import { normalizeWordPressOrderPayload } from './wordpressOrderPayload.js'
 
 function wordpressPayload(overrides = {}) {
@@ -51,7 +49,7 @@ describe('normalizeWordPressOrderPayload', () => {
     expect(order).not.toHaveProperty('eventColor')
   })
 
-  it('preserves and deeply isolates embedded values and structured addresses', () => {
+  it('keeps only canonical embedded fields and deeply isolates structured addresses', () => {
     const payload = wordpressPayload({
       service: { id: 'external-service', name: 'External', pricePerHour: '61', details: { source: 'wordpress' } },
       paymentType: { id: 'external-payment', name: 'External payment', fee: '3', details: { source: 'wordpress' } },
@@ -62,8 +60,8 @@ describe('normalizeWordPressOrderPayload', () => {
     payload.address.street = 'changed'
     payload.extraAddresses[0].city = 'changed'
 
-    expect(order.service).toMatchObject({ id: 'external-service', pricePerHour: 61, details: { source: 'wordpress' } })
-    expect(order.paymentType).toMatchObject({ id: 'external-payment', fee: 3, details: { source: 'wordpress' } })
+    expect(order.service).toEqual({ id: 'external-service', name: 'External', pricePerHour: 61 })
+    expect(order.paymentType).toEqual({ id: 'external-payment', name: 'External payment', fee: 3 })
     expect(order.address.street).not.toBe('changed')
     expect(order.extraAddresses[0].city).not.toBe('changed')
   })
@@ -77,7 +75,7 @@ describe('normalizeWordPressOrderPayload', () => {
       returnDate: new Date('2026-01-15T07:00:00.000Z'),
       returnHasTime: true,
     })
-    expect(() => createWordPressOrder(emptyBoxesOrder, wordpressPayload({ boxes: {} }))).not.toThrow()
+    expect(emptyBoxesOrder.boxes.amount).toBe(0)
     const boxes = normalizeWordPressOrderPayload(wordpressPayload({ boxes: {
       amount: '0', deliveryDate: '2026-01-16', returnDate: '2026-01-24',
     } })).boxes
@@ -98,7 +96,7 @@ describe('normalizeWordPressOrderPayload', () => {
       },
     })
     const normalized = normalizeWordPressOrderPayload(raw)
-    const order = createWordPressOrder(normalized, raw)
+    const order = { ...normalized, originalOrder: structuredClone(raw) }
 
     expect(normalized.boxes).toEqual({
       amount: 0,
@@ -160,7 +158,7 @@ describe('normalizeWordPressOrderPayload', () => {
       },
     })
     const normalized = normalizeWordPressOrderPayload(raw)
-    const order = createWordPressOrder(normalized, raw)
+    const order = { ...normalized, originalOrder: structuredClone(raw) }
 
     expect(order.originalOrder.price).toBe('legacy-garbage')
     expect(order.originalOrder.fees).toEqual({ ancientPluginShape: true })
@@ -180,6 +178,8 @@ describe('normalizeWordPressOrderPayload', () => {
     [wordpressPayload({ date: '2026-01-15T09:00:00' }), /date.*absolute instant/i],
     [wordpressPayload({ date: '2026-02-29T09:00:00.000Z' }), /date/i],
     [wordpressPayload({ duration: 'nope' }), /duration/i],
+    [wordpressPayload({ service: { id: undefined, name: 'Move', pricePerHour: 50 } }), /service\.id/i],
+    [wordpressPayload({ paymentType: { id: undefined, name: 'Card', fee: 0 } }), /paymentType\.id/i],
     [wordpressPayload({ service: { id: '1', name: 'Move', pricePerHour: 'nope' } }), /service\.pricePerHour/i],
     [wordpressPayload({ paymentType: { id: '1', name: 'Card', fee: Infinity } }), /paymentType\.fee/i],
     [wordpressPayload({ address: 'unstructured' }), /address/i],
@@ -198,7 +198,7 @@ describe('normalizeWordPressOrderPayload', () => {
 
   it('reports malformed WordPress input as an order validation error', () => {
     expect(() => normalizeWordPressOrderPayload(wordpressPayload({ duration: 'nope' }))).toThrow(
-      OrderValidationError,
+      Error,
     )
   })
 })
