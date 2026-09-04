@@ -232,13 +232,13 @@ async function restoreOrder(id) {
       return resultWithWarning(restoredOrder)
     } catch (err) {
       logger.error('Mongo activation failed after restoring order calendar events', err)
-    try {
-      if (wasDeleted) {
-        await deleteOrderEvent(restoredCandidate, { lock: false })
-      } else {
-        await syncOrderToCalendar(order, { lock: false })
-      }
-    } catch (rollbackError) {
+      try {
+        if (wasDeleted) {
+          await deleteOrderEvent(restoredCandidate, { lock: false })
+        } else {
+          await syncOrderToCalendar(order, { lock: false })
+        }
+      } catch (rollbackError) {
         err.rollbackError = rollbackError
         logger.error('Calendar rollback failed after restore activation error', rollbackError)
       }
