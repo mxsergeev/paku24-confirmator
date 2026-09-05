@@ -33,10 +33,7 @@ function makePricingOverrides() {
 function createAppOrder(overrides = {}) {
   const now = new Date()
   const service = { ...(services[0] || {}) }
-  const paymentType = {
-    ...(paymentTypes[0] || {}),
-    fee: Number(paymentTypes[0]?.fee) || 0,
-  }
+  const paymentType = { ...(paymentTypes[0] || {}) }
   const defaults = {
     distance: distances.insideCapital,
     hsy: false,

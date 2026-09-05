@@ -439,6 +439,23 @@ describe('Order pool v2/:id updates', () => {
     expect(res.body.order.invoiceNumber).toBe('invoice-1')
   })
 
+  test('accepts payment types without a fee', async () => {
+    const order = await createPersistedOrder()
+    orderIds.push(order.id)
+
+    const res = await api
+      .put(`/api/order-pool/v2/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .send({ updateData: { paymentType: { id: '2', name: 'Käteinen' } } })
+      .expect(200)
+
+    expect(res.body.order.paymentType).toEqual({ id: '2', name: 'Käteinen' })
+    expect((await Order.findById(order.id).lean()).paymentType).toEqual({
+      id: '2',
+      name: 'Käteinen',
+    })
+  })
+
   test('updates event color through the ordinary order endpoint', async () => {
     const order = await createPersistedOrder()
     orderIds.push(order.id)

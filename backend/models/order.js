@@ -28,7 +28,7 @@ const serviceSchema = nestedSchema({
 const paymentTypeSchema = nestedSchema({
   id: { type: String, required: true },
   name: { type: String, required: true },
-  fee: { type: Number, required: true },
+  fee: Number,
   additionalFieldLabel: String,
   additionalFieldValue: String,
 })
