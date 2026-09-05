@@ -497,6 +497,46 @@ describe('Order pool v2/:id updates', () => {
       .expect(400)
   })
 
+  test.each(['boxes', 'service', 'paymentType', 'date'])('rejects a null structural field: %s', async (field) => {
+    const order = await createPersistedOrder()
+    orderIds.push(order.id)
+    const before = await Order.findById(order.id).lean()
+
+    await api
+      .put(`/api/order-pool/v2/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .send({ updateData: { [field]: null } })
+      .expect(400)
+
+    const after = await Order.findById(order.id).lean()
+    expect(after[field]).toEqual(before[field])
+  })
+
+  test('rejects malformed boxes while preserving the valid persisted structure', async () => {
+    const order = await createPersistedOrder()
+    orderIds.push(order.id)
+    const before = await Order.findById(order.id).lean()
+
+    await api
+      .put(`/api/order-pool/v2/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .send({
+        updateData: {
+          boxes: {
+            amount: 10,
+            deliveryDate: null,
+            deliveryHasTime: true,
+            returnDate: before.boxes.returnDate,
+            returnHasTime: true,
+          },
+        },
+      })
+      .expect(400)
+
+    const after = await Order.findById(order.id).lean()
+    expect(after.boxes).toEqual(before.boxes)
+  })
+
   test('ignores source-owned and unknown update fields', async () => {
     const order = await createPersistedOrder()
     orderIds.push(order.id)

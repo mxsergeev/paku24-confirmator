@@ -17,18 +17,18 @@ const addressSchema = nestedSchema({
 })
 
 const serviceSchema = nestedSchema({
-  id: String,
-  name: String,
-  pricePerHour: Number,
+  id: { type: String, required: true },
+  name: { type: String, required: true },
+  pricePerHour: { type: Number, required: true },
   eventColor: String,
   hsy: Boolean,
   multiplier: Number,
 })
 
 const paymentTypeSchema = nestedSchema({
-  id: String,
-  name: String,
-  fee: Number,
+  id: { type: String, required: true },
+  name: { type: String, required: true },
+  fee: { type: Number, required: true },
   additionalFieldLabel: String,
   additionalFieldValue: String,
 })
@@ -43,11 +43,11 @@ const feeSchema = nestedSchema({
 })
 
 const boxesSchema = nestedSchema({
-  deliveryDate: Date,
-  deliveryHasTime: Boolean,
-  returnDate: Date,
-  returnHasTime: Boolean,
-  amount: Number,
+  deliveryDate: { type: Date, required: true },
+  deliveryHasTime: { type: Boolean, required: true },
+  returnDate: { type: Date, required: true },
+  returnHasTime: { type: Boolean, required: true },
+  amount: { type: Number, required: true },
 })
 
 const pricingOverridesSchema = nestedSchema({
@@ -60,14 +60,14 @@ const order = new mongoose.Schema({
   distance: String,
   hsy: Boolean,
   eventColor: String,
-  date: Date,
-  duration: Number,
-  service: { type: serviceSchema, default: undefined },
-  paymentType: { type: paymentTypeSchema, default: undefined },
-  address: { type: addressSchema, default: undefined },
-  extraAddresses: { type: [addressSchema], default: [] },
-  destination: { type: addressSchema, default: undefined },
-  boxes: { type: boxesSchema, default: undefined },
+  date: { type: Date, required: true },
+  duration: { type: Number, required: true },
+  service: { type: serviceSchema, required: true, default: undefined },
+  paymentType: { type: paymentTypeSchema, required: true, default: undefined },
+  address: { type: addressSchema, required: true, default: undefined },
+  extraAddresses: { type: [addressSchema], required: true, default: [] },
+  destination: { type: addressSchema, required: true, default: undefined },
+  boxes: { type: boxesSchema, required: true, default: undefined },
   name: String,
   email: String,
   phone: String,
@@ -79,6 +79,7 @@ const order = new mongoose.Schema({
   },
   pricingOverrides: {
     type: pricingOverridesSchema,
+    required: true,
     default: () => ({}),
   },
   confirmed: {
