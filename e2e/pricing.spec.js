@@ -11,6 +11,20 @@ function calendarDateInHelsinki(value) {
   return `${get('day')}.${get('month')}.${get('year')}`
 }
 
+function calendarDateTimeInHelsinki(value) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Helsinki',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(value)
+  const get = (type) => parts.find((part) => part.type === type).value
+  return `${get('day')}.${get('month')}.${get('year')} ${get('hour')}:${get('minute')}`
+}
+
 test('New Order keeps pricing controls compact and supports manual overrides', async ({ page }) => {
   await page.goto('/app/calendar')
   await page.getByRole('button', { name: 'Create order' }).click()
@@ -126,6 +140,49 @@ test('editing and reopening an order preserves all pricing overrides', async ({ 
   expect(reopenedPickerValues.some((value) => value.startsWith(calendarDateInHelsinki(returnDate)))).toBe(
     true,
   )
+})
+
+test('all-day box dates become 09:00 Helsinki when time is enabled', async ({ page, database }) => {
+  const deliveryDate = new Date(Date.UTC(2026, 6, 15))
+  const returnDate = new Date(Date.UTC(2026, 6, 24, 6, 0, 0))
+  const order = await database.seedOrder({
+    date: '2026-07-10T06:00:00.000Z',
+    name: 'All-day box customer',
+    boxes: {
+      deliveryDate: deliveryDate.toISOString(),
+      deliveryHasTime: false,
+      returnDate: returnDate.toISOString(),
+      returnHasTime: true,
+      amount: 10,
+    },
+  })
+
+  await page.goto(`/app/calendar/order/${order.id}`)
+  await page.getByRole('button', { name: 'Edit' }).click()
+  const editDialog = page.getByRole('dialog').filter({
+    has: page.getByRole('heading', { name: 'Edit order', exact: true }),
+  })
+  await expect(editDialog).toBeVisible()
+  await editDialog.getByText('Boxes', { exact: true }).click()
+
+  const boxTimeCheckboxes = editDialog.getByRole('checkbox', { name: 'Include time' })
+  await expect(boxTimeCheckboxes.nth(0)).not.toBeChecked()
+  await expect(boxTimeCheckboxes.nth(1)).toBeChecked()
+  await boxTimeCheckboxes.nth(0).check()
+
+  const pickerValues = await editDialog.locator('input').evaluateAll((inputs) =>
+    inputs.map((input) => input.value),
+  )
+  expect(pickerValues.some((value) => value.includes('15.07.2026 09:00'))).toBe(true)
+
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByRole('button', { name: 'Save changes' })).toHaveCount(0)
+
+  const savedOrder = await database.readOrder(order.id)
+  expect(savedOrder.boxes.deliveryHasTime).toBe(true)
+  expect(calendarDateTimeInHelsinki(savedOrder.boxes.deliveryDate)).toBe('15.07.2026 09:00')
+  expect(savedOrder.boxes.returnHasTime).toBe(true)
+  expect(new Date(savedOrder.boxes.returnDate).toISOString()).toBe(returnDate.toISOString())
 })
 
 test('automatic price estimate includes manual fees and boxes and recomputes after duration changes', async ({ page, database }) => {

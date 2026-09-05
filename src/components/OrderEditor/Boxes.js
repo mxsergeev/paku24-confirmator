@@ -9,6 +9,7 @@ import CollapseWrapper from '../CollapseWrapper'
 import {
   calendarDateToUtc,
   formatHelsinkiCalendarDate,
+  helsinkiCalendarDateToInstant,
 } from '../../shared/date-fns-tz'
 import { calculateAutomaticBoxesPrice } from '../../shared/orderPricing'
 import PricingOverrideField from './PricingOverrideField'
@@ -33,6 +34,20 @@ export default function Boxes({ order, handleChange, onOrderChange, style }) {
     handleChange('boxes', {
       ...boxes,
       [name]: includeTime ? dateValue : calendarDateToUtc(calendarDate, `box ${name}`),
+      [name === 'deliveryDate' ? 'deliveryHasTime' : 'returnHasTime']: includeTime,
+    })
+  }
+
+  const handleIncludeTimeChange = (name, includeTime) => {
+    const fieldName = `box ${name}`
+    const calendarDate = formatHelsinkiCalendarDate(boxes[name], fieldName)
+    const date = includeTime
+      ? helsinkiCalendarDateToInstant(calendarDate, 9, fieldName)
+      : calendarDateToUtc(calendarDate, fieldName)
+
+    handleChange('boxes', {
+      ...boxes,
+      [name]: date,
       [name === 'deliveryDate' ? 'deliveryHasTime' : 'returnHasTime']: includeTime,
     })
   }
@@ -84,7 +99,7 @@ export default function Boxes({ order, handleChange, onOrderChange, style }) {
                   <Checkbox
                     checked={includeTimeStart}
                     onChange={() => {
-                      handleDateChange('deliveryDate', boxes.deliveryDate, !includeTimeStart)
+                      handleIncludeTimeChange('deliveryDate', !includeTimeStart)
                     }}
                     color="primary"
                   />
@@ -112,7 +127,7 @@ export default function Boxes({ order, handleChange, onOrderChange, style }) {
                   <Checkbox
                     checked={includeTimeEnd}
                     onChange={() => {
-                      handleDateChange('returnDate', boxes.returnDate, !includeTimeEnd)
+                      handleIncludeTimeChange('returnDate', !includeTimeEnd)
                     }}
                     color="primary"
                   />

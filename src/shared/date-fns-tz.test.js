@@ -5,6 +5,7 @@ import {
   formatHelsinkiCalendarDate,
   formatHelsinkiInstant,
   formatInTimeZone,
+  helsinkiCalendarDateToInstant,
   isDateOnly,
   isIsoInstant,
   parseInstant,
@@ -74,6 +75,12 @@ describe('parseInstant', () => {
 })
 
 describe('Helsinki display helpers', () => {
+  it('converts a Helsinki calendar date and wall-clock hour without hard-coded offsets', () => {
+    const instant = helsinkiCalendarDateToInstant('2026-07-15', 9)
+
+    expect(formatHelsinkiInstant(instant, 'dd.MM.yyyy HH:mm')).toBe('15.07.2026 09:00')
+  })
+
   it('defaults generic formatting to Helsinki', () => {
     expect(formatInTimeZone('2026-01-15T07:00:00.000Z', 'dd.MM.yyyy HH:mm')).toBe(
       '15.01.2026 09:00',

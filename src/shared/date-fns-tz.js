@@ -6,7 +6,7 @@
  * Re-exporting the functions using names from the newer version for easier future migration.
  */
 
-import { formatInTimeZone as _formatInTimeZone } from 'date-fns-tz'
+import { formatInTimeZone as _formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz'
 
 export const HELSINKI_TIMEZONE = 'Europe/Helsinki'
 
@@ -47,6 +47,15 @@ function parseCalendarDateToUtc(value, fieldName) {
  */
 export function calendarDateToUtc(value, fieldName = 'date') {
   return parseCalendarDateToUtc(value, fieldName)
+}
+
+/**
+ * Convert a Helsinki calendar date and wall-clock hour to an absolute instant.
+ */
+export function helsinkiCalendarDateToInstant(value, hour = 9, fieldName = 'date') {
+  const calendarDate = formatHelsinkiCalendarDate(value, fieldName)
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) throw new Error(`Invalid ${fieldName}`)
+  return zonedTimeToUtc(`${calendarDate}T${String(hour).padStart(2, '0')}:00:00`, HELSINKI_TIMEZONE)
 }
 
 /**
