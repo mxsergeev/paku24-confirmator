@@ -9,7 +9,12 @@ import {
   makeAppBooking,
   makeWordPressPayloadMissingPricing,
 } from '../../src/shared/testFixtures/orderFixtures.js'
-import { clear as clearCalendar, failNext as failNextCalendar, getEvents as getCalendarEvents } from '../modules/calendar/testCalendarProvider.js'
+import {
+  clear as clearCalendar,
+  delete as deleteCalendarEvent,
+  failNext as failNextCalendar,
+  getEvents as getCalendarEvents,
+} from '../modules/calendar/testCalendarProvider.js'
 
 const api = supertest(app)
 useTestDatabase()
@@ -654,6 +659,51 @@ describe('Order pool calendar reconciliation', () => {
       updateData: { comment: 'Retry' },
     }).expect(200)
     expect(getCalendarEvents()).toHaveLength(3)
+  })
+
+  test('an ambiguous Calendar insert converges on the next idempotent confirmation', async () => {
+    const order = await createPersistedOrder({ name: 'Ambiguous Calendar insert order' })
+    orderIds.push(order.id)
+
+    failNextCalendar('insert', { afterWrite: true, status: 503 })
+    const first = await api
+      .put(`/api/order-pool/v2/confirm/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .expect(200)
+
+    expect(first.body.warning).toEqual({
+      code: 'CALENDAR_SYNC_FAILED',
+      message: 'Order was saved, but Google Calendar could not be synchronized.',
+    })
+    expect(getCalendarEvents().map((event) => event.id)).toEqual([`paku24${order.id}m`])
+
+    const second = await api
+      .put(`/api/order-pool/v2/confirm/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .expect(200)
+
+    expect(second.body.warning).toBeNull()
+    expect(getCalendarEvents().map((event) => event.id).sort()).toEqual([
+      `paku24${order.id}d`, `paku24${order.id}m`, `paku24${order.id}r`,
+    ])
+  })
+
+  test('a Calendar 410 during deletion is treated as already absent', async () => {
+    const order = await createPersistedOrder({ name: 'Calendar gone delete order' })
+    orderIds.push(order.id)
+
+    await api.put(`/api/order-pool/v2/confirm/${order.id}`).set('Cookie', [`at=${appToken}`]).expect(200)
+    deleteCalendarEvent(`paku24${order.id}m`)
+    failNextCalendar('delete', { status: 410 })
+
+    const deleted = await api
+      .delete(`/api/order-pool/delete/${order.id}`)
+      .set('Cookie', [`at=${appToken}`])
+      .expect(200)
+
+    expect(deleted.body.warning).toBeNull()
+    expect((await Order.findById(order.id).lean()).deletedAt).toEqual(expect.any(Date))
+    expect(getCalendarEvents()).toEqual([])
   })
 })
 

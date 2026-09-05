@@ -226,7 +226,7 @@ async function syncOrderToGoogleCalendar(order) {
       try {
         await providerDelete(id)
       } catch (error) {
-        if (!isStatus(error, 404)) throw error
+        if (!isStatus(error, 404) && !isStatus(error, 410)) throw error
       }
     }
   }
