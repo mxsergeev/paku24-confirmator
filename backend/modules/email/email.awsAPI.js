@@ -1,6 +1,7 @@
 import AWS from 'aws-sdk'
 import * as logger from '../../utils/logger.js'
 import { SOURCE_EMAIL } from '../../utils/config.js'
+import { recordEmail } from '../testCommunicationProvider.js'
 
 AWS.config.update({ region: 'eu-north-1' })
 
@@ -35,6 +36,11 @@ function sendMail({ email, subject, body, html = false, sourceEmail = SOURCE_EMA
 
   html ? (params.Message.Body.Html = messageBody) : (params.Message.Body.Text = messageBody)
 
+  if (process.env.NODE_ENV === 'test') {
+    recordEmail({ email, subject, body, html, sourceEmail })
+    return Promise.resolve()
+  }
+
   if (process.env.NODE_ENV !== 'test') {
     const sendPromise = new AWS.SES({ apiVersion: '2010-12-01' }).sendEmail(params).promise()
 
@@ -48,7 +54,6 @@ function sendMail({ email, subject, body, html = false, sourceEmail = SOURCE_EMA
       })
   }
 
-  return Promise.resolve()
 }
 
 function splitBase64Lines(input = '', lineLength = 76) {
@@ -75,6 +80,7 @@ function normalizeBase64(input = '') {
  * @param {string} mail.body
  * @param {string} mail.pdfBase64
  * @param {string} [mail.fileName='receipt.pdf']
+ * @param {'receipt'|'invoice'} [mail.documentType='receipt']
  * @param {string} [mail.sourceEmail=SOURCE_EMAIL]
  */
 function sendMailWithAttachment({
@@ -83,10 +89,12 @@ function sendMailWithAttachment({
   body,
   pdfBase64,
   fileName = 'receipt.pdf',
+  documentType = 'receipt',
   sourceEmail = SOURCE_EMAIL,
 }) {
   const boundary = `NextPart_${Date.now()}`
   const normalizedPdfBase64 = splitBase64Lines(normalizeBase64(pdfBase64))
+  const attachmentDescription = documentType === 'invoice' ? 'Invoice PDF' : 'Receipt PDF'
 
   const rawMessage = [
     `From: ${sourceEmail}`,
@@ -103,7 +111,7 @@ function sendMailWithAttachment({
     '',
     `--${boundary}`,
     `Content-Type: application/pdf; name="${fileName}"`,
-    'Content-Description: Receipt PDF',
+    `Content-Description: ${attachmentDescription}`,
     `Content-Disposition: attachment; filename="${fileName}";`,
     'Content-Transfer-Encoding: base64',
     '',
@@ -111,6 +119,19 @@ function sendMailWithAttachment({
     '',
     `--${boundary}--`,
   ].join('\n')
+
+  if (process.env.NODE_ENV === 'test') {
+    recordEmail({
+      email,
+      subject,
+      body,
+      pdfBase64,
+      fileName,
+      documentType,
+      sourceEmail,
+    })
+    return Promise.resolve()
+  }
 
   if (process.env.NODE_ENV !== 'test') {
     return new AWS.SES({ apiVersion: '2010-12-01' })
@@ -129,7 +150,6 @@ function sendMailWithAttachment({
       })
   }
 
-  return Promise.resolve()
 }
 
 export { sendMailWithAttachment }

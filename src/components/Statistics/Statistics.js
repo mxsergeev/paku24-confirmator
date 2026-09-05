@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import TextField from '@material-ui/core/TextField'
 import Popper from '@material-ui/core/Popper'
 import Table from '@material-ui/core/Table'
@@ -11,8 +11,9 @@ import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import Paper from '@material-ui/core/Paper'
 import IconButton from '@material-ui/core/IconButton'
 import './Statistics.css'
-import orderPoolApi from '../../services/orderPoolAPI'
+import ordersAPI from '../../services/ordersAPI'
 import dayjs from '../../shared/dayjs'
+import { formatHelsinkiInstant } from '../../shared/date-fns-tz'
 
 /**
  * @param {Object} period
@@ -57,29 +58,19 @@ function splitOrdersByPeriods(orders, periods) {
   return splitted
 }
 
-function createData(name, orderCount) {
-  return { name, orderCount }
-}
+function groupOrdersByDay(orders) {
+  return orders.reduce((byDay, order) => {
+    let day = 'Unknown day'
+    try {
+      day = formatHelsinkiInstant(order.confirmedAt, 'EEEE', 'confirmed at')
+    } catch {
+      // Keep malformed lifecycle data visible without crashing the statistics popover.
+    }
 
-/**
- * @returns {array} Array of objects
- */
-function makeRows(labels, data) {
-  return data.map((d, i) => createData(labels[i], d))
-}
-
-function makeWeekRows(orders, weeks) {
-  return makeRows(
-    orders.map((o, i) => `Week ${dayjs(weeks[i].periodFrom).isoWeek()}`),
-    orders.map((o) => o.length)
-  )
-}
-
-function makeTotalRow(orders) {
-  return makeRows(
-    ['Total during specified period'],
-    orders.map((o) => o.length)
-  )
+    if (!byDay[day]) byDay[day] = []
+    byDay[day].push(order)
+    return byDay
+  }, {})
 }
 
 export default function Statistics() {
@@ -89,63 +80,75 @@ export default function Statistics() {
     periodFrom: defStartDate,
     periodTo: defEndDate,
   })
-  const [ordersByDays, setOrdersByDays] = useState({})
+  const [orders, setOrders] = useState([])
   const [anchorEl, setAnchorEl] = useState(null)
-
-  const [ordersByWeeks, setOrdersByWeeks] = useState([])
-  const [rows, setRows] = useState([])
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(null)
 
   useEffect(() => {
+    let active = true
+
     async function fetchStats() {
       const weeks = splitPeriodToWeeks(period)
+      if (weeks.length === 0) {
+        setOrders([])
+        return
+      }
+
       const firstWeek = weeks[0]
       const lastWeek = weeks[weeks.length - 1]
 
       const {
         confirmedOrders: confirmedOrdersOfAllWeeksOfPeriod,
-      } = await orderPoolApi.getConfirmedOrders({
+      } = await ordersAPI.getConfirmedOrders({
         periodFrom: firstWeek.periodFrom,
         periodTo: lastWeek.periodTo,
       })
 
-      const ordsByWeeks = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, weeks)
-
-      const ordersOfWholePeriod = splitOrdersByPeriods(confirmedOrdersOfAllWeeksOfPeriod, [period])
-
-      const weekRows = makeWeekRows(ordsByWeeks, weeks)
-      const totalRow = makeTotalRow(ordersOfWholePeriod)
-
-      setOrdersByWeeks(ordsByWeeks)
-      setRows([...weekRows, ...totalRow])
+      if (active) setOrders(confirmedOrdersOfAllWeeksOfPeriod || [])
     }
 
+    setOrders([])
     fetchStats()
+
+    return () => {
+      active = false
+    }
   }, [period])
 
-  const handlePeriodChange = useCallback((e) => {
+  const weeks = splitPeriodToWeeks(period)
+  const ordersByWeeks = splitOrdersByPeriods(orders, weeks)
+  const ordersOfWholePeriod = splitOrdersByPeriods(orders, [period])[0] || []
+  const rows = [
+    ...ordersByWeeks.map((weekOrders, index) => ({
+      name: 'Week ' + dayjs(weeks[index].periodFrom).isoWeek(),
+      orderCount: weekOrders.length,
+    })),
+    {
+      name: 'Total during specified period',
+      orderCount: ordersOfWholePeriod.length,
+    },
+  ]
+
+  const handlePeriodChange = (e) => {
     setPeriod((prev) => ({ ...prev, [e.target.name]: dayjs(e.target.value) }))
-  }, [])
+  }
 
   function showOrdersByDay(e) {
     setAnchorEl(e.currentTarget)
-
-    const ordersOfSelectedWeek = ordersByWeeks[e.currentTarget.dataset.rownumber]
-
-    const ordByDays = {}
-
-    ordersOfSelectedWeek.forEach((order) => {
-      const day = new Date(order.confirmedAt).toLocaleDateString('en-US', { weekday: 'long' })
-      if (ordByDays[day] == null) {
-        ordByDays[day] = []
-      }
-      ordByDays[day].push(order)
-    })
-
-    setOrdersByDays(ordByDays)
+    setSelectedWeekIndex(Number(e.currentTarget.dataset.rownumber))
   }
 
+  function closeOrdersByDay() {
+    setAnchorEl(null)
+    setSelectedWeekIndex(null)
+  }
+
+  const selectedWeekOrders =
+    selectedWeekIndex === null ? [] : ordersByWeeks[selectedWeekIndex] || []
+  const ordersByDays = groupOrdersByDay(selectedWeekOrders)
   const open = Boolean(anchorEl)
-  const shouldApplyEventHandler = (row) => row.orderCount > 0 && !row.name.includes('Total')
+  const shouldApplyEventHandler = (row, rowNumber) =>
+    rowNumber < weeks.length && row.orderCount > 0
 
   return (
     <div className="statistics">
@@ -175,32 +178,15 @@ export default function Statistics() {
           </TableHead>
           <TableBody>
             {rows.map((row, rowNumber) => (
-              <TableRow key={row.name}>
+              <TableRow key={row.name + rowNumber}>
                 <TableCell component="th" scope="row">
                   {row.name}
                 </TableCell>
                 <TableCell align="right">
-                  <Popper style={{ padding: 10 }} placement="left" open={open} anchorEl={anchorEl}>
-                    <ClickAwayListener
-                      mouseEvent="onMouseDown"
-                      touchEvent="onTouchStart"
-                      onClickAway={() => setAnchorEl(null)}
-                    >
-                      <Paper>
-                        <div style={{ padding: 10 }}>
-                          {Object.entries(ordersByDays).map(([key, value]) => (
-                            <div key={key}>
-                              {key}: {value.length}
-                            </div>
-                          ))}
-                        </div>
-                      </Paper>
-                    </ClickAwayListener>
-                  </Popper>
                   <IconButton
                     data-rownumber={rowNumber}
                     size="small"
-                    onClick={shouldApplyEventHandler(row) ? showOrdersByDay : null}
+                    onClick={shouldApplyEventHandler(row, rowNumber) ? showOrdersByDay : null}
                   >
                     {row.orderCount}
                   </IconButton>
@@ -210,6 +196,23 @@ export default function Statistics() {
           </TableBody>
         </Table>
       </TableContainer>
+      <Popper style={{ padding: 10 }} placement="left" open={open} anchorEl={anchorEl}>
+        <ClickAwayListener
+          mouseEvent="onMouseDown"
+          touchEvent="onTouchStart"
+          onClickAway={closeOrdersByDay}
+        >
+          <Paper>
+            <div style={{ padding: 10 }}>
+              {Object.entries(ordersByDays).map(([key, value]) => (
+                <div key={key}>
+                  {key}: {value.length}
+                </div>
+              ))}
+            </div>
+          </Paper>
+        </ClickAwayListener>
+      </Popper>
     </div>
   )
 }

@@ -2,6 +2,8 @@ import distances from '../../data/distances.json' with { type: 'json' }
 import fees from '../../data/fees.json' with { type: 'json' }
 import paymentTypes from '../../data/paymentTypes.json' with { type: 'json' }
 import services from '../../data/services.json' with { type: 'json' }
+import { createAppOrder } from '../orderModel.js'
+import { normalizeWordPressOrderPayload } from '../wordpressOrderPayload.js'
 
 const START_ADDRESS = {
   street: 'Mannerheimintie 10',
@@ -58,20 +60,18 @@ function makePaymentType() {
 function makeBoxes(overrides = {}) {
   return {
     deliveryDate: '2026-01-16T07:00:00.000Z',
+    deliveryHasTime: true,
     returnDate: '2026-01-24T07:00:00.000Z',
+    returnHasTime: true,
     amount: 10,
     ...overrides,
   }
 }
 
-function makeBookingFields(overrides = {}) {
+function makeBooking(overrides = {}) {
   const service = makeService()
 
   return {
-    distance: distances.insideCapital,
-    hsy: false,
-    XL: false,
-    eventColor: service.eventColor,
     date: '2026-01-15T07:00:00.000Z',
     duration: 2,
     service,
@@ -88,149 +88,68 @@ function makeBookingFields(overrides = {}) {
   }
 }
 
-export function makeWordPressStructuredJsonComplete() {
+export function makeWordPressPayload(overrides = {}) {
   return {
-    ...makeBookingFields(),
+    ...makeBooking(),
     fees: [makeFee('weekendFee')],
     boxesPrice: 52,
     price: 167,
+    ...overrides,
   }
 }
 
-export function makeWordPressStructuredJsonMissingPricing() {
-  return makeBookingFields({
+export function makeWordPressPayloadMissingPricing(overrides = {}) {
+  const payload = makeWordPressPayload({
     name: 'WordPress Customer Without Pricing',
     boxes: makeBoxes({ amount: 5 }),
+    ...overrides,
   })
+
+  if (!Object.prototype.hasOwnProperty.call(overrides, 'fees')) delete payload.fees
+  if (!Object.prototype.hasOwnProperty.call(overrides, 'boxesPrice')) delete payload.boxesPrice
+  if (!Object.prototype.hasOwnProperty.call(overrides, 'price')) delete payload.price
+
+  return payload
 }
 
-export const wordpressTextOrder = `Service: Pakettiauto ja kuljettaja
-Accessories: None
-
-Date and time: Thursday, January 15th 2026 09:00
-Duration: 2 h
-
-Start location: Helsinki / 00100 Mannerheimintie 10
-End location: Helsinki / 00500 Paaskylankatu 5
-Name: Test Customer
-Email: customer@example.com
-Phone: +358401234567
-Comment: Ring the doorbell on arrival.
-
-Payment Type: Maksukortti
-PRICE
-— Amount: 10
-— Price: 52
-— Booking time starts: 2026-01-16T09:00
-— Booking time ends: 2026-01-24T09:00
-— Self pickup: No
-— Self return: No
-
---
-Tämä viesti lähetettiin sivustolta Paku24.fi (https://paku24.fi)`
-
-export function makeAppOrder() {
+export function makeAppBooking(overrides = {}) {
   return {
-    ...makeBookingFields({
+    ...makeBooking({
       date: '2026-06-15T06:00:00.000Z',
       boxes: makeBoxes({
         deliveryDate: '2026-06-16T06:00:00.000Z',
+        deliveryHasTime: true,
         returnDate: '2026-06-24T06:00:00.000Z',
+        returnHasTime: true,
         amount: 0,
       }),
       name: 'App Customer',
     }),
-    origin: 'app',
-    initialSnapshot: null,
-    pricing: {
-      source: {
-        price: 'auto',
-        fees: 'auto',
-        boxesPrice: 'auto',
-      },
-      manual: {
-        price: null,
-        fees: null,
-        boxesPrice: null,
-      },
-    },
-    price: 100,
-    fees: [],
-    boxesPrice: 0,
+    distance: distances.insideCapital,
+    hsy: false,
+    eventColor: '1',
+    ...overrides,
   }
 }
 
-export function makeWordPressOrder() {
-  const current = makeWordPressStructuredJsonComplete()
-
+export function makeCanonicalWordPressOrder(overrides = {}) {
+  const source = makeWordPressPayload(overrides)
   return {
-    ...current,
-    origin: 'wordpress',
-    initialSnapshot: makeWordPressStructuredJsonComplete(),
-    pricing: {
-      source: {
-        price: 'initial',
-        fees: 'initial',
-        boxesPrice: 'initial',
-      },
-      manual: {
-        price: null,
-        fees: null,
-        boxesPrice: null,
-      },
-    },
+    ...normalizeWordPressOrderPayload(source),
+    originalOrder: structuredClone(source),
   }
 }
 
-export function makeDraftPayload() {
-  const order = makeWordPressOrder()
-
-  return {
-    version: 1,
-    order: {
-      ...order,
-      pricing: {
-        source: {
-          price: 'auto',
-          fees: 'manual',
-          boxesPrice: 'initial',
-        },
-        manual: {
-          price: null,
-          fees: [makeFee('nightFee')],
-          boxesPrice: null,
-        },
-      },
-      price: 172,
-      fees: [makeFee('nightFee')],
-      boxesPrice: 52,
-    },
-  }
-}
-
-export function makePersistedApiOrder() {
-  return {
-    ...makeWordPressOrder(),
-    id: '66c000000000000000000001',
-    _id: '66c000000000000000000001',
-    confirmed: true,
-    confirmedBy: '66c000000000000000000002',
-    confirmedAt: '2026-01-10T12:00:00.000Z',
-    receivedAt: '2026-01-10T11:30:00.000Z',
-    canceledAt: null,
-    deletedAt: null,
-    markedForDeletion: false,
-    invoiceNumber: '2026-001',
-    googleEventId: 'fixture-google-event-id',
-  }
+export function makeCanonicalAppOrder(overrides = {}) {
+  return createAppOrder(makeAppBooking(overrides))
 }
 
 export function makeCustomerCommunicationPayload() {
   return {
-    ...makeBookingFields(),
-    price: 167,
-    fees: [makeFee('weekendFee')],
-    boxesPrice: 52,
+    ...makeWordPressPayload(),
+    distance: distances.insideCapital,
+    hsy: false,
+    eventColor: '1',
   }
 }
 
@@ -267,12 +186,4 @@ export const helsinkiDstTransitions = {
       instant: '2026-10-25T01:00:00.000Z',
     },
   },
-}
-
-export function makeDateOnlyBoxes() {
-  return {
-    deliveryDate: '2026-03-12',
-    returnDate: '2026-03-20',
-    amount: 10,
-  }
 }

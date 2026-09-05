@@ -1,3 +1,5 @@
+import { getOrderPricing } from '../../shared/orderPricing'
+
 export function getOrderIcons(order, iconsData) {
   const icons = []
   if (order.paymentType && iconsData.payment && iconsData.payment[order.paymentType.id]) {
@@ -6,15 +8,12 @@ export function getOrderIcons(order, iconsData) {
   if (order.service && iconsData.service && iconsData.service[order.service.id]) {
     icons.push(iconsData.service[order.service.id])
   }
-  if (order.fees && Array.isArray(order.fees)) {
-    order.fees.forEach((fee) => {
+  if (order) {
+    getOrderPricing(order).fees.forEach((fee) => {
       if (iconsData.fees && iconsData.fees[fee.name]) {
         icons.push(iconsData.fees[fee.name])
       }
     })
-  }
-  if (order.size && iconsData.size && iconsData.size[order.size]) {
-    icons.push(iconsData.size[order.size])
   }
   return icons.join(' ')
 }

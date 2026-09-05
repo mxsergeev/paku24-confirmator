@@ -3,22 +3,28 @@ import PropTypes from 'prop-types'
 import { Select, MenuItem } from '@material-ui/core'
 
 const ColorSelector = ({ value, onChange, colors }) => {
+  const selectedValue = value ?? ''
+
   return (
     <div className="color-selector">
       <Select
         variant="filled"
         name="eventColor"
-        value={value}
-        onChange={(e) => onChange(e.target.name, e.target.value)}
+        value={selectedValue}
+        onChange={(e) => onChange(e.target.name, e.target.value || null)}
         label="Event color"
-        renderValue={(selectedValue) => (
-          <>
-            <span style={{ backgroundColor: colors[selectedValue].hex }} className="color-option">
+        renderValue={(selectedColorId) => {
+          const selectedColor = colors[selectedColorId]
+          if (!selectedColor) return 'Automatic'
+
+          return (
+            <span style={{ backgroundColor: selectedColor.hex }} className="color-option">
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             </span>
-          </>
-        )}
+          )
+        }}
       >
+        <MenuItem value="">Automatic</MenuItem>
         {Object.entries(colors).map(([colorId, colorData]) => (
           <MenuItem key={colorId} value={colorId}>
             <span
@@ -34,7 +40,7 @@ const ColorSelector = ({ value, onChange, colors }) => {
 }
 
 ColorSelector.propTypes = {
-  value: PropTypes.string.isRequired,
+  value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   colors: PropTypes.object.isRequired,
 }

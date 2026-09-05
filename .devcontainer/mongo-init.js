@@ -42,7 +42,6 @@ print('Ensured admin user exists')
 if (db.orders.countDocuments() === 0) {
   db.orders.insertMany([
     {
-      markedForDeletion: false,
       confirmed: false,
       receivedAt: ISODate('2026-02-11T12:28:50.637Z'),
       date: ISODate('2026-02-14T11:00:00.000Z'),
@@ -57,31 +56,30 @@ if (db.orders.countDocuments() === 0) {
         name: 'Lasku (yritysasiakkaat)',
         fee: 5,
       },
-      fees: [
-        {
-          name: 'weekendFee',
-          amount: 15,
-        },
-        {
-          name: 'stairsFee',
-          amount: 35,
-          comment: 'Address 1',
-        },
-        {
-          name: 'paymentTypeFee',
-          amount: 5,
-        },
-      ],
+      pricingOverrides: {
+        fees: [
+          {
+            name: 'weekendFee',
+            amount: 15,
+          },
+          {
+            name: 'stairsFee',
+            amount: 35,
+            comment: 'Address 1',
+          },
+          {
+            name: 'paymentTypeFee',
+            amount: 5,
+          },
+        ],
+        boxesPrice: 71.5,
+        price: 371.5,
+      },
       boxes: {
         amount: 30,
-        pricePerBox: 0.15,
-        deliveryPrice: 20,
-        returnPrice: 20,
         deliveryDate: ISODate('2026-02-13T11:00:00.000Z'),
         returnDate: ISODate('2026-02-15T11:00:00.000Z'),
       },
-      boxesPrice: 71.5,
-      price: 371.5,
       address: {
         street: 'Address 1',
         index: '00001',
@@ -111,7 +109,6 @@ if (db.orders.countDocuments() === 0) {
       comment: '',
     },
     {
-      markedForDeletion: false,
       confirmed: false,
       receivedAt: ISODate('2026-02-11T12:43:18.292Z'),
       date: ISODate('2026-03-02T20:00:00.000Z'),
@@ -126,14 +123,16 @@ if (db.orders.countDocuments() === 0) {
         name: 'Käteinen',
         fee: 0,
       },
-      fees: [
-        {
-          name: 'nightFee',
-          amount: 20,
-        },
-      ],
-      boxesPrice: null,
-      price: 70,
+      pricingOverrides: {
+        fees: [
+          {
+            name: 'nightFee',
+            amount: 20,
+          },
+        ],
+        boxesPrice: null,
+        price: 70,
+      },
       address: {
         street: 'Address 1',
         index: '00000',
@@ -155,7 +154,6 @@ if (db.orders.countDocuments() === 0) {
       comment: '',
     },
     {
-      markedForDeletion: false,
       confirmed: false,
       receivedAt: ISODate('2026-02-11T12:44:22.029Z'),
       date: ISODate('2026-03-05T13:00:00.000Z'),
@@ -170,9 +168,11 @@ if (db.orders.countDocuments() === 0) {
         name: 'Käteinen',
         fee: 0,
       },
-      fees: [],
-      boxesPrice: null,
-      price: 70,
+      pricingOverrides: {
+        fees: [],
+        boxesPrice: null,
+        price: 70,
+      },
       address: {
         street: 'Address 1',
         index: '00000',

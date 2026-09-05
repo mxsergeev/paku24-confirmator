@@ -64,14 +64,16 @@ export default function Login({ updateUser }) {
       })
       setNotification('Done')
 
-      // Not counting '/' as referrer
-      history.push(referrer?.length > 1 ? referrer : '/confirmator')
+      const hasReferrer = typeof referrer === 'string'
+        ? referrer.length > 1
+        : referrer?.pathname && referrer.pathname !== '/'
       updateUser(user)
+      history.push(hasReferrer ? referrer : '/calendar')
     } catch (err) {
       setInputError(true)
       setIsButtonDisabled(true)
       setTimeout(() => setIsButtonDisabled(false), 2000)
-      setNotification(`Error: ${err.response?.data.error || 'Mystery 👻'}`)
+      setNotification(`Error: ${err.response?.data?.error || 'Mystery 👻'}`)
     }
   }
 

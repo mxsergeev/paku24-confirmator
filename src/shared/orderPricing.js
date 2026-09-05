@@ -1,29 +1,28 @@
-import services from '../data/services.json' with { type: 'json' }
 import boxesSettings from '../data/boxes.json' with { type: 'json' }
+import services from '../data/services.json' with { type: 'json' }
 import {
   HELSINKI_TIMEZONE,
+  calendarDateToUtc,
   formatInTimeZone,
-  isDateOnly,
-  parseDateOnly,
-  parseDateTime,
+  parseInstant,
 } from './date-fns-tz.js'
 import { calculateAutomaticFees } from './fees.js'
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 
-function finiteNumber(value) {
+function finiteNumberOrNull(value) {
   if (value === null || value === undefined) return null
-  if (typeof value === 'string' && value.trim() === '') return null
   if (typeof value !== 'number' && typeof value !== 'string') return null
+  if (typeof value === 'string' && value.trim() === '') return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null
 }
 
-function normalizeFeeList(value, description) {
+function normalizeFeeList(value, description = 'Fees') {
   if (!Array.isArray(value)) throw new Error(`${description} must be an array`)
 
   return value.map((fee) => {
-    const amount = finiteNumber(fee?.amount)
+    const amount = finiteNumberOrNull(fee?.amount)
     if (!fee || typeof fee !== 'object' || amount === null) {
       throw new Error(`${description} must contain finite fee amounts`)
     }
@@ -37,14 +36,20 @@ function findServiceById(id) {
   return services.find((service) => String(service.id) === String(id)) || null
 }
 
-function parseBoxDate(value, fieldName) {
-  return isDateOnly(value) ? parseDateOnly(value, fieldName) : parseDateTime(value, fieldName)
+function parseBoxCalendarDate(value, fieldName) {
+  return formatInTimeZone(parseInstant(value, fieldName), 'yyyy-MM-dd', HELSINKI_TIMEZONE)
 }
 
 function calculateBoxPeriod(deliveryDate, returnDate) {
-  const delivery = parseBoxDate(deliveryDate, 'boxes.deliveryDate')
-  const returned = parseBoxDate(returnDate, 'boxes.returnDate')
-  const duration = Math.trunc((returned.getTime() - delivery.getTime()) / DAY_IN_MILLISECONDS)
+  const delivery = calendarDateToUtc(
+    parseBoxCalendarDate(deliveryDate, 'boxes.deliveryDate'),
+    'boxes.deliveryDate',
+  )
+  const returned = calendarDateToUtc(
+    parseBoxCalendarDate(returnDate, 'boxes.returnDate'),
+    'boxes.returnDate',
+  )
+  const duration = Math.round((returned.getTime() - delivery.getTime()) / DAY_IN_MILLISECONDS)
 
   return Math.max(duration, Number(boxesSettings.minPeriod) || 0)
 }
@@ -53,172 +58,76 @@ function sumFees(feeList) {
   return feeList.reduce((total, fee) => total + fee.amount, 0)
 }
 
-function servicePrice(order) {
+function resolveServiceHourlyRate(order) {
   const embeddedService = order?.service
   const catalogService = findServiceById(embeddedService?.id)
-  const hourlyRate = finiteNumber(catalogService?.pricePerHour ?? embeddedService?.pricePerHour)
-  const duration = finiteNumber(order?.duration)
+  return finiteNumberOrNull(catalogService?.pricePerHour ?? embeddedService?.pricePerHour) ?? 0
+}
 
-  if (hourlyRate === null || duration === null) return 0
-  return hourlyRate * duration
+function calculateServiceSubtotal(order) {
+  const duration = finiteNumberOrNull(order?.duration)
+  if (duration === null) return 0
+  return resolveServiceHourlyRate(order) * duration
 }
 
 function calculateAutomaticBoxesPrice(order) {
   const boxes = order?.boxes
-  const amount = finiteNumber(boxes?.amount)
-
+  const amount = finiteNumberOrNull(boxes?.amount)
   if (amount === null || amount <= 0) return 0
+  if (!boxes.deliveryDate || !boxes.returnDate) return 0
 
-  const duration = calculateBoxPeriod(boxes?.deliveryDate, boxes?.returnDate)
-  const pricePerBox = finiteNumber(boxesSettings.price) ?? 0
-  const deliveryFee = finiteNumber(boxesSettings.deliveryFee) ?? 0
-  const pickupFee = finiteNumber(boxesSettings.pickupFee) ?? 0
+  const duration = calculateBoxPeriod(boxes.deliveryDate, boxes.returnDate)
+  const pricePerBox = finiteNumberOrNull(boxesSettings.price) ?? 0
+  const deliveryFee = finiteNumberOrNull(boxesSettings.deliveryFee) ?? 0
+  const pickupFee = finiteNumberOrNull(boxesSettings.pickupFee) ?? 0
 
   return amount * pricePerBox * duration + deliveryFee + pickupFee
 }
 
 function calculateAutomaticPricing(order) {
-  const automaticFees = normalizeFeeList(calculateAutomaticFees(order), 'Automatic fees')
-  const automaticBoxesPrice = calculateAutomaticBoxesPrice(order)
+  const fees = normalizeFeeList(calculateAutomaticFees(order), 'Automatic fees')
+  const boxesPrice = calculateAutomaticBoxesPrice(order)
 
   return {
-    price: servicePrice(order) + automaticBoxesPrice + sumFees(automaticFees),
-    fees: automaticFees,
-    boxesPrice: automaticBoxesPrice,
-  }
-}
-
-function resolveActiveFees(order) {
-  const source = order?.pricing?.source?.fees
-
-  if (source === 'initial') {
-    const value = order?.initialSnapshot?.fees
-    if (value === null || value === undefined) {
-      throw new Error('Cannot use initial fees: the snapshot value is missing')
-    }
-    return normalizeFeeList(value, 'Initial fees')
-  }
-
-  if (source === 'manual') {
-    const value = order?.pricing?.manual?.fees
-    if (value === null || value === undefined) {
-      throw new Error('Cannot use manual fees: the manual value is missing')
-    }
-    return normalizeFeeList(value, 'Manual fees')
-  }
-
-  if (source === 'auto') return normalizeFeeList(calculateAutomaticFees(order), 'Automatic fees')
-
-  throw new Error(`Invalid pricing source for fees: ${String(source)}`)
-}
-
-function resolveActiveBoxesPrice(order) {
-  const source = order?.pricing?.source?.boxesPrice
-
-  if (source === 'initial') {
-    const value = order?.initialSnapshot?.boxesPrice
-    const number = finiteNumber(value)
-    if (number === null) {
-      throw new Error('Cannot use initial boxesPrice: the snapshot value is missing or invalid')
-    }
-    return number
-  }
-
-  if (source === 'manual') {
-    const value = order?.pricing?.manual?.boxesPrice
-    const number = finiteNumber(value)
-    if (number === null) {
-      throw new Error('Cannot use manual boxesPrice: the manual value is missing or invalid')
-    }
-    return number
-  }
-
-  if (source === 'auto') return calculateAutomaticBoxesPrice(order)
-
-  throw new Error(`Invalid pricing source for boxesPrice: ${String(source)}`)
-}
-
-function resolveActivePrice(order, fees, boxesPrice) {
-  const source = order?.pricing?.source?.price
-
-  if (source === 'initial') {
-    const value = order?.initialSnapshot?.price
-    const number = finiteNumber(value)
-    if (number === null) {
-      throw new Error('Cannot use initial price: the snapshot value is missing or invalid')
-    }
-    return number
-  }
-
-  if (source === 'manual') {
-    const value = order?.pricing?.manual?.price
-    const number = finiteNumber(value)
-    if (number === null) {
-      throw new Error('Cannot use manual price: the manual value is missing or invalid')
-    }
-    return number
-  }
-
-  if (source === 'auto') {
-    const activeFees = fees ?? resolveActiveFees(order)
-    const activeBoxesPrice = boxesPrice ?? resolveActiveBoxesPrice(order)
-    return servicePrice(order) + activeBoxesPrice + sumFees(activeFees)
-  }
-
-  throw new Error(`Invalid pricing source for price: ${String(source)}`)
-}
-
-function resolveActivePricing(order) {
-  const fees = resolveActiveFees(order)
-  const boxesPrice = resolveActiveBoxesPrice(order)
-  return {
-    price: resolveActivePrice(order, fees, boxesPrice),
+    price: calculateServiceSubtotal(order) + boxesPrice + sumFees(fees),
     fees,
     boxesPrice,
   }
 }
 
-function materializeActivePricing(order) {
-  if (!order || typeof order !== 'object') throw new Error('Cannot materialize pricing for an empty order')
+function getOrderPricing(order) {
+  const automatic = calculateAutomaticPricing(order)
+  const overrides = order?.pricingOverrides || {}
+  const fees = overrides.fees === null || overrides.fees === undefined
+    ? automatic.fees
+    : normalizeFeeList(overrides.fees, 'Manual fees')
+  const boxesPrice = overrides.boxesPrice === null || overrides.boxesPrice === undefined
+    ? automatic.boxesPrice
+    : finiteNumberOrNull(overrides.boxesPrice)
 
-  const active = resolveActivePricing(order)
-  return {
-    ...order,
-    price: active.price,
-    fees: active.fees,
-    boxesPrice: active.boxesPrice,
-  }
-}
+  if (boxesPrice === null) throw new Error('Invalid pricingOverrides.boxesPrice')
 
-function getEventColor(order) {
-  if (order && order.eventColor !== null && order.eventColor !== undefined) {
-    return order.eventColor
-  }
+  const price = overrides.price === null || overrides.price === undefined
+    ? calculateServiceSubtotal(order) + boxesPrice + sumFees(fees)
+    : finiteNumberOrNull(overrides.price)
 
-  const embeddedService = order?.service
-  const catalogService = findServiceById(embeddedService?.id)
-  const catalogColor = catalogService?.eventColor
-  if (catalogColor !== null && catalogColor !== undefined) return catalogColor
+  if (price === null) throw new Error('Invalid pricingOverrides.price')
 
-  const embeddedColor = embeddedService?.eventColor
-  return embeddedColor !== null && embeddedColor !== undefined ? embeddedColor : null
+  return { price, fees, boxesPrice }
 }
 
 function orderTime(order) {
-  const date = parseDateTime(order?.date, 'order date')
+  const date = parseInstant(order?.date, 'order date')
   return formatInTimeZone(date, 'HH:mm', HELSINKI_TIMEZONE)
 }
 
 export {
-  servicePrice,
+  resolveServiceHourlyRate,
+  calculateServiceSubtotal,
   calculateAutomaticBoxesPrice,
+  calculateBoxPeriod,
   calculateAutomaticPricing,
-  resolveActiveFees,
-  resolveActiveBoxesPrice,
-  resolveActivePrice,
-  resolveActivePricing,
-  materializeActivePricing,
+  getOrderPricing,
   normalizeFeeList,
-  getEventColor,
   orderTime,
 }

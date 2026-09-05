@@ -1,0 +1,41 @@
+services:
+  app:
+    network_mode: bridge
+    command: ['node', 'backend/index.js']
+    environment:
+      NODE_ENV: test
+      BACKEND_PORT: '${E2E_BACKEND_PORT:-3040}'
+      TEST_MONGODB_URI: mongodb://admin:password@host.docker.internal:${E2E_MONGODB_PORT:-27038}/e2e?authSource=admin
+      ORDER_POOL_KEY: '${E2E_ORDER_POOL_KEY:-e2e-order-pool-key}'
+    ports: !override ['${E2E_BACKEND_PORT:-3040}:${E2E_BACKEND_PORT:-3040}']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:${E2E_BACKEND_PORT:-3040}/ >/dev/null']
+      interval: 1s
+      timeout: 2s
+      retries: 120
+  frontend:
+    extends:
+      service: app
+    image: confirmator-e2e-app
+    build:
+      dockerfile: .devcontainer/Dockerfile
+      context: ..
+    volumes:
+      - ..:/app:cached
+      - /app/node_modules
+    command: ['yarn', 'dev:ui', '--host', '0.0.0.0']
+    environment:
+      PORT: '${E2E_FRONTEND_PORT:-3041}'
+      BACKEND_PORT: '${E2E_BACKEND_PORT:-3040}'
+      DEV_FRONTEND_PROXY: 'http://host.docker.internal'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports: !override ['${E2E_FRONTEND_PORT:-3041}:${E2E_FRONTEND_PORT:-3041}']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:${E2E_FRONTEND_PORT:-3041}/ >/dev/null']
+      interval: 1s
+      timeout: 2s
+      retries: 120
+  mongodb:
+    network_mode: bridge
+    ports: !override ['${E2E_MONGODB_PORT:-27038}:27017']

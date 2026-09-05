@@ -1,6 +1,7 @@
 import termsData from './email.data.terms.json' with { type: 'json' }
-import dayjs from '../../../src/shared/dayjs.js'
+import { formatHelsinkiInstant } from '../../../src/shared/date-fns-tz.js'
 import { SOURCE_EMAIL, COMPANY_PHONE } from '../../utils/config.js'
+import { getOrderPricing } from '../../../src/shared/orderPricing.js'
 
 const styles = {
   colors: {
@@ -122,11 +123,23 @@ function hasValue(value) {
   return Boolean(value)
 }
 
-function formatDate(date, lang) {
-  if (!date) return ''
-  const d = dayjs(date)
-  if (!d.isValid()) return ''
-  return lang === 'en' ? d.format('YYYY-MM-DD HH:mm') : d.format('DD.MM.YYYY HH:mm')
+function formatDate(value, lang, fieldName = 'date', hasTime = true) {
+  if (!value) return ''
+
+  if (!hasTime) {
+    const [year, month, day] = formatHelsinkiInstant(value, 'yyyy-MM-dd', fieldName).split('-')
+    return lang === 'en' ? `${year}-${month}-${day}` : `${day}.${month}.${year}`
+  }
+
+  try {
+    return formatHelsinkiInstant(
+      value,
+      lang === 'en' ? 'yyyy-MM-dd HH:mm' : 'dd.MM.yyyy HH:mm',
+      fieldName,
+    )
+  } catch {
+    return ''
+  }
 }
 
 function renderAddressHtml(address, t) {
@@ -178,12 +191,12 @@ function renderBoxesHtml(boxes, boxesPrice, t, locale) {
 
   const deliveryDate = boxes?.deliveryDate
   if (deliveryDate) {
-    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.deliveryDate)}: ${escapeHtml(formatDate(deliveryDate, locale))}</td></tr>`
+    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.deliveryDate)}: ${escapeHtml(formatDate(deliveryDate, locale, 'box delivery date', boxes.deliveryHasTime))}</td></tr>`
   }
 
   const returnDate = boxes?.returnDate
   if (returnDate) {
-    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.returnDate)}: ${escapeHtml(formatDate(returnDate, locale))}</td></tr>`
+    html += `<tr><td style="padding:2px 0;">${escapeHtml(t.returnDate)}: ${escapeHtml(formatDate(returnDate, locale, 'box return date', boxes.returnHasTime))}</td></tr>`
   }
 
   html += '</table>'
@@ -228,22 +241,25 @@ function makeRow(label, value, { isHtml = false, extraStyle = '', hasBorder = tr
 function buildConfirmationEmail({ order = {}, terms = '', lang = 'fi' } = {}) {
   const locale = resolveEmailLanguage(lang)
   const t = confirmationCopy[locale]
+  const pricing = getOrderPricing(order)
 
   const firstName = (order?.name || '').split(' ')[0]
 
-  const serviceName = order?.service?.name || order?.serviceName || ''
+  const serviceName = order?.service?.name || ''
   const paymentName = order?.paymentType?.name || ''
-  const paymentFee = Number(order?.paymentType?.fee || 0)
+  const paymentFee = Number(
+    pricing.fees.find((fee) => fee?.name === 'paymentTypeFee')?.amount || 0,
+  )
   const paymentFeeText = paymentFee > 0 ? `${paymentFee}€` : ''
-  const totalPriceText = hasValue(order?.price) ? `${Number(order.price)}€` : ''
+  const totalPriceText = hasValue(pricing.price) ? `${Number(pricing.price)}€` : ''
   const durationText = hasValue(order?.duration) ? `${order.duration}${t.hourShort}` : ''
-  const dateText = formatDate(order?.date, locale)
+  const dateText = formatDate(order?.date, locale, 'order date')
   const dateTextWithTolerance = dateText ? `${dateText} (±15min)` : ''
 
   const startAddressHtml = renderAddressHtml(order?.address, t)
   const destinationAddressHtml = renderAddressHtml(order?.destination, t)
   const extraStopsHtml = renderExtraStopsHtml(order?.extraAddresses, t)
-  const boxesHtml = renderBoxesHtml(order?.boxes, order?.boxesPrice, t, locale)
+  const boxesHtml = renderBoxesHtml(order?.boxes, pricing.boxesPrice, t, locale)
   const thanksHtml = renderThanksHtml(t)
   const termsHtml = renderTermsHtml(terms)
   const companyInfoHtml = renderCompanyInfoHtml()
@@ -321,4 +337,4 @@ function buildConfirmationEmail({ order = {}, terms = '', lang = 'fi' } = {}) {
   }
 }
 
-export { makeTerms, resolveEmailLanguage, buildConfirmationEmail }
+export { makeTerms, resolveEmailLanguage, buildConfirmationEmail, formatDate }

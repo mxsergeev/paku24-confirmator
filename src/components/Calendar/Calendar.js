@@ -1,14 +1,20 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
+import useMediaQuery from '@material-ui/core/useMediaQuery'
 import { useHistory, useLocation, useRouteMatch } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import OrderDialog from './OrderDialog'
 import NewOrderDialog from './NewOrderDialog'
 import ReceiptPage from './ReceiptPage'
-import dayjs from 'dayjs'
 import { getOrderIcons, getBoxEventTitle, parseBoxEventId } from './helpers'
-import colorsData from './calendar.data.colors.json'
+import colorsData from '../../data/eventColorDefaults.json' with { type: 'json' }
 import calendarColors from '../../shared/colors'
+import { resolveEventColorId } from '../../shared/eventColor'
+import {
+  HELSINKI_TIMEZONE,
+  formatInTimeZone,
+  formatHelsinkiCalendarDate,
+  parseInstant,
+} from '../../shared/date-fns-tz'
+import { orderTime } from '../../shared/orderPricing'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
@@ -17,38 +23,44 @@ import listPlugin from '@fullcalendar/list'
 import multiMonthPlugin from '@fullcalendar/multimonth'
 import iconsData from '../../data/icons.json'
 import { useCalendarOrders } from '../../hooks/useCalendarOrders'
+import { useRoutedOrder } from '../../hooks/useRoutedOrder'
 import './Calendar.css'
-import { isCanceled, isDeleted, isConfirmed } from '../../shared/orderState.helpers'
 
 const SHOW_DELETED_ORDERS_STORAGE_KEY = 'calendar-show-deleted-orders'
 const CALENDAR_VIEW_STORAGE_KEY = 'calendar-selected-view'
 const DEFAULT_CALENDAR_VIEW = 'dayGridMonth'
 const AVAILABLE_CALENDAR_VIEWS = ['dayGridMonth', 'timeGridWeek', 'listWeek', 'multiMonthYear']
-// use `isDeleted` helper from shared/orderState.helpers
+
+function calendarEventStart(value, fieldName, allDay = false) {
+  if (allDay) return formatHelsinkiCalendarDate(value, fieldName)
+  return parseInstant(value, fieldName).toISOString()
+}
+
+function calendarEventTime(value, fieldName, hasTime) {
+  if (!hasTime) return ''
+  return formatInTimeZone(parseInstant(value, fieldName), 'HH:mm', HELSINKI_TIMEZONE)
+}
 
 export default function Calendar() {
   const calendarWrapRef = useRef(null)
   const calendarRef = useRef(null)
   const [showDeletedOrders, setShowDeletedOrders] = useState(() => {
-    if (typeof window === 'undefined') return false
-
     try {
       return window.localStorage.getItem(SHOW_DELETED_ORDERS_STORAGE_KEY) === 'true'
     } catch {
+      // Browser storage can be unavailable in private or restricted contexts.
       return false
     }
   })
   const [calendarView, setCalendarView] = useState(() => {
-    if (typeof window === 'undefined') return DEFAULT_CALENDAR_VIEW
-
     try {
       const savedView = window.localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY)
       return AVAILABLE_CALENDAR_VIEWS.includes(savedView) ? savedView : DEFAULT_CALENDAR_VIEW
     } catch {
+      // Browser storage can be unavailable in private or restricted contexts.
       return DEFAULT_CALENDAR_VIEW
     }
   })
-  const [toolbarPortalNode, setToolbarPortalNode] = useState(null)
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date())
   const [dateRange, setDateRange] = useState({
     from: null,
@@ -60,8 +72,7 @@ export default function Calendar() {
   const match = useRouteMatch()
   const orderRouteMatch = useRouteMatch(`${match.path}/order/:orderId`)
   const receiptRouteMatch = useRouteMatch(`${match.path}/receipt/:orderId`)
-  const queryClient = useQueryClient()
-  const isMobile = window.innerWidth <= 600
+  const isMobile = useMediaQuery('(max-width:600px)')
   const mobileCalendarProps = isMobile
     ? {
         slotMinTime: '00:00:00',
@@ -99,123 +110,21 @@ export default function Calendar() {
   }
 
   useEffect(() => {
-    const api = calendarRef.current?.getApi?.()
-    if (!api) return
-
-    const view = api.view
-    if (!view) return
-
-    setDateRange({
-      from: view.activeStart.toISOString(),
-      to: view.activeEnd.toISOString(),
-    })
-
-    const visibleDate = api.getDate?.()
-    if (visibleDate instanceof Date && !Number.isNaN(visibleDate.getTime())) {
-      setCurrentCalendarDate(visibleDate)
-    }
-  }, [])
-
-  useEffect(() => {
-    const calendarWrap = calendarWrapRef.current
-    if (!calendarWrap) return undefined
-
-    let frameId = null
-    let portalNode = null
-    let attempts = 0
-
-    const attachPortalNode = () => {
-      const toolbar = calendarWrap.querySelector('.fc .fc-header-toolbar')
-
-      if (toolbar) {
-        portalNode = document.createElement('div')
-        // Try to place the portal right after the Refresh button. Fallback to appending to toolbar.
-        portalNode.className = 'calendar-toolbar-toggle-wrapper'
-        const refreshButton =
-          toolbar.querySelector('.fc-refreshOrdersButton-button') ||
-          toolbar.querySelector('.fc-button')
-        try {
-          if (refreshButton && refreshButton.parentNode) {
-            refreshButton.insertAdjacentElement('afterend', portalNode)
-          } else {
-            toolbar.appendChild(portalNode)
-          }
-        } catch (e) {
-          toolbar.appendChild(portalNode)
-        }
-        // On mobile, move the Create Order button next to Refresh for compact layout
-        try {
-          const isMobile = window.innerWidth <= 600
-          if (isMobile) {
-            const createBtn = toolbar.querySelector('.fc-createOrderButton-button')
-            const refreshBtn = toolbar.querySelector('.fc-refreshOrdersButton-button')
-            if (createBtn && refreshBtn) {
-              refreshBtn.insertAdjacentElement('beforebegin', createBtn)
-            }
-
-            // Move view buttons to left of navigation arrows (prev/today/next)
-            try {
-              const prevBtn = toolbar.querySelector('.fc-prev-button')
-              const insertBeforeEl = prevBtn || toolbar.querySelector('.fc-button')
-              const viewSelectors = [
-                '.fc-dayGridMonth-button',
-                '.fc-timeGridWeek-button',
-                '.fc-listWeek-button',
-                '.fc-multiMonthYear-button',
-              ]
-              if (insertBeforeEl) {
-                viewSelectors.forEach((sel) => {
-                  const btn = toolbar.querySelector(sel)
-                  if (btn) {
-                    insertBeforeEl.parentNode.insertBefore(btn, insertBeforeEl)
-                  }
-                })
-              }
-            } catch (e) {}
-          }
-        } catch (e) {}
-
-        setToolbarPortalNode(portalNode)
-        return
-      }
-
-      if (attempts < 30) {
-        attempts += 1
-        frameId = window.requestAnimationFrame(attachPortalNode)
-      }
-    }
-
-    attachPortalNode()
-
-    return () => {
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId)
-      }
-      if (portalNode?.parentNode) {
-        portalNode.parentNode.removeChild(portalNode)
-      }
-      setToolbarPortalNode(null)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
     try {
       window.localStorage.setItem(
         SHOW_DELETED_ORDERS_STORAGE_KEY,
         showDeletedOrders ? 'true' : 'false'
       )
-    } catch {}
+    } catch {
+      // Calendar preferences are optional when browser storage is unavailable.
+    }
   }, [showDeletedOrders])
 
   // Mobile: enable swipe left/right to navigate calendar (prev/next)
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (!isMobile) return
     if (!calendarWrapRef.current) return
-
-    const isMobileView = window.innerWidth <= 600
-    if (!isMobileView) return
 
     const el = calendarWrapRef.current
     const api = calendarRef.current?.getApi?.()
@@ -243,13 +152,9 @@ export default function Calendar() {
       const threshold = 40
       if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > threshold) {
         if (dx < 0) {
-          try {
-            api.next()
-          } catch (err) {}
+          api.next()
         } else {
-          try {
-            api.prev()
-          } catch (err) {}
+          api.prev()
         }
       }
     }
@@ -261,14 +166,14 @@ export default function Calendar() {
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchend', onTouchEnd)
     }
-  }, [])
+  }, [isMobile])
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
     try {
       window.localStorage.setItem(CALENDAR_VIEW_STORAGE_KEY, calendarView)
-    } catch {}
+    } catch {
+      // Calendar preferences are optional when browser storage is unavailable.
+    }
   }, [calendarView])
 
   const { data: orders = [], refetch, isLoading, isFetching, isError, error } = useCalendarOrders({
@@ -285,19 +190,26 @@ export default function Calendar() {
   const errorMessage =
     error?.response?.data?.error || error?.message || 'We could not load orders for this period.'
   const selectedOrderId = orderRouteMatch?.params?.orderId || null
-  const selectedOrder = useMemo(() => {
-    if (!selectedOrderId || !orders.length) return null
-    const { orderId: realOrderId } = parseBoxEventId(selectedOrderId)
-    return orders.find((order) => String(order.id) === String(realOrderId)) || null
-  }, [selectedOrderId, orders])
+  const { orderId: realOrderId } = parseBoxEventId(selectedOrderId || '')
+  const routedOrderQuery = useRoutedOrder(realOrderId)
+  const selectedOrder = selectedOrderId ? routedOrderQuery.data || null : null
+  const isRoutedOrderLoading = Boolean(selectedOrderId && routedOrderQuery.isLoading)
+  const isRoutedOrderNotFound = Boolean(
+    selectedOrderId && routedOrderQuery.isError && routedOrderQuery.error?.response?.status === 404,
+  )
+  const routedOrderError = selectedOrderId && routedOrderQuery.isError ? routedOrderQuery.error : null
 
   const currentMonthSummary = useMemo(() => {
     if (!(currentCalendarDate instanceof Date) || Number.isNaN(currentCalendarDate.getTime())) {
       return { total: 0, canceled: 0, services: [] }
     }
 
-    const targetYear = currentCalendarDate.getFullYear()
-    const targetMonth = currentCalendarDate.getMonth()
+    let targetMonth
+    try {
+      targetMonth = formatHelsinkiCalendarDate(currentCalendarDate, 'calendar view date').slice(0, 7)
+    } catch {
+      return { total: 0, canceled: 0, services: [] }
+    }
     const serviceCounter = {}
     let total = 0
     let canceled = 0
@@ -305,18 +217,21 @@ export default function Calendar() {
     orders.forEach((order) => {
       if (!order?.date) return
 
-      if (isDeleted(order)) return
+      if (order.deletedAt) return
 
-      const orderDate = new Date(order.date)
-      if (Number.isNaN(orderDate.getTime())) return
+      let orderMonth
+      try {
+        orderMonth = formatHelsinkiCalendarDate(order.date, 'order date').slice(0, 7)
+      } catch {
+        return
+      }
 
-      const matchesCurrentMonth =
-        orderDate.getFullYear() === targetYear && orderDate.getMonth() === targetMonth
+      const matchesCurrentMonth = orderMonth === targetMonth
 
       if (!matchesCurrentMonth) return
 
       total += 1
-      const isCanceledOrder = isCanceled(order)
+      const isCanceledOrder = Boolean(order.canceledAt)
       if (isCanceledOrder) {
         canceled += 1
         return
@@ -338,18 +253,13 @@ export default function Calendar() {
 
     return orders.flatMap((order) => {
       const events = []
-      const serviceName = order.service?.name
-      const customColorIdRaw = order?.eventColor ?? order?.color ?? null
-      const customColorId = customColorIdRaw == null ? null : String(customColorIdRaw)
-      const serviceColorId = serviceName && colorsData[serviceName] ? colorsData[serviceName] : null
-      const colorId =
-        customColorId && calendarColors[customColorId] ? customColorId : serviceColorId
-      const canceled = isCanceled(order)
-      const isDeletedOrder = isDeleted(order)
+      const colorId = resolveEventColorId(order)
+      const canceled = Boolean(order.canceledAt)
+      const isDeletedOrder = Boolean(order.deletedAt)
       const deletedOrderColor = '#3937375d'
       const deletedIcon = '❗️'
       const notConfirmedIcon = '❓'
-      const isConfirmedOrder = isConfirmed(order)
+      const isConfirmedOrder = Boolean(order.confirmed)
       const addIcon = isDeletedOrder ? deletedIcon : !isConfirmedOrder ? notConfirmedIcon : ''
       const color = isDeletedOrder
         ? deletedOrderColor
@@ -362,13 +272,15 @@ export default function Calendar() {
         : '#eee'
 
       if (order.date) {
-        const eventTime = dayjs(order.date).format('HH:mm')
+        const eventTime = orderTime(order)
         events.push({
           id: order.id,
           title: `${addIcon}${getOrderIcons(order, iconsData)} ${
             order.address ? `${eventTime}(${order.duration}h) ${order.name}` : ''
           }`,
-          start: order.date,
+          start: calendarEventStart(order.date, 'order date'),
+          backgroundColor: color,
+          borderColor: color,
           extendedProps: {
             color,
             eventType: 'order',
@@ -388,11 +300,23 @@ export default function Calendar() {
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
           : '#7986cb'
-        const deliveryTime = dayjs(order.boxes.deliveryDate).format('HH:mm')
+        const deliveryHasTime = order.boxes.deliveryHasTime === true
+        const deliveryTime = calendarEventTime(
+          order.boxes.deliveryDate,
+          'box delivery date',
+          deliveryHasTime,
+        )
         events.push({
           id: `${order.id}-box-delivery`,
           title: `${addIcon}${getBoxEventTitle(order, 'boxDelivery', deliveryTime, iconsData)}`,
-          start: order.boxes.deliveryDate,
+          start: calendarEventStart(
+            order.boxes.deliveryDate,
+            'box delivery date',
+            !deliveryHasTime,
+          ),
+          ...(deliveryHasTime ? {} : { allDay: true }),
+          backgroundColor: boxColor,
+          borderColor: boxColor,
           extendedProps: {
             color: boxColor,
             eventType: 'boxDelivery',
@@ -412,11 +336,23 @@ export default function Calendar() {
           : calendarColors[boxColorId]
           ? calendarColors[boxColorId].hex
           : '#7986cb'
-        const returnTime = dayjs(order.boxes.returnDate).format('HH:mm')
+        const returnHasTime = order.boxes.returnHasTime === true
+        const returnTime = calendarEventTime(
+          order.boxes.returnDate,
+          'box return date',
+          returnHasTime,
+        )
         events.push({
           id: `${order.id}-box-return`,
           title: `${addIcon}${getBoxEventTitle(order, 'boxReturn', returnTime, iconsData)}`,
-          start: order.boxes.returnDate,
+          start: calendarEventStart(
+            order.boxes.returnDate,
+            'box return date',
+            !returnHasTime,
+          ),
+          ...(returnHasTime ? {} : { allDay: true }),
+          backgroundColor: boxColor,
+          borderColor: boxColor,
           extendedProps: {
             color: boxColor,
             eventType: 'boxReturn',
@@ -438,24 +374,6 @@ export default function Calendar() {
         </div>
       </div>
     )
-  }
-
-  function handleEventDidMount(eventInfo) {
-    const bgColor = eventInfo.event.extendedProps.color
-    if (!bgColor || !eventInfo.el) return
-
-    if (
-      eventInfo.el.classList.contains('fc-v-event') ||
-      eventInfo.el.classList.contains('fc-timegrid-event')
-    ) {
-      eventInfo.el.style.backgroundColor = bgColor
-      eventInfo.el.style.borderColor = bgColor
-
-      const eventMain = eventInfo.el.querySelector('.fc-event-main')
-      if (eventMain) {
-        eventMain.style.backgroundColor = bgColor
-      }
-    }
   }
 
   function handleEventClick(info) {
@@ -481,15 +399,19 @@ export default function Calendar() {
 
   function handleNewOrderCreated() {
     setNewOrderOpen(false)
-    queryClient.invalidateQueries({ queryKey: ['calendar-orders'] })
+    refetch()
+  }
+
+  async function handleSelectedOrderUpdate() {
+    const refreshes = [refetch()]
+    if (selectedOrderId) refreshes.push(routedOrderQuery.refetch())
+    await Promise.all(refreshes)
   }
 
   if (receiptRouteMatch?.params?.orderId) {
     return (
       <ReceiptPage
         orderId={receiptRouteMatch.params.orderId}
-        initialDraft={location.state?.receiptDraft || null}
-        documentType={location.state?.documentType || null}
       />
     )
   }
@@ -499,8 +421,22 @@ export default function Calendar() {
       className={`calendar ${calendarView === 'timeGridWeek' ? 'calendar--week-view' : ''}`}
       ref={calendarWrapRef}
     >
+      <div className="calendar-toolbar" role="toolbar" aria-label="Calendar options">
+        <label className="calendar-toolbar-toggle" htmlFor="calendar-show-deleted-orders">
+          <span className="calendar-toolbar-toggle-label">Show deleted</span>
+          <input
+            id="calendar-show-deleted-orders"
+            className="calendar-toolbar-toggle-input"
+            type="checkbox"
+            checked={showDeletedOrders}
+            onChange={(event) => setShowDeletedOrders(event.target.checked)}
+          />
+          <span className="calendar-toolbar-toggle-slider" aria-hidden="true" />
+        </label>
+      </div>
       <FullCalendar
         ref={calendarRef}
+        timeZone={HELSINKI_TIMEZONE}
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, multiMonthPlugin, interactionPlugin]}
         initialView={calendarView}
         views={views}
@@ -525,7 +461,6 @@ export default function Calendar() {
         }}
         events={events}
         eventContent={renderEventContent}
-        eventDidMount={handleEventDidMount}
         firstDay={1}
         eventClick={handleEventClick}
         datesSet={(dateInfo) => {
@@ -533,17 +468,17 @@ export default function Calendar() {
             setCalendarView(dateInfo.view.type)
           }
 
-          const api = calendarRef.current?.getApi?.()
-          if (api?.view) {
+          if (dateInfo?.start && dateInfo?.end) {
             setDateRange({
-              from: api.view.activeStart.toISOString(),
-              to: api.view.activeEnd.toISOString(),
+              from: dateInfo.start.toISOString(),
+              to: dateInfo.end.toISOString(),
             })
+          }
 
-            const visibleDate = api.getDate?.()
-            if (visibleDate instanceof Date && !Number.isNaN(visibleDate.getTime())) {
-              setCurrentCalendarDate(visibleDate)
-            }
+          const visibleDate =
+            calendarRef.current?.getApi?.().getDate?.() || dateInfo?.view?.currentStart
+          if (visibleDate instanceof Date && !Number.isNaN(visibleDate.getTime())) {
+            setCurrentCalendarDate(visibleDate)
           }
         }}
         buttonHints={{
@@ -554,21 +489,6 @@ export default function Calendar() {
         }}
         {...mobileCalendarProps}
       />
-      {toolbarPortalNode &&
-        createPortal(
-          <label className="calendar-toolbar-toggle" htmlFor="calendar-show-deleted-orders">
-            <span className="calendar-toolbar-toggle-label">Show deleted</span>
-            <input
-              id="calendar-show-deleted-orders"
-              className="calendar-toolbar-toggle-input"
-              type="checkbox"
-              checked={showDeletedOrders}
-              onChange={(event) => setShowDeletedOrders(event.target.checked)}
-            />
-            <span className="calendar-toolbar-toggle-slider" aria-hidden="true" />
-          </label>,
-          toolbarPortalNode
-        )}
       {isMonthViewActive && hasDateRange && !isInitialLoading && !isError && isHasOrders && (
         <div className="calendar-month-summary" role="status" aria-live="polite">
           <div className="calendar-month-summary-header">
@@ -631,7 +551,10 @@ export default function Calendar() {
           onClose={closeModal}
           eventId={selectedOrderId}
           order={selectedOrder}
-          onOrderUpdate={refetch}
+          loading={isRoutedOrderLoading}
+          notFound={isRoutedOrderNotFound}
+          loadError={routedOrderError}
+          onOrderUpdate={handleSelectedOrderUpdate}
         />
       )}
       <NewOrderDialog

@@ -2,24 +2,15 @@ import interceptor from './interceptor'
 
 const baseUrl = '/api/email'
 
-function getOrderLanguage(order, fallback = 'fi') {
-  const orderLang = String(order?.lang || order?.locale || '').toLowerCase()
-  if (orderLang.startsWith('en')) return 'en'
-  if (orderLang.startsWith('fi')) return 'fi'
-
-  return fallback
-}
 /**
  * @param {Object} params
- * @param {string} params.orderDetails
- * @param {Object} params.order
+ * @param {string} params.orderId Persisted order ID.
+ * @param {string} [params.lang] Confirmation language.
  */
 
-export default async function sendConfirmationEmail(params) {
-  const payload = {
-    ...params,
-    lang: params?.lang || getOrderLanguage(params?.order),
-  }
+export default async function sendConfirmationEmail(params = {}) {
+  const payload = { orderId: params?.orderId }
+  if (params?.lang) payload.lang = params.lang
 
   const response = await interceptor.axiosInstance.post(`${baseUrl}/send-confirmation`, payload)
   return response.data
@@ -31,6 +22,8 @@ export async function sendReceiptEmail(params = {}) {
 }
 
 export async function sendCancellationEmail(params = {}) {
-  const response = await interceptor.axiosInstance.post(`${baseUrl}/send-cancellation`, params)
+  const response = await interceptor.axiosInstance.post(`${baseUrl}/send-cancellation`, {
+    orderId: params?.orderId,
+  })
   return response.data
 }

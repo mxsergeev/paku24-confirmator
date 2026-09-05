@@ -1,2 +1,10 @@
+.git
 node_modules
+coverage
+playwright-report
+test-results
+output
+.playwright-cli
+e2e/.auth
+*.log
 .DS_STORE

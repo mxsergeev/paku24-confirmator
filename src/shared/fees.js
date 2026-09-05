@@ -1,12 +1,12 @@
 import fees from '../data/fees.json' with { type: 'json' }
 import services from '../data/services.json' with { type: 'json' }
 import paymentTypes from '../data/paymentTypes.json' with { type: 'json' }
-import { HELSINKI_TIMEZONE, parseDateTime } from './date-fns-tz.js'
+import { HELSINKI_TIMEZONE, parseInstant } from './date-fns-tz.js'
 
-const finiteNumber = (value) => {
+function finiteNumberOrNull(value) {
   if (value === null || value === undefined) return null
-  if (typeof value === 'string' && value.trim() === '') return null
   if (typeof value !== 'number' && typeof value !== 'string') return null
+  if (typeof value === 'string' && value.trim() === '') return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null
 }
@@ -14,7 +14,7 @@ const finiteNumber = (value) => {
 function datePartsInTimezone(value, timezone = HELSINKI_TIMEZONE) {
   let date
   try {
-    date = parseDateTime(value, 'date', timezone)
+    date = parseInstant(value, 'date')
   } catch {
     return null
   }
@@ -44,10 +44,10 @@ function datePartsInTimezone(value, timezone = HELSINKI_TIMEZONE) {
     Sat: 6,
   }
 
-  const year = finiteNumber(parts.year)
-  const month = finiteNumber(parts.month)
-  const day = finiteNumber(parts.day)
-  const hour = finiteNumber(parts.hour)
+  const year = finiteNumberOrNull(parts.year)
+  const month = finiteNumberOrNull(parts.month)
+  const day = finiteNumberOrNull(parts.day)
+  const hour = finiteNumberOrNull(parts.hour)
 
   if (year === null || month === null || day === null || hour === null) return null
 
@@ -79,10 +79,10 @@ function getAvailableFees(order) {
     !Number.isNaN(multiplier) &&
     multiplier > 0
   ) {
-    const addresses = [order.address, order.destination, ...(order.extraAddresses || [])]
+    const addresses = [order.address, order.destination, ...order.extraAddresses]
 
     addresses.forEach((address, index) => {
-      const floor = finiteNumber(address?.floor)
+      const floor = finiteNumberOrNull(address?.floor)
       if (!address || address.elevator || floor === null || floor < startFloor) return
 
       const floorsAbove = floor - startFloor

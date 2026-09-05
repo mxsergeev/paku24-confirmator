@@ -13,6 +13,11 @@ jsdoc
 
 # testing
 /coverage
+/e2e/.auth/user.json
+/.playwright-cli
+/playwright-report
+/test-results
+/output
 
 # production
 /build
@@ -28,4 +33,5 @@ jsdoc
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 *.bak
