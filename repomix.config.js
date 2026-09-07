@@ -66,6 +66,8 @@ export default {
 
       '**/*.pem',
       '**/*.key',
+
+      ".opencode/"
     ],
   },
 
