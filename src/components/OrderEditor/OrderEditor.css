@@ -8,17 +8,24 @@
 
 .calendar-new-order-flex-container {
   display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 1.5rem;
+  width: 100%;
 }
 
-.calendar-new-order-flex-container > .order-editor {
-  flex: 1 1 42rem;
+.calendar-new-order-flex-container > .order-editor,
+.calendar-new-order-flex-container > .checkbox-container,
+.calendar-new-order-flex-container > .flex-100-space-between,
+.calendar-new-order-flex-container > .order-operations {
+  width: 100%;
+  max-width: 740px;
+  flex: 0 0 auto;
 }
 
 .calendar-new-order-flex-container > .checkbox-container {
   display: flex;
-  flex: 0 1 18rem;
   justify-content: space-between;
   gap: 1rem;
 }
@@ -77,7 +84,7 @@
 
 @media (min-width: 601px) {
   .order-editor {
-    width: min(100%, 740px);
+    width: 100%;
   }
 
   .order-editor__schedule-row > * {

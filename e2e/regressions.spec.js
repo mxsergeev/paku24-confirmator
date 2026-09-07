@@ -146,6 +146,37 @@ test('New Order exposes the browser-level pricing location', async ({ page }) =>
   await page.getByRole('button', { name: 'Create order' }).click()
   await expect(page.getByRole('heading', { name: 'New Order', exact: true })).toBeVisible()
   await expect(page.getByLabel('Price estimate')).toBeVisible()
+
+  const layout = await page.evaluate(() => {
+    const dialog = document.querySelector('.calendar-new-order-dialog-paper')
+    const editor = dialog?.querySelector('.order-editor')
+    const schedule = dialog?.querySelector('.order-editor__schedule-row')
+    const settings = dialog?.querySelector('.checkbox-container')
+    const validation = dialog?.querySelector('.flex-100-space-between')
+    const actions = dialog?.querySelector('.order-operations')
+    const rect = (element) => {
+      if (!element) return null
+      const box = element.getBoundingClientRect()
+      return { top: box.top, bottom: box.bottom, width: box.width }
+    }
+    return {
+      documentOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      dialogOverflow: dialog ? dialog.scrollWidth > dialog.clientWidth : true,
+      editor: rect(editor),
+      schedule: rect(schedule),
+      settings: rect(settings),
+      validation: rect(validation),
+      actions: rect(actions),
+    }
+  })
+
+  expect(layout.documentOverflow).toBe(false)
+  expect(layout.dialogOverflow).toBe(false)
+  expect(layout.schedule.width).toBeGreaterThanOrEqual(layout.editor.width - 12)
+  expect(layout.settings.width).toBeGreaterThanOrEqual(layout.editor.width - 12)
+  expect(layout.editor.bottom).toBeLessThanOrEqual(layout.settings.top)
+  expect(layout.settings.bottom).toBeLessThanOrEqual(layout.validation.top)
+  expect(layout.validation.bottom).toBeLessThanOrEqual(layout.actions.top)
 })
 
 test('automatic and explicit event colors survive cancel and restore', async ({ page, database }) => {

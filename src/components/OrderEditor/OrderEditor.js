@@ -70,7 +70,7 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
           />
         </MuiPickersUtilsProvider>
 
-      <NativeSelect
+        <NativeSelect
           className="time-duration"
           style={{ ...marginLeftRight, paddingLeft: 10 }}
           name="duration"
@@ -98,7 +98,7 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
           <option value={10}>10h</option>
         </NativeSelect>
       </div>
-        <NativeSelect
+      <NativeSelect
         fullWidth
         style={marginLeftRight}
         className="flex-item"
