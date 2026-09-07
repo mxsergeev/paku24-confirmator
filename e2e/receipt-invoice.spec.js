@@ -98,6 +98,7 @@ test('receipt can be opened and downloaded without email, but cannot be sent', a
   const order = await database.seedOrder({
     name: 'No email customer',
     email: '',
+    confirmed: true,
     date: dateInCurrentHelsinkiMonth(13),
   })
 
