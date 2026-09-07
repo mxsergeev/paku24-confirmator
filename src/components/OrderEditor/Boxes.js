@@ -53,7 +53,7 @@ export default function Boxes({ order, handleChange, onOrderChange, style }) {
   }
 
   return (
-    <>
+    <div className="boxes-editor">
       <CollapseWrapper
         style={{ width: '100%', gap: '0.25rem' }}
         containerStyle={{
@@ -75,11 +75,7 @@ export default function Boxes({ order, handleChange, onOrderChange, style }) {
           }}
         >
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-            }}
+            className="boxes-editor__dates"
           >
             <div>
               <MuiPickersUtilsProvider utils={DayjsUtils} locale={locale_en}>
@@ -108,7 +104,7 @@ export default function Boxes({ order, handleChange, onOrderChange, style }) {
                 labelPlacement="start"
               />
             </div>
-            <div style={{ fontSize: '1.25rem' }}>–</div>
+            <div className="boxes-editor__date-separator">–</div>
             <div>
               <MuiPickersUtilsProvider utils={DayjsUtils} locale={locale_en}>
                 <EndPicker
@@ -137,10 +133,9 @@ export default function Boxes({ order, handleChange, onOrderChange, style }) {
               />
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="boxes-editor__pricing">
             <NativeSelect
-              className="time-duration"
-              style={{ maxWidth: '9rem', marginTop: '0.5rem' }}
+              className="boxes-editor__amount"
               name="amount"
               label="Amount"
               value={boxes.amount}
@@ -165,12 +160,11 @@ export default function Boxes({ order, handleChange, onOrderChange, style }) {
               label="Price"
               name="boxesPrice"
               onChange={onOrderChange}
-              className="time-duration"
-              style={{ maxWidth: '9rem', marginTop: '0.5rem' }}
+              className="boxes-editor__price"
             />
           </div>
         </div>
       </CollapseWrapper>
-    </>
+    </div>
   )
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { InputAdornment, TextField } from '@material-ui/core'
 import { parseAndFormatDecimalString, sanitizeDecimalString } from '../../helpers/decimalStringHelpers'
 
@@ -17,17 +17,25 @@ export default function PricingOverrideField({
   style,
 }) {
   const overrideValue = order?.pricingOverrides?.[component]
-  const [inputValue, setInputValue] = useState(() => overrideInputValue(overrideValue))
+  const [inputValue, setInputValue] = useState(() =>
+    overrideInputValue(overrideValue ?? automaticValue),
+  )
+  const edited = useRef(false)
 
   useEffect(() => {
-    setInputValue(overrideInputValue(overrideValue))
-  }, [overrideValue])
+    if (!edited.current) {
+      setInputValue(overrideInputValue(overrideValue ?? automaticValue))
+    }
+  }, [automaticValue, overrideValue])
 
   if (!order) return null
 
   function commit() {
+    if (!edited.current) return
+
+    edited.current = false
     const { formatted, numeric } = parseAndFormatDecimalString(inputValue)
-    setInputValue(formatted)
+    setInputValue(formatted || overrideInputValue(automaticValue))
     onChange?.({
       ...order,
       pricingOverrides: { ...order.pricingOverrides, [component]: numeric },
@@ -44,7 +52,10 @@ export default function PricingOverrideField({
       variant="outlined"
       size="small"
       value={inputValue}
-      onChange={(event) => setInputValue(sanitizeDecimalString(event.target.value))}
+      onChange={(event) => {
+        edited.current = true
+        setInputValue(sanitizeDecimalString(event.target.value))
+      }}
       onBlur={commit}
       helperText={`Automatic: ${automaticValue} €`}
       inputProps={{ inputMode: 'decimal' }}

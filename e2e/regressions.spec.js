@@ -104,6 +104,25 @@ test('editing and saving a direct order URL updates the exact order', async ({ p
   await expect.poll(async () => (await database.readOrder(order.id))?.name).toBe('Direct URL Customer')
 })
 
+test('editing can be canceled and saved without triggering the error boundary', async ({ page, database }) => {
+  const order = await database.seedOrder({ date: dateInCurrentHelsinkiMonth(11) })
+
+  await page.goto(`/app/calendar/order/${order.id}`)
+  await page.getByRole('button', { name: 'Edit' }).click()
+  const editDialog = page.getByRole('dialog').filter({
+    has: page.getByRole('heading', { name: 'Edit order', exact: true }),
+  })
+  await editDialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByText('Something went wrong')).toHaveCount(0)
+  await expect(page.getByText('E2E Customer', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.locator('input[name="name"]').fill('Saved after reopen')
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByText('Something went wrong')).toHaveCount(0)
+  await expect.poll(async () => (await database.readOrder(order.id))?.name).toBe('Saved after reopen')
+})
+
 test('calendar provider warnings do not roll back a saved edit', async ({ page, database }) => {
   const order = await database.seedOrder({
     name: 'Calendar warning customer',
@@ -150,13 +169,25 @@ test('automatic and explicit event colors survive cancel and restore', async ({ 
   await orderEvent.click()
 
   const dialog = page.getByRole('dialog').first()
+  await expect(dialog.locator('.color-selector .color-option')).toHaveCSS(
+    'background-color',
+    'rgb(121, 134, 203)',
+  )
   await dialog.locator('.color-selector .MuiSelect-select').click()
   await page.getByRole('option', { name: 'Tomato', exact: true }).click()
+  await expect(dialog.locator('.color-selector .color-option')).toHaveCSS(
+    'background-color',
+    'rgb(214, 0, 0)',
+  )
   await expect.poll(async () => (await database.readOrder(order.id))?.eventColor).toBe('11')
   await expect(orderEventColor).toHaveCSS('background-color', 'rgb(214, 0, 0)')
 
   await dialog.locator('.color-selector .MuiSelect-select').click()
   await page.getByRole('option', { name: 'Automatic', exact: true }).click()
+  await expect(dialog.locator('.color-selector .color-option')).toHaveCSS(
+    'background-color',
+    'rgb(121, 134, 203)',
+  )
   await expect.poll(async () => (await database.readOrder(order.id))?.eventColor).toBeNull()
   await expect(orderEventColor).toHaveCSS('background-color', 'rgb(121, 134, 203)')
 

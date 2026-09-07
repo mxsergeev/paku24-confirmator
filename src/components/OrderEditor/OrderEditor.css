@@ -1,0 +1,121 @@
+.order-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.calendar-new-order-flex-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.calendar-new-order-flex-container > .order-editor {
+  flex: 1 1 42rem;
+}
+
+.calendar-new-order-flex-container > .checkbox-container {
+  display: flex;
+  flex: 0 1 18rem;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.order-editor > .flex-item,
+.order-editor > .pricing-editor,
+.order-editor > .address,
+.order-editor > textarea {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.order-editor__schedule-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex: 1 1 100%;
+  gap: 1rem;
+}
+
+.order-editor__schedule-row .time-duration {
+  min-width: 10rem;
+}
+
+.order-editor .pricing-editor,
+.order-editor .boxes-editor {
+  flex-basis: 100%;
+}
+
+.order-editor .textarea-2 {
+  flex-basis: 100%;
+}
+
+.boxes-editor__dates,
+.boxes-editor__pricing {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.boxes-editor__dates {
+  justify-content: space-between;
+}
+
+.boxes-editor__date-separator {
+  padding-top: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.boxes-editor__amount,
+.boxes-editor__price {
+  max-width: 9rem;
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 601px) {
+  .order-editor {
+    width: min(100%, 740px);
+  }
+
+  .order-editor__schedule-row > * {
+    flex: 1 1 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .calendar-new-order-flex-container {
+    flex-direction: column;
+  }
+
+  .calendar-new-order-flex-container > .checkbox-container {
+    width: 100%;
+    flex-direction: row;
+  }
+
+  .order-editor,
+  .order-editor__schedule-row,
+  .boxes-editor__dates,
+  .boxes-editor__pricing {
+    flex-direction: column;
+  }
+
+  .order-editor__schedule-row,
+  .order-editor > .flex-item,
+  .order-editor > .pricing-editor,
+  .order-editor > .address,
+  .order-editor > textarea,
+  .order-editor .boxes-editor,
+  .boxes-editor__amount,
+  .boxes-editor__price {
+    width: 100%;
+    max-width: none;
+    flex-basis: auto;
+  }
+
+  .boxes-editor__date-separator {
+    display: none;
+  }
+}

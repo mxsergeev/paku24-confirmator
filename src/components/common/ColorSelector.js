@@ -1,9 +1,11 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { Select, MenuItem } from '@material-ui/core'
+import './ColorSelector.css'
 
-const ColorSelector = ({ value, onChange, colors }) => {
+const ColorSelector = ({ value, automaticColorId, onChange, colors }) => {
   const selectedValue = value ?? ''
+  const automaticColor = colors[automaticColorId]
 
   return (
     <div className="color-selector">
@@ -11,11 +13,21 @@ const ColorSelector = ({ value, onChange, colors }) => {
         variant="filled"
         name="eventColor"
         value={selectedValue}
+        displayEmpty
         onChange={(e) => onChange(e.target.name, e.target.value || null)}
         label="Event color"
         renderValue={(selectedColorId) => {
           const selectedColor = colors[selectedColorId]
-          if (!selectedColor) return 'Automatic'
+          if (!selectedColor) {
+            return (
+              <span className="color-selector__automatic-value">
+                {automaticColor && (
+                  <span style={{ backgroundColor: automaticColor.hex }} className="color-option" />
+                )}
+                Automatic
+              </span>
+            )
+          }
 
           return (
             <span style={{ backgroundColor: selectedColor.hex }} className="color-option">
@@ -24,7 +36,12 @@ const ColorSelector = ({ value, onChange, colors }) => {
           )
         }}
       >
-        <MenuItem value="">Automatic</MenuItem>
+        <MenuItem value="">
+          {automaticColor && (
+            <span style={{ backgroundColor: automaticColor.hex }} className="color-option" />
+          )}
+          Automatic
+        </MenuItem>
         {Object.entries(colors).map(([colorId, colorData]) => (
           <MenuItem key={colorId} value={colorId}>
             <span
@@ -43,6 +60,7 @@ ColorSelector.propTypes = {
   value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   colors: PropTypes.object.isRequired,
+  automaticColorId: PropTypes.string,
 }
 
 export default ColorSelector

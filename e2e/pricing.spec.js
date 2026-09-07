@@ -202,7 +202,7 @@ test('automatic price estimate includes manual fees and boxes and recomputes aft
   const editDialog = page.getByRole('dialog').filter({
     has: page.getByRole('heading', { name: 'Edit order', exact: true }),
   })
-  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('')
+  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('100')
   await expect(editDialog.getByText('Automatic: 100 €', { exact: true })).toBeVisible()
 
   await editDialog.getByRole('button', { name: 'Manage fees' }).click()

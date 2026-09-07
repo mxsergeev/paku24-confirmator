@@ -5,6 +5,7 @@ import { HELSINKI_TIMEZONE, formatInTimeZone, parseInstant } from '../../shared/
 import { formatBoxDate } from '../../shared/render/text'
 import { resolveFeeDisplayName } from '../../shared/render/fees'
 import { getOrderPricing } from '../../shared/orderPricing'
+import { resolveEventColorId } from '../../shared/eventColor'
 
 export default function OrderDialogDetails({
   order,
@@ -23,7 +24,6 @@ export default function OrderDialogDetails({
   const extraAddresses = order ? order.extraAddresses : []
   const hasExtraAddresses = extraAddresses.length > 0
   const hasClientEmail = Boolean(order?.email)
-  const selectedEventColorId = order?.eventColor || ''
   const boxDate =
     eventType === 'boxDelivery' ? order?.boxes?.deliveryDate : order?.boxes?.returnDate
 
@@ -191,7 +191,8 @@ export default function OrderDialogDetails({
               <span className="order-dialog-details__label">Event color</span>
               <span className="order-dialog-details__value">
                 <ColorSelector
-                  value={selectedEventColorId}
+                  value={order?.eventColor}
+                  automaticColorId={resolveEventColorId(order)}
                   onChange={onEventColorChange}
                   colors={colors}
                 />

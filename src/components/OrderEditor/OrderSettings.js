@@ -7,6 +7,7 @@ import Radio from '@material-ui/core/Radio'
 import RadioGroup from '@material-ui/core/RadioGroup'
 import colors from '../../shared/colors'
 import ColorSelector from '../common/ColorSelector'
+import { resolveEventColorId } from '../../shared/eventColor'
 
 export default function OrderSettings(props) {
   const { handleChange, order } = props
@@ -49,7 +50,12 @@ export default function OrderSettings(props) {
         <div className="color-selector">
           <div>Event color</div>
 
-          <ColorSelector value={order?.eventColor} onChange={handleChange} colors={colors} />
+          <ColorSelector
+            value={order?.eventColor}
+            automaticColorId={resolveEventColorId(order)}
+            onChange={handleChange}
+            colors={colors}
+          />
         </div>
 
         <FormControlLabel

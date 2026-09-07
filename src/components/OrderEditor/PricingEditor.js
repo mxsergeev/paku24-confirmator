@@ -7,7 +7,10 @@ import PricingOverrideField from './PricingOverrideField'
 export default function PricingEditor({ order, onChange }) {
   if (!order) return null
 
-  const effective = getOrderPricing(order)
+  const automatic = getOrderPricing({
+    ...order,
+    pricingOverrides: { ...order.pricingOverrides, price: null },
+  })
 
   return (
     <div
@@ -18,7 +21,7 @@ export default function PricingEditor({ order, onChange }) {
       <PricingOverrideField
         order={order}
         component="price"
-        automaticValue={effective.price}
+        automaticValue={automatic.price}
         label="Price estimate"
         name="price"
         onChange={onChange}
