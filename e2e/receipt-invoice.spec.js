@@ -93,3 +93,30 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
   await expect(invoicePage.getByText(/Invoice sent to customer@example.com/)).toBeVisible()
   await invoicePage.close()
 })
+
+test('receipt can be opened and downloaded without email, but cannot be sent', async ({ page, database }) => {
+  const order = await database.seedOrder({
+    name: 'No email customer',
+    email: '',
+    date: dateInCurrentHelsinkiMonth(13),
+  })
+
+  await page.goto(`/app/calendar/order/${order.id}`)
+  const { documentPage } = await openDocument(page, 'Create receipt')
+  await expect(documentPage.getByText('KUITTI', { exact: true })).toBeVisible()
+
+  const download = documentPage.waitForEvent('download')
+  await documentPage.getByRole('button', { name: 'Download' }).click()
+  expect((await download).suggestedFilename()).toMatch(/^Receipt .*\.pdf$/)
+
+  const emailRequests = []
+  documentPage.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().includes('/api/email/send-receipt')) {
+      emailRequests.push(request)
+    }
+  })
+  await documentPage.getByRole('button', { name: 'Send' }).click()
+  await expect(documentPage.getByText('Email is missing in receipt data.')).toBeVisible()
+  expect(emailRequests).toHaveLength(0)
+  await documentPage.close()
+})

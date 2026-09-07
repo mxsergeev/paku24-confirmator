@@ -384,11 +384,6 @@ export default function OrderDialog({
       return
     }
 
-    if (!safeDraft.customerEmail) {
-      enqueueSnackbar('Add client email to create a receipt.', { variant: 'warning' })
-      return
-    }
-
     setReceiptDraft(safeDraft)
     const storageKey = `receipt-draft:${orderId}`
     try {
