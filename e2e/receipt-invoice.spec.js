@@ -73,6 +73,9 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
   await expect(invoicePage.getByText('LASKU', { exact: true })).toBeVisible()
   await expect(invoicePage.locator('#cart-receipt')).toContainText('Document customer')
   await expect(invoicePage.locator('.receipt-summary-row').nth(2)).toContainText('135,00')
+  await expect(invoicePage.getByText('Veroton yhteensä', { exact: true })).toBeVisible()
+  await expect(invoicePage.getByText('ALV 25,5 %', { exact: true })).toBeVisible()
+  await expect(invoicePage.getByText('Maksettava yhteensä', { exact: true })).toBeVisible()
   const invoiceSurchargeRows = invoicePage
     .locator('.receipt-info-service')
     .filter({ hasText: 'Laskutuslisä' })

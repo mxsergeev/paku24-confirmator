@@ -451,7 +451,7 @@ export default function ReceiptPage({ orderId }) {
             <tr>
               <td colSpan="3">
                 <div className="receipt-summary-row">
-                  <div>ALV 25,5%</div>
+                  <div>ALV 25,5 %</div>
                   <div>{formatMoney(totals.alv)}</div>
                 </div>
               </td>
