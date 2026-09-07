@@ -52,8 +52,12 @@ export default function EditOrderDialog({
       <DialogContent className="calendar-new-order-dialog-content">
         <div className="calendar-new-order-dialog-content-wrap">
           <div className="calendar-new-order-flex-container">
-            <OrderEditor order={order} handleChange={onChange} onOrderChange={onOrderChange} />
-            {order && <OrderSettings order={order} handleChange={onChange} />}
+            {order && (
+              <>
+                <OrderEditor order={order} handleChange={onChange} onOrderChange={onOrderChange} />
+                <OrderSettings order={order} handleChange={onChange} />
+              </>
+            )}
           </div>
         </div>
       </DialogContent>

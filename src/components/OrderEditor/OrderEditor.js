@@ -12,9 +12,14 @@ import paymentTypes from '../../data/paymentTypes.json'
 import Boxes from './Boxes'
 import Address from './Address'
 import PricingEditor from './PricingEditor'
+import './OrderEditor.css'
 
 export default function OrderEditor({ order, handleChange, onOrderChange }) {
-  const extraAddresses = order.extraAddresses
+  if (!order) {
+    return null
+  }
+
+  const extraAddresses = Array.isArray(order.extraAddresses) ? order.extraAddresses : []
 
   function handleExtraAddressChange(index, address) {
     const nextAddresses = extraAddresses.map((item, itemIndex) => (itemIndex === index ? address : item))
@@ -49,13 +54,9 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
 
   locale_en.weekStart = 1
 
-  if (!order) {
-    return null
-  }
-
   return (
-    <div className="basic-flex" style={{ marginTop: '5px' }}>
-      <div className="flex-100-space-between flex-item" style={marginLeftRight}>
+    <div className="order-editor" style={{ marginTop: '5px' }}>
+      <div className="order-editor__schedule-row" style={marginLeftRight}>
         <MuiPickersUtilsProvider utils={DayjsUtils} locale={locale_en}>
           <DateTimePicker
             ampm={false}
@@ -69,7 +70,7 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
           />
         </MuiPickersUtilsProvider>
 
-        <NativeSelect
+      <NativeSelect
           className="time-duration"
           style={{ ...marginLeftRight, paddingLeft: 10 }}
           name="duration"
@@ -97,7 +98,7 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
           <option value={10}>10h</option>
         </NativeSelect>
       </div>
-      <NativeSelect
+        <NativeSelect
         fullWidth
         style={marginLeftRight}
         className="flex-item"
