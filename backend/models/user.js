@@ -10,12 +10,6 @@ const userSchema = new mongoose.Schema({
   requestToken: String,
   access: Boolean,
   accessRequested: Number,
-  // orders: [
-  //   {
-  //     type: mongoose.Schema.Types.ObjectId,
-  //     ref: 'RawOrder',
-  //   },
-  // ],
 })
 
 userSchema.set('toJSON', {

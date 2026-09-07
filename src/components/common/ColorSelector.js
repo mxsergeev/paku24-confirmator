@@ -1,24 +1,47 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { Select, MenuItem } from '@material-ui/core'
+import './ColorSelector.css'
 
-const ColorSelector = ({ value, onChange, colors }) => {
+const ColorSelector = ({ value, automaticColorId, onChange, colors }) => {
+  const selectedValue = value ?? ''
+  const automaticColor = colors[automaticColorId]
+
   return (
     <div className="color-selector">
       <Select
         variant="filled"
         name="eventColor"
-        value={value}
-        onChange={(e) => onChange(e.target.name, e.target.value)}
+        value={selectedValue}
+        displayEmpty
+        onChange={(e) => onChange(e.target.name, e.target.value || null)}
         label="Event color"
-        renderValue={(selectedValue) => (
-          <>
-            <span style={{ backgroundColor: colors[selectedValue].hex }} className="color-option">
+        renderValue={(selectedColorId) => {
+          const selectedColor = colors[selectedColorId]
+          if (!selectedColor) {
+            return (
+              <span className="color-selector__automatic-value">
+                {automaticColor && (
+                  <span style={{ backgroundColor: automaticColor.hex }} className="color-option" />
+                )}
+                Automatic
+              </span>
+            )
+          }
+
+          return (
+            <span style={{ backgroundColor: selectedColor.hex }} className="color-option">
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             </span>
-          </>
-        )}
+          )
+        }}
       >
+        <MenuItem value="">
+          {automaticColor && (
+            <span style={{ backgroundColor: automaticColor.hex }} className="color-option" />
+          )}
+          Automatic
+        </MenuItem>
         {Object.entries(colors).map(([colorId, colorData]) => (
           <MenuItem key={colorId} value={colorId}>
             <span
@@ -34,9 +57,10 @@ const ColorSelector = ({ value, onChange, colors }) => {
 }
 
 ColorSelector.propTypes = {
-  value: PropTypes.string.isRequired,
+  value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   colors: PropTypes.object.isRequired,
+  automaticColorId: PropTypes.string,
 }
 
 export default ColorSelector

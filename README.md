@@ -13,7 +13,7 @@ Internal tool for order management in Paku24.
    ```bash
    git clone https://github.com/mxsergeev/paku24-confirmator.git
    cd paku24-confirmator
-   
+
    # Create and populate `.env` file
    cp .env.example .env
    ```
@@ -40,6 +40,16 @@ Internal tool for order management in Paku24.
 3. Open the app at `http://localhost:3031`
 
    Login with username: `admin` and password: `1234`.
+
+### End-to-end tests
+
+Install Playwright's Chromium browser once on the host machine, then run the
+dedicated E2E stack:
+
+```bash
+make test-e2e-install
+make test-e2e
+```
 
 > If you can't login, the containers may not have initialized properly. Stop and remove volumes, then repeat the setup:
 >

@@ -348,19 +348,13 @@
   align-items: center;
 }
 
-.calendar-toolbar-bottom-row {
+.calendar-toolbar {
   width: 100%;
   display: flex;
   justify-content: flex-end;
-  padding-top: var(--calendar-space-2xs);
-  border-top: 1px solid var(--calendar-border-soft);
-}
-
-/* Wrapper used when inserting toggle next to the Refresh button */
-.calendar-toolbar-toggle-wrapper {
-  display: inline-flex;
   align-items: center;
-  margin-left: 8px;
+  min-height: 40px;
+  margin-bottom: var(--calendar-space-xs);
 }
 
 .calendar-toolbar-toggle {
@@ -927,9 +921,10 @@
   .fc-toolbar-end {
     padding-right: 0;
   }
-  .calendar-toolbar-bottom-row {
+  .calendar-toolbar {
     justify-content: flex-start;
-    padding-top: var(--calendar-space-xs);
+    min-height: 36px;
+    margin-bottom: var(--calendar-space-xs);
   }
   .fc-button {
     min-width: 36px;
@@ -953,12 +948,6 @@
     font-size: 0.82rem !important;
     min-height: 36px;
     padding: 0 8px !important;
-  }
-
-  .calendar-toolbar-toggle-wrapper {
-    margin-left: 6px;
-    display: inline-flex;
-    align-items: center;
   }
 
   .calendar-status-panel {
@@ -1113,12 +1102,6 @@
     font-size: 0.92rem;
   }
 
-  /* Group refresh + toggle visually */
-  .calendar-toolbar-toggle-wrapper {
-    margin-left: 6px;
-    padding-left: 6px;
-    border-left: 1px solid #eef3f8;
-  }
 }
 
 @media (min-width: 600px) {
@@ -1186,6 +1169,8 @@
   font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
   font-size: 14px;
   line-height: 1.28;
+  display: flex;
+  flex-direction: column;
 }
 
 .receipt-document p {
@@ -1240,7 +1225,6 @@
 }
 
 .receipt-info {
-  --receipt-info-target-height: 700px;
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
@@ -1315,7 +1299,7 @@
 }
 
 .receipt-info-service--last td {
-  padding-bottom: calc(6px + var(--receipt-last-service-extra-padding, 0px));
+  padding-bottom: 6px;
 }
 
 .receipt-info-body
@@ -1470,9 +1454,14 @@
     box-shadow: none;
     border: 2px solid #000;
     width: 100%;
-    min-height: auto;
+    min-height: 1123px;
     padding: 18px;
     background: #fff;
+    page-break-inside: avoid;
+  }
+
+  .receipt-info-service {
+    break-inside: avoid;
   }
 }
 
@@ -1545,6 +1534,6 @@
   }
 
   .receipt-info-service--last td {
-    padding-bottom: calc(6px + var(--receipt-last-service-extra-padding, 0px));
+    padding-bottom: 6px;
   }
 }

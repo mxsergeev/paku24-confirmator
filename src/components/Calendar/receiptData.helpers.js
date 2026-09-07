@@ -1,29 +1,44 @@
-import dayjs from 'dayjs'
-
-function hashToFourDigits(value) {
-  const source = String(value || '')
-  let hash = 0
-
-  for (let i = 0; i < source.length; i += 1) {
-    hash = (hash * 31 + source.charCodeAt(i)) % 10000
-  }
-
-  return String(hash).padStart(4, '0')
-}
+import { buildStableInvoiceNumber as buildSharedStableInvoiceNumber } from '../../shared/invoiceNumber.js'
+import {
+  formatHelsinkiCalendarDate,
+  formatHelsinkiInstant,
+  isIsoInstant,
+} from '../../shared/date-fns-tz.js'
+import { getOrderPricing } from '../../shared/orderPricing.js'
 
 export function buildStableInvoiceNumber(order, existingInvoiceNumber = '') {
-  const normalizedExisting = String(existingInvoiceNumber || '').trim()
-  if (normalizedExisting) return normalizedExisting
+  return buildSharedStableInvoiceNumber(order, existingInvoiceNumber, { invalidDate: 'today' })
+}
 
-  const orderDate = dayjs(order?.date)
-  const datePart = orderDate.isValid() ? orderDate.format('YYYYMMDD') : dayjs().format('YYYYMMDD')
+function formatAddressForReceipt(address) {
+  if (!address) return ''
 
-  const stableSeed = [order?.id, order?._id, order?.name, order?.email, order?.phone, order?.date]
-    .filter(Boolean)
-    .join('|')
+  const parts = [address.street, address.index, address.city].filter(Boolean)
+  return parts.join(', ')
+}
 
-  const suffix = hashToFourDigits(stableSeed || datePart)
-  return `${datePart}${suffix}`
+export function buildReceiptDraftFromOrder(order = {}) {
+  const safeOrder = order || {}
+  const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+  const dueDate = formatHelsinkiCalendarDate(defaultDueDate, 'due date')
+  let totalAmount = ''
+  try {
+    totalAmount = String(getOrderPricing(safeOrder).price)
+  } catch {
+    // The helper is also used while the receipt shell is initializing.
+  }
+
+  return {
+    customerName: safeOrder.name || '',
+    customerEmail: safeOrder.email || '',
+    customerAddress: formatAddressForReceipt(safeOrder.address),
+    totalAmount,
+    serviceName: safeOrder.service?.name || '',
+    serviceHours: safeOrder.duration || '',
+    unitPrice: safeOrder?.service?.pricePerHour ?? '',
+    dueDate,
+    invoiceNumber: buildStableInvoiceNumber(safeOrder, safeOrder.invoiceNumber),
+  }
 }
 
 export function toDateInputValue(value) {
@@ -53,8 +68,13 @@ export function formatDateForReceipt(value, fallback) {
     return `${day}.${month}.${year}`
   }
 
-  const parsed = dayjs(source)
-  if (parsed.isValid()) return parsed.format('DD.MM.YYYY')
+  if (isIsoInstant(source)) {
+    try {
+      return formatHelsinkiInstant(source, 'dd.MM.yyyy', 'receipt date')
+    } catch {
+      return fallback
+    }
+  }
 
   return fallback
 }

@@ -58,11 +58,13 @@
     "web-vitals": "^0.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/react": "^16.9.55",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "8.2.2",
     "cross-env": "^7.0.3",
     "jsdoc": "^3.6.6",
+    "jsdom": "^30.0.1",
     "nodemon": "^2.0.6",
     "prettier": "^2.2.1",
     "supertest": "^6.1.3",
@@ -75,6 +77,9 @@
     "dev:server": "NODE_ENV=development yarn nodemon backend/index.js",
     "dev": "concurrently \"yarn dev:server\" \"yarn dev:ui\"",
     "build:ui": "vite build",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:install": "playwright install chromium",
     "ngrok": "../../ngrok http 3030 -host-header='localhost:3030'",
     "test": "NODE_ENV=test vitest run --reporter verbose --sequence.concurrent false",
     "test:ui": "vitest",

@@ -8,7 +8,6 @@ import morgan from 'morgan'
 import errorHandler from './utils/errorHandler.middleware.js'
 import filterReqsBasedOnUrl from './utils/filterReqsBasedOnUrl.middleware.js'
 
-import calendarRouter from './modules/calendar/calendar.controller.js'
 import emailRouter from './modules/email/email.controller.js'
 import orderPoolRouter from './modules/orderPool/orderPool.controller.js'
 import smsRouter from './modules/sms/sms.controller.js'
@@ -16,6 +15,8 @@ import loginRouter from './modules/authentication/auth.login.controller.js'
 import logoutRouter from './modules/authentication/auth.logout.controller.js'
 import registrationRouter from './modules/authentication/auth.registration.controller.js.js'
 import tokenRouter from './modules/authentication/auth.token.controller.js'
+import testCommunicationRouter from './modules/testCommunication.controller.js'
+import testCalendarRouter from './modules/testCalendar.controller.js'
 
 const app = express()
 const REQUEST_BODY_LIMIT = '15mb'
@@ -49,9 +50,12 @@ app.use('/api/logout', logoutRouter)
 app.use('/api/registration', registrationRouter)
 
 app.use('/api/sms', smsRouter)
-app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 app.use('/api/order-pool/', orderPoolRouter)
+if (process.env.NODE_ENV === 'test') {
+  app.use('/api/test/communications', testCommunicationRouter)
+  app.use('/api/test/calendar', testCalendarRouter)
+}
 
 app.use(express.static(path.join(import.meta.dirname, '..', 'build')))
 app.get('/app*', (req, res) => {

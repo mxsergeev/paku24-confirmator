@@ -11,7 +11,7 @@ axiosLoginInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
-    if (error.response.data.error === 'access token expired') {
+    if (error.response?.data?.error === 'access token expired') {
       try {
         await axios.post('/api/token')
         await axios.post('/api/token/is-new')
