@@ -358,7 +358,7 @@ export default function OrderDialog({
     const nextDocumentType = normalizeDocumentType(documentType)
     setReceiptDocumentType(nextDocumentType)
     setReceiptDraft({
-      ...buildReceiptDraftFromOrder(order),
+      ...buildReceiptDraftFromOrder(order, nextDocumentType),
       documentType: nextDocumentType,
     })
     setReceiptOpen(true)

@@ -5,6 +5,15 @@ import {
   isIsoInstant,
 } from '../../shared/date-fns-tz.js'
 import { getOrderPricing } from '../../shared/orderPricing.js'
+import feesConfig from '../../data/fees.json'
+
+export const INVOICE_TERMS = {
+  paymentTermDays: 14,
+  reminderDays: 8,
+  latePaymentInterestPercent: 8,
+}
+
+const PAYMENT_TYPE_FEE_NAME = 'paymentTypeFee'
 
 export function buildStableInvoiceNumber(order, existingInvoiceNumber = '') {
   return buildSharedStableInvoiceNumber(order, existingInvoiceNumber, { invalidDate: 'today' })
@@ -17,13 +26,52 @@ function formatAddressForReceipt(address) {
   return parts.join(', ')
 }
 
-export function buildReceiptDraftFromOrder(order = {}) {
+function getDefaultDueDate() {
+  const currentHelsinkiDate = formatHelsinkiCalendarDate(new Date(), 'current date')
+  const [year, month, day] = currentHelsinkiDate.split('-').map(Number)
+  const dueDate = new Date(
+    Date.UTC(year, month - 1, day + INVOICE_TERMS.paymentTermDays),
+  )
+
+  return dueDate.toISOString().slice(0, 10)
+}
+
+export function getDocumentPricing(order, documentType = 'receipt') {
+  const pricing = getOrderPricing(order)
+  if (normalizeDocumentType(documentType) !== 'invoice') return pricing
+
+  const paymentTypeFee = feesConfig.find((fee) => fee?.name === PAYMENT_TYPE_FEE_NAME)
+  const configuredFeeAmount = Number(paymentTypeFee?.amount)
+  const fees = pricing.fees.map((fee) => ({ ...fee }))
+  const hasPositivePaymentTypeFee = fees.some(
+    (fee) => fee?.name === PAYMENT_TYPE_FEE_NAME && Number(fee.amount) > 0,
+  )
+
+  if (
+    !hasPositivePaymentTypeFee &&
+    paymentTypeFee &&
+    Number.isFinite(configuredFeeAmount) &&
+    configuredFeeAmount > 0
+  ) {
+    fees.push({ ...paymentTypeFee, amount: configuredFeeAmount })
+  }
+
+  return {
+    ...pricing,
+    fees,
+    price:
+      hasPositivePaymentTypeFee || !paymentTypeFee || !Number.isFinite(configuredFeeAmount)
+        ? pricing.price
+        : pricing.price + configuredFeeAmount,
+  }
+}
+
+export function buildReceiptDraftFromOrder(order = {}, documentType = 'receipt') {
   const safeOrder = order || {}
-  const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-  const dueDate = formatHelsinkiCalendarDate(defaultDueDate, 'due date')
+  const dueDate = getDefaultDueDate()
   let totalAmount = ''
   try {
-    totalAmount = String(getOrderPricing(safeOrder).price)
+    totalAmount = String(getDocumentPricing(safeOrder, documentType).price)
   } catch {
     // The helper is also used while the receipt shell is initializing.
   }

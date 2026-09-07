@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { test, expect } from './fixtures.js'
 
 function dateInCurrentHelsinkiMonth(day) {
@@ -71,10 +72,54 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
   const { documentPage: invoicePage } = await openDocument(page, 'Create invoice')
   await expect(invoicePage.getByText('LASKU', { exact: true })).toBeVisible()
   await expect(invoicePage.locator('#cart-receipt')).toContainText('Document customer')
+  await expect(invoicePage.locator('.receipt-summary-row').nth(2)).toContainText('135,00')
+  const invoiceSurchargeRows = invoicePage
+    .locator('.receipt-info-service')
+    .filter({ hasText: 'Laskutuslisä' })
+  await expect(invoiceSurchargeRows).toHaveCount(1)
+  await expect(invoiceSurchargeRows.first()).toContainText('5,00')
+
+  for (const heading of [
+    'Tuote tai palvelu',
+    'Määrä',
+    'Yksikköhinta',
+    'Veroton',
+    'ALV',
+    'Yhteensä',
+  ]) {
+    await expect(invoicePage.locator('.receipt-info-header-string')).toContainText(heading)
+  }
+
+  await expect(invoicePage.getByText('Huomautusaika', { exact: true })).toBeVisible()
+  await expect(invoicePage.getByText('Huomatusaika', { exact: true })).toHaveCount(0)
+  await expect(invoicePage.getByText('Posti', { exact: true })).toHaveCount(0)
+  await expect(invoicePage.getByText('Laskulisä', { exact: true })).toHaveCount(0)
+  await expect(invoicePage.locator('.receipt-bank-info')).toContainText('Tilisiirto / Girering')
+  await expect(invoicePage.locator('.receipt-bank-info')).toContainText(
+    'Maksu välitetään saajalle maksujenvälityksen yleisten ehtojen mukaisesti ja vain maksajan ilmoittaman tilinumeron perusteella.',
+  )
+  await expect(invoicePage.locator('.receipt-bank-info')).toContainText(
+    'Betalningen förmedlas till mottagaren enligt de allmänna villkoren för betalningsförmedling och endast på basis av det kontonummer som betalaren angett.',
+  )
+  const invoiceNumber = (
+    await invoicePage.locator('.receipt-meta-grid span').nth(3).textContent()
+  ).trim()
+  await expect(invoicePage.locator('.receipt-bank-table')).toContainText(`Lasku ${invoiceNumber}`)
 
   const invoiceDownload = invoicePage.waitForEvent('download')
   await invoicePage.getByRole('button', { name: 'Download' }).click()
-  expect((await invoiceDownload).suggestedFilename()).toMatch(/^Invoice .*\.pdf$/)
+  const downloadedInvoice = await invoiceDownload
+  expect(downloadedInvoice.suggestedFilename()).toMatch(/^Invoice .*\.pdf$/)
+  const invoicePdfPath = await downloadedInvoice.path()
+  expect(invoicePdfPath).toBeTruthy()
+  const invoicePdfText = (await readFile(invoicePdfPath)).toString('latin1')
+  const mediaBoxMatch = invoicePdfText.match(/\/MediaBox\s*\[\s*([^\]]+)\]/)
+  expect(mediaBoxMatch).not.toBeNull()
+  const mediaBox = mediaBoxMatch[1].trim().split(/\s+/).map(Number)
+  expect(mediaBox[0]).toBe(0)
+  expect(mediaBox[1]).toBe(0)
+  expect(mediaBox[2]).toBeCloseTo(595.28, 1)
+  expect(mediaBox[3]).toBeCloseTo(841.89, 1)
 
   const invoiceRequest = invoicePage.waitForRequest(
     (request) =>

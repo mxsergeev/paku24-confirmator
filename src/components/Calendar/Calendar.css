@@ -1245,38 +1245,37 @@
 }
 
 .service-name {
-  width: 41%;
+  width: 38%;
   text-align: left;
 }
 
 .service-hours {
-  width: 11.8%;
+  width: 8%;
   text-align: center;
 }
 
 .unit-price {
-  width: 11.8%;
+  width: 16%;
   text-align: center;
 }
 
 .hours-summa {
-  width: 11.8%;
+  width: 13%;
   text-align: center;
 }
 
 .value-alv {
-  width: 11.8%;
+  width: 11%;
   text-align: center;
 }
 
 .value-total {
-  width: 11.8%;
+  width: 14%;
   text-align: center;
 }
 
 .receipt-info-header-string .value-total {
-  white-space: normal;
-  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .receipt-info-service td {

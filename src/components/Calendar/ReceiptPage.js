@@ -9,13 +9,15 @@ import {
   buildStableInvoiceNumber,
   buildReceiptDraftFromOrder,
   formatDateForReceipt,
+  getDocumentPricing,
+  INVOICE_TERMS,
   normalizeDocumentType,
   normalizeReceiptDraft,
 } from './receiptData.helpers'
 import { jsPDF } from 'jspdf'
 import './Calendar.css'
 import { formatHelsinkiInstant } from '../../shared/date-fns-tz.js'
-import { getOrderPricing, resolveServiceHourlyRate } from '../../shared/orderPricing.js'
+import { resolveServiceHourlyRate } from '../../shared/orderPricing.js'
 import {
   getAddressForStairsFee,
   getFeeBaseName,
@@ -51,23 +53,22 @@ function toAlvParts(bruttoAmount) {
 }
 
 function mergeReceiptData(order, draft = null) {
-  const base = buildReceiptDraftFromOrder(order)
+  const fallbackType = order?.paymentType?.id === '3' ? 'invoice' : 'receipt'
+  const resolvedDocumentType = normalizeDocumentType(draft?.documentType || fallbackType)
+  const base = buildReceiptDraftFromOrder(order, resolvedDocumentType)
   const defaultServiceDate = order?.date
     ? formatHelsinkiInstant(order.date, 'dd.MM.yyyy', 'order date')
     : ''
   const now = new Date()
   const defaultInvoiceDate = formatHelsinkiInstant(now, 'dd.MM.yyyy', 'invoice date')
-  const defaultDueDate = formatHelsinkiInstant(
-    new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
-    'dd.MM.yyyy',
-    'due date',
-  )
+  const defaultDueDate = formatDateForReceipt(base.dueDate, '')
 
   const draftData = draft || {}
 
   return {
     ...base,
     ...draftData,
+    documentType: resolvedDocumentType,
     invoiceNumber: buildStableInvoiceNumber(order, draftData.invoiceNumber),
     serviceDate: formatDateForReceipt(draftData.serviceDate, defaultServiceDate),
     invoiceDate: formatDateForReceipt(draftData.invoiceDate, defaultInvoiceDate),
@@ -76,16 +77,18 @@ function mergeReceiptData(order, draft = null) {
 }
 
 function buildPdfFromPage(page) {
-  const width = Math.ceil(page.scrollWidth)
-  const height = Math.ceil(page.scrollHeight)
-
   const doc = new jsPDF({
-    orientation: 'p',
-    format: [width, height],
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
   })
 
   return new Promise((resolve) => {
     doc.html(page, {
+      x: 10,
+      y: 10,
+      width: 190,
+      windowWidth: page.scrollWidth,
       autoPaging: false,
       callback: () => resolve(doc),
     })
@@ -137,7 +140,7 @@ function buildReceipt(order, draft) {
 
 function buildReceiptRows(order, receipt) {
   const rows = []
-  const pricing = getOrderPricing(order)
+  const pricing = getDocumentPricing(order, receipt.documentType)
 
   const serviceHours = num(receipt.serviceHours)
   const serviceUnitBruttoPrice = resolveServiceHourlyRate(order)
@@ -394,16 +397,12 @@ export default function ReceiptPage({ orderId }) {
               <>
                 <span>Eräpäivä</span>
                 <span className="right">{receipt.dueDate}</span>
-                <span>Toimitapa</span>
-                <span className="right">Posti</span>
-                <span>Huomatusaika</span>
-                <span className="right">8 pv</span>
+                <span>Huomautusaika</span>
+                <span className="right">{INVOICE_TERMS.reminderDays} pv</span>
                 <span>Maksuehto</span>
-                <span className="right">14 pv</span>
-                <span>Viivätyskorko</span>
-                <span className="right">8 %</span>
-                <span>Laskulisä</span>
-                <span className="right">5 €</span>
+                <span className="right">{INVOICE_TERMS.paymentTermDays} pv</span>
+                <span>Viivästyskorko</span>
+                <span className="right">{INVOICE_TERMS.latePaymentInterestPercent} %</span>
               </>
             )}
           </div>
@@ -412,12 +411,12 @@ export default function ReceiptPage({ orderId }) {
         <table className="receipt-info">
           <thead>
             <tr className="receipt-info-header-string">
-              <th className="service-name">Tuotenimi</th>
-              <th className="service-hours">Kpl</th>
-              <th className="unit-price">a hinta</th>
-              <th className="hours-summa">Hinta</th>
-              <th className="value-alv">ALV 25,5%</th>
-              <th className="value-total">€ yht. (alv 25,5%)</th>
+              <th className="service-name">Tuote tai palvelu</th>
+              <th className="service-hours">Määrä</th>
+              <th className="unit-price">Yksikköhinta</th>
+              <th className="hours-summa">Veroton</th>
+              <th className="value-alv">ALV</th>
+              <th className="value-total">Yhteensä</th>
             </tr>
           </thead>
 
@@ -444,7 +443,7 @@ export default function ReceiptPage({ orderId }) {
               <td colSpan="3" rowSpan="3"></td>
               <td colSpan="3">
                 <div className="receipt-summary-row">
-                  <div>Veron peruste 25,5%</div>
+                  <div>Veroton yhteensä</div>
                   <div>{formatMoney(totals.netto)}</div>
                 </div>
               </td>
@@ -460,7 +459,7 @@ export default function ReceiptPage({ orderId }) {
             <tr>
               <td colSpan="3">
                 <div className="receipt-summary-row">
-                  <div>YHT €</div>
+                  <div>Maksettava yhteensä</div>
                   <div>{formatMoney(totals.brutto)}</div>
                 </div>
               </td>
@@ -500,16 +499,15 @@ export default function ReceiptPage({ orderId }) {
                           style={{ visibility: !isInvoice ? 'hidden' : 'visible' }}
                           className="receipt-bank-info"
                         >
-                          <div className="bold">Tilisiirto Girering</div>
+                          <div className="bold">Tilisiirto / Girering</div>
                           <div>
-                            Maksu välitetään saajalle vain Suomessa kotimaan kontonummer
-                            maksujenvälityksen yleisten ehtojen mukaisesti ja vain maksajan
-                            ilmoittaman tilinron perusteella.
+                            Maksu välitetään saajalle maksujenvälityksen yleisten ehtojen mukaisesti
+                            ja vain maksajan ilmoittaman tilinumeron perusteella.
                           </div>
                           <div>
-                            Saaja Paku24 tmi Betalning förmedlas endast till mottagare i Finland
-                            Mottagare enligt Allmänna villkor för inrikes betalningförmedling och
-                            endas till det kontonummer betalaren angivit.
+                            Betalningen förmedlas till mottagaren enligt de allmänna villkoren för
+                            betalningsförmedling och endast på basis av det kontonummer som
+                            betalaren angett.
                           </div>
                         </div>
                       </td>
@@ -544,7 +542,7 @@ export default function ReceiptPage({ orderId }) {
                       <td className="receipt-bank-cell">{isInvoice && <div>Viesti</div>}</td>
                       <td colSpan="2" className="receipt-bank-cell receipt-bank-cell--no-right">
                         {isInvoice && (
-                          <div className="receipt-customer-name">{receipt.customerName}</div>
+                          <div className="receipt-customer-name">Lasku {receipt.invoiceNumber}</div>
                         )}
                       </td>
                     </tr>

@@ -23,7 +23,8 @@ import {
 
 function makeBaseDraft(order, initialDraft, fallbackDocumentType) {
   const draft =
-    normalizeReceiptDraft(initialDraft, fallbackDocumentType) || buildReceiptDraftFromOrder(order)
+    normalizeReceiptDraft(initialDraft, fallbackDocumentType) ||
+    buildReceiptDraftFromOrder(order, fallbackDocumentType)
 
   return {
     ...draft,

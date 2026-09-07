@@ -68,10 +68,10 @@ function resolveFeeDisplayName(order, fee) {
   const feeName = String(fee?.name || '')
   const baseName = getFeeBaseName(feeName)
 
-  if (fee?.label) return toLabelCase(fee.label)
-
   const customLabel = FEE_LABEL_OVERRIDES[feeName] || FEE_LABEL_OVERRIDES[baseName]
   if (customLabel) return toLabelCase(customLabel)
+
+  if (fee?.label) return toLabelCase(fee.label)
 
   if (baseName === STAIRS_FEE_BASE_NAME) {
     const address = getAddressForStairsFee(order, feeName)
