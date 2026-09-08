@@ -66,7 +66,7 @@ test('WordPress imports keep source data read-only while the current order remai
   await page.getByRole('button', { name: 'Edit' }).click()
   const editDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Edit order', exact: true }) })
   await expect(editDialog.getByLabel('Price estimate')).toHaveValue('215.5')
-  await expect(editDialog.getByText('Automatic: 215.5 €', { exact: true })).toBeVisible()
+  await expect(editDialog.getByText('Automatic: 215.5 €', { exact: true })).toHaveCount(0)
   await editDialog.getByRole('button', { name: 'View original WordPress order' }).click()
   const originalDialog = page.getByRole('dialog', { name: 'Original WordPress order' })
   await expect(originalDialog).toContainText('WordPress imported customer')
@@ -76,6 +76,7 @@ test('WordPress imports keep source data read-only while the current order remai
 
   await editDialog.getByLabel('Price estimate').fill('321')
   await editDialog.getByLabel('Price estimate').blur()
+  await expect(editDialog.getByText('Automatic: 215.5 €', { exact: true })).toBeVisible()
   await editDialog.getByText('Boxes', { exact: true }).click()
   await editDialog.getByLabel('Price', { exact: true }).fill('12')
   await editDialog.getByLabel('Price', { exact: true }).blur()

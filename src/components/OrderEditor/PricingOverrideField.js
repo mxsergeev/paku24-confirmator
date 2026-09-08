@@ -17,6 +17,8 @@ export default function PricingOverrideField({
   style,
 }) {
   const overrideValue = order?.pricingOverrides?.[component]
+  const showAutomaticHelper =
+    component === 'price' && overrideValue !== null && overrideValue !== undefined
   const [inputValue, setInputValue] = useState(() =>
     overrideInputValue(overrideValue ?? automaticValue),
   )
@@ -57,7 +59,7 @@ export default function PricingOverrideField({
         setInputValue(sanitizeDecimalString(event.target.value))
       }}
       onBlur={commit}
-      helperText={`Automatic: ${automaticValue} €`}
+      helperText={showAutomaticHelper ? `Automatic: ${automaticValue} €` : undefined}
       inputProps={{ inputMode: 'decimal' }}
       InputProps={{ endAdornment: <InputAdornment position="end">€</InputAdornment> }}
       style={style}

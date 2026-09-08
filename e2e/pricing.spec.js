@@ -32,16 +32,47 @@ test('New Order keeps pricing controls compact and supports manual overrides', a
 
   const price = page.getByLabel('Price estimate')
   await expect(price).toBeVisible()
-  await expect(page.getByText('Automatic:', { exact: false })).toHaveCount(2)
+  await expect(page.getByText('Automatic: 50 €', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Effective:', { exact: false })).toHaveCount(0)
 
   await price.fill('125,50')
   await price.blur()
   await expect(price).toHaveValue('125.5')
+  await expect(page.getByText('Automatic: 50 €', { exact: true })).toBeVisible()
 
   await price.fill('0')
   await price.blur()
   await expect(price).toHaveValue('0')
+  await expect(page.getByText('Automatic: 50 €', { exact: true })).toBeVisible()
+
+  await price.fill('')
+  await price.blur()
+  await expect(price).toHaveValue('50')
+  await expect(page.getByText('Automatic: 50 €', { exact: true })).toHaveCount(0)
+
+  const dialog = page.locator('.calendar-new-order-dialog-paper')
+  const editor = dialog.locator('.calendar-new-order-flex-container')
+  const centers = await editor.evaluate((container) => {
+    const rect = (selector) => {
+      const element = container.querySelector(selector)
+      const box = element?.getBoundingClientRect()
+      return box ? { left: box.left, right: box.right, center: (box.left + box.right) / 2 } : null
+    }
+    const containerBox = container.getBoundingClientRect()
+    return {
+      container: {
+        left: containerBox.left,
+        right: containerBox.right,
+        center: (containerBox.left + containerBox.right) / 2,
+      },
+      addAddress: rect("button[aria-label='Add address']"),
+      manageFees: rect("button[aria-label='Manage fees']"),
+      addOrder: rect('.order-operations button'),
+    }
+  })
+  expect(centers.addAddress.center).toBeCloseTo(centers.container.center, 0)
+  expect(centers.manageFees.center).toBeCloseTo(centers.container.center, 0)
+  expect(centers.addOrder.right).toBeCloseTo(centers.container.right, 0)
 
   await page.getByRole('button', { name: 'Manage fees' }).click()
   const feeDialog = page.getByRole('dialog', { name: 'Fees' })
@@ -203,7 +234,7 @@ test('automatic price estimate includes manual fees and boxes and recomputes aft
     has: page.getByRole('heading', { name: 'Edit order', exact: true }),
   })
   await expect(editDialog.getByLabel('Price estimate')).toHaveValue('100')
-  await expect(editDialog.getByText('Automatic: 100 €', { exact: true })).toBeVisible()
+  await expect(editDialog.getByText('Automatic: 100 €', { exact: true })).toHaveCount(0)
 
   await editDialog.getByRole('button', { name: 'Manage fees' }).click()
   const feeDialog = page.getByRole('dialog', { name: 'Fees' })
@@ -216,10 +247,10 @@ test('automatic price estimate includes manual fees and boxes and recomputes aft
   const boxesPrice = editDialog.getByLabel('Price', { exact: true })
   await boxesPrice.fill('12')
   await boxesPrice.blur()
-  await expect(editDialog.getByText('Automatic: 127 €', { exact: true })).toBeVisible()
+  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('127')
 
   await editDialog.locator('select[name="duration"]').selectOption('3')
-  await expect(editDialog.getByText('Automatic: 177 €', { exact: true })).toBeVisible()
+  await expect(editDialog.getByLabel('Price estimate')).toHaveValue('177')
   await expect(boxesPrice).toHaveValue('12')
 
   await editDialog.getByRole('button', { name: 'Manage fees' }).click()

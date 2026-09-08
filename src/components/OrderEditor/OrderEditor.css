@@ -24,6 +24,21 @@
   flex: 0 0 auto;
 }
 
+.calendar-new-order-flex-container > .order-operations {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.order-editor > button[aria-label='Add address'],
+.pricing-editor button[aria-label='Manage fees'] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pricing-editor button[aria-label='Manage fees'] {
+  display: block;
+}
+
 .calendar-new-order-flex-container > .checkbox-container {
   display: flex;
   justify-content: space-between;
