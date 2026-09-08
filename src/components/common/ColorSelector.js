@@ -10,23 +10,19 @@ const ColorSelector = ({ value, automaticColorId, onChange, colors }) => {
   return (
     <div className="color-selector">
       <Select
-        variant="filled"
+        variant="outlined"
         name="eventColor"
         value={selectedValue}
         displayEmpty
+        margin="dense"
         onChange={(e) => onChange(e.target.name, e.target.value || null)}
         label="Event color"
         renderValue={(selectedColorId) => {
           const selectedColor = colors[selectedColorId]
           if (!selectedColor) {
-            return (
-              <span className="color-selector__automatic-value">
-                {automaticColor && (
-                  <span style={{ backgroundColor: automaticColor.hex }} className="color-option" />
-                )}
-                Automatic
-              </span>
-            )
+            return automaticColor ? (
+              <span style={{ backgroundColor: automaticColor.hex }} className="color-option" />
+            ) : null
           }
 
           return (
@@ -38,7 +34,7 @@ const ColorSelector = ({ value, automaticColorId, onChange, colors }) => {
       >
         <MenuItem value="">
           {automaticColor && (
-            <span style={{ backgroundColor: automaticColor.hex }} className="color-option" />
+            <span style={{ backgroundColor: automaticColor.hex, marginRight: '0.5rem' }} className="color-option" />
           )}
           Automatic
         </MenuItem>
