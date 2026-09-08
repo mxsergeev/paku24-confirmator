@@ -56,7 +56,7 @@ export default function OrderEditor({ order, handleChange, onOrderChange }) {
 
   return (
     <div className="order-editor" style={{ marginTop: '5px' }}>
-      <div className="order-editor__schedule-row" style={marginLeftRight}>
+      <div className="order-editor__schedule-row">
         <MuiPickersUtilsProvider utils={DayjsUtils} locale={locale_en}>
           <DateTimePicker
             ampm={false}
