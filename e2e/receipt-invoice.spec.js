@@ -35,16 +35,23 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
   const order = await database.seedOrder({
     name: 'Document customer',
     date: dateInCurrentHelsinkiMonth(10),
+    duration: 1,
     confirmed: true,
     boxes: {
       deliveryDate: dateInCurrentHelsinkiMonth(11),
       returnDate: dateInCurrentHelsinkiMonth(12),
-      amount: 10,
+      amount: 0,
     },
     pricingOverrides: {
       price: null,
-      fees: [{ name: 'Manual fee', amount: 10 }],
-      boxesPrice: 20,
+      fees: [
+        { name: 'holidayFee', amount: 15 },
+        { name: 'weekendFee', amount: 15 },
+        { name: 'startOrEndOfMonthFee', amount: 15 },
+        { name: 'paymentTypeFee', label: 'MAKSUTAPALISÄ', amount: 5 },
+        { name: 'manualFee', label: 'Manual fee', amount: 20 },
+      ],
+      boxesPrice: 0,
     },
   })
 
@@ -53,8 +60,8 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
   const { documentPage: receiptPage } = await openDocument(page, 'Create receipt')
   await expect(receiptPage.getByText('KUITTI', { exact: true })).toBeVisible()
   await expect(receiptPage.locator('#cart-receipt')).toContainText('Document customer')
-  await expect(receiptPage.locator('.receipt-info-service').last()).toContainText('Manual Fee')
-  await expect(receiptPage.locator('.receipt-summary-row').nth(2)).toContainText('130,00')
+  await expect(receiptPage.locator('.receipt-info-service').filter({ hasText: 'Maksutapalisä' })).toHaveCount(1)
+  await expect(receiptPage.locator('.receipt-summary-row').nth(2)).toContainText('120,00')
 
   const receiptDownload = receiptPage.waitForEvent('download')
   await receiptPage.getByRole('button', { name: 'Download' }).click()
@@ -72,16 +79,17 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
   const { documentPage: invoicePage } = await openDocument(page, 'Create invoice')
   await expect(invoicePage.getByText('LASKU', { exact: true })).toBeVisible()
   await expect(invoicePage.locator('#cart-receipt')).toContainText('Document customer')
-  await expect(invoicePage.locator('.receipt-summary-row').nth(2)).toContainText('135,00')
+  await expect(invoicePage.locator('.receipt-summary-row').nth(2)).toContainText('120,00')
   await expect(invoicePage.getByText('Veroton yhteensä', { exact: true })).toBeVisible()
   await expect(invoicePage.getByText('ALV 25,5 %', { exact: true })).toBeVisible()
   await expect(invoicePage.getByText('Maksettava yhteensä', { exact: true })).toBeVisible()
   const invoiceSurchargeRows = invoicePage
     .locator('.receipt-info-service')
-    .filter({ hasText: 'Laskutuslisä' })
+    .filter({ hasText: 'Maksutapalisä' })
   await expect(invoiceSurchargeRows).toHaveCount(1)
   await expect(invoiceSurchargeRows.first()).toContainText('5,00')
-
+  await expect(invoicePage.locator('.receipt-info-service')).toHaveCount(6)
+  await expect(invoicePage.getByText('Hinnan oikaisu', { exact: true })).toHaveCount(0)
   for (const heading of [
     'Tuote tai palvelu',
     'Määrä',
@@ -96,7 +104,6 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
   await expect(invoicePage.getByText('Huomautusaika', { exact: true })).toBeVisible()
   await expect(invoicePage.getByText('Huomatusaika', { exact: true })).toHaveCount(0)
   await expect(invoicePage.getByText('Posti', { exact: true })).toHaveCount(0)
-  await expect(invoicePage.getByText('Laskulisä', { exact: true })).toHaveCount(0)
   await expect(invoicePage.locator('.receipt-bank-info')).toContainText('Tilisiirto / Girering')
   await expect(invoicePage.locator('.receipt-bank-info')).toContainText(
     'Maksu välitetään saajalle maksujenvälityksen yleisten ehtojen mukaisesti ja vain maksajan ilmoittaman tilinumeron perusteella.',
@@ -119,10 +126,10 @@ test('receipt and invoice open in new tabs and support export/send actions', asy
   const mediaBoxMatch = invoicePdfText.match(/\/MediaBox\s*\[\s*([^\]]+)\]/)
   expect(mediaBoxMatch).not.toBeNull()
   const mediaBox = mediaBoxMatch[1].trim().split(/\s+/).map(Number)
-  expect(mediaBox[0]).toBe(0)
-  expect(mediaBox[1]).toBe(0)
-  expect(mediaBox[2]).toBeCloseTo(595.28, 1)
-  expect(mediaBox[3]).toBeCloseTo(841.89, 1)
+  expect(mediaBox[2]).toBeGreaterThan(0)
+  expect(mediaBox[3]).toBeGreaterThan(mediaBox[2])
+  expect(mediaBox[3] / mediaBox[2]).toBeCloseTo(1.4142, 2)
+  expect((invoicePdfText.match(/\/Type\s*\/Page\b/g) || []).length).toBe(1)
 
   const invoiceRequest = invoicePage.waitForRequest(
     (request) =>

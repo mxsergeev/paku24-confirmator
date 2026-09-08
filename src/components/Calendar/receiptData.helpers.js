@@ -38,7 +38,8 @@ function getDefaultDueDate() {
 
 export function getDocumentPricing(order, documentType = 'receipt') {
   const pricing = getOrderPricing(order)
-  if (normalizeDocumentType(documentType) !== 'invoice') return pricing
+  const isInvoice = normalizeDocumentType(documentType) === 'invoice'
+  if (!isInvoice) return pricing
 
   const paymentTypeFee = feesConfig.find((fee) => fee?.name === PAYMENT_TYPE_FEE_NAME)
   const configuredFeeAmount = Number(paymentTypeFee?.amount)
@@ -46,23 +47,20 @@ export function getDocumentPricing(order, documentType = 'receipt') {
   const hasPositivePaymentTypeFee = fees.some(
     (fee) => fee?.name === PAYMENT_TYPE_FEE_NAME && Number(fee.amount) > 0,
   )
-
-  if (
+  const shouldAddPaymentTypeFee =
     !hasPositivePaymentTypeFee &&
     paymentTypeFee &&
     Number.isFinite(configuredFeeAmount) &&
     configuredFeeAmount > 0
-  ) {
+
+  if (shouldAddPaymentTypeFee) {
     fees.push({ ...paymentTypeFee, amount: configuredFeeAmount })
   }
 
   return {
     ...pricing,
     fees,
-    price:
-      hasPositivePaymentTypeFee || !paymentTypeFee || !Number.isFinite(configuredFeeAmount)
-        ? pricing.price
-        : pricing.price + configuredFeeAmount,
+    price: shouldAddPaymentTypeFee ? pricing.price + configuredFeeAmount : pricing.price,
   }
 }
 

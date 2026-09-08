@@ -15,10 +15,6 @@ const STAIRS_UNIT_BRUTTO = Number(
   feesConfig.find((fee) => fee?.name === STAIRS_FEE_BASE_NAME)?.baseFee,
 )
 
-const FEE_LABEL_OVERRIDES = {
-  paymentTypeFee: 'Laskutuslisä',
-}
-
 function getFeeBaseName(feeName) {
   if (String(feeName).startsWith(`${STAIRS_FEE_BASE_NAME}_`)) return STAIRS_FEE_BASE_NAME
   return String(feeName || '')
@@ -67,9 +63,6 @@ function toLabelCase(text) {
 function resolveFeeDisplayName(order, fee) {
   const feeName = String(fee?.name || '')
   const baseName = getFeeBaseName(feeName)
-
-  const customLabel = FEE_LABEL_OVERRIDES[feeName] || FEE_LABEL_OVERRIDES[baseName]
-  if (customLabel) return toLabelCase(customLabel)
 
   if (fee?.label) return toLabelCase(fee.label)
 

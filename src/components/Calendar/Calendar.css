@@ -1183,7 +1183,7 @@
   gap: 20px;
   align-items: start;
   height: 270px;
-  margin-bottom: 5rem;
+  margin-bottom: 16px;
 }
 
 .receipt-title-block,
@@ -1230,6 +1230,7 @@
   table-layout: fixed;
   font-size: 14px;
   height: auto;
+  box-sizing: border-box;
 }
 
 .receipt-info th,
@@ -1237,6 +1238,7 @@
   border: 1px solid #111;
   padding: 4px 6px;
   vertical-align: middle;
+  box-sizing: border-box;
 }
 
 .receipt-info th {
@@ -1304,7 +1306,6 @@
 .receipt-info-body
   > tr:not(.receipt-info-service):not(.receipt-bank-row):not(.receipt-company-info)
   > td {
-  height: 1px;
   min-height: 20px;
   padding-bottom: 2px;
 }
@@ -1353,14 +1354,8 @@
 }
 
 .receipt-bank-row > td {
-  height: 1px;
   padding: 0;
   margin: 0;
-  overflow: hidden;
-}
-
-.receipt-bank-row {
-  height: 1px;
 }
 
 .receipt-bank-table {
@@ -1369,10 +1364,12 @@
   margin: 0;
   border-collapse: collapse;
   table-layout: fixed;
+  box-sizing: border-box;
 }
 
 .receipt-bank-cell {
   border: 1px solid #111;
+  box-sizing: border-box;
 }
 
 .receipt-bank-cell-2 {
@@ -1496,7 +1493,7 @@
     grid-template-columns: 1.2fr 0.6fr 1fr;
     gap: 20px;
     height: 270px;
-    margin-bottom: 5rem;
+    margin-bottom: 16px;
     min-width: 742px;
   }
 

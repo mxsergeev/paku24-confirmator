@@ -77,18 +77,16 @@ function mergeReceiptData(order, draft = null) {
 }
 
 function buildPdfFromPage(page) {
+  const width = Math.ceil(page.scrollWidth)
+  const height = Math.ceil(page.scrollHeight)
+
   const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
+    orientation: 'p',
+    format: [width, height],
   })
 
   return new Promise((resolve) => {
     doc.html(page, {
-      x: 10,
-      y: 10,
-      width: 190,
-      windowWidth: page.scrollWidth,
       autoPaging: false,
       callback: () => resolve(doc),
     })

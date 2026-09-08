@@ -18,14 +18,17 @@ describe('receipt data helpers', () => {
       boxes: { amount: 0 },
       pricingOverrides: { price: null, fees: null, boxesPrice: 0 },
     })
+    const originalOrder = structuredClone(order)
 
     const receiptPricing = getDocumentPricing(order, 'receipt')
     const invoicePricing = getDocumentPricing(order, 'invoice')
 
     expect(receiptPricing.price).toBe(50)
     expect(invoicePricing.price).toBe(55)
-    expect(invoicePricing.fees.filter((fee) => fee.name === 'paymentTypeFee')).toHaveLength(1)
-    expect(order.pricingOverrides.fees).toBeNull()
+    expect(invoicePricing.fees.filter((fee) => fee.name === 'paymentTypeFee')).toEqual([
+      expect.objectContaining({ name: 'paymentTypeFee', amount: 5 }),
+    ])
+    expect(order).toEqual(originalOrder)
   })
 
   it('does not duplicate an existing positive invoice surcharge', () => {
@@ -45,6 +48,7 @@ describe('receipt data helpers', () => {
     expect(pricing.fees.filter((fee) => fee.name === 'paymentTypeFee')).toEqual([
       { name: 'paymentTypeFee', amount: 5 },
     ])
+    expect(order.pricingOverrides.fees).toEqual([{ name: 'paymentTypeFee', amount: 5 }])
   })
 
   it('initializes receipt and invoice drafts from document-aware totals', () => {
