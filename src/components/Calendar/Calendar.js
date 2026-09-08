@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import useMediaQuery from '@material-ui/core/useMediaQuery'
-import { useHistory, useLocation, useRouteMatch } from 'react-router-dom'
+import { useHistory, useRouteMatch } from 'react-router-dom'
 import OrderDialog from './OrderDialog'
 import NewOrderDialog from './NewOrderDialog'
 import ReceiptPage from './ReceiptPage'
@@ -68,7 +68,6 @@ export default function Calendar() {
   })
   const [newOrderOpen, setNewOrderOpen] = useState(false)
   const history = useHistory()
-  const location = useLocation()
   const match = useRouteMatch()
   const orderRouteMatch = useRouteMatch(`${match.path}/order/:orderId`)
   const receiptRouteMatch = useRouteMatch(`${match.path}/receipt/:orderId`)
@@ -382,11 +381,7 @@ export default function Calendar() {
   }
 
   function closeModal() {
-    if (location.state && location.state.fromCalendar) {
-      history.goBack()
-      return
-    }
-    history.push(match.url)
+    history.replace(match.url)
   }
 
   function handleNewOrderOpen() {

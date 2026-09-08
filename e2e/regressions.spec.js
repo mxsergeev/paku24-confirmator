@@ -62,6 +62,26 @@ test('calendar order navigation supports browser back and forward', async ({ pag
   await expect(page.getByText('E2E Customer', { exact: true })).toBeVisible()
 })
 
+test('order dialog closes with one click regardless of duplicate history entries', async ({ page, database }) => {
+  const order = await database.seedOrder({ date: dateInCurrentHelsinkiMonth(10) })
+
+  await page.goto('/app/calendar')
+  await page.locator('.fc-event').filter({ hasText: 'E2E Customer' }).click()
+  await expect(page).toHaveURL(new RegExp(`/app/calendar/order/${order.id}$`))
+
+  await page.evaluate(() => {
+    const currentUrl = window.location.href
+    const currentState = window.history.state
+    window.history.pushState(currentState, '', currentUrl)
+    window.history.pushState(currentState, '', currentUrl)
+  })
+
+  await page.getByRole('button', { name: 'close' }).click()
+
+  await expect(page).toHaveURL(/\/app\/calendar$/)
+  await expect(page.getByRole('dialog')).toBeHidden()
+})
+
 test('deleted orders load through their direct URL', async ({ page, database }) => {
   const order = await database.seedOrder({
     date: '2020-01-15T10:00:00.000Z',
