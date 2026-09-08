@@ -3,19 +3,13 @@
 import mongoose from 'mongoose'
 
 const userSchema = new mongoose.Schema({
-  username: String,
+  username: { type: String, unique: true },
   name: String,
   passwordHash: String,
   email: String,
   requestToken: String,
   access: Boolean,
   accessRequested: Number,
-  // orders: [
-  //   {
-  //     type: mongoose.Schema.Types.ObjectId,
-  //     ref: 'RawOrder',
-  //   },
-  // ],
 })
 
 userSchema.set('toJSON', {

@@ -4,14 +4,10 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import morgan from 'morgan'
-import mongoose from 'mongoose'
 
-import * as config from './utils/config.js'
-import * as logger from './utils/logger.js'
 import errorHandler from './utils/errorHandler.middleware.js'
 import filterReqsBasedOnUrl from './utils/filterReqsBasedOnUrl.middleware.js'
 
-import calendarRouter from './modules/calendar/calendar.controller.js'
 import emailRouter from './modules/email/email.controller.js'
 import orderPoolRouter from './modules/orderPool/orderPool.controller.js'
 import smsRouter from './modules/sms/sms.controller.js'
@@ -19,22 +15,11 @@ import loginRouter from './modules/authentication/auth.login.controller.js'
 import logoutRouter from './modules/authentication/auth.logout.controller.js'
 import registrationRouter from './modules/authentication/auth.registration.controller.js.js'
 import tokenRouter from './modules/authentication/auth.token.controller.js'
-
-mongoose
-  .connect(config.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useFindAndModify: false,
-    useCreateIndex: true,
-  })
-  .then(() => {
-    logger.info('Connected to MongoDB.')
-  })
-  .catch((err) => {
-    logger.error('Error connecting to MongoDB:', err.message)
-  })
+import testCommunicationRouter from './modules/testCommunication.controller.js'
+import testCalendarRouter from './modules/testCalendar.controller.js'
 
 const app = express()
+const REQUEST_BODY_LIMIT = '15mb'
 
 app.set('trust proxy', 'loopback')
 
@@ -49,7 +34,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: REQUEST_BODY_LIMIT }))
+app.use(express.urlencoded({ extended: true, limit: REQUEST_BODY_LIMIT }))
 app.use(cookieParser())
 
 app.get('/', (req, res) => {
@@ -64,9 +50,12 @@ app.use('/api/logout', logoutRouter)
 app.use('/api/registration', registrationRouter)
 
 app.use('/api/sms', smsRouter)
-app.use('/api/calendar', calendarRouter)
 app.use('/api/email', emailRouter)
 app.use('/api/order-pool/', orderPoolRouter)
+if (process.env.NODE_ENV === 'test') {
+  app.use('/api/test/communications', testCommunicationRouter)
+  app.use('/api/test/calendar', testCalendarRouter)
+}
 
 app.use(express.static(path.join(import.meta.dirname, '..', 'build')))
 app.get('/app*', (req, res) => {

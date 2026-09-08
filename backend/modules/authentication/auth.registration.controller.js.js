@@ -82,7 +82,7 @@ registrationRouter.get(
   updateUser,
   async (req, res, next) => {
     const { generatedPassword: password, matchedUser } = req
-    const username = (matchedUser && matchedUser.username) || req.randomUsername
+    const username = req.username
     const url = `${DOMAIN_NAME}/app/login`
     try {
       const messageBody = generateMessage(accessGrantedMessage.template, {

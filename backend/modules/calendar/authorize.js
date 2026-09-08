@@ -1,4 +1,4 @@
-import { authorize } from './calendar.helpers.js'
+import { authorize } from './googleCalendar.js'
 import * as logger from '../../utils/logger.js'
 
 authorize()

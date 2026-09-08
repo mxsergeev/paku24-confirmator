@@ -1,7 +1,5 @@
-import mongoose from 'mongoose'
 import RefreshToken from '../models/refreshToken.js'
 import User from '../models/user.js'
-import * as config from '../utils/config.js'
 import { vi } from 'vitest'
 
 const initialUsers = [
@@ -49,19 +47,6 @@ async function initializeDB() {
   await Promise.all(promiseArray)
 }
 
-function connectToDB() {
-  mongoose
-    .connect(config.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      useFindAndModify: false,
-      useCreateIndex: true,
-    })
-    .catch((err) => {
-      console.error('Error connecting to MongoDB:', err.message)
-    })
-}
-
 // mock
 const res = {}
 
@@ -92,7 +77,6 @@ const exampleOrder = {
 }
 
 const exampleOptions = {
-  XL: false,
   distance: 'insideCapital',
   hsy: false,
   altColorPalette: false,
@@ -100,9 +84,6 @@ const exampleOptions = {
 
 const exampleEntryPartOfTheConfirmation =
   'Raiviosuonmäki 2 E 68\nNIMI\nMaxim Sergeev\nSÄHKÖPOSTI\nthemaximsergeev@gmail.com\nPUHELIN\n+358449747442'
-
-const orderDetails =
-  'VARAUKSEN TIEDOT\n10-04-2021\nALKAMISAIKA\nKlo 17:00 (+/-15min)\nARVIOITU KESTO\n2.5h (30€/h, Paku ja kuski)\nMAKSUTAPA\nKäteinen\nVIIKONLOPPULISÄ\n15€\nLÄHTÖPAIKKA\nRaiviosuonmäki 2 E 68, Vantaa\nMÄÄRÄNPÄÄ\nRaiviosuonmäki 5 C 32, Vantaa\nNIMI\nMaxim Sergeev\nSÄHKÖPOSTI\nthemaximsergeev@gmail.com\nPUHELIN\n0449747442\nLISÄTIETOJA\nTesting my app'
 
 const exampleEvent = {
   order: {
@@ -126,7 +107,6 @@ const exampleEvent = {
   options: {
     distance: 'insideCapital',
     hsy: false,
-    XL: false,
   },
   entry:
     'Raiviosuonmäki 2 E 68\nMÄÄRÄNPÄÄ\nSortti-asema\nNIMI\nMaxim Sergeev\nSÄHKÖPOSTI\nthemaximsergeev@gmail.com\nPUHELIN\n+358449747442\nLISÄTIETOJA\nHello!',
@@ -154,10 +134,13 @@ const smsOrderPayload = {
   paymentType: { id: '1', name: 'Maksukortti', fee: 0 },
   boxes: {
     deliveryDate: '2021-04-22T17:00:00.000Z',
+    deliveryHasTime: true,
     returnDate: '2021-04-22T19:00:00.000Z',
+    returnHasTime: true,
     amount: 0,
   },
   boxesPrice: 0,
+  pricingOverrides: { price: null, fees: null, boxesPrice: null },
   date: '2021-04-22T17:00:00.000Z',
   time: '17:00',
   duration: '2',
@@ -176,7 +159,6 @@ export {
   usersInDB,
   tokensInDB,
   initializeDB,
-  connectToDB,
   mockNext,
   res,
   exampleRefreshToken,
@@ -186,5 +168,4 @@ export {
   exampleEvent,
   exampleCreatedEvent,
   smsOrderPayload,
-  orderDetails,
 }

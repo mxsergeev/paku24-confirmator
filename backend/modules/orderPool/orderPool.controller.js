@@ -4,64 +4,151 @@ import express from 'express'
 
 const orderPoolRouter = express.Router()
 
-import RawOrder from '../../models/rawOrder.js'
 import { ORDER_POOL_KEY } from '../../utils/config.js'
 import newErrorWithCustomName from '../../utils/newErrorWithCustomName.js'
 import * as authMW from '../authentication/auth.middleware.js'
 import Order from '../../models/order.js'
+import User from '../../models/user.js'
 import dayjs from '../../../src/shared/dayjs.js'
-import { updateOrder, getOrderById } from './orderPool.service.js'
+import {
+  updateOrder,
+  getOrderById,
+  deleteOrderPermanently,
+  confirmOrder,
+  cancelOrder,
+  deleteOrder,
+  restoreOrder,
+} from './orderPool.service.js'
+import { buildStableInvoiceNumber } from '../../../src/shared/invoiceNumber.js'
+import {
+  createAppOrder,
+} from '../../../src/shared/orderModel.js'
+import { normalizeWordPressOrderPayload } from '../../../src/shared/wordpressOrderPayload.js'
+import { syncOrderToGoogleCalendar } from '../calendar/googleCalendar.js'
+import * as logger from '../../utils/logger.js'
 
-function checkKey(req, res, next) {
-  // if (req.body.key === ORDER_POOL_KEY && req.hostname === ACCEPTED_HOSTNAME) {
-  if (req.body.key === ORDER_POOL_KEY) {
-    return next()
-  }
-  const OrderPoolKeyError = newErrorWithCustomName('OrderPoolKeyError')
-  return next(OrderPoolKeyError)
-}
+const APP_CREATE_FIELDS = [
+  'distance',
+  'hsy',
+  'eventColor',
+  'date',
+  'duration',
+  'service',
+  'paymentType',
+  'address',
+  'extraAddresses',
+  'destination',
+  'boxes',
+  'name',
+  'email',
+  'phone',
+  'comment',
+]
 
 function checkKeyOrAuth(req, res, next) {
-  if (req.body.key === ORDER_POOL_KEY) {
+  if (ORDER_POOL_KEY && req.body?.key === ORDER_POOL_KEY) {
+    req.orderPoolOrigin = 'wordpress'
     return next()
   }
+
+  req.orderPoolOrigin = 'app'
   return authMW.authenticateAccessToken(req, res, next)
 }
 
-orderPoolRouter.post('/add', checkKey, async (req, res, next) => {
-  try {
-    const receivedOrder = new RawOrder({
-      text: req.body.order,
-      date: new Date().toISOString(),
-    })
+function validationError(message) {
+  return newErrorWithCustomName('ValidationError', message)
+}
 
-    await receivedOrder.save()
+function sendOrderResult(res, result, message) {
+  const payload = { ...result }
+  if (message) payload.message = message
+  return res.status(200).send(payload)
+}
 
-    return res.status(200).send({ message: 'Order added to the pool.', id: receivedOrder._id })
-  } catch (err) {
-    return next(err)
+function pickBookingFields(orderData) {
+  const bookingFields = {}
+
+  APP_CREATE_FIELDS.forEach((field) => {
+    if (Object.hasOwn(orderData, field)) bookingFields[field] = orderData[field]
+  })
+
+  return bookingFields
+}
+
+function buildOrderForCreate(req) {
+  const orderData = req.body?.order
+
+  if (!orderData || typeof orderData !== 'object' || Array.isArray(orderData)) {
+    throw validationError('order must be an object')
   }
-})
+
+  try {
+    if (req.orderPoolOrigin === 'wordpress') {
+      return {
+        ...normalizeWordPressOrderPayload(orderData),
+        originalOrder: structuredClone(orderData),
+      }
+    }
+
+    const appOrderData = pickBookingFields(orderData)
+    if (Object.hasOwn(orderData, 'pricingOverrides')) {
+      appOrderData.pricingOverrides = orderData.pricingOverrides
+    }
+
+    // App creation accepts editable booking fields and manual pricing overrides.
+    // Lifecycle, reference, and derived pricing state remain server-controlled.
+    return createAppOrder(appOrderData)
+  } catch (err) {
+    throw validationError(err.message)
+  }
+}
 
 orderPoolRouter.post('/v2/add', checkKeyOrAuth, async (req, res, next) => {
   try {
-    const orderData =
-      typeof req.body.order === 'string' ? JSON.parse(req.body.order) : req.body.order
-
+    const order = buildOrderForCreate(req)
+    const orderToSave = { ...order }
+    delete orderToSave.id
+    delete orderToSave._id
     const receivedOrder = new Order({
-      receivedAt: new Date().toISOString(),
-      ...orderData,
+      ...orderToSave,
+      receivedAt: new Date(),
+      invoiceNumber: buildStableInvoiceNumber(order),
     })
+
+    if (req.orderPoolOrigin === 'app') {
+      const now = new Date()
+      receivedOrder.confirmed = true
+      receivedOrder.confirmedBy = req.user.id
+      receivedOrder.confirmedAt = now
+    }
 
     await receivedOrder.save()
 
-    return res.status(200).send({ message: 'Order added to the pool.', id: receivedOrder._id })
+    let warning = null
+    if (req.orderPoolOrigin === 'app') {
+      try {
+        await syncOrderToGoogleCalendar(receivedOrder)
+      } catch (error) {
+        logger.error('Order calendar synchronization failed after app creation', error)
+        warning = {
+          code: 'CALENDAR_SYNC_FAILED',
+          message: 'Order was saved, but Google Calendar could not be synchronized.',
+        }
+      }
+    }
+
+    return res.status(200).send({
+      message: 'Order added to the pool.',
+      id: receivedOrder._id,
+      order: receivedOrder,
+      warning,
+    })
   } catch (err) {
     return next(err)
   }
 })
 
-orderPoolRouter.get('/v2/:id', async (req, res, next) => {
+orderPoolRouter.get('/v2/:id', authMW.authenticateAccessToken, async (req, res, next) => {
   try {
     const { id } = req.params
 
@@ -73,13 +160,13 @@ orderPoolRouter.get('/v2/:id', async (req, res, next) => {
   }
 })
 
-orderPoolRouter.put('/v2/:id', async (req, res, next) => {
+orderPoolRouter.put('/v2/:id', authMW.authenticateAccessToken, async (req, res, next) => {
   try {
     const { id } = req.params
 
-    const order = await updateOrder(id, req.body.updateData)
+    const result = await updateOrder(id, req.body?.updateData)
 
-    return res.status(200).send({ order, message: 'Order updated' })
+    return sendOrderResult(res, result, 'Order updated')
   } catch (err) {
     return next(err)
   }
@@ -87,49 +174,33 @@ orderPoolRouter.put('/v2/:id', async (req, res, next) => {
 
 orderPoolRouter.use(authMW.authenticateAccessToken)
 
-async function getOrdersWithLimit({ markedForDeletion, skip, limit }) {
-  return RawOrder.find({ markedForDeletion }).skip(skip).limit(limit).sort({ _id: -1 }).exec()
+function makeDeletedFilter(deleted) {
+  if (deleted === 'true') return { deletedAt: { $exists: true } }
+  if (deleted === 'false') return { deletedAt: { $exists: false } }
+  return {}
 }
-
-function howMuchToGet(pages = ['1']) {
-  // pages is something like: [ '1', '2', '3' ] (for many pages) || ['2'] (for only one page)
-  const pagesInNumberType = pages.map((p) => Number(p))
-  const skip = pagesInNumberType[0] === 1 ? 0 : (pagesInNumberType[0] - 1) * 20
-  const limit = pagesInNumberType.length * 20
-
-  return { skip, limit }
-}
-
-orderPoolRouter.get('/', async (req, res, next) => {
-  try {
-    const { deleted: markedForDeletion } = req.query
-    const { skip, limit } = howMuchToGet(req.query.pages)
-
-    const ordersInPool = await getOrdersWithLimit({
-      markedForDeletion,
-      skip,
-      limit,
-    })
-
-    // Documents are automatically transformed to JSON
-    return res.status(200).send({ orders: ordersInPool, limitPerPage: 20 })
-  } catch (err) {
-    return next(err)
-  }
-})
 
 orderPoolRouter.get('/v2/', async (req, res, next) => {
   try {
     const { from, to, deleted } = req.query
+    const deletedFilter = makeDeletedFilter(deleted)
+    if (Object.hasOwn(req.query, 'pages')) {
+      throw validationError('pages query is no longer supported')
+    }
+    if (typeof from !== 'string' || typeof to !== 'string' || !from || !to) {
+      throw validationError('from and to must be provided together')
+    }
 
-    const match = {
+    const rangeFilter = {
       $or: [
         { date: { $gte: from, $lte: to } },
         { 'boxes.deliveryDate': { $gte: from, $lte: to } },
         { 'boxes.returnDate': { $gte: from, $lte: to } },
       ],
-      deletedAt: { $exists: deleted === 'true' },
     }
+    const match = Object.keys(deletedFilter).length
+      ? { $and: [rangeFilter, deletedFilter] }
+      : rangeFilter
 
     const ordersInPool = await Order.find(match).sort({ _id: -1 })
 
@@ -142,59 +213,13 @@ orderPoolRouter.get('/v2/', async (req, res, next) => {
 orderPoolRouter.delete('/delete/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    const order = await Order.findByIdAndUpdate(
-      { _id: id },
-      {
-        deletedAt: new Date().toISOString(),
-      },
-      { new: true }
-    )
+    const result = await deleteOrder(id)
 
-    if (!order) {
+    if (!result) {
       return res.status(404).send({ error: 'Order not found' })
     }
 
-    return res.status(200).send({ message: 'Order marked for deletion', order })
-  } catch (err) {
-    return next(err)
-  }
-})
-
-// RESTORE - clears deletedAt to un-delete an Order
-orderPoolRouter.put('/v2/retrieve/:id', async (req, res, next) => {
-  const { id } = req.params
-  try {
-    const order = await Order.findByIdAndUpdate(
-      { _id: id },
-      { $unset: { deletedAt: '' } },
-      { new: true }
-    )
-
-    if (!order) {
-      return res.status(404).send({ error: 'Order not found' })
-    }
-
-    return res.status(200).send({ message: 'Order retrieved', order })
-  } catch (err) {
-    return next(err)
-  }
-})
-
-// Legacy restore alias
-orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
-  const { id } = req.params
-  try {
-    const order = await Order.findByIdAndUpdate(
-      { _id: id },
-      { $unset: { deletedAt: '' } },
-      { new: true }
-    )
-
-    if (!order) {
-      return res.status(404).send({ error: 'Order not found' })
-    }
-
-    return res.status(200).send({ message: 'Order retrieved', order })
+    return res.status(200).send({ message: 'Order marked for deletion', ...result })
   } catch (err) {
     return next(err)
   }
@@ -203,58 +228,86 @@ orderPoolRouter.put('/retrieve/:id', async (req, res, next) => {
 orderPoolRouter.put('/v2/confirm/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    await Order.findByIdAndUpdate(
-      { _id: id },
-      {
-        confirmed: true,
-        confirmedBy: req.user.id,
-        confirmedAt: new Date().toISOString(),
-      }
-    )
-
-    return res.status(200).send({ message: 'Order confirmed' })
+    const result = await confirmOrder(id, req.user.id)
+    if (!result) return res.status(404).send({ error: 'Order not found' })
+    return sendOrderResult(res, result, 'Order confirmed')
   } catch (err) {
     return next(err)
   }
 })
 
-orderPoolRouter.put('/confirm/:id', async (req, res, next) => {
+orderPoolRouter.put('/v2/cancel/:id', async (req, res, next) => {
   const { id } = req.params
   try {
-    await Order.findByIdAndUpdate(
-      { _id: id },
-      {
-        confirmed: true,
-        confirmedBy: req.user.id,
-        confirmedAt: new Date().toISOString(),
-      }
-    )
-
-    return res.status(200).send({ message: 'Order confirmed' })
+    const result = await cancelOrder(id)
+    if (!result) return res.status(404).send({ error: 'Order not found' })
+    return sendOrderResult(res, result, 'Order canceled')
   } catch (err) {
     return next(err)
   }
 })
 
-orderPoolRouter.get('/confirmed-by-user/', async (req, res) => {
-  const periodFrom = isISO8601(req.query.periodFrom)
-    ? req.query.periodFrom
-    : dayjs().startOf('month')
-  const periodTo = isISO8601(req.query.periodTo)
-    ? req.query.periodTo
-    : dayjs().add(1, 'month').startOf('month')
+// Permanently delete an order from DB (requires auth middleware applied above)
+orderPoolRouter.delete('/v2/delete-permanent/:id', async (req, res, next) => {
+  const { id } = req.params
+  try {
+    const order = await deleteOrderPermanently(id)
 
-  const confirmedOrders = await Order.find({
-    confirmed: true,
-    deletedAt: { $exists: false },
-    confirmedBy: req.user.id,
-    confirmedAt: {
-      $gte: periodFrom,
-      $lt: periodTo,
-    },
-  })
+    if (!order) {
+      return res.status(404).send({ error: 'Order not found' })
+    }
 
-  return res.status(200).send({ confirmedOrders })
+    return res.status(200).send({ message: 'Order permanently deleted', deletedId: id })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+// RESTORE (clear deletedAt and canceledAt)
+orderPoolRouter.post('/v2/restore/:id', async (req, res, next) => {
+  const { id } = req.params
+  try {
+    // Authorization: only users with `access` allowed to restore orders
+    const currentUser = await User.findById(req.user?.id).lean()
+    if (!currentUser || !currentUser.access) {
+      return res.status(403).send({ error: 'Forbidden' })
+    }
+
+    const result = await restoreOrder(id)
+
+    if (!result) {
+      return res.status(404).send({ error: 'Order not found' })
+    }
+
+    return sendOrderResult(res, result, 'Order restored')
+  } catch (err) {
+    return next(err)
+  }
+})
+
+orderPoolRouter.get('/confirmed-by-user/', async (req, res, next) => {
+  try {
+    const periodFrom = isISO8601(req.query.periodFrom)
+      ? req.query.periodFrom
+      : dayjs().startOf('month')
+    const periodTo = isISO8601(req.query.periodTo)
+      ? req.query.periodTo
+      : dayjs().add(1, 'month').startOf('month')
+
+    const confirmedOrders = await Order.find({
+      confirmed: true,
+      ...makeDeletedFilter('false'),
+      confirmedBy: req.user.id,
+      confirmedAt: {
+        $gte: periodFrom,
+        $lt: periodTo,
+      },
+    })
+
+    return res.status(200).send({ confirmedOrders })
+  } catch (err) {
+    return next(err)
+  }
 })
 
 export default orderPoolRouter

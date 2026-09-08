@@ -1,0 +1,8 @@
+services:
+  app:
+    command: ["yarn", "dev"]
+    depends_on:
+      mongodb:
+        condition: service_started
+    environment:
+      - DEV_FRONTEND_PROXY=http://localhost

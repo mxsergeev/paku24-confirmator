@@ -1,55 +1,83 @@
 import React from 'react'
-import dayjs from 'dayjs'
+import colors from '../../shared/colors'
+import ColorSelector from '../common/ColorSelector'
+import { HELSINKI_TIMEZONE, formatInTimeZone, parseInstant } from '../../shared/date-fns-tz'
+import { formatBoxDate } from '../../shared/render/text'
+import { resolveFeeDisplayName } from '../../shared/render/fees'
+import { getOrderPricing } from '../../shared/orderPricing'
+import { resolveEventColorId } from '../../shared/eventColor'
 
-export default function OrderDialogDetails({ order, eventType }) {
-  const hasClientNumber = !!(order?.phone && order.phone.replace(/0/g, '') !== '')
+export default function OrderDialogDetails({
+  order,
+  eventType,
+  onEventColorChange,
+}) {
+  const isCanceledOrder = Boolean(order?.canceledAt)
+  const isDeletedOrder = Boolean(order?.deletedAt)
+  const pricing = order ? getOrderPricing(order) : null
+  const hasClientNumber = Boolean(order?.phone)
+  const hasBoxes = Number(order?.boxes?.amount) > 0
   const isBoxEvent = eventType === 'boxDelivery' || eventType === 'boxReturn'
   const showRegularOrder = order && !isBoxEvent
+  const address = order?.address
+  const destination = order?.destination
+  const extraAddresses = order ? order.extraAddresses : []
+  const hasExtraAddresses = extraAddresses.length > 0
+  const hasClientEmail = Boolean(order?.email)
+  const boxDate =
+    eventType === 'boxDelivery' ? order?.boxes?.deliveryDate : order?.boxes?.returnDate
 
   const boxRows =
-    order?.boxes && isBoxEvent
+    order?.boxes && isBoxEvent && hasBoxes
       ? [
-          {
-            label: 'Date',
-            value:
-              eventType === 'boxDelivery'
-                ? dayjs(order.boxes.deliveryDate).format('DD.MM.YYYY HH:mm')
-                : dayjs(order.boxes.returnDate).format('DD.MM.YYYY HH:mm'),
-          },
-          { label: 'Boxes', value: `${order.boxes.amount} kpl` },
+          ...(boxDate
+            ? [
+                {
+                  label: 'Date',
+                  value: formatBoxDate(
+                    boxDate,
+                    eventType === 'boxDelivery' ? 'box delivery date' : 'box return date',
+                    eventType === 'boxDelivery'
+                      ? order.boxes.deliveryHasTime
+                      : order.boxes.returnHasTime,
+                  ),
+                },
+              ]
+            : []),
+          { label: 'Boxes', value: `${order.boxes.amount} pcs` },
           {
             label: 'Price',
-            value: `${
-              eventType === 'boxDelivery'
-                ? order.boxes.deliveryPrice || 0
-                : order.boxes.returnPrice || 0
-            }€`,
+            value: `${pricing?.boxesPrice ?? 0}€`,
           },
         ]
       : []
 
   const regularRows = order
     ? [
+        { label: 'Service', value: order.service?.name || '' },
+        { label: 'Payment Type', value: order.paymentType?.name || '' },
         {
           label: 'From',
-          value: `${order.address?.street}, ${order.address?.index} ${order.address?.city}`,
+          value: `${address.street || ''} (${address.floor ?? 0} floor), ${address.index || ''} ${address.city || ''}`,
         },
-        order.extraAddress && {
-          label: 'Extra Address',
-          value: order.extraAddress,
+        hasExtraAddresses && {
+          label: 'Additional addresses',
+          value: extraAddresses.map((addr, index) => (
+            <div
+              key={index}
+              className="order-dialog-details__extra-address"
+            >{`${addr?.street || ''} (${addr?.floor ?? 0} floor), ${addr?.index || ''} ${addr?.city || ''}`}</div>
+          )),
         },
-        order.destination &&
-          order.destination.street && {
-            label: 'To',
-            value: `${order.destination.street}, ${order.destination.index} ${order.destination.city}`,
-          },
-        { label: 'Payment Type', value: order.paymentType?.name || '' },
-        { label: 'Total Price', value: `${order.price || 0}€` },
-        order.boxes && {
+        destination.street && {
+          label: 'To',
+          value: `${destination.street} (${destination.floor ?? 0} floor), ${destination.index || ''} ${destination.city || ''}`,
+        },
+        hasBoxes && {
           label: 'Boxes',
-          value: `${order.boxes.amount} kpl, ${order.boxesPrice}€`,
+          value: `${order.boxes.amount} pcs, ${pricing.boxesPrice}€`,
         },
-        { label: 'Service', value: order.service?.name || '' },
+        { label: 'Total price', value: `${pricing.price || 0}€` },
       ].filter(Boolean)
     : []
 
@@ -60,7 +88,7 @@ export default function OrderDialogDetails({ order, eventType }) {
           <div className="order-dialog-details__row">
             <span className="order-dialog-details__label">Address</span>
             <span className="order-dialog-details__value">
-              {order.address?.street}, {order.address?.index} {order.address?.city}
+              {address.street || ''}, {address.index || ''} {address.city || ''}
             </span>
           </div>
           {boxRows.map((row) => (
@@ -71,7 +99,7 @@ export default function OrderDialogDetails({ order, eventType }) {
           ))}
           {hasClientNumber && (
             <div className="order-dialog-details__row">
-              <span className="order-dialog-details__label">Client number</span>
+              <span className="order-dialog-details__label">Client phone</span>
               <span className="order-dialog-details__value">{order.phone}</span>
             </div>
           )}
@@ -79,28 +107,96 @@ export default function OrderDialogDetails({ order, eventType }) {
       )}
       {showRegularOrder && (
         <div className="order-dialog-details__section">
+          <div className="order-dialog-details__row">
+            <span className="order-dialog-details__label">Date</span>
+            <span className="order-dialog-details__value">
+              {formatInTimeZone(
+                parseInstant(order.date, 'order date'),
+                'dd.MM.yyyy HH:mm',
+                HELSINKI_TIMEZONE,
+              )}
+            </span>
+          </div>
           {regularRows.map((row) => (
             <div key={row.label} className="order-dialog-details__row">
               <span className="order-dialog-details__label">{row.label}</span>
               <span className="order-dialog-details__value">{row.value}</span>
             </div>
           ))}
-          {order.fees && Array.isArray(order.fees) && order.fees.length > 0 && (
+          <div className="order-dialog-details__row">
+            <span className="order-dialog-details__label">Client name</span>
+            <span className="order-dialog-details__value">{order.name}</span>
+          </div>
+          {hasClientNumber && (
+            <div className="order-dialog-details__row">
+              <span className="order-dialog-details__label">Client phone</span>
+              <span className="order-dialog-details__value">{order.phone}</span>
+            </div>
+          )}
+          {hasClientEmail && (
+            <div className="order-dialog-details__row">
+              <span className="order-dialog-details__label">Client email</span>
+              <span className="order-dialog-details__value">{order.email}</span>
+            </div>
+          )}
+          {pricing.fees.length > 0 && (
             <div className="order-dialog-details__fees-section">
               <span className="order-dialog-details__label">Fees</span>
               <ul className="calendar-fee-list">
-                {order.fees.map((fee, index) => (
-                  <li key={index} className="calendar-fee-item">
-                    {fee.name}: {fee.amount}€
-                  </li>
-                ))}
+                {pricing.fees.map((fee, index) => {
+                  const label = resolveFeeDisplayName(order, fee)
+                  return (
+                    <li key={index} className="calendar-fee-item">
+                      {label}: {fee.amount}€
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           )}
-          {hasClientNumber && (
+          <div className="order-dialog-details__section">
+            {order.comment && (
+              <div className="order-dialog-details__row">
+                <span className="order-dialog-details__label">Comment</span>
+                <span className="order-dialog-details__value">{order.comment}</span>
+              </div>
+            )}
+            {isCanceledOrder && (
+              <div className="order-dialog-details__row">
+                <span className="order-dialog-details__label">Canceled at</span>
+                <span className="order-dialog-details__value">
+                  {formatInTimeZone(
+                    parseInstant(order.canceledAt, 'canceled at'),
+                    'dd.MM.yyyy HH:mm',
+                    HELSINKI_TIMEZONE,
+                  )}
+                </span>
+              </div>
+            )}
+            {isDeletedOrder && (
+              <div className="order-dialog-details__row">
+                <span className="order-dialog-details__label">Deleted at</span>
+                <span className="order-dialog-details__value">
+                  {formatInTimeZone(
+                    parseInstant(order.deletedAt, 'deleted at'),
+                    'dd.MM.yyyy HH:mm',
+                    HELSINKI_TIMEZONE,
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+          {!isCanceledOrder && !isDeletedOrder && (
             <div className="order-dialog-details__row">
-              <span className="order-dialog-details__label">Client number</span>
-              <span className="order-dialog-details__value">{order.phone}</span>
+              <span className="order-dialog-details__label">Event color</span>
+              <span className="order-dialog-details__value">
+                <ColorSelector
+                  value={order?.eventColor}
+                  automaticColorId={resolveEventColorId(order)}
+                  onChange={onEventColorChange}
+                  colors={colors}
+                />
+              </span>
             </div>
           )}
         </div>

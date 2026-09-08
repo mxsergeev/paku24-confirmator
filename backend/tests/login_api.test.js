@@ -1,14 +1,12 @@
-import mongoose from 'mongoose'
 import supertest from 'supertest'
 import app from '../app.js'
 
 const api = supertest(app)
 
-import { initialUsers, initializeDB } from './test_helper.js'
+import { initialUsers } from './test_helper.js'
+import useTestDatabase from './database_harness.js'
 
-beforeEach(async () => {
-  await initializeDB()
-})
+useTestDatabase()
 
 describe('Login', () => {
   const user = initialUsers[0]
@@ -51,8 +49,4 @@ describe('Login', () => {
       .expect(429)
       .expect('Content-Type', /application\/json/)
   })
-})
-
-afterAll(() => {
-  mongoose.connection.close()
 })

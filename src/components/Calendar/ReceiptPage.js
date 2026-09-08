@@ -1,0 +1,579 @@
+import React, { useEffect, useState } from 'react'
+import { Button, CircularProgress } from '@material-ui/core'
+import { enqueueSnackbar } from 'notistack'
+import ordersAPI from '../../services/ordersAPI'
+import { sendReceiptEmail } from '../../services/emailAPI'
+import feesConfig from '../../data/fees.json'
+import receiptLogo from '../../assets/laskuLogo.png'
+import {
+  buildStableInvoiceNumber,
+  buildReceiptDraftFromOrder,
+  formatDateForReceipt,
+  getDocumentPricing,
+  INVOICE_TERMS,
+  normalizeDocumentType,
+  normalizeReceiptDraft,
+} from './receiptData.helpers'
+import { jsPDF } from 'jspdf'
+import './Calendar.css'
+import { formatHelsinkiInstant } from '../../shared/date-fns-tz.js'
+import { resolveServiceHourlyRate } from '../../shared/orderPricing.js'
+import {
+  getAddressForStairsFee,
+  getFeeBaseName,
+  getStairsFloorCount,
+  getStairsPaidFloorCount,
+  resolveFeeDisplayName,
+} from '../../shared/render/fees.js'
+
+const ALV_FACTOR = 1.255
+const STAIRS_FEE_BASE_NAME = 'stairsFee'
+const STAIRS_UNIT_BRUTTO = Number(
+  feesConfig.find((fee) => fee?.name === STAIRS_FEE_BASE_NAME)?.baseFee,
+)
+
+function num(value) {
+  const parsed = Number(String(value || ''))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function roundMoney(value) {
+  return Math.round(num(value) * 100) / 100
+}
+
+function formatMoney(value) {
+  return roundMoney(value).toFixed(2).replace('.', ',')
+}
+
+function toAlvParts(bruttoAmount) {
+  const brutto = roundMoney(bruttoAmount)
+  const netto = roundMoney(brutto / ALV_FACTOR)
+  const alv = roundMoney(brutto - netto)
+  return { netto, alv, brutto }
+}
+
+function mergeReceiptData(order, draft = null) {
+  const fallbackType = order?.paymentType?.id === '3' ? 'invoice' : 'receipt'
+  const resolvedDocumentType = normalizeDocumentType(draft?.documentType || fallbackType)
+  const base = buildReceiptDraftFromOrder(order, resolvedDocumentType)
+  const defaultServiceDate = order?.date
+    ? formatHelsinkiInstant(order.date, 'dd.MM.yyyy', 'order date')
+    : ''
+  const now = new Date()
+  const defaultInvoiceDate = formatHelsinkiInstant(now, 'dd.MM.yyyy', 'invoice date')
+  const defaultDueDate = formatDateForReceipt(base.dueDate, '')
+
+  const draftData = draft || {}
+
+  return {
+    ...base,
+    ...draftData,
+    documentType: resolvedDocumentType,
+    invoiceNumber: buildStableInvoiceNumber(order, draftData.invoiceNumber),
+    serviceDate: formatDateForReceipt(draftData.serviceDate, defaultServiceDate),
+    invoiceDate: formatDateForReceipt(draftData.invoiceDate, defaultInvoiceDate),
+    dueDate: formatDateForReceipt(draftData.dueDate, defaultDueDate),
+  }
+}
+
+function buildPdfFromPage(page) {
+  const width = Math.ceil(page.scrollWidth)
+  const height = Math.ceil(page.scrollHeight)
+
+  const doc = new jsPDF({
+    orientation: 'p',
+    format: [width, height],
+  })
+
+  return new Promise((resolve) => {
+    doc.html(page, {
+      autoPaging: false,
+      callback: () => resolve(doc),
+    })
+  })
+}
+
+function readStoredReceiptDraft(orderId) {
+  if (typeof window === 'undefined' || !orderId) return null
+
+  const storageKey = `receipt-draft:${orderId}`
+  try {
+    const rawDraft = window.localStorage.getItem(storageKey)
+    return rawDraft ? normalizeReceiptDraft(JSON.parse(rawDraft)) : null
+  } catch {
+    return null
+  }
+}
+
+function removeStoredReceiptDraft(orderId) {
+  if (typeof window === 'undefined' || !orderId) return
+
+  try {
+    window.localStorage.removeItem(`receipt-draft:${orderId}`)
+  } catch {
+    // Best effort cleanup when browser storage is unavailable.
+  }
+}
+
+function buildReceipt(order, draft) {
+  const mergedReceipt = mergeReceiptData(order, draft)
+  const fallbackType = order?.paymentType?.id === '3' ? 'invoice' : 'receipt'
+  const resolvedDocumentType = normalizeDocumentType(
+    mergedReceipt?.documentType || fallbackType,
+  )
+  const unitBruttoPrice = resolveServiceHourlyRate(order)
+  const unitAlvPrice = roundMoney(unitBruttoPrice - unitBruttoPrice / ALV_FACTOR)
+
+  return {
+    ...mergedReceipt,
+    documentType: resolvedDocumentType,
+    isInvoice: resolvedDocumentType === 'invoice',
+    paymentTypeId: order?.paymentType?.id,
+    alvRate: formatMoney(unitAlvPrice),
+    serviceName: mergedReceipt.serviceName || order?.service?.name || '',
+    serviceHours: mergedReceipt.serviceHours || order?.duration || '-',
+    unitPrice: formatMoney(unitBruttoPrice),
+  }
+}
+
+function buildReceiptRows(order, receipt) {
+  const rows = []
+  const pricing = getDocumentPricing(order, receipt.documentType)
+
+  const serviceHours = num(receipt.serviceHours)
+  const serviceUnitBruttoPrice = resolveServiceHourlyRate(order)
+  const serviceUnitNettoPrice = roundMoney(serviceUnitBruttoPrice / ALV_FACTOR)
+  const serviceBrutto = roundMoney(serviceHours * serviceUnitBruttoPrice)
+  const serviceNetto = roundMoney(serviceUnitNettoPrice * serviceHours)
+  const serviceAlv = roundMoney(serviceBrutto - serviceNetto)
+
+  if (serviceBrutto > 0) {
+    rows.push({
+      key: 'service',
+      name: receipt.serviceName || order?.service?.name || 'Palvelu',
+      hours: receipt.serviceHours,
+      unitPrice: serviceUnitNettoPrice,
+      netto: serviceNetto,
+      alv: serviceAlv,
+      brutto: serviceBrutto,
+    })
+  }
+
+  const boxesAmount = num(order?.boxes?.amount)
+  const boxesBrutto = roundMoney(pricing.boxesPrice)
+
+  if (boxesBrutto > 0) {
+    const boxesUnitBruttoPrice = boxesAmount > 0 ? roundMoney(boxesBrutto / boxesAmount) : 0
+    const boxesUnitNettoPrice =
+      boxesAmount > 0 ? roundMoney(boxesUnitBruttoPrice / ALV_FACTOR) : ''
+    const boxesNetto =
+      boxesAmount > 0
+        ? roundMoney(num(boxesUnitNettoPrice) * boxesAmount)
+        : toAlvParts(boxesBrutto).netto
+    const boxesAlv = roundMoney(boxesBrutto - boxesNetto)
+
+    rows.push({
+      key: 'boxes',
+      name: 'Laatikot',
+      hours: boxesAmount > 0 ? boxesAmount : '',
+      unitPrice: boxesUnitNettoPrice,
+      netto: boxesNetto,
+      alv: boxesAlv,
+      brutto: boxesBrutto,
+    })
+  }
+
+  pricing.fees.forEach((fee, index) => {
+    const feeBrutto = roundMoney(fee?.amount)
+    if (feeBrutto <= 0) return
+
+    const { netto, alv, brutto } = toAlvParts(feeBrutto)
+    const feeName = String(fee?.name || '')
+    const baseFeeName = getFeeBaseName(feeName)
+    const isStairsFee = baseFeeName === STAIRS_FEE_BASE_NAME
+
+    let feeHours = ''
+    let feeUnitPrice = ''
+
+    if (isStairsFee) {
+      const floorsCount = getStairsPaidFloorCount(order, feeName, feeBrutto)
+      if (floorsCount > 0) {
+        const unitBrutto =
+          Number.isFinite(STAIRS_UNIT_BRUTTO) && STAIRS_UNIT_BRUTTO > 0
+            ? STAIRS_UNIT_BRUTTO
+            : roundMoney(feeBrutto / floorsCount)
+        feeHours = floorsCount
+        feeUnitPrice = roundMoney(unitBrutto / ALV_FACTOR)
+      }
+    }
+
+    rows.push({
+      key: `fee-${index}`,
+      name: resolveFeeDisplayName(order, fee),
+      hours: feeHours,
+      unitPrice: feeUnitPrice,
+      netto,
+      alv,
+      brutto,
+    })
+  })
+
+  const calculatedBrutto = roundMoney(rows.reduce((sum, row) => sum + num(row.brutto), 0))
+  const hasTotalAmount =
+    receipt?.totalAmount !== null &&
+    receipt?.totalAmount !== undefined &&
+    String(receipt.totalAmount).trim() !== ''
+  const totalAmount = roundMoney(receipt?.totalAmount)
+  const totalAdjustment = roundMoney(totalAmount - calculatedBrutto)
+
+  if (hasTotalAmount && totalAdjustment !== 0) {
+    const { netto, alv, brutto } = toAlvParts(totalAdjustment)
+    rows.push({
+      key: 'total-adjustment',
+      name: 'Hinnan oikaisu',
+      hours: '',
+      unitPrice: '',
+      netto,
+      alv,
+      brutto,
+    })
+  }
+
+  return rows
+}
+
+function buildReceiptTotals(receiptRows) {
+  const netto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.netto), 0))
+  const alv = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.alv), 0))
+  const brutto = roundMoney(receiptRows.reduce((sum, row) => sum + num(row.brutto), 0))
+
+  return { netto, alv, brutto }
+}
+
+export default function ReceiptPage({ orderId }) {
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [order, setOrder] = useState(null)
+  const [storedDraft] = useState(() => readStoredReceiptDraft(orderId))
+
+  useEffect(() => {
+    removeStoredReceiptDraft(orderId)
+  }, [orderId])
+
+  useEffect(() => {
+    async function loadOrder() {
+      try {
+        setLoading(true)
+        const response = await ordersAPI.getById(orderId)
+        const loadedOrder = response?.order || response || null
+        setOrder(loadedOrder)
+      } catch (err) {
+        if (err.message === 'logout') return
+        enqueueSnackbar('Failed to load order for receipt page.', { variant: 'error' })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadOrder()
+  }, [orderId])
+
+  const receipt = order ? buildReceipt(order, storedDraft) : null
+
+  const isInvoice = receipt?.isInvoice || false
+  const receiptRows = order && receipt ? buildReceiptRows(order, receipt) : []
+  const totals = buildReceiptTotals(receiptRows)
+
+  const handleSend = async () => {
+    if (!receipt?.customerEmail) {
+      enqueueSnackbar('Email is missing in receipt data.', { variant: 'warning' })
+      return
+    }
+
+    const page = document.querySelector('#cart-receipt')
+    if (!page) {
+      enqueueSnackbar('Receipt page is not ready to export.', { variant: 'warning' })
+      return
+    }
+
+    try {
+      setSending(true)
+      const doc = await buildPdfFromPage(page)
+      const pdfBase64 = doc.output('datauristring')
+      const fileName = `${receipt.isInvoice ? 'invoice' : 'receipt'}-${receipt.invoiceNumber || 'document'}.pdf`
+
+      const response = await sendReceiptEmail({
+        email: receipt.customerEmail,
+        pdfBase64,
+        fileName,
+        documentType: receipt.isInvoice ? 'invoice' : 'receipt',
+        subject: `${receipt.isInvoice ? 'Invoice' : 'Receipt'} ${
+          receipt.invoiceNumber || ''
+        }`.trim(),
+        body: `Please find your ${receipt.isInvoice ? 'invoice' : 'receipt'} attached.`,
+      })
+
+      enqueueSnackbar(
+        response.message || `${receipt.isInvoice ? 'Invoice' : 'Receipt'} email sent.`
+      )
+    } catch (err) {
+      if (err.message === 'logout') return
+      enqueueSnackbar(
+        err.response?.data?.error ||
+          `Failed to send ${receipt.isInvoice ? 'invoice' : 'receipt'} email.`,
+        {
+          variant: 'error',
+        }
+      )
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleDownloadFromCart = () => {
+    const page = document.querySelector('#cart-receipt')
+    if (!page || !receipt) return
+
+    const name = `${receipt.isInvoice ? 'Invoice' : 'Receipt'} ${receipt.invoiceNumber}.pdf`
+
+    buildPdfFromPage(page).then((doc) => doc.save(name))
+  }
+
+  if (loading) {
+    return (
+      <div className="receipt-page-loading">
+        <CircularProgress size={30} />
+      </div>
+    )
+  }
+
+  if (!receipt) {
+    return <div className="receipt-page-loading">Receipt data is missing.</div>
+  }
+
+  return (
+    <section className="receipt-page-wrap">
+      <div className="receipt-page-toolbar">
+        <Button variant="contained" color="primary" onClick={handleDownloadFromCart}>
+          Download
+        </Button>
+        <Button variant="contained" color="primary" onClick={handleSend} disabled={sending}>
+          {sending ? 'Sending...' : 'Send'}
+        </Button>
+      </div>
+
+      <article className="receipt-document" id="cart-receipt">
+        <header className="receipt-document-head">
+          <div className="receipt-company-block">
+            <div>
+              <img className="receipt-logo" src={receiptLogo} alt="Logo" width="250px" />
+            </div>
+            <div className="receipt-company-info-block">
+              <p>Y-tunnus 2485335-8</p>
+              <p>Puh. 0451797930</p>
+              <p>E-mail: asiakaspalvelu@paku24.fi</p>
+              <p>Luutnantinpolku 2 A 17</p>
+              <p>00420 Helsinki</p>
+            </div>
+          </div>
+          <div className="receipt-title-block">
+            {isInvoice && <h3 className="receipt-title">LASKU</h3>}
+            {!isInvoice && <h3 className="receipt-title">KUITTI</h3>}
+          </div>
+          <div className="receipt-meta-grid">
+            <span>Sivu</span>
+            <span className="right">1/1</span>
+            {isInvoice && <span>Laskunro</span>}
+            {!isInvoice && <span>Kuittinro</span>}
+            <span className="right">{receipt.invoiceNumber}</span>
+            <span>Ajalta</span>
+            <span className="right">{receipt.serviceDate}</span>
+            <span>Päiväys</span>
+            <span className="right">{receipt.invoiceDate}</span>
+
+            {isInvoice && (
+              <>
+                <span>Eräpäivä</span>
+                <span className="right">{receipt.dueDate}</span>
+                <span>Huomautusaika</span>
+                <span className="right">{INVOICE_TERMS.reminderDays} pv</span>
+                <span>Maksuehto</span>
+                <span className="right">{INVOICE_TERMS.paymentTermDays} pv</span>
+                <span>Viivästyskorko</span>
+                <span className="right">{INVOICE_TERMS.latePaymentInterestPercent} %</span>
+              </>
+            )}
+          </div>
+        </header>
+
+        <table className="receipt-info">
+          <thead>
+            <tr className="receipt-info-header-string">
+              <th className="service-name">Tuote tai palvelu</th>
+              <th className="service-hours">Määrä</th>
+              <th className="unit-price">Yksikköhinta</th>
+              <th className="hours-summa">Veroton</th>
+              <th className="value-alv">ALV</th>
+              <th className="value-total">Yhteensä</th>
+            </tr>
+          </thead>
+
+          <tbody className="receipt-info-body">
+            {receiptRows.map((row, index) => (
+              <tr
+                className={`receipt-info-service ${
+                  index === 0 ? 'receipt-info-service--first' : ''
+                } ${index === receiptRows.length - 1 ? 'receipt-info-service--last' : ''}`}
+                key={row.key}
+              >
+                <td className="service-name">{row.name}</td>
+                <td className="service-hours">{row.hours}</td>
+                <td className="unit-price">
+                  {row.unitPrice === '' ? '' : formatMoney(row.unitPrice)}
+                </td>
+                <td className="hours-summa">{formatMoney(row.netto)}</td>
+                <td className="value-alv">{formatMoney(row.alv)}</td>
+                <td className="value-total">{formatMoney(row.brutto)}</td>
+              </tr>
+            ))}
+
+            <tr>
+              <td colSpan="3" rowSpan="3"></td>
+              <td colSpan="3">
+                <div className="receipt-summary-row">
+                  <div>Veroton yhteensä</div>
+                  <div>{formatMoney(totals.netto)}</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td colSpan="3">
+                <div className="receipt-summary-row">
+                  <div>ALV 25,5 %</div>
+                  <div>{formatMoney(totals.alv)}</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td colSpan="3">
+                <div className="receipt-summary-row">
+                  <div>Maksettava yhteensä</div>
+                  <div>{formatMoney(totals.brutto)}</div>
+                </div>
+              </td>
+            </tr>
+
+            <tr className="receipt-bank-row">
+              <td colSpan="6" className="receipt-bank-wrapper">
+                <table className="receipt-bank-table">
+                  <colgroup>
+                    <col className="receipt-bank-col-1" />
+                    <col className="receipt-bank-col-2" />
+                    <col />
+                    <col />
+                    <col />
+                  </colgroup>
+                  <tbody>
+                    <tr>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-top receipt-bank-cell--no-left">
+                        <div style={{ visibility: !isInvoice ? 'hidden' : 'visible' }}>
+                          Saajan tilinro
+                        </div>
+                        <div style={{ visibility: !isInvoice ? 'hidden' : 'visible' }}>
+                          Mottagarens kontonummer
+                        </div>
+                      </td>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-top">
+                        <div style={{ visibility: !isInvoice ? 'hidden' : 'visible' }}>
+                          FI85 3939 0065 1979 23
+                        </div>
+                      </td>
+                      <td
+                        rowSpan="3"
+                        colSpan="3"
+                        className="receipt-bank-cell receipt-bank-cell--no-top receipt-bank-cell--no-right"
+                      >
+                        <div
+                          style={{ visibility: !isInvoice ? 'hidden' : 'visible' }}
+                          className="receipt-bank-info"
+                        >
+                          <div className="bold">Tilisiirto / Girering</div>
+                          <div>
+                            Maksu välitetään saajalle maksujenvälityksen yleisten ehtojen mukaisesti
+                            ja vain maksajan ilmoittaman tilinumeron perusteella.
+                          </div>
+                          <div>
+                            Betalningen förmedlas till mottagaren enligt de allmänna villkoren för
+                            betalningsförmedling och endast på basis av det kontonummer som
+                            betalaren angett.
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-left">
+                        <div>Saaja</div>
+                        <div>Mottagare</div>
+                      </td>
+                      <td className="receipt-bank-cell">
+                        <div>Paku24 tmi</div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-left">
+                        <div>Maksaja</div>
+                        <div>Betalare</div>
+                      </td>
+                      <td rowSpan="2" className="receipt-bank-cell-2">
+                        <div>{receipt.customerName}</div>
+                        <div>{receipt.customerAddress}</div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-left">
+                        <div>Allekirjoitus</div>
+                        <div>Underskrift</div>
+                      </td>
+                      <td className="receipt-bank-cell">{isInvoice && <div>Viesti</div>}</td>
+                      <td colSpan="2" className="receipt-bank-cell receipt-bank-cell--no-right">
+                        {isInvoice && (
+                          <div className="receipt-customer-name">Lasku {receipt.invoiceNumber}</div>
+                        )}
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-left receipt-bank-cell--no-bottom">
+                        <div>Tililtä</div>
+                        <div>Från konto</div>
+                      </td>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-bottom"></td>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-bottom">
+                        <div>Eräpäivä</div>
+                        <div>Förf.dag</div>
+                      </td>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-bottom">
+                        {isInvoice && (
+                          <div className="receipt-customer-name">{receipt.dueDate}</div>
+                        )}
+                      </td>
+                      <td className="receipt-bank-cell receipt-bank-cell--no-right receipt-bank-cell--no-bottom">
+                        <div className="receipt-summary">
+                          <div>€</div>
+                          <div>{formatMoney(totals.brutto)}</div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+    </section>
+  )
+}
